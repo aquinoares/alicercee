@@ -615,15 +615,19 @@ async function cloudLogout(){
   SB_USER=null;
 }
 async function cloudLoad(){
-  if(!SB||!SB_USER) return false;
+  if(!SB) return false;
   try{
+    const {data:sessionData,error:sessionError}=await SB.auth.getSession();
+    const user=sessionData?.session?.user||null;
+    if(sessionError||!user) return false;
+    SB_USER=user;
     const uid=SB_USER.id;
     const [tx,cp,mt]=await Promise.all([
       SB.from('txs').select('id,payload').eq('user_id',uid),
       SB.from('comps').select('id,payload').eq('user_id',uid),
       SB.from('meta').select('payload').eq('user_id',uid),
     ]);
-    if(!tx.error&&tx.data&&tx.data.length){
+    if(!tx.error&&tx.data){
       S.txs=tx.data.map(r=>Object.assign({},r.payload,{id:r.id}));
     }
     if(!cp.error&&cp.data){
@@ -646,13 +650,8 @@ function cloudPush(){
       if(cpRows.length) await SB.from('comps').upsert(cpRows);
       await SB.from('meta').upsert({user_id:uid,payload:S.meta,updated_at:new Date().toISOString()});
       // limpa remotos o que foi apagado localmente
-      const removed=LS.get('alicerce_removed',[])||[];
-      for(const r of removed){
-        if(r.t==='tx') await SB.from('txs').delete().eq('id',r.id).eq('user_id',uid);
-        if(r.t==='comp') await SB.from('comps').delete().eq('id',r.id).eq('user_id',uid);
-      }
-      if(removed.length) LS.set('alicerce_removed',[]);
-    }catch(e){ /* offline: fica salvo no aparelho e sincroniza depois */ }
+      const removed=LS.get('alicerce_removed',[])||[]; const txIds=removed.filter(r=>r.t==='tx').map(r=>r.id); const compIds=removed.filter(r=>r.t==='comp').map(r=>r.id); if(txIds.length) await SB.from('txs').delete().in('id',txIds).eq('user_id',uid); if(compIds.length) await SB.from('comps').delete().in('id',compIds).eq('user_id',uid); if(removed.length) LS.set('alicerce_removed',[]);
+    }catch(e){ console.error('ALICERCE CLOUD PUSH ERROR:',e); }
   },900);
 }
 function cloudRemove(table,id){
@@ -790,7 +789,7 @@ function boot(){
   document.documentElement.lang=S.lang==='pt'?'pt-BR':S.lang;
   S.user=LS.get('alicerce_logged',null);
   const tx=LS.get('alicerce_v2_txs',null), cp=LS.get('alicerce_v2_comps',null);
-  if(tx&&Array.isArray(tx)&&tx.length){ S.txs=tx; S.comps=cp||[] } else if(S.user){ seed() }
+  if(tx&&Array.isArray(tx)&&tx.length){ S.txs=tx; S.comps=cp||[] } else { S.txs=[]; S.comps=[] }
   const mt=LS.get('alicerce_meta',null); if(mt) S.meta=mt;
   render();
   // se houver Supabase configurado, puxa os dados da nuvem
@@ -1615,7 +1614,7 @@ function doLogin(){
       if(r==='ok'){
         LS.set('alicerce_logged',email); S.user=email; authMode='login';
         await cloudLoad();
-        if(!S.txs.length){ seed(); save() }
+        if(S.user){ save() }
         render(); toast(t('tBemVindo')); return;
       }
       if(r!=='local'){ toast(r); return }
@@ -1624,7 +1623,7 @@ function doLogin(){
     if(!acc){ toast(t('errContaNao')); return }
     if(acc.hash!==hashPw(pw)){ toast(t('errSenha')); return }
     LS.set('alicerce_logged',email); S.user=email; authMode='login';
-    if(!S.txs.length){ seed(); save() }
+    if(S.user){ save() }
     render(); toast(t('tBemVindo'));
   })();
 }
@@ -1639,7 +1638,7 @@ function doSignup(){
       const r=await cloudSignup(name,email,pw);
       if(r==='ok'){
         LS.set('alicerce_logged',email); S.user=email; authMode='login';
-        if(!S.txs.length){ seed(); save() } else save();
+        if(S.user){ save() } else save();
         render(); toast(t('tContaCriada')); return;
       }
       if(r!=='local'){ toast(r); return }
@@ -1649,7 +1648,7 @@ function doSignup(){
     accs[email]={name,hash:hashPw(pw),created:new Date().toISOString()};
     LS.set('alicerce_accounts',accs);
     LS.set('alicerce_logged',email); S.user=email; authMode='login';
-    if(!S.txs.length){ seed(); save() }
+    if(S.user){ save() }
     render(); toast(t('tContaCriada'));
   })();
 }
