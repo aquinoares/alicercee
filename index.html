@@ -1531,7 +1531,7 @@ function confirmClear(){
       <button class="btn btn-danger press" style="flex:1" onclick="doClear()">${t('apagarTudo')}</button>
     </div>`);
 }
-function doClear(){ S.txs=[]; S.comps=[]; save(); closeSheet(); render(); toast(t('tApagado')) }
+function doClear(){ S.txs.forEach(x=>cloudRemove('tx',x.id)); S.comps.forEach(x=>cloudRemove('comp',x.id)); S.txs=[]; S.comps=[]; save(); closeSheet(); render(); toast(t('tApagado')) }
 function openFaq(){
   const faqs=t('faq');
   openSheet(`
