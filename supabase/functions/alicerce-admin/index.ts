@@ -210,6 +210,194 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "set_subscription") {
+      const userId = String(body?.user_id || "").trim();
+      const plan = String(body?.plan || "").trim().toLowerCase();
+      const status = String(body?.status || "active").trim().toLowerCase();
+      const expiresAt = body?.expires_at
+        ? String(body.expires_at)
+        : null;
+      const provider = String(body?.provider || "manual").trim().toLowerCase();
+
+      const allowedPlans = [
+        "free",
+        "pro",
+        "trial",
+        "vitalicio"
+      ];
+
+      if (!userId) {
+        return json(
+          {
+            ok: false,
+            error: "user_id não informado",
+          },
+          400
+        );
+      }
+
+      if (!allowedPlans.includes(plan)) {
+        return json(
+          {
+            ok: false,
+            error: "Plano inválido",
+          },
+          400
+        );
+      }
+
+      if (status !== "active" && status !== "inactive") {
+        return json(
+          {
+            ok: false,
+            error: "Status inválido",
+          },
+          400
+        );
+      }
+
+      if (plan === "pro" || plan === "trial") {
+        if (!expiresAt) {
+          return json(
+            {
+              ok: false,
+              error: "Data de expiração obrigatória",
+            },
+            400
+          );
+        }
+
+        const parsedDate = new Date(expiresAt);
+
+        if (Number.isNaN(parsedDate.getTime())) {
+          return json(
+            {
+              ok: false,
+              error: "Data de expiração inválida",
+            },
+            400
+          );
+        }
+      }
+
+      const now = new Date().toISOString();
+
+      const { data: subscription, error: subscriptionError } =
+        await adminClient
+          .from("subscriptions")
+          .upsert(
+            {
+              user_id: userId,
+              plan,
+              status,
+              started_at: now,
+              expires_at:
+                plan === "vitalicio" || plan === "free"
+                  ? null
+                  : expiresAt,
+              provider,
+              provider_transaction_id: null,
+              updated_at: now,
+            },
+            {
+              onConflict: "user_id",
+            }
+          )
+          .select(
+            "user_id,plan,status,started_at,expires_at,provider,provider_transaction_id"
+          )
+          .single();
+
+      if (subscriptionError) {
+        console.error(
+          "ERRO_ATUALIZAR_ASSINATURA:",
+          subscriptionError.message
+        );
+
+        return json(
+          {
+            ok: false,
+            error: "Não foi possível atualizar a assinatura",
+          },
+          500
+        );
+      }
+
+      console.log(
+        "ASSINATURA_ATUALIZADA:",
+        JSON.stringify(subscription)
+      );
+
+      return json({
+        ok: true,
+        subscription,
+      });
+    }
+
+    if (action === "remove_subscription") {
+      const userId = String(body?.user_id || "").trim();
+
+      if (!userId) {
+        return json(
+          {
+            ok: false,
+            error: "user_id não informado",
+          },
+          400
+        );
+      }
+
+      const now = new Date().toISOString();
+
+      const { data: subscription, error: subscriptionError } =
+        await adminClient
+          .from("subscriptions")
+          .upsert(
+            {
+              user_id: userId,
+              plan: "free",
+              status: "active",
+              started_at: now,
+              expires_at: null,
+              provider: "manual",
+              provider_transaction_id: null,
+              updated_at: now,
+            },
+            {
+              onConflict: "user_id",
+            }
+          )
+          .select(
+            "user_id,plan,status,started_at,expires_at,provider,provider_transaction_id"
+          )
+          .single();
+
+      if (subscriptionError) {
+        console.error(
+          "ERRO_REMOVER_ASSINATURA:",
+          subscriptionError.message
+        );
+
+        return json(
+          {
+            ok: false,
+            error: "Não foi possível remover a assinatura",
+          },
+          500
+        );
+      }
+
+      console.log(
+        "ASSINATURA_REMOVIDA:",
+        JSON.stringify(subscription)
+      );
+
+      return json({
+        ok: true,
+        subscription,
+      });
+    }
+
     return json(
       {
         ok: false,

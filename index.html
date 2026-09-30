@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Alicerce — Meu Mês</title>
+<title>Alicerce â€” Meu MÃªs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 /* ============================================================
-   ALICERCE v2.1 — "Meu Mês" · i18n completo (PT / EN / ES)
+   ALICERCE v2.1 â€” "Meu MÃªs" Â· i18n completo (PT / EN / ES)
    ============================================================ */
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{
@@ -124,7 +124,7 @@ input::placeholder{color:var(--text2);opacity:.6}
 .login{min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;padding:26px 22px calc(30px + env(safe-area-inset-bottom));position:relative;overflow:hidden;background:linear-gradient(170deg,#0B0F14 30%,#1c1509 100%)}
 .login-glow{position:absolute;width:340px;height:340px;left:50%;top:-60px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--gold) 26%,transparent),transparent 70%)}
 .login-word{position:absolute;top:13%;left:0;right:0;text-align:center;font-size:62px;font-weight:800;letter-spacing:-.08em;color:rgba(255,255,255,.05);user-select:none}
-/* arte do calendário no login */
+/* arte do calendÃ¡rio no login */
 .login-art{position:relative;height:215px;margin:16px 0 0}
 .art-cal{position:absolute;left:50%;top:8px;transform:translateX(-50%);width:236px;padding:15px;border-radius:20px;background:rgba(255,255,255,.055);border:1px solid rgba(212,168,89,.28);box-shadow:0 22px 50px rgba(0,0,0,.42);animation:floaty 5.5s ease-in-out infinite;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .art-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:11px}
@@ -148,251 +148,251 @@ input::placeholder{color:var(--text2);opacity:.6}
 
 <script>
 /* ============================================================
-   1. i18n — PT / EN / ES (100% dos textos)
+   1. i18n â€” PT / EN / ES (100% dos textos)
    ============================================================ */
 const DICT={
 pt:{
- appName:'Alicerce', tagline:'Meu mês · minhas contas',
- navMes:'Meu mês', navAgenda:'Calendário', navParcelas:'Parcelas', navPerfil:'Perfil',
- meuMes:'MEU MÊS', sobrouMes:'💚 Sobrou esse mês', vermelhoMes:'⚠️ Estou no vermelho esse mês',
- entrouSaiu:(e,s)=>`Entrou ${e} · Saiu ${s}`,
- lbEntrou:'💰 Entrou', lbContasPagas:'✅ Contas pagas', lbCartoes:'🧾 Cartões',
- contasPagasX:'✅ Contas pagas × pendentes',
- deContasFixas:v=>`de ${v} em contas fixas desse mês`,
+ appName:'Alicerce', tagline:'Meu mÃªs Â· minhas contas',
+ navMes:'Meu mÃªs', navAgenda:'CalendÃ¡rio', navParcelas:'Parcelas', navPerfil:'Perfil',
+ meuMes:'MEU MÃŠS', sobrouMes:'ðŸ’š Sobrou esse mÃªs', vermelhoMes:'âš ï¸ Estou no vermelho esse mÃªs',
+ entrouSaiu:(e,s)=>`Entrou ${e} Â· Saiu ${s}`,
+ lbEntrou:'ðŸ’° Entrou', lbContasPagas:'âœ… Contas pagas', lbCartoes:'ðŸ§¾ CartÃµes',
+ contasPagasX:'âœ… Contas pagas Ã— pendentes',
+ deContasFixas:v=>`de ${v} em contas fixas desse mÃªs`,
  quitadas:(a,b)=>`${a} de ${b} contas quitadas`,
- cartoesMes:'🧾 Cartões desse mês',
+ cartoesMes:'ðŸ§¾ CartÃµes desse mÃªs',
  cartoesDesc:(t,c)=>`Total das parcelas que vencem agora. Compras: ${t} no total.`,
- verParcelas:'Ver minhas parcelas →',
- aRecebi:'Recebi<br>dinheiro', aGastei:'Gastei<br>dinheiro', aDivida:'Fiz uma<br>dívida', aComp:'Marcar<br>compromisso',
- ondeFoi:'Onde foi meu dinheiro', esconder:'🙈 Esconder valores', mostrar:'👁 Mostrar valores',
- contasFixas:'Contas fixas desse mês', pagas:(a,b)=>`${a}/${b} pagas`,
- nenhumaConta:'Nenhuma conta fixa. Toque em 🛒 Gastei e marque "repete todo mês".',
- tudoMovimentou:'Tudo que movimentou esse mês', itens:n=>`${n} itens`,
- semLancamentos:'Sem lançamentos. Use os botões acima 👆',
- footer:'ALICERCE · MEU MÊS COM CLAREZA',
+ verParcelas:'Ver minhas parcelas â†’',
+ aRecebi:'Recebi<br>dinheiro', aGastei:'Gastei<br>dinheiro', aDivida:'Fiz uma<br>dÃ­vida', aComp:'Marcar<br>compromisso',
+ ondeFoi:'Onde foi meu dinheiro', esconder:'ðŸ™ˆ Esconder valores', mostrar:'ðŸ‘ Mostrar valores',
+ contasFixas:'Contas fixas desse mÃªs', pagas:(a,b)=>`${a}/${b} pagas`,
+ nenhumaConta:'Nenhuma conta fixa. Toque em ðŸ›’ Gastei e marque "repete todo mÃªs".',
+ tudoMovimentou:'Tudo que movimentou esse mÃªs', itens:n=>`${n} itens`,
+ semLancamentos:'Sem lanÃ§amentos. Use os botÃµes acima ðŸ‘†',
+ footer:'ALICERCE Â· MEU MÃŠS COM CLAREZA',
  pago:'PAGO', pendente:'PENDENTE', dia:'dia',
- total:'total', emprestadoDe:(n)=>`👥 ${n}`,
+ total:'total', emprestadoDe:(n)=>`ðŸ‘¥ ${n}`,
  parcelaBadge:(a,b)=>`${a}/${b}x`, deTotal:v=>`de ${v}`,
  fixaAviso:'Preencha o nome e o valor',
- tContaPaga:n=>`✅ ${n} • conta paga!`, tContaPendente:n=>`${n} • marcada como pendente`,
+ tContaPaga:n=>`âœ… ${n} â€¢ conta paga!`, tContaPendente:n=>`${n} â€¢ marcada como pendente`,
  // agenda
- calTitle:'CALENDÁRIO FINANCEIRO', hoje:'Hoje',
- legEntrada:'● Entrada', legGastos:'● Gastos por cor', legComp:'⭐ Compromisso', legParcela:'🧾 Parcela',
- diaSel:d=>`📌 Dia ${d}`, fechar:'✕ Fechar', btnGasto:'🛒 Gasto', btnEntrada:'💰 Entrada', btnComp:'📌 Compromisso',
+ calTitle:'CALENDÃRIO FINANCEIRO', hoje:'Hoje',
+ legEntrada:'â— Entrada', legGastos:'â— Gastos por cor', legComp:'â­ Compromisso', legParcela:'ðŸ§¾ Parcela',
+ diaSel:d=>`ðŸ“Œ Dia ${d}`, fechar:'âœ• Fechar', btnGasto:'ðŸ›’ Gasto', btnEntrada:'ðŸ’° Entrada', btnComp:'ðŸ“Œ Compromisso',
  nadaDia:'Nada marcado neste dia',
- proximosComp:'Próximos compromissos', novo:'＋ Novo', nenhumComp:'Nenhum compromisso. Marque no calendário!',
- semValor:'sem valor', feito:'FEITO', repeteTodoMes:'• repete todo mês',
- tCompFeito:'✅ Compromisso feito!', tCompReaberto:'Compromisso reaberto',
+ proximosComp:'PrÃ³ximos compromissos', novo:'ï¼‹ Novo', nenhumComp:'Nenhum compromisso. Marque no calendÃ¡rio!',
+ semValor:'sem valor', feito:'FEITO', repeteTodoMes:'â€¢ repete todo mÃªs',
+ tCompFeito:'âœ… Compromisso feito!', tCompReaberto:'Compromisso reaberto',
  // parcelas
  minhasParcelas:'MINHAS PARCELAS', comprasParceladas:'Compras parceladas',
- parcelasSub:'Aqui o que importa: <b>a compra, o total e as parcelas</b>. O cartão é só a referência.',
- parcelasVencem:m=>`🧾 Parcelas que vencem em ${m}`,
- comprasComParcela:n=>`${n} compra(s) com parcela neste mês`,
- lancarDivida:'＋ Lançar nova dívida',
+ parcelasSub:'Aqui o que importa: <b>a compra, o total e as parcelas</b>. O cartÃ£o Ã© sÃ³ a referÃªncia.',
+ parcelasVencem:m=>`ðŸ§¾ Parcelas que vencem em ${m}`,
+ comprasComParcela:n=>`${n} compra(s) com parcela neste mÃªs`,
+ lancarDivida:'ï¼‹ LanÃ§ar nova dÃ­vida',
  totalDaCompra:'total da compra', pagasN:n=>`${n} pagas`, faltandoN:n=>`${n} faltando`,
- parcelaVence:(n,d,v)=>`⚠️ Parcela ${n}ª vence ${d} • ${v}`,
- nenhumaDivida:'Nenhuma dívida parcelada. 🎉',
+ parcelaVence:(n,d,v)=>`âš ï¸ Parcela ${n}Âª vence ${d} â€¢ ${v}`,
+ nenhumaDivida:'Nenhuma dÃ­vida parcelada. ðŸŽ‰',
  // perfil
- resumoMes:'Resumo do meu mês',
- lbFaltou:'⚠️ Faltou/poupou', lbSobrou:'sobrou', lbFaltou2:'faltou',
- avisos:'🔔 Avisos de contas', avisosDesc:'Avisar quando conta vencer ou faltar pagar',
+ resumoMes:'Resumo do meu mÃªs',
+ lbFaltou:'âš ï¸ Faltou/poupou', lbSobrou:'sobrou', lbFaltou2:'faltou',
+ avisos:'ðŸ”” Avisos de contas', avisosDesc:'Avisar quando conta vencer ou faltar pagar',
  idioma:'Idioma', cores:'Cores do app',
- baixarExtrato:'📄 Baixar extrato do mês', duvidas:'💡 Dúvidas de como usar',
- apagarDados:'🗑 Apagar meus dados', sair:'🚪 Sair',
+ baixarExtrato:'ðŸ“„ Baixar extrato do mÃªs', duvidas:'ðŸ’¡ DÃºvidas de como usar',
+ apagarDados:'ðŸ—‘ Apagar meus dados', sair:'ðŸšª Sair',
  // quick
- oQueFazer:'O que você quer fazer?', escolhaOpcao:'Escolha uma opção. É rapidinho.',
- qRecTitulo:'Recebi dinheiro', qRecDesc:'Salário, bico, venda, presente…',
- qGasTitulo:'Gastei dinheiro', qGasDesc:'Compra, conta, cartão, feira, remédio…',
- qDivTitulo:'Fiz uma dívida', qDivDesc:'Só parcelado ou empréstimo.',
- qComTitulo:'Marcar compromisso', qComDesc:'Conta pra pagar, consulta, vencimento…',
+ oQueFazer:'O que vocÃª quer fazer?', escolhaOpcao:'Escolha uma opÃ§Ã£o. Ã‰ rapidinho.',
+ qRecTitulo:'Recebi dinheiro', qRecDesc:'SalÃ¡rio, bico, venda, presenteâ€¦',
+ qGasTitulo:'Gastei dinheiro', qGasDesc:'Compra, conta, cartÃ£o, feira, remÃ©dioâ€¦',
+ qDivTitulo:'Fiz uma dÃ­vida', qDivDesc:'SÃ³ parcelado ou emprÃ©stimo.',
+ qComTitulo:'Marcar compromisso', qComDesc:'Conta pra pagar, consulta, vencimentoâ€¦',
  // forms
- fRecTitulo:'💰 Recebi dinheiro', fRecSub:'De onde veio? Ex: salário, bico, venda.',
- fGasTitulo:'🛒 Gastei dinheiro', fGasSub:'O que você comprou ou pagou?',
- fDivTitulo:'🧾 Fiz uma dívida', fDivSub:'Compras parceladas ou empréstimos.',
+ fRecTitulo:'ðŸ’° Recebi dinheiro', fRecSub:'De onde veio? Ex: salÃ¡rio, bico, venda.',
+ fGasTitulo:'ðŸ›’ Gastei dinheiro', fGasSub:'O que vocÃª comprou ou pagou?',
+ fDivTitulo:'ðŸ§¾ Fiz uma dÃ­vida', fDivSub:'Compras parceladas ou emprÃ©stimos.',
  lbValorTotal:'Valor total', lbValor:'Valor (R$)',
- lbDeOnde:'De onde veio?', phDeOnde:'Ex: Salário, bico, venda…',
- lbOQueFoi:'O que foi?', phOQueFoi:'Ex: Feira, aluguel, remédio, tênis…',
- lbCategoria:'Categoria (o calendário organiza por ela)',
- lbData:'Data', lbParaOnde:'Para onde foi? (opcional)', phParaOnde:'Ex: Mercado do João, Farmácia…',
- repeteTitulo:'🔁 Repete todo mês?', repeteDesc:'Marque para contas fixas (aluguel, luz, internet)',
- jaPaguei:'✅ Já paguei essa conta', jaPagueiDesc:'Conta nas "contas pagas" do mês',
- lbVezes:'Em quantas vezes?', avista:'à vista',
+ lbDeOnde:'De onde veio?', phDeOnde:'Ex: SalÃ¡rio, bico, vendaâ€¦',
+ lbOQueFoi:'O que foi?', phOQueFoi:'Ex: Feira, aluguel, remÃ©dio, tÃªnisâ€¦',
+ lbCategoria:'Categoria (o calendÃ¡rio organiza por ela)',
+ lbData:'Data', lbParaOnde:'Para onde foi? (opcional)', phParaOnde:'Ex: Mercado do JoÃ£o, FarmÃ¡ciaâ€¦',
+ repeteTitulo:'ðŸ” Repete todo mÃªs?', repeteDesc:'Marque para contas fixas (aluguel, luz, internet)',
+ jaPaguei:'âœ… JÃ¡ paguei essa conta', jaPagueiDesc:'Conta nas "contas pagas" do mÃªs',
+ lbVezes:'Em quantas vezes?', avista:'Ã  vista',
  lbPrimeiraVence:'Primeira parcela vence em',
- empTitulo:'👥 Cartão emprestado?', empDesc:'Da tia, do cunhado, do amigo… (mais comum!)',
- empPh:'De quem é o cartão? Ex: Cartão da Tia',
+ empTitulo:'ðŸ‘¥ CartÃ£o emprestado?', empDesc:'Da tia, do cunhado, do amigoâ€¦ (mais comum!)',
+ empPh:'De quem Ã© o cartÃ£o? Ex: CartÃ£o da Tia',
  lbFecha:'FECHA (DIA)', lbVence:'VENCE (DIA)',
  confira:'CONFIRA ANTES DE SALVAR',
- prevMulti:(n,p,t)=>`${n}x de ${p} • Total ${t}`, prevAvista:t=>`À vista • ${t}`,
- lbFoto:'📷 Foto ou comprovante (opcional)', btnFoto:'📷 Tirar foto da notinha', btnAnexar:'📎 Anexar imagem',
- anexado:'📎 Anexado',
- salvar:'✅ Salvar', cancelar:'Cancelar', excluirLanc:'🗑 Excluir este lançamento',
- tFoto:'📷 Foto anexada! Confira o valor.', tFotoErro:'Não consegui ler o arquivo',
- tSalvoIncome:v=>`💰 +${v} lançado!`, tSalvoExpense:(n,v)=>`🛒 ${n} • ${v}`,
- tSalvoDebt:(n,x,p,t)=>`🧾 ${n} • ${x} de ${p} • Total ${t}`,
- tCorrigido:'✅ Corrigido!',
+ prevMulti:(n,p,t)=>`${n}x de ${p} â€¢ Total ${t}`, prevAvista:t=>`Ã€ vista â€¢ ${t}`,
+ lbFoto:'ðŸ“· Foto ou comprovante (opcional)', btnFoto:'ðŸ“· Tirar foto da notinha', btnAnexar:'ðŸ“Ž Anexar imagem',
+ anexado:'ðŸ“Ž Anexado',
+ salvar:'âœ… Salvar', cancelar:'Cancelar', excluirLanc:'ðŸ—‘ Excluir este lanÃ§amento',
+ tFoto:'ðŸ“· Foto anexada! Confira o valor.', tFotoErro:'NÃ£o consegui ler o arquivo',
+ tSalvoIncome:v=>`ðŸ’° +${v} lanÃ§ado!`, tSalvoExpense:(n,v)=>`ðŸ›’ ${n} â€¢ ${v}`,
+ tSalvoDebt:(n,x,p,t)=>`ðŸ§¾ ${n} â€¢ ${x} de ${p} â€¢ Total ${t}`,
+ tCorrigido:'âœ… Corrigido!',
  // edit debt sheet
- compraParcelada:(x,t)=>`Compra parcelada • ${x} • Total ${t}`,
- lbParaOndeFoi:'Para onde foi', fechar:'Fechar', salvarEd:'✅ Salvar',
- excluirCompra:'🗑 Excluir a compra inteira', tCompraAtualizada:'✅ Compra atualizada',
- tCompraRemovida:'🗑 Compra removida (todas as parcelas)', tLancRemovido:'🗑 Lançamento removido',
+ compraParcelada:(x,t)=>`Compra parcelada â€¢ ${x} â€¢ Total ${t}`,
+ lbParaOndeFoi:'Para onde foi', fechar:'Fechar', salvarEd:'âœ… Salvar',
+ excluirCompra:'ðŸ—‘ Excluir a compra inteira', tCompraAtualizada:'âœ… Compra atualizada',
+ tCompraRemovida:'ðŸ—‘ Compra removida (todas as parcelas)', tLancRemovido:'ðŸ—‘ LanÃ§amento removido',
  // compromisso form
- editarComp:'Editar compromisso', marcarComp:'📌 Marcar compromisso',
- compSub:'Contas pra pagar, consultas, vencimentos… aparece no calendário.',
- lbOQueE:'O que é?', phOQueE:'Ex: Pagar aluguel, consulta, vence fatura…',
+ editarComp:'Editar compromisso', marcarComp:'ðŸ“Œ Marcar compromisso',
+ compSub:'Contas pra pagar, consultas, vencimentosâ€¦ aparece no calendÃ¡rio.',
+ lbOQueE:'O que Ã©?', phOQueE:'Ex: Pagar aluguel, consulta, vence faturaâ€¦',
  lbValorSeTiver:'Valor (se tiver)', phValorSeTiver:'R$ (opcional)',
- lbRepete:'Repete?', soUmaVez:'Só uma vez', todoMes:'🔁 Todo mês',
- salvarComp:'✅ Salvar compromisso', excluir:'🗑 Excluir',
- tCompSalvo:'📌 Compromisso marcado!', tCompExcluido:'🗑 Removido',
- tCompVazio:'Diga o que é o compromisso',
+ lbRepete:'Repete?', soUmaVez:'SÃ³ uma vez', todoMes:'ðŸ” Todo mÃªs',
+ salvarComp:'âœ… Salvar compromisso', excluir:'ðŸ—‘ Excluir',
+ tCompSalvo:'ðŸ“Œ Compromisso marcado!', tCompExcluido:'ðŸ—‘ Removido',
+ tCompVazio:'Diga o que Ã© o compromisso',
  // clear / faq / login
- apagarTitulo:'🗑 Apagar meus dados?',
- apagarDesc:'Isso apaga tudo deste aparelho: lançamentos, parcelas e compromissos.',
- avisoExtrato:'⚠️ Se puder, baixe o extrato antes.', apagarTudo:'Apagar tudo',
+ apagarTitulo:'ðŸ—‘ Apagar meus dados?',
+ apagarDesc:'Isso apaga tudo deste aparelho: lanÃ§amentos, parcelas e compromissos.',
+ avisoExtrato:'âš ï¸ Se puder, baixe o extrato antes.', apagarTudo:'Apagar tudo',
  tApagado:'Dados apagados',
- comoUsar:'💡 Como usar o Alicerce', faqSub:'Deslize para ver. Toque quando quiser.', entendi:'Entendi!',
+ comoUsar:'ðŸ’¡ Como usar o Alicerce', faqSub:'Deslize para ver. Toque quando quiser.', entendi:'Entendi!',
  faq:[
-  ['🛒','Gastei x Dívida?','"Gastei" é para pagamentos: conta, compra, cartão. "Fiz uma dívida" é só para parcelado ou empréstimo.'],
-  ['🧾','Como funciona a dívida?','Você informa o valor TOTAL e em quantas vezes. O app cuida das parcelas mês a mês.'],
-  ['👥','Cartão emprestado?','Marque "Cartão emprestado" e escreva de quem é. Não precisa cadastrar cartão.'],
-  ['✅','Contas pagas','Toque no ✓ ao lado da conta quando pagar. O mês mostra quanto já foi pago.'],
-  ['📌','Compromissos','Marque contas e datas no calendário pra nunca esquecer um dia importante.'],
-  ['📷','Foto da notinha','Anexe a foto pra lembrar depois o que comprou e quanto gastou.']],
- loginTag:'✦ Seu mês com clareza',
+  ['ðŸ›’','Gastei x DÃ­vida?','"Gastei" Ã© para pagamentos: conta, compra, cartÃ£o. "Fiz uma dÃ­vida" Ã© sÃ³ para parcelado ou emprÃ©stimo.'],
+  ['ðŸ§¾','Como funciona a dÃ­vida?','VocÃª informa o valor TOTAL e em quantas vezes. O app cuida das parcelas mÃªs a mÃªs.'],
+  ['ðŸ‘¥','CartÃ£o emprestado?','Marque "CartÃ£o emprestado" e escreva de quem Ã©. NÃ£o precisa cadastrar cartÃ£o.'],
+  ['âœ…','Contas pagas','Toque no âœ“ ao lado da conta quando pagar. O mÃªs mostra quanto jÃ¡ foi pago.'],
+  ['ðŸ“Œ','Compromissos','Marque contas e datas no calendÃ¡rio pra nunca esquecer um dia importante.'],
+  ['ðŸ“·','Foto da notinha','Anexe a foto pra lembrar depois o que comprou e quanto gastou.']],
+ loginTag:'âœ¦ Seu mÃªs com clareza',
  loginTitle:'Saiba exatamente<br>para onde foi<br>seu dinheiro.',
- loginDesc:'Gastos, contas pagas, parcelas e compromissos — tudo no seu calendário, simples de entender.',
- lbSeuEmail:'Seu email', phEmail:'exemplo@email.com', entrar:'Entrar →',
- dadosSalvos:'Seus dados ficam salvos só neste aparelho 🔒',
- tBemVindo:'✦ Bem-vindo! Veja seu mês.',
- tEmailInvalido:'Digite um email válido',
- lbSenha:'Senha', phSenha:'Sua senha', lbNome:'Seu nome', phNome:'Ex: João',
+ loginDesc:'Gastos, contas pagas, parcelas e compromissos â€” tudo no seu calendÃ¡rio, simples de entender.',
+ lbSeuEmail:'Seu email', phEmail:'exemplo@email.com', entrar:'Entrar â†’',
+ dadosSalvos:'Seus dados ficam salvos sÃ³ neste aparelho ðŸ”’',
+ tBemVindo:'âœ¦ Bem-vindo! Veja seu mÃªs.',
+ tEmailInvalido:'Digite um email vÃ¡lido',
+ lbSenha:'Senha', phSenha:'Sua senha', lbNome:'Seu nome', phNome:'Ex: JoÃ£o',
  tituloLogin:'Entrar na sua conta', tituloSignup:'Criar sua conta',
- loginSub:'Digite seu email e senha para continuar.', signupSub:'É rapidinho: nome, email e uma senha.',
- criarConta:'Criar conta', semConta:'Não tem conta?', jaTemConta:'Já tem conta?', entrarAqui:'Entrar',
- errPreencha:'Preencha todos os campos', errSenhaCurta:'Senha muito curta (mín. 4 caracteres)',
- errEmailJa:'Este email já tem conta. Faça login.', errContaNao:'Conta não encontrada. Crie uma conta.',
- errSenha:'Senha incorreta', tContaCriada:'✅ Conta criada! Bem-vindo(a)!',
- esqueceu:'Esqueceu a senha?', esqueceuAviso:'Nesta versão a senha fica só neste aparelho. Se esquecer, crie a conta de novo — seus lançamentos continuam aqui.',
- lbPagou:'Como você pagou?', pagouDinheiro:'💵 Dinheiro / Pix', pagouCartao:'💳 Cartão', cartaoLabel:'Cartão',
- lbCartaoQ:'💳 Paguei no cartão?', cartaoOffDesc:'Desligado = pagamento em dinheiro / Pix',
- empStateSim:'👥 Emprestado', empStateNao:'💳 É meu',
- cashNote:'💵 Pagamento em dinheiro / Pix — sem parcelas',
- planoTitulo:'✦ Seu plano', planoDemo:'Demonstração grátis',
- planoDesc:'Em breve: assinatura com login na nuvem — seus dados em qualquer aparelho.',
+ loginSub:'Digite seu email e senha para continuar.', signupSub:'Ã‰ rapidinho: nome, email e uma senha.',
+ criarConta:'Criar conta', semConta:'NÃ£o tem conta?', jaTemConta:'JÃ¡ tem conta?', entrarAqui:'Entrar',
+ errPreencha:'Preencha todos os campos', errSenhaCurta:'Senha muito curta (mÃ­n. 4 caracteres)',
+ errEmailJa:'Este email jÃ¡ tem conta. FaÃ§a login.', errContaNao:'Conta nÃ£o encontrada. Crie uma conta.',
+ errSenha:'Senha incorreta', tContaCriada:'âœ… Conta criada! Bem-vindo(a)!',
+ esqueceu:'Esqueceu a senha?', esqueceuAviso:'Nesta versÃ£o a senha fica sÃ³ neste aparelho. Se esquecer, crie a conta de novo â€” seus lanÃ§amentos continuam aqui.',
+ lbPagou:'Como vocÃª pagou?', pagouDinheiro:'ðŸ’µ Dinheiro / Pix', pagouCartao:'ðŸ’³ CartÃ£o', cartaoLabel:'CartÃ£o',
+ lbCartaoQ:'ðŸ’³ Paguei no cartÃ£o?', cartaoOffDesc:'Desligado = pagamento em dinheiro / Pix',
+ empStateSim:'ðŸ‘¥ Emprestado', empStateNao:'ðŸ’³ Ã‰ meu',
+ cashNote:'ðŸ’µ Pagamento em dinheiro / Pix â€” sem parcelas',
+ planoTitulo:'âœ¦ Seu plano', planoDemo:'DemonstraÃ§Ã£o grÃ¡tis',
+ planoDesc:'Em breve: assinatura com login na nuvem â€” seus dados em qualquer aparelho.',
  backupTitulo:'Levar para outro aparelho',
- backupDesc:'Se trocar de celular no meio do mês, baixe o backup e restaure no outro aparelho.',
- btnBackup:'💾 Baixar backup dos meus dados', btnRestaurar:'📂 Restaurar backup',
- tBackup:'💾 Backup salvo! Guarde o arquivo.', tRestaurado:'📂 Dados restaurados!', tBackupErro:'Arquivo de backup inválido',
- syncNota:'⚠️ Seus dados ficam salvos só neste aparelho. Use o backup para não perder nada.',
- tExtrato:'📄 Extrato gerado',
- tTema:n=>`✦ ${n} aplicado`,
- tSaiu:'Até logo 👋',
- meses:['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
- dow:['SEG','TER','QUA','QUI','SEX','SÁB','DOM'],
+ backupDesc:'Se trocar de celular no meio do mÃªs, baixe o backup e restaure no outro aparelho.',
+ btnBackup:'ðŸ’¾ Baixar backup dos meus dados', btnRestaurar:'ðŸ“‚ Restaurar backup',
+ tBackup:'ðŸ’¾ Backup salvo! Guarde o arquivo.', tRestaurado:'ðŸ“‚ Dados restaurados!', tBackupErro:'Arquivo de backup invÃ¡lido',
+ syncNota:'âš ï¸ Seus dados ficam salvos sÃ³ neste aparelho. Use o backup para nÃ£o perder nada.',
+ tExtrato:'ðŸ“„ Extrato gerado',
+ tTema:n=>`âœ¦ ${n} aplicado`,
+ tSaiu:'AtÃ© logo ðŸ‘‹',
+ meses:['Janeiro','Fevereiro','MarÃ§o','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
+ dow:['SEG','TER','QUA','QUI','SEX','SÃB','DOM'],
 },
 en:{
- appName:'Alicerce', tagline:'My month · my bills',
+ appName:'Alicerce', tagline:'My month Â· my bills',
  navMes:'My month', navAgenda:'Calendar', navParcelas:'Installments', navPerfil:'Profile',
- meuMes:'MY MONTH', sobrouMes:'💚 Money left this month', vermelhoMes:'⚠️ In the red this month',
- entrouSaiu:(e,s)=>`In ${e} · Out ${s}`,
- lbEntrou:'💰 Income', lbContasPagas:'✅ Bills paid', lbCartoes:'🧾 Cards',
- contasPagasX:'✅ Bills paid × pending',
+ meuMes:'MY MONTH', sobrouMes:'ðŸ’š Money left this month', vermelhoMes:'âš ï¸ In the red this month',
+ entrouSaiu:(e,s)=>`In ${e} Â· Out ${s}`,
+ lbEntrou:'ðŸ’° Income', lbContasPagas:'âœ… Bills paid', lbCartoes:'ðŸ§¾ Cards',
+ contasPagasX:'âœ… Bills paid Ã— pending',
  deContasFixas:v=>`of ${v} in fixed bills this month`,
  quitadas:(a,b)=>`${a} of ${b} bills settled`,
- cartoesMes:'🧾 Cards this month',
+ cartoesMes:'ðŸ§¾ Cards this month',
  cartoesDesc:(t,c)=>`Total installments due now. Purchases: ${t} overall.`,
- verParcelas:'See my installments →',
+ verParcelas:'See my installments â†’',
  aRecebi:'Got<br>money', aGastei:'Spent<br>money', aDivida:'Took on<br>debt', aComp:'Add<br>reminder',
- ondeFoi:'Where my money went', esconder:'🙈 Hide values', mostrar:'👁 Show values',
+ ondeFoi:'Where my money went', esconder:'ðŸ™ˆ Hide values', mostrar:'ðŸ‘ Show values',
  contasFixas:'Fixed bills this month', pagas:(a,b)=>`${a}/${b} paid`,
- nenhumaConta:'No fixed bills. Tap 🛒 Spent and mark "repeats every month".',
+ nenhumaConta:'No fixed bills. Tap ðŸ›’ Spent and mark "repeats every month".',
  tudoMovimentou:'Everything this month', itens:n=>`${n} items`,
- semLancamentos:'No entries yet. Use the buttons above 👆',
- footer:'ALICERCE · MY MONTH WITH CLARITY',
+ semLancamentos:'No entries yet. Use the buttons above ðŸ‘†',
+ footer:'ALICERCE Â· MY MONTH WITH CLARITY',
  pago:'PAID', pendente:'PENDING', dia:'day',
- total:'total', emprestadoDe:(n)=>`👥 ${n}`,
+ total:'total', emprestadoDe:(n)=>`ðŸ‘¥ ${n}`,
  parcelaBadge:(a,b)=>`${a}/${b}x`, deTotal:v=>`of ${v}`,
  fixaAviso:'Fill in the name and the value',
- tContaPaga:n=>`✅ ${n} • bill paid!`, tContaPendente:n=>`${n} • marked as pending`,
+ tContaPaga:n=>`âœ… ${n} â€¢ bill paid!`, tContaPendente:n=>`${n} â€¢ marked as pending`,
  calTitle:'FINANCIAL CALENDAR', hoje:'Today',
- legEntrada:'● Income', legGastos:'● Expenses by color', legComp:'⭐ Reminder', legParcela:'🧾 Installment',
- diaSel:d=>`📌 Day ${d}`, fechar:'✕ Close', btnGasto:'🛒 Expense', btnEntrada:'💰 Income', btnComp:'📌 Reminder',
+ legEntrada:'â— Income', legGastos:'â— Expenses by color', legComp:'â­ Reminder', legParcela:'ðŸ§¾ Installment',
+ diaSel:d=>`ðŸ“Œ Day ${d}`, fechar:'âœ• Close', btnGasto:'ðŸ›’ Expense', btnEntrada:'ðŸ’° Income', btnComp:'ðŸ“Œ Reminder',
  nadaDia:'Nothing on this day',
- proximosComp:'Upcoming reminders', novo:'＋ New', nenhumComp:'No reminders. Add them on the calendar!',
- semValor:'no value', feito:'DONE', repeteTodoMes:'• repeats monthly',
- tCompFeito:'✅ Reminder done!', tCompReaberto:'Reminder reopened',
+ proximosComp:'Upcoming reminders', novo:'ï¼‹ New', nenhumComp:'No reminders. Add them on the calendar!',
+ semValor:'no value', feito:'DONE', repeteTodoMes:'â€¢ repeats monthly',
+ tCompFeito:'âœ… Reminder done!', tCompReaberto:'Reminder reopened',
  minhasParcelas:'MY INSTALLMENTS', comprasParceladas:'Purchased in installments',
  parcelasSub:'What matters: <b>the purchase, the total and the installments</b>. The card is just a reference.',
- parcelasVencem:m=>`🧾 Installments due in ${m}`,
+ parcelasVencem:m=>`ðŸ§¾ Installments due in ${m}`,
  comprasComParcela:n=>`${n} purchase(s) with installments this month`,
- lancarDivida:'＋ Add new debt',
+ lancarDivida:'ï¼‹ Add new debt',
  totalDaCompra:'purchase total', pagasN:n=>`${n} paid`, faltandoN:n=>`${n} left`,
- parcelaVence:(n,d,v)=>`⚠️ Installment ${n} due ${d} • ${v}`,
- nenhumaDivida:'No installment debts. 🎉',
+ parcelaVence:(n,d,v)=>`âš ï¸ Installment ${n} due ${d} â€¢ ${v}`,
+ nenhumaDivida:'No installment debts. ðŸŽ‰',
  resumoMes:'My month summary',
- lbFaltou:'⚠️ Short/saved', lbSobrou:'left', lbFaltou2:'short',
- avisos:'🔔 Bill alerts', avisosDesc:'Alert when a bill is due or unpaid',
+ lbFaltou:'âš ï¸ Short/saved', lbSobrou:'left', lbFaltou2:'short',
+ avisos:'ðŸ”” Bill alerts', avisosDesc:'Alert when a bill is due or unpaid',
  idioma:'Language', cores:'App colors',
- baixarExtrato:'📄 Download month statement', duvidas:'💡 How to use',
- apagarDados:'🗑 Delete my data', sair:'🚪 Log out',
+ baixarExtrato:'ðŸ“„ Download month statement', duvidas:'ðŸ’¡ How to use',
+ apagarDados:'ðŸ—‘ Delete my data', sair:'ðŸšª Log out',
  oQueFazer:'What do you want to do?', escolhaOpcao:'Pick an option. It is quick.',
- qRecTitulo:'Got money', qRecDesc:'Salary, side job, sale, gift…',
- qGasTitulo:'Spent money', qGasDesc:'Purchase, bill, card, groceries, medicine…',
+ qRecTitulo:'Got money', qRecDesc:'Salary, side job, sale, giftâ€¦',
+ qGasTitulo:'Spent money', qGasDesc:'Purchase, bill, card, groceries, medicineâ€¦',
  qDivTitulo:'Took on debt', qDivDesc:'Only installments or loans.',
- qComTitulo:'Add reminder', qComDesc:'Bill to pay, appointment, due date…',
- fRecTitulo:'💰 Got money', fRecSub:'Where did it come from? E.g. salary, side job, sale.',
- fGasTitulo:'🛒 Spent money', fGasSub:'What did you buy or pay?',
- fDivTitulo:'🧾 Took on debt', fDivSub:'Installment purchases or loans.',
+ qComTitulo:'Add reminder', qComDesc:'Bill to pay, appointment, due dateâ€¦',
+ fRecTitulo:'ðŸ’° Got money', fRecSub:'Where did it come from? E.g. salary, side job, sale.',
+ fGasTitulo:'ðŸ›’ Spent money', fGasSub:'What did you buy or pay?',
+ fDivTitulo:'ðŸ§¾ Took on debt', fDivSub:'Installment purchases or loans.',
  lbValorTotal:'Total value', lbValor:'Value (R$)',
- lbDeOnde:'Where from?', phDeOnde:'E.g. Salary, side job, sale…',
- lbOQueFoi:'What was it?', phOQueFoi:'E.g. Groceries, rent, medicine, shoes…',
+ lbDeOnde:'Where from?', phDeOnde:'E.g. Salary, side job, saleâ€¦',
+ lbOQueFoi:'What was it?', phOQueFoi:'E.g. Groceries, rent, medicine, shoesâ€¦',
  lbCategoria:'Category (the calendar sorts by it)',
- lbData:'Date', lbParaOnde:'Where did it go? (optional)', phParaOnde:'E.g. John\'s Market, Pharmacy…',
- repeteTitulo:'🔁 Repeats every month?', repeteDesc:'Mark for fixed bills (rent, power, internet)',
- jaPaguei:'✅ I already paid this bill', jaPagueiDesc:'Counts in the month\'s "bills paid"',
+ lbData:'Date', lbParaOnde:'Where did it go? (optional)', phParaOnde:'E.g. John\'s Market, Pharmacyâ€¦',
+ repeteTitulo:'ðŸ” Repeats every month?', repeteDesc:'Mark for fixed bills (rent, power, internet)',
+ jaPaguei:'âœ… I already paid this bill', jaPagueiDesc:'Counts in the month\'s "bills paid"',
  lbVezes:'How many installments?', avista:'in full',
  lbPrimeiraVence:'First installment due on',
- empTitulo:'👥 Borrowed card?', empDesc:'From aunt, brother-in-law, friend… (very common!)',
+ empTitulo:'ðŸ‘¥ Borrowed card?', empDesc:'From aunt, brother-in-law, friendâ€¦ (very common!)',
  empPh:'Whose card? E.g. Aunt\'s card',
  lbFecha:'CLOSES (DAY)', lbVence:'DUE (DAY)',
  confira:'CHECK BEFORE SAVING',
- prevMulti:(n,p,t)=>`${n}x of ${p} • Total ${t}`, prevAvista:t=>`In full • ${t}`,
- lbFoto:'📷 Photo or receipt (optional)', btnFoto:'📷 Take photo of receipt', btnAnexar:'📎 Attach image',
- anexado:'📎 Attached',
- salvar:'✅ Save', cancelar:'Cancel', excluirLanc:'🗑 Delete this entry',
- tFoto:'📷 Photo attached! Check the value.', tFotoErro:'Could not read the file',
- tSalvoIncome:v=>`💰 +${v} added!`, tSalvoExpense:(n,v)=>`🛒 ${n} • ${v}`,
- tSalvoDebt:(n,x,p,t)=>`🧾 ${n} • ${x} of ${p} • Total ${t}`,
- tCorrigido:'✅ Fixed!',
- compraParcelada:(x,t)=>`Installment purchase • ${x} • Total ${t}`,
- lbParaOndeFoi:'Where it went', fechar:'Close', salvarEd:'✅ Save',
- excluirCompra:'🗑 Delete the whole purchase', tCompraAtualizada:'✅ Purchase updated',
- tCompraRemovida:'🗑 Purchase removed (all installments)', tLancRemovido:'🗑 Entry removed',
- editarComp:'Edit reminder', marcarComp:'📌 Add reminder',
- compSub:'Bills to pay, appointments, due dates… shows on the calendar.',
- lbOQueE:'What is it?', phOQueE:'E.g. Pay rent, appointment, bill due…',
+ prevMulti:(n,p,t)=>`${n}x of ${p} â€¢ Total ${t}`, prevAvista:t=>`In full â€¢ ${t}`,
+ lbFoto:'ðŸ“· Photo or receipt (optional)', btnFoto:'ðŸ“· Take photo of receipt', btnAnexar:'ðŸ“Ž Attach image',
+ anexado:'ðŸ“Ž Attached',
+ salvar:'âœ… Save', cancelar:'Cancel', excluirLanc:'ðŸ—‘ Delete this entry',
+ tFoto:'ðŸ“· Photo attached! Check the value.', tFotoErro:'Could not read the file',
+ tSalvoIncome:v=>`ðŸ’° +${v} added!`, tSalvoExpense:(n,v)=>`ðŸ›’ ${n} â€¢ ${v}`,
+ tSalvoDebt:(n,x,p,t)=>`ðŸ§¾ ${n} â€¢ ${x} of ${p} â€¢ Total ${t}`,
+ tCorrigido:'âœ… Fixed!',
+ compraParcelada:(x,t)=>`Installment purchase â€¢ ${x} â€¢ Total ${t}`,
+ lbParaOndeFoi:'Where it went', fechar:'Close', salvarEd:'âœ… Save',
+ excluirCompra:'ðŸ—‘ Delete the whole purchase', tCompraAtualizada:'âœ… Purchase updated',
+ tCompraRemovida:'ðŸ—‘ Purchase removed (all installments)', tLancRemovido:'ðŸ—‘ Entry removed',
+ editarComp:'Edit reminder', marcarComp:'ðŸ“Œ Add reminder',
+ compSub:'Bills to pay, appointments, due datesâ€¦ shows on the calendar.',
+ lbOQueE:'What is it?', phOQueE:'E.g. Pay rent, appointment, bill dueâ€¦',
  lbValorSeTiver:'Value (if any)', phValorSeTiver:'R$ (optional)',
- lbRepete:'Repeat?', soUmaVez:'Just once', todoMes:'🔁 Every month',
- salvarComp:'✅ Save reminder', excluir:'🗑 Delete',
- tCompSalvo:'📌 Reminder saved!', tCompExcluido:'🗑 Removed',
+ lbRepete:'Repeat?', soUmaVez:'Just once', todoMes:'ðŸ” Every month',
+ salvarComp:'âœ… Save reminder', excluir:'ðŸ—‘ Delete',
+ tCompSalvo:'ðŸ“Œ Reminder saved!', tCompExcluido:'ðŸ—‘ Removed',
  tCompVazio:'Say what the reminder is',
- apagarTitulo:'🗑 Delete my data?',
+ apagarTitulo:'ðŸ—‘ Delete my data?',
  apagarDesc:'This erases everything on this device: entries, installments and reminders.',
- avisoExtrato:'⚠️ If you can, download the statement first.', apagarTudo:'Delete everything',
+ avisoExtrato:'âš ï¸ If you can, download the statement first.', apagarTudo:'Delete everything',
  tApagado:'Data deleted',
- comoUsar:'💡 How to use Alicerce', faqSub:'Swipe to see. Tap anytime.', entendi:'Got it!',
+ comoUsar:'ðŸ’¡ How to use Alicerce', faqSub:'Swipe to see. Tap anytime.', entendi:'Got it!',
  faq:[
-  ['🛒','Spent x Debt?','"Spent" is for payments: bills, purchases, card. "Took on debt" is only for installments or loans.'],
-  ['🧾','How do debts work?','You enter the TOTAL value and how many installments. The app handles month by month.'],
-  ['👥','Borrowed card?','Mark "Borrowed card" and write whose it is. No card setup needed.'],
-  ['✅','Paid bills','Tap the ✓ next to the bill when you pay. The month shows how much was paid.'],
-  ['📌','Reminders','Mark bills and dates on the calendar to never forget an important day.'],
-  ['📷','Receipt photo','Attach the photo to remember later what you bought and how much you spent.']],
- loginTag:'✦ Your month with clarity',
+  ['ðŸ›’','Spent x Debt?','"Spent" is for payments: bills, purchases, card. "Took on debt" is only for installments or loans.'],
+  ['ðŸ§¾','How do debts work?','You enter the TOTAL value and how many installments. The app handles month by month.'],
+  ['ðŸ‘¥','Borrowed card?','Mark "Borrowed card" and write whose it is. No card setup needed.'],
+  ['âœ…','Paid bills','Tap the âœ“ next to the bill when you pay. The month shows how much was paid.'],
+  ['ðŸ“Œ','Reminders','Mark bills and dates on the calendar to never forget an important day.'],
+  ['ðŸ“·','Receipt photo','Attach the photo to remember later what you bought and how much you spent.']],
+ loginTag:'âœ¦ Your month with clarity',
  loginTitle:'Know exactly<br>where your<br>money went.',
- loginDesc:'Expenses, paid bills, installments and reminders — all in your calendar, easy to understand.',
- lbSeuEmail:'Your email', phEmail:'example@email.com', entrar:'Enter →',
- dadosSalvos:'Your data stays only on this device 🔒',
- tBemVindo:'✦ Welcome! See your month.',
+ loginDesc:'Expenses, paid bills, installments and reminders â€” all in your calendar, easy to understand.',
+ lbSeuEmail:'Your email', phEmail:'example@email.com', entrar:'Enter â†’',
+ dadosSalvos:'Your data stays only on this device ðŸ”’',
+ tBemVindo:'âœ¦ Welcome! See your month.',
  tEmailInvalido:'Enter a valid email',
  lbSenha:'Password', phSenha:'Your password', lbNome:'Your name', phNome:'E.g. John',
  tituloLogin:'Sign in to your account', tituloSignup:'Create your account',
@@ -400,154 +400,154 @@ en:{
  criarConta:'Create account', semConta:'No account yet?', jaTemConta:'Already have an account?', entrarAqui:'Sign in',
  errPreencha:'Fill in all fields', errSenhaCurta:'Password too short (min. 4 chars)',
  errEmailJa:'This email already has an account. Sign in.', errContaNao:'Account not found. Create one.',
- errSenha:'Wrong password', tContaCriada:'✅ Account created! Welcome!',
- esqueceu:'Forgot password?', esqueceuAviso:'In this version the password stays on this device. If you forget it, create the account again — your entries remain here.',
- lbPagou:'How did you pay?', pagouDinheiro:'💵 Cash / Pix', pagouCartao:'💳 Card', cartaoLabel:'Card',
- lbCartaoQ:'💳 Paid by card?', cartaoOffDesc:'Off = cash / Pix payment',
- empStateSim:'👥 Borrowed', empStateNao:'💳 Mine',
- cashNote:'💵 Cash / Pix payment — no installments',
- planoTitulo:'✦ Your plan', planoDemo:'Free demo',
- planoDesc:'Coming soon: subscription with cloud login — your data on any device.',
+ errSenha:'Wrong password', tContaCriada:'âœ… Account created! Welcome!',
+ esqueceu:'Forgot password?', esqueceuAviso:'In this version the password stays on this device. If you forget it, create the account again â€” your entries remain here.',
+ lbPagou:'How did you pay?', pagouDinheiro:'ðŸ’µ Cash / Pix', pagouCartao:'ðŸ’³ Card', cartaoLabel:'Card',
+ lbCartaoQ:'ðŸ’³ Paid by card?', cartaoOffDesc:'Off = cash / Pix payment',
+ empStateSim:'ðŸ‘¥ Borrowed', empStateNao:'ðŸ’³ Mine',
+ cashNote:'ðŸ’µ Cash / Pix payment â€” no installments',
+ planoTitulo:'âœ¦ Your plan', planoDemo:'Free demo',
+ planoDesc:'Coming soon: subscription with cloud login â€” your data on any device.',
  backupTitulo:'Move to another device',
  backupDesc:'If you switch phones mid-month, download the backup and restore it on the other device.',
- btnBackup:'💾 Download my data backup', btnRestaurar:'📂 Restore backup',
- tBackup:'💾 Backup saved! Keep the file.', tRestaurado:'📂 Data restored!', tBackupErro:'Invalid backup file',
- syncNota:'⚠️ Your data is saved only on this device. Use the backup so you never lose it.',
- tExtrato:'📄 Statement generated',
- tTema:n=>`✦ ${n} applied`,
- tSaiu:'See you 👋',
+ btnBackup:'ðŸ’¾ Download my data backup', btnRestaurar:'ðŸ“‚ Restore backup',
+ tBackup:'ðŸ’¾ Backup saved! Keep the file.', tRestaurado:'ðŸ“‚ Data restored!', tBackupErro:'Invalid backup file',
+ syncNota:'âš ï¸ Your data is saved only on this device. Use the backup so you never lose it.',
+ tExtrato:'ðŸ“„ Statement generated',
+ tTema:n=>`âœ¦ ${n} applied`,
+ tSaiu:'See you ðŸ‘‹',
  meses:['January','February','March','April','May','June','July','August','September','October','November','December'],
  dow:['MON','TUE','WED','THU','FRI','SAT','SUN'],
 },
 es:{
- appName:'Alicerce', tagline:'Mi mes · mis cuentas',
+ appName:'Alicerce', tagline:'Mi mes Â· mis cuentas',
  navMes:'Mi mes', navAgenda:'Calendario', navParcelas:'Cuotas', navPerfil:'Perfil',
- meuMes:'MI MES', sobrouMes:'💚 Sobre este mes', vermelhoMes:'⚠️ En rojo este mes',
- entrouSaiu:(e,s)=>`Entró ${e} · Salió ${s}`,
- lbEntrou:'💰 Entró', lbContasPagas:'✅ Cuentas pagadas', lbCartoes:'🧾 Tarjetas',
- contasPagasX:'✅ Cuentas pagadas × pendientes',
+ meuMes:'MI MES', sobrouMes:'ðŸ’š Sobre este mes', vermelhoMes:'âš ï¸ En rojo este mes',
+ entrouSaiu:(e,s)=>`EntrÃ³ ${e} Â· SaliÃ³ ${s}`,
+ lbEntrou:'ðŸ’° EntrÃ³', lbContasPagas:'âœ… Cuentas pagadas', lbCartoes:'ðŸ§¾ Tarjetas',
+ contasPagasX:'âœ… Cuentas pagadas Ã— pendientes',
  deContasFixas:v=>`de ${v} en cuentas fijas de este mes`,
  quitadas:(a,b)=>`${a} de ${b} cuentas saldadas`,
- cartoesMes:'🧾 Tarjetas de este mes',
+ cartoesMes:'ðŸ§¾ Tarjetas de este mes',
  cartoesDesc:(t,c)=>`Total de cuotas que vencen ahora. Compras: ${t} en total.`,
- verParcelas:'Ver mis cuotas →',
- aRecebi:'Recibí<br>dinero', aGastei:'Gasté<br>dinero', aDivida:'Hice una<br>deuda', aComp:'Marcar<br>compromiso',
- ondeFoi:'¿En qué se fue mi dinero?', esconder:'🙈 Ocultar valores', mostrar:'👁 Mostrar valores',
+ verParcelas:'Ver mis cuotas â†’',
+ aRecebi:'RecibÃ­<br>dinero', aGastei:'GastÃ©<br>dinero', aDivida:'Hice una<br>deuda', aComp:'Marcar<br>compromiso',
+ ondeFoi:'Â¿En quÃ© se fue mi dinero?', esconder:'ðŸ™ˆ Ocultar valores', mostrar:'ðŸ‘ Mostrar valores',
  contasFixas:'Cuentas fijas de este mes', pagas:(a,b)=>`${a}/${b} pagadas`,
- nenhumaConta:'Sin cuentas fijas. Toca 🛒 Gasté y marca "se repite cada mes".',
- tudoMovimentou:'Todo lo que se movió este mes', itens:n=>`${n} elementos`,
- semLancamentos:'Sin movimientos. Usa los botones de arriba 👆',
- footer:'ALICERCE · MI MES CON CLARIDAD',
+ nenhumaConta:'Sin cuentas fijas. Toca ðŸ›’ GastÃ© y marca "se repite cada mes".',
+ tudoMovimentou:'Todo lo que se moviÃ³ este mes', itens:n=>`${n} elementos`,
+ semLancamentos:'Sin movimientos. Usa los botones de arriba ðŸ‘†',
+ footer:'ALICERCE Â· MI MES CON CLARIDAD',
  pago:'PAGADO', pendente:'PENDIENTE', dia:'dia',
- total:'total', emprestadoDe:(n)=>`👥 ${n}`,
+ total:'total', emprestadoDe:(n)=>`ðŸ‘¥ ${n}`,
  parcelaBadge:(a,b)=>`${a}/${b}x`, deTotal:v=>`de ${v}`,
  fixaAviso:'Completa el nombre y el valor',
- tContaPaga:n=>`✅ ${n} • cuenta pagada!`, tContaPendente:n=>`${n} • marcada pendiente`,
+ tContaPaga:n=>`âœ… ${n} â€¢ cuenta pagada!`, tContaPendente:n=>`${n} â€¢ marcada pendiente`,
  calTitle:'CALENDARIO FINANCIERO', hoje:'Hoy',
- legEntrada:'● Entrada', legGastos:'● Gastos por color', legComp:'⭐ Compromiso', legParcela:'🧾 Cuota',
- diaSel:d=>`📌 Dia ${d}`, fechar:'✕ Cerrar', btnGasto:'🛒 Gasto', btnEntrada:'💰 Entrada', btnComp:'📌 Compromiso',
+ legEntrada:'â— Entrada', legGastos:'â— Gastos por color', legComp:'â­ Compromiso', legParcela:'ðŸ§¾ Cuota',
+ diaSel:d=>`ðŸ“Œ Dia ${d}`, fechar:'âœ• Cerrar', btnGasto:'ðŸ›’ Gasto', btnEntrada:'ðŸ’° Entrada', btnComp:'ðŸ“Œ Compromiso',
  nadaDia:'Nada en este dia',
- proximosComp:'Próximos compromisos', nuevo:'＋ Nuevo', nuevoB:'＋ Nuevo', nenhumComp:'Sin compromisos. ¡Márcalos en el calendario!',
- semValor:'sin valor', feito:'HECHO', repeteTodoMes:'• se repite cada mes',
- tCompFeito:'✅ ¡Compromiso hecho!', tCompReaberto:'Compromiso reabierto',
+ proximosComp:'PrÃ³ximos compromisos', nuevo:'ï¼‹ Nuevo', nuevoB:'ï¼‹ Nuevo', nenhumComp:'Sin compromisos. Â¡MÃ¡rcalos en el calendario!',
+ semValor:'sin valor', feito:'HECHO', repeteTodoMes:'â€¢ se repite cada mes',
+ tCompFeito:'âœ… Â¡Compromiso hecho!', tCompReaberto:'Compromiso reabierto',
  minhasParcelas:'MIS CUOTAS', comprasParceladas:'Compras en cuotas',
  parcelasSub:'Lo que importa: <b>la compra, el total y las cuotas</b>. La tarjeta es solo referencia.',
- parcelasVencem:m=>`🧾 Cuotas que vencen en ${m}`,
+ parcelasVencem:m=>`ðŸ§¾ Cuotas que vencen en ${m}`,
  comprasComParcela:n=>`${n} compra(s) con cuotas este mes`,
- lancarDivida:'＋ Registrar deuda',
+ lancarDivida:'ï¼‹ Registrar deuda',
  totalDaCompra:'total de la compra', pagasN:n=>`${n} pagadas`, faltandoN:n=>`${n} faltan`,
- parcelaVence:(n,d,v)=>`⚠️ Cuota ${n}ª vence ${d} • ${v}`,
- nenhumaDivida:'Sin deudas en cuotas. 🎉',
+ parcelaVence:(n,d,v)=>`âš ï¸ Cuota ${n}Âª vence ${d} â€¢ ${v}`,
+ nenhumaDivida:'Sin deudas en cuotas. ðŸŽ‰',
  resumoMes:'Resumen de mi mes',
- lbFaltou:'⚠️ Faltó/ahorró', lbSobrou:'sobró', lbFaltou2:'faltó',
- avisos:'🔔 Avisos de cuentas', avisosDesc:'Avisar cuando una cuenta venza o falte pagar',
+ lbFaltou:'âš ï¸ FaltÃ³/ahorrÃ³', lbSobrou:'sobrÃ³', lbFaltou2:'faltÃ³',
+ avisos:'ðŸ”” Avisos de cuentas', avisosDesc:'Avisar cuando una cuenta venza o falte pagar',
  idioma:'Idioma', cores:'Colores del app',
- baixarExtrato:'📄 Descargar extracto del mes', duvidas:'💡 Dudas de uso',
- apagarDados:'🗑 Borrar mis datos', sair:'🚪 Salir',
- oQueFazer:'¿Qué quieres hacer?', escolhaOpcao:'Elige una opción. Es rapidísimo.',
- qRecTitulo:'Recibí dinero', qRecDesc:'Sueldo, extra, venta, regalo…',
- qGasTitulo:'Gasté dinero', qGasDesc:'Compra, cuenta, tarjeta, mercado, remedio…',
- qDivTitulo:'Hice una deuda', qDivDesc:'Solo cuotas o préstamo.',
- qComTitulo:'Marcar compromiso', qComDesc:'Cuenta por pagar, cita, vencimiento…',
- fRecTitulo:'💰 Recibí dinero', fRecSub:'¿De dónde vino? Ej: sueldo, extra, venta.',
- fGasTitulo:'🛒 Gasté dinero', fGasSub:'¿Qué compraste o pagaste?',
- fDivTitulo:'🧾 Hice una deuda', fDivSub:'Compras en cuotas o préstamos.',
+ baixarExtrato:'ðŸ“„ Descargar extracto del mes', duvidas:'ðŸ’¡ Dudas de uso',
+ apagarDados:'ðŸ—‘ Borrar mis datos', sair:'ðŸšª Salir',
+ oQueFazer:'Â¿QuÃ© quieres hacer?', escolhaOpcao:'Elige una opciÃ³n. Es rapidÃ­simo.',
+ qRecTitulo:'RecibÃ­ dinero', qRecDesc:'Sueldo, extra, venta, regaloâ€¦',
+ qGasTitulo:'GastÃ© dinero', qGasDesc:'Compra, cuenta, tarjeta, mercado, remedioâ€¦',
+ qDivTitulo:'Hice una deuda', qDivDesc:'Solo cuotas o prÃ©stamo.',
+ qComTitulo:'Marcar compromiso', qComDesc:'Cuenta por pagar, cita, vencimientoâ€¦',
+ fRecTitulo:'ðŸ’° RecibÃ­ dinero', fRecSub:'Â¿De dÃ³nde vino? Ej: sueldo, extra, venta.',
+ fGasTitulo:'ðŸ›’ GastÃ© dinero', fGasSub:'Â¿QuÃ© compraste o pagaste?',
+ fDivTitulo:'ðŸ§¾ Hice una deuda', fDivSub:'Compras en cuotas o prÃ©stamos.',
  lbValorTotal:'Valor total', lbValor:'Valor (R$)',
- lbDeOnde:'¿De dónde vino?', phDeOnde:'Ej: Sueldo, extra, venta…',
- lbOQueFoi:'¿Qué fue?', phOQueFoi:'Ej: Mercado, alquiler, remedio, zapatos…',
- lbCategoria:'Categoría (el calendario la organiza)',
- lbData:'Fecha', lbParaOnde:'¿A dónde fue? (opcional)', phParaOnde:'Ej: Mercado de Juan, Farmacia…',
- repeteTitulo:'🔁 ¿Se repite cada mes?', repeteDesc:'Márcalo para cuentas fijas (alquiler, luz, internet)',
- jaPaguei:'✅ Ya pagué esta cuenta', jaPagueiDesc:'Cuenta en "cuentas pagadas" del mes',
- lbVezes:'¿En cuántas cuotas?', avista:'al contado',
+ lbDeOnde:'Â¿De dÃ³nde vino?', phDeOnde:'Ej: Sueldo, extra, ventaâ€¦',
+ lbOQueFoi:'Â¿QuÃ© fue?', phOQueFoi:'Ej: Mercado, alquiler, remedio, zapatosâ€¦',
+ lbCategoria:'CategorÃ­a (el calendario la organiza)',
+ lbData:'Fecha', lbParaOnde:'Â¿A dÃ³nde fue? (opcional)', phParaOnde:'Ej: Mercado de Juan, Farmaciaâ€¦',
+ repeteTitulo:'ðŸ” Â¿Se repite cada mes?', repeteDesc:'MÃ¡rcalo para cuentas fijas (alquiler, luz, internet)',
+ jaPaguei:'âœ… Ya paguÃ© esta cuenta', jaPagueiDesc:'Cuenta en "cuentas pagadas" del mes',
+ lbVezes:'Â¿En cuÃ¡ntas cuotas?', avista:'al contado',
  lbPrimeiraVence:'Primera cuota vence el',
- empTitulo:'👥 ¿Tarjeta prestada?', empDesc:'De la tía, el cuñado, el amigo… (¡muy común!)',
- empPh:'¿De quién es la tarjeta? Ej: Tarjeta de la Tía',
- lbFecha:'CIERRA (DÍA)', lbVence:'VENCE (DÍA)',
+ empTitulo:'ðŸ‘¥ Â¿Tarjeta prestada?', empDesc:'De la tÃ­a, el cuÃ±ado, el amigoâ€¦ (Â¡muy comÃºn!)',
+ empPh:'Â¿De quiÃ©n es la tarjeta? Ej: Tarjeta de la TÃ­a',
+ lbFecha:'CIERRA (DÃA)', lbVence:'VENCE (DÃA)',
  confira:'REVISA ANTES DE GUARDAR',
- prevMulti:(n,p,t)=>`${n}x de ${p} • Total ${t}`, prevAvista:t=>`Al contado • ${t}`,
- lbFoto:'📷 Foto o comprobante (opcional)', btnFoto:'📷 Foto del ticket', btnAnexar:'📎 Adjuntar imagen',
- anexado:'📎 Adjuntado',
- salvar:'✅ Guardar', cancelar:'Cancelar', excluirLanc:'🗑 Eliminar este movimiento',
- tFoto:'📷 ¡Foto adjuntada! Revisa el valor.', tFotoErro:'No pude leer el archivo',
- tSalvoIncome:v=>`💰 +${v} registrado!`, tSalvoExpense:(n,v)=>`🛒 ${n} • ${v}`,
- tSalvoDebt:(n,x,p,t)=>`🧾 ${n} • ${x} de ${p} • Total ${t}`,
- tCorrigido:'✅ ¡Corregido!',
- compraParcelada:(x,t)=>`Compra en cuotas • ${x} • Total ${t}`,
- lbParaOndeFoi:'A dónde fue', fechar:'Cerrar', salvarEd:'✅ Guardar',
- excluirCompra:'🗑 Eliminar la compra entera', tCompraAtualizada:'✅ Compra actualizada',
- tCompraRemovida:'🗑 Compra eliminada (todas las cuotas)', tLancRemovido:'🗑 Movimiento eliminado',
- editarComp:'Editar compromiso', marcarComp:'📌 Marcar compromiso',
- compSub:'Cuentas por pagar, citas, vencimientos… aparece en el calendario.',
- lbOQueE:'¿Qué es?', phOQueE:'Ej: Pagar alquiler, cita, vence factura…',
+ prevMulti:(n,p,t)=>`${n}x de ${p} â€¢ Total ${t}`, prevAvista:t=>`Al contado â€¢ ${t}`,
+ lbFoto:'ðŸ“· Foto o comprobante (opcional)', btnFoto:'ðŸ“· Foto del ticket', btnAnexar:'ðŸ“Ž Adjuntar imagen',
+ anexado:'ðŸ“Ž Adjuntado',
+ salvar:'âœ… Guardar', cancelar:'Cancelar', excluirLanc:'ðŸ—‘ Eliminar este movimiento',
+ tFoto:'ðŸ“· Â¡Foto adjuntada! Revisa el valor.', tFotoErro:'No pude leer el archivo',
+ tSalvoIncome:v=>`ðŸ’° +${v} registrado!`, tSalvoExpense:(n,v)=>`ðŸ›’ ${n} â€¢ ${v}`,
+ tSalvoDebt:(n,x,p,t)=>`ðŸ§¾ ${n} â€¢ ${x} de ${p} â€¢ Total ${t}`,
+ tCorrigido:'âœ… Â¡Corregido!',
+ compraParcelada:(x,t)=>`Compra en cuotas â€¢ ${x} â€¢ Total ${t}`,
+ lbParaOndeFoi:'A dÃ³nde fue', fechar:'Cerrar', salvarEd:'âœ… Guardar',
+ excluirCompra:'ðŸ—‘ Eliminar la compra entera', tCompraAtualizada:'âœ… Compra actualizada',
+ tCompraRemovida:'ðŸ—‘ Compra eliminada (todas las cuotas)', tLancRemovido:'ðŸ—‘ Movimiento eliminado',
+ editarComp:'Editar compromiso', marcarComp:'ðŸ“Œ Marcar compromiso',
+ compSub:'Cuentas por pagar, citas, vencimientosâ€¦ aparece en el calendario.',
+ lbOQueE:'Â¿QuÃ© es?', phOQueE:'Ej: Pagar alquiler, cita, vence facturaâ€¦',
  lbValorSeTiver:'Valor (si tiene)', phValorSeTiver:'R$ (opcional)',
- lbRepete:'¿Se repite?', soUmaVez:'Solo una vez', todoMes:'🔁 Cada mes',
- salvarComp:'✅ Guardar compromiso', excluir:'🗑 Eliminar',
- tCompSalvo:'📌 ¡Compromiso marcado!', tCompExcluido:'🗑 Eliminado',
- tCompVazio:'Di qué es el compromiso',
- apagarTitulo:'🗑 ¿Borrar mis datos?',
+ lbRepete:'Â¿Se repite?', soUmaVez:'Solo una vez', todoMes:'ðŸ” Cada mes',
+ salvarComp:'âœ… Guardar compromiso', excluir:'ðŸ—‘ Eliminar',
+ tCompSalvo:'ðŸ“Œ Â¡Compromiso marcado!', tCompExcluido:'ðŸ—‘ Eliminado',
+ tCompVazio:'Di quÃ© es el compromiso',
+ apagarTitulo:'ðŸ—‘ Â¿Borrar mis datos?',
  apagarDesc:'Esto borra todo de este dispositivo: movimientos, cuotas y compromisos.',
- avisoExtrato:'⚠️ Si puedes, descarga el extracto antes.', apagarTudo:'Borrar todo',
+ avisoExtrato:'âš ï¸ Si puedes, descarga el extracto antes.', apagarTudo:'Borrar todo',
  tApagado:'Datos borrados',
- comoUsar:'💡 Cómo usar Alicerce', faqSub:'Desliza para ver. Toca cuando quieras.', entendi:'¡Entendido!',
+ comoUsar:'ðŸ’¡ CÃ³mo usar Alicerce', faqSub:'Desliza para ver. Toca cuando quieras.', entendi:'Â¡Entendido!',
  faq:[
-  ['🛒','¿Gasté x Deuda?','"Gasté" es para pagos: cuenta, compra, tarjeta. "Hice una deuda" es solo para cuotas o préstamo.'],
-  ['🧾','¿Cómo funciona la deuda?','Pones el valor TOTAL y en cuántas cuotas. La app cuida mes a mes.'],
-  ['👥','¿Tarjeta prestada?','Marca "Tarjeta prestada" y escribe de quién es. No hay que registrar tarjeta.'],
-  ['✅','Cuentas pagadas','Toca el ✓ al lado de la cuenta al pagar. El mes muestra lo pagado.'],
-  ['📌','Compromisos','Marca cuentas y fechas en el calendario para no olvidar un día importante.'],
-  ['📷','Foto del ticket','Adjunta la foto para recordar después qué compraste y cuánto gastaste.']],
- loginTag:'✦ Tu mes con claridad',
- loginTitle:'Sabe exactamente<br>adónde se fue<br>tu dinero.',
- loginDesc:'Gastos, cuentas pagadas, cuotas y compromisos — todo en tu calendario, fácil de entender.',
- lbSeuEmail:'Tu email', phEmail:'ejemplo@email.com', entrar:'Entrar →',
- dadosSalvos:'Tus datos se quedan solo en este dispositivo 🔒',
- tBemVindo:'✦ ¡Bienvenido! Mira tu mes.',
- tEmailInvalido:'Escribe un email válido',
- lbSenha:'Contraseña', phSenha:'Tu contraseña', lbNome:'Tu nombre', phNome:'Ej: Juan',
+  ['ðŸ›’','Â¿GastÃ© x Deuda?','"GastÃ©" es para pagos: cuenta, compra, tarjeta. "Hice una deuda" es solo para cuotas o prÃ©stamo.'],
+  ['ðŸ§¾','Â¿CÃ³mo funciona la deuda?','Pones el valor TOTAL y en cuÃ¡ntas cuotas. La app cuida mes a mes.'],
+  ['ðŸ‘¥','Â¿Tarjeta prestada?','Marca "Tarjeta prestada" y escribe de quiÃ©n es. No hay que registrar tarjeta.'],
+  ['âœ…','Cuentas pagadas','Toca el âœ“ al lado de la cuenta al pagar. El mes muestra lo pagado.'],
+  ['ðŸ“Œ','Compromisos','Marca cuentas y fechas en el calendario para no olvidar un dÃ­a importante.'],
+  ['ðŸ“·','Foto del ticket','Adjunta la foto para recordar despuÃ©s quÃ© compraste y cuÃ¡nto gastaste.']],
+ loginTag:'âœ¦ Tu mes con claridad',
+ loginTitle:'Sabe exactamente<br>adÃ³nde se fue<br>tu dinero.',
+ loginDesc:'Gastos, cuentas pagadas, cuotas y compromisos â€” todo en tu calendario, fÃ¡cil de entender.',
+ lbSeuEmail:'Tu email', phEmail:'ejemplo@email.com', entrar:'Entrar â†’',
+ dadosSalvos:'Tus datos se quedan solo en este dispositivo ðŸ”’',
+ tBemVindo:'âœ¦ Â¡Bienvenido! Mira tu mes.',
+ tEmailInvalido:'Escribe un email vÃ¡lido',
+ lbSenha:'ContraseÃ±a', phSenha:'Tu contraseÃ±a', lbNome:'Tu nombre', phNome:'Ej: Juan',
  tituloLogin:'Entra en tu cuenta', tituloSignup:'Crea tu cuenta',
- loginSub:'Escribe tu email y contraseña para continuar.', signupSub:'Es rapidísimo: nombre, email y una contraseña.',
- criarConta:'Crear cuenta', semConta:'¿No tienes cuenta?', jaTemConta:'¿Ya tienes cuenta?', entrarAqui:'Entrar',
- errPreencha:'Completa todos los campos', errSenhaCurta:'Contraseña muy corta (mín. 4 caracteres)',
- errEmailJa:'Este email ya tiene cuenta. Inicia sesión.', errContaNao:'Cuenta no encontrada. Crea una.',
- errSenha:'Contraseña incorrecta', tContaCriada:'✅ ¡Cuenta creada! ¡Bienvenido(a)!',
- esqueceu:'¿Olvidaste la contraseña?', esqueceuAviso:'En esta versión la contraseña queda solo en este dispositivo. Si la olvidas, crea la cuenta de nuevo — tus movimientos siguen aquí.',
- lbPagou:'¿Cómo pagaste?', pagouDinheiro:'💵 Efectivo / Pix', pagouCartao:'💳 Tarjeta', cartaoLabel:'Tarjeta',
- lbCartaoQ:'💳 ¿Pagaste con tarjeta?', cartaoOffDesc:'Apagado = pago en efectivo / Pix',
- empStateSim:'👥 Prestada', empStateNao:'💳 Es mía',
- cashNote:'💵 Pago en efectivo / Pix — sin cuotas',
- planoTitulo:'✦ Tu plan', planoDemo:'Demo gratis',
- planoDesc:'Próximamente: suscripción con login en la nube — tus datos en cualquier dispositivo.',
+ loginSub:'Escribe tu email y contraseÃ±a para continuar.', signupSub:'Es rapidÃ­simo: nombre, email y una contraseÃ±a.',
+ criarConta:'Crear cuenta', semConta:'Â¿No tienes cuenta?', jaTemConta:'Â¿Ya tienes cuenta?', entrarAqui:'Entrar',
+ errPreencha:'Completa todos los campos', errSenhaCurta:'ContraseÃ±a muy corta (mÃ­n. 4 caracteres)',
+ errEmailJa:'Este email ya tiene cuenta. Inicia sesiÃ³n.', errContaNao:'Cuenta no encontrada. Crea una.',
+ errSenha:'ContraseÃ±a incorrecta', tContaCriada:'âœ… Â¡Cuenta creada! Â¡Bienvenido(a)!',
+ esqueceu:'Â¿Olvidaste la contraseÃ±a?', esqueceuAviso:'En esta versiÃ³n la contraseÃ±a queda solo en este dispositivo. Si la olvidas, crea la cuenta de nuevo â€” tus movimientos siguen aquÃ­.',
+ lbPagou:'Â¿CÃ³mo pagaste?', pagouDinheiro:'ðŸ’µ Efectivo / Pix', pagouCartao:'ðŸ’³ Tarjeta', cartaoLabel:'Tarjeta',
+ lbCartaoQ:'ðŸ’³ Â¿Pagaste con tarjeta?', cartaoOffDesc:'Apagado = pago en efectivo / Pix',
+ empStateSim:'ðŸ‘¥ Prestada', empStateNao:'ðŸ’³ Es mÃ­a',
+ cashNote:'ðŸ’µ Pago en efectivo / Pix â€” sin cuotas',
+ planoTitulo:'âœ¦ Tu plan', planoDemo:'Demo gratis',
+ planoDesc:'PrÃ³ximamente: suscripciÃ³n con login en la nube â€” tus datos en cualquier dispositivo.',
  backupTitulo:'Llevar a otro dispositivo',
- backupDesc:'Si cambias de celular a mitad de mes, baja el backup y restáuralo en el otro.',
- btnBackup:'💾 Bajar backup de mis datos', btnRestaurar:'📂 Restaurar backup',
- tBackup:'💾 ¡Backup guardado! Guarda el archivo.', tRestaurado:'📂 ¡Datos restaurados!', tBackupErro:'Archivo de backup inválido',
- syncNota:'⚠️ Tus datos se guardan solo en este dispositivo. Usa el backup para no perder nada.',
- tExtrato:'📄 Extracto generado',
- tTema:n=>`✦ ${n} aplicado`,
- tSaiu:'Hasta luego 👋',
+ backupDesc:'Si cambias de celular a mitad de mes, baja el backup y restÃ¡uralo en el otro.',
+ btnBackup:'ðŸ’¾ Bajar backup de mis datos', btnRestaurar:'ðŸ“‚ Restaurar backup',
+ tBackup:'ðŸ’¾ Â¡Backup guardado! Guarda el archivo.', tRestaurado:'ðŸ“‚ Â¡Datos restaurados!', tBackupErro:'Archivo de backup invÃ¡lido',
+ syncNota:'âš ï¸ Tus datos se guardan solo en este dispositivo. Usa el backup para no perder nada.',
+ tExtrato:'ðŸ“„ Extracto generado',
+ tTema:n=>`âœ¦ ${n} aplicado`,
+ tSaiu:'Hasta luego ðŸ‘‹',
  meses:['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
- dow:['LUN','MAR','MIÉ','JUE','VIE','SÁB','DOM'],
+ dow:['LUN','MAR','MIÃ‰','JUE','VIE','SÃB','DOM'],
 },
 };
 function t(k){ const d=DICT[S.lang]||DICT.pt; const v=d[k]; return v!==undefined?v:(DICT.pt[k]!==undefined?DICT.pt[k]:k) }
@@ -575,15 +575,15 @@ function save(){
 }
 
 /* ============================================================
-   2b. SUPABASE — sincronização na nuvem (opcional)
-   Preencha CFG abaixo (Settings → API no painel do Supabase):
+   2b. SUPABASE â€” sincronizaÃ§Ã£o na nuvem (opcional)
+   Preencha CFG abaixo (Settings â†’ API no painel do Supabase):
    - url  = Project URL  (ex: https://SEU-PROJ.supabase.co)
    - anon = anon public  (NUNCA coloque a service_role aqui!)
    Sem config, o app funciona 100% local no aparelho.
    ============================================================ */
 const CFG={
-  url:'https://hwmpwvbvgiqotdzkmgwh.supabase.co',   // Project URL ✓
-  anon:'sb_publishable_T0pRU5KLKhMgVQodovOOjQ_FB4fCMgl'   // publishable key ✓
+  url:'https://hwmpwvbvgiqotdzkmgwh.supabase.co',   // Project URL âœ“
+  anon:'sb_publishable_T0pRU5KLKhMgVQodovOOjQ_FB4fCMgl'   // publishable key âœ“
 };
 const SB=(CFG.url&&CFG.anon&&window.supabase)?window.supabase.createClient(CFG.url,CFG.anon):null;
 let SB_USER=null;
@@ -625,6 +625,31 @@ function hasFullAccess(){
     return new Date(SUB.expires_at)>new Date();
   }
   return false;
+}
+function trialDaysElapsed(){
+  const cloudCreatedAt=SB_USER?.created_at;
+  if(cloudCreatedAt){
+    const ms=Date.now()-new Date(cloudCreatedAt).getTime();
+    return Math.max(0,Math.floor(ms/86400000));
+  }
+
+  const acc=S.user?getAccounts()[S.user]:null;
+  if(acc?.created){
+    const ms=Date.now()-new Date(acc.created).getTime();
+    return Math.max(0,Math.floor(ms/86400000));
+  }
+
+  return 999999;
+}
+
+function canUseApp(){
+  if(hasFullAccess()) return true;
+  return trialDaysElapsed()<14;
+}
+
+function shouldShowPlans(){
+  if(hasFullAccess()) return false;
+  return trialDaysElapsed()>=10;
 }
 async function cloudLogin(email,pw){
   if(!SB) return 'local';
@@ -697,16 +722,16 @@ const todayISO=iso(new Date()), uid=()=>Math.random().toString(36).slice(2,8);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 const fmtBR=s=>s?s.split('-').reverse().join('/'):'';
 const CATS=[
-  {id:'moradia',name:'🏠',color:'var(--blue)'},{id:'comida',name:'🍚',color:'var(--green)'},
-  {id:'transporte',name:'🚌',color:'var(--orange)'},{id:'saude',name:'💊',color:'var(--red)'},
-  {id:'lazer',name:'🎉',color:'var(--purple)'},{id:'educacao',name:'📚',color:'var(--gold)'},
-  {id:'outros',name:'📦',color:'var(--text2)'},
+  {id:'moradia',name:'ðŸ ',color:'var(--blue)'},{id:'comida',name:'ðŸš',color:'var(--green)'},
+  {id:'transporte',name:'ðŸšŒ',color:'var(--orange)'},{id:'saude',name:'ðŸ’Š',color:'var(--red)'},
+  {id:'lazer',name:'ðŸŽ‰',color:'var(--purple)'},{id:'educacao',name:'ðŸ“š',color:'var(--gold)'},
+  {id:'outros',name:'ðŸ“¦',color:'var(--text2)'},
 ];
 // nomes de categoria por idioma
 const CAT_NAMES={
-  pt:{moradia:'Moradia',comida:'Comida',transporte:'Transporte',saude:'Saúde',lazer:'Lazer',educacao:'Educação',outros:'Outros'},
+  pt:{moradia:'Moradia',comida:'Comida',transporte:'Transporte',saude:'SaÃºde',lazer:'Lazer',educacao:'EducaÃ§Ã£o',outros:'Outros'},
   en:{moradia:'Housing',comida:'Food',transporte:'Transport',saude:'Health',lazer:'Leisure',educacao:'Education',outros:'Other'},
-  es:{moradia:'Vivienda',comida:'Comida',transporte:'Transporte',saude:'Salud',lazer:'Ocio',educacao:'Educación',outros:'Otros'},
+  es:{moradia:'Vivienda',comida:'Comida',transporte:'Transporte',saude:'Salud',lazer:'Ocio',educacao:'EducaciÃ³n',outros:'Otros'},
 };
 function catName(id){ return (CAT_NAMES[S.lang]||CAT_NAMES.pt)[id]||id }
 const catOf=id=>CATS.find(c=>c.id===id)||CATS[6];
@@ -726,7 +751,7 @@ function addMonths(baseStr,n,due){
 }
 
 /* ============================================================
-   4. CÁLCULOS DO MÊS
+   4. CÃLCULOS DO MÃŠS
    ============================================================ */
 function inMonth(dateStr,y,m){ if(!dateStr) return false; const d=parseISO(dateStr); return d.getFullYear()===y&&d.getMonth()===m }
 function monthSummary(y,m){
@@ -778,11 +803,11 @@ function seed(){
     }
     return out;
   };
-  const PT={s_salario:['Salário','Trabalho'],s_aluguel:['Aluguel','Senhorio'],s_luz:['Luz','Enel'],s_agua:['Água','Sabesp'],
-    s_net:['Internet','Vivo'],s_feira1:['Feira do mês','Mercado'],s_feira2:['Feira da semana','Hortifruti'],
-    s_marmita:['Marmita','Restaurante'],s_onibus:['Ônibus / recarga','Bilhete Único'],s_farm:['Farmácia','Drogasil'],
-    s_aniv:['Aniversário da Ana','Presente'],s_cel:['Celular novo','Loja'],s_sofa:['Sofá','Móveis Zebu'],s_curso:['Curso de informática','Senac'],
-    c_tia:['Cartão da Tia'],c_cunhado:['Cartão do cunhado']};
+  const PT={s_salario:['SalÃ¡rio','Trabalho'],s_aluguel:['Aluguel','Senhorio'],s_luz:['Luz','Enel'],s_agua:['Ãgua','Sabesp'],
+    s_net:['Internet','Vivo'],s_feira1:['Feira do mÃªs','Mercado'],s_feira2:['Feira da semana','Hortifruti'],
+    s_marmita:['Marmita','Restaurante'],s_onibus:['Ã”nibus / recarga','Bilhete Ãšnico'],s_farm:['FarmÃ¡cia','Drogasil'],
+    s_aniv:['AniversÃ¡rio da Ana','Presente'],s_cel:['Celular novo','Loja'],s_sofa:['SofÃ¡','MÃ³veis Zebu'],s_curso:['Curso de informÃ¡tica','Senac'],
+    c_tia:['CartÃ£o da Tia'],c_cunhado:['CartÃ£o do cunhado']};
   const N=id=>PT[id][0], W=id=>PT[id][1];
   S.txs=[
     T({title:N('s_salario'),kind:'income',amount:2400,date:d(5),categoria:'outros',paraOnde:W('s_salario'),paid:true}),
@@ -800,7 +825,7 @@ function seed(){
     ...debt(N('s_sofa'),1080,6,4,d(14),d(25),'moradia',W('s_sofa'),N('c_cunhado')),
     ...debt(N('s_curso'),269.70,3,3,d(16),d(20),'educacao',W('s_curso'),N('c_tia')),
   ];
-  const CP={a:['Pagar aluguel'],b:['Consulta médica'],c:['Vence fatura da Tia'],d:['Aniversário da Ana']};
+  const CP={a:['Pagar aluguel'],b:['Consulta mÃ©dica'],c:['Vence fatura da Tia'],d:['AniversÃ¡rio da Ana']};
   S.comps=[
     {id:uid(),title:CP.a[0],date:d(10),value:800,repeat:'monthly',done:true},
     {id:uid(),title:CP.b[0],date:d(28),value:0,repeat:'none',done:false},
@@ -846,7 +871,7 @@ function render(){
     ${topbar()}
     <main style="padding:2px 22px 30px">${screen}</main>
     ${bottomnav()}
-    <button class="fab" onclick="openQuick()" aria-label="Add">＋</button>`;
+    <button class="fab" onclick="openQuick()" aria-label="Add">ï¼‹</button>`;
   bindCarousels();
 }
 function topbar(){
@@ -860,19 +885,19 @@ function topbar(){
   </header>`;
 }
 function bottomnav(){
-  const items=[['mes','🏠',t('navMes')],['agenda','📅',t('navAgenda')],['parcelas','🧾',t('navParcelas')],['perfil','⚙️',t('navPerfil')]];
+  const items=[['mes','ðŸ ',t('navMes')],['agenda','ðŸ“…',t('navAgenda')],['parcelas','ðŸ§¾',t('navParcelas')],['perfil','âš™ï¸',t('navPerfil')]];
   return `<nav class="bottomnav">${items.map(([id,ic,lb])=>`
     <button class="navbtn ${S.tab===id?'on':''}" onclick="go('${id}')"><span class="ic">${ic}</span><span class="lb">${lb}</span></button>`).join('')}</nav>`;
 }
 function go(tab){ S.tab=tab; window.scrollTo({top:0,behavior:'smooth'}); render() }
 
 /* ============================================================
-   7. MEU MÊS
+   7. MEU MÃŠS
    ============================================================ */
 function viewMes(){
   const y=S.month.getFullYear(), m=S.month.getMonth();
   const sum=monthSummary(y,m), neg=sum.sobrou<0;
-  const show=v=>S.hide?'•••••':v;
+  const show=v=>S.hide?'â€¢â€¢â€¢â€¢â€¢':v;
   const cats=catBreakdown(y,m);
   const list=monthTxList(y,m);
   const contas=S.txs.filter(x=>x.kind==='expense'&&x.recurring&&inMonth(x.date,y,m));
@@ -880,7 +905,7 @@ function viewMes(){
   const slides=`
     <div class="hero">
       <div class="hero-label">${neg?t('vermelhoMes'):t('sobrouMes')}</div>
-      <div class="hero-value" style="color:${neg?'var(--red)':'#7CE2A2'}">${neg?'− ':''}${show(money(sum.sobrou))}</div>
+      <div class="hero-value" style="color:${neg?'var(--red)':'#7CE2A2'}">${neg?'âˆ’ ':''}${show(money(sum.sobrou))}</div>
       <div class="hero-sub">${t('entrouSaiu')(show(money(sum.entrou)),show(money(sum.gastos+sum.cartoes)))}</div>
       <div class="mini3">
         <div class="mini"><div class="lb">${t('lbEntrou')}</div><div class="vl" style="color:var(--green)">${show(money0(sum.entrou))}</div></div>
@@ -921,22 +946,22 @@ function viewMes(){
 
   return `
   <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 14px">
-    <button class="btn press" style="padding:9px 14px" onclick="monthNav(-1)">←</button>
+    <button class="btn press" style="padding:9px 14px" onclick="monthNav(-1)">â†</button>
     <div style="text-align:center">
       <div class="section-title">${t('meuMes')}</div>
       <div class="serif" style="font-size:23px;font-weight:700">${monthName(m)} <span style="color:var(--text2);font-size:15px">${y}</span></div>
     </div>
-    <button class="btn press" style="padding:9px 14px" onclick="monthNav(1)">→</button>
+    <button class="btn press" style="padding:9px 14px" onclick="monthNav(1)">â†’</button>
   </div>
 
   <div class="carousel wide" data-carousel="hero">${slides}</div>
   <div class="dots" data-dots="hero"></div>
 
   <div class="act-row">
-    <button class="act green press" onclick="openForm('income')"><span class="em">💰</span>${t('aRecebi')}</button>
-    <button class="act red press" onclick="openForm('expense')"><span class="em">🛒</span>${t('aGastei')}</button>
-    <button class="act gold press" onclick="openForm('debt')"><span class="em">🧾</span>${t('aDivida')}</button>
-    <button class="act blue press" onclick="openCompForm()"><span class="em">📌</span>${t('aComp')}</button>
+    <button class="act green press" onclick="openForm('income')"><span class="em">ðŸ’°</span>${t('aRecebi')}</button>
+    <button class="act red press" onclick="openForm('expense')"><span class="em">ðŸ›’</span>${t('aGastei')}</button>
+    <button class="act gold press" onclick="openForm('debt')"><span class="em">ðŸ§¾</span>${t('aDivida')}</button>
+    <button class="act blue press" onclick="openCompForm()"><span class="em">ðŸ“Œ</span>${t('aComp')}</button>
   </div>
 
   <div style="margin-top:26px;display:flex;justify-content:space-between;align-items:center">
@@ -953,13 +978,13 @@ function viewMes(){
   <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px">
     ${contas.length?contas.map(x=>`
       <div class="tx">
-        <button class="pay-btn press ${x.paid?'on':''}" onclick="togglePaid('${x.id}')">${x.paid?'✓':'○'}</button>
+        <button class="pay-btn press ${x.paid?'on':''}" onclick="togglePaid('${x.id}')">${x.paid?'âœ“':'â—‹'}</button>
         <div class="tx-ic" style="background:color-mix(in srgb,${catOf(x.categoria).color} 14%,transparent)">${catOf(x.categoria).name}</div>
         <div style="flex:1;min-width:0" onclick="editTx('${x.id}')">
           <div class="tx-title">${esc(x.title)}</div>
           <div class="tx-meta"><span>${esc(x.paraOnde||catName(x.categoria))}</span><span>${t('dia')} ${x.date.split('-')[2]}</span>${x.paid?`<span class="pill green" style="padding:2px 8px;font-size:9px">${t('pago')}</span>`:`<span class="pill red" style="padding:2px 8px;font-size:9px">${t('pendente')}</span>`}</div>
         </div>
-        <div class="tx-amt money-neg" onclick="editTx('${x.id}')">${S.hide?'•••':'− '+money(x.amount)}</div>
+        <div class="tx-amt money-neg" onclick="editTx('${x.id}')">${S.hide?'â€¢â€¢â€¢':'âˆ’ '+money(x.amount)}</div>
       </div>`).join(''):`<div class="tx" style="justify-content:center;color:var(--text2)">${t('nenhumaConta')}</div>`}
   </div>
 
@@ -982,29 +1007,29 @@ function togglePaid(id){
 function txRow(x){
   const c=catOf(x.categoria), isDebt=x.kind==='debt';
   return `<div class="tx press" onclick="editTx('${x.id}')">
-    <div class="tx-ic" style="background:color-mix(in srgb,${x.kind==='income'?'var(--green)':c.color} 14%,transparent)">${x.kind==='income'?'💰':(isDebt?'🧾':c.name)}</div>
+    <div class="tx-ic" style="background:color-mix(in srgb,${x.kind==='income'?'var(--green)':c.color} 14%,transparent)">${x.kind==='income'?'ðŸ’°':(isDebt?'ðŸ§¾':c.name)}</div>
     <div style="flex:1;min-width:0">
       <div class="tx-title">${esc(x.title)}
         ${isDebt&&x.parcelas>1?`<span class="pill gold" style="padding:2px 8px;font-size:9px">${t('parcelaBadge')(x.parcelaAtual,x.parcelas)}</span>`:''}
-        ${x.anexo?'<span style="font-size:11px">📎</span>':''}
+        ${x.anexo?'<span style="font-size:11px">ðŸ“Ž</span>':''}
       </div>
       <div class="tx-meta">
         <span>${esc(x.paraOnde||catName(x.categoria))}</span>
-        ${x.pay==='card'?`<span class="pill" style="padding:2px 8px;font-size:9px">${x.emprestado?('👥 '+esc(x.cardName||t('empStateSim'))):t('empStateNao')}</span>`:''}
+        ${x.pay==='card'?`<span class="pill" style="padding:2px 8px;font-size:9px">${x.emprestado?('ðŸ‘¥ '+esc(x.cardName||t('empStateSim'))):t('empStateNao')}</span>`:''}
         ${isDebt?`<span>${t('total')} ${money0(x.valorTotal||x.amount)}</span>`:''}
         ${isDebt&&x.emprestado?`<span class="pill" style="padding:2px 8px;font-size:9px">${t('emprestadoDe')(esc(x.cardName||''))}</span>`:''}
         <span>${fmtBR(x.date)}</span>
       </div>
     </div>
     <div style="text-align:right">
-      <div class="tx-amt ${x.kind==='income'?'money-pos':'money-neg'}">${x.kind==='income'?'+ ':'− '}${S.hide?'•••':money(isDebt?(x.parcelaValor||x.amount):x.amount)}</div>
+      <div class="tx-amt ${x.kind==='income'?'money-pos':'money-neg'}">${x.kind==='income'?'+ ':'âˆ’ '}${S.hide?'â€¢â€¢â€¢':money(isDebt?(x.parcelaValor||x.amount):x.amount)}</div>
       ${isDebt&&x.parcelas>1?`<div style="font-size:9.5px;color:var(--text2);margin-top:2px">${t('deTotal')(money0(x.valorTotal))}</div>`:''}
     </div>
   </div>`;
 }
 
 /* ============================================================
-   8. CALENDÁRIO
+   8. CALENDÃRIO
    ============================================================ */
 function viewAgenda(){
   const y=S.month.getFullYear(), m=S.month.getMonth();
@@ -1033,9 +1058,9 @@ function viewAgenda(){
       <div><div class="section-title">${t('calTitle')}</div>
       <div class="serif" style="font-size:22px;font-weight:700;margin-top:3px">${monthName(m)} <span style="color:var(--text2);font-size:15px">${y}</span></div></div>
       <div style="display:flex;gap:7px">
-        <button class="btn press" style="padding:8px 13px" onclick="monthNav(-1)">←</button>
+        <button class="btn press" style="padding:8px 13px" onclick="monthNav(-1)">â†</button>
         <button class="btn press" style="padding:8px 13px;font-size:12px" onclick="S.month=new Date();render()">${t('hoje')}</button>
-        <button class="btn press" style="padding:8px 13px" onclick="monthNav(1)">→</button>
+        <button class="btn press" style="padding:8px 13px" onclick="monthNav(1)">â†’</button>
       </div>
     </div>
     <div class="cal-grid">
@@ -1048,7 +1073,7 @@ function viewAgenda(){
         if(cell.iso===S.selDay) cls.push('sel');
         return `<button class="${cls.join(' ')}" onclick="selDay('${cell.iso}')">
           <span>${cell.n}</span>
-          <span class="dotrow">${mk.slice(0,3).map(k=>k==='star'?'<i class="star">⭐</i>':`<i class="mdot" style="background:${k==='pos'?'var(--green)':k}"></i>`).join('')}</span>
+          <span class="dotrow">${mk.slice(0,3).map(k=>k==='star'?'<i class="star">â­</i>':`<i class="mdot" style="background:${k==='pos'?'var(--green)':k}"></i>`).join('')}</span>
         </button>`;
       }).join('')}
     </div>
@@ -1081,7 +1106,7 @@ function viewAgenda(){
   <div class="carousel slim" data-carousel="comps" style="margin-top:10px">
     ${upcoming.length?upcoming.map(c=>`
       <div class="card-sh press" style="padding:15px" onclick="editComp('${c.id}')">
-        <div style="font-size:22px">📌</div>
+        <div style="font-size:22px">ðŸ“Œ</div>
         <div style="font-size:13.5px;font-weight:800;margin-top:8px;min-height:36px">${esc(c.title)}</div>
         <div style="font-size:11px;color:var(--text2)">${fmtBR(c.date)}${c.repeat==='monthly'?' '+t('repeteTodoMes'):''}</div>
         ${c.value?`<div class="tx-amt money-neg" style="margin-top:8px">${money(c.value)}</div>`:`<div class="pill" style="margin-top:8px">${t('semValor')}</div>`}
@@ -1091,13 +1116,13 @@ function viewAgenda(){
 }
 function compRow(c){
   return `<div class="tx press" onclick="editComp('${c.id}')">
-    <div class="tx-ic" style="background:color-mix(in srgb,var(--blue) 14%,transparent)">📌</div>
+    <div class="tx-ic" style="background:color-mix(in srgb,var(--blue) 14%,transparent)">ðŸ“Œ</div>
     <div style="flex:1;min-width:0">
       <div class="tx-title">${esc(c.title)} ${c.done?`<span class="pill green" style="padding:2px 8px;font-size:9px">${t('feito')}</span>`:''}</div>
       <div class="tx-meta"><span>${fmtBR(c.date)}</span>${c.repeat==='monthly'?`<span>${t('repeteTodoMes')}</span>`:''}</div>
     </div>
     ${c.value?`<div class="tx-amt">${money(c.value)}</div>`:''}
-    <button class="pay-btn press ${c.done?'on':''}" onclick="event.stopPropagation();toggleComp('${c.id}')">${c.done?'✓':'○'}</button>
+    <button class="pay-btn press ${c.done?'on':''}" onclick="event.stopPropagation();toggleComp('${c.id}')">${c.done?'âœ“':'â—‹'}</button>
   </div>`;
 }
 function selDay(ds){ S.selDay=(S.selDay===ds?null:ds); render() }
@@ -1127,7 +1152,7 @@ function viewParcelas(){
 
   <div class="hero" style="margin-top:16px">
     <div class="hero-label">${t('parcelasVencem')(monthName(m))}</div>
-    <div class="hero-value" style="font-size:32px">${S.hide?'•••••':money(totalMes)}</div>
+    <div class="hero-value" style="font-size:32px">${S.hide?'â€¢â€¢â€¢â€¢â€¢':money(totalMes)}</div>
     <div class="hero-sub">${t('comprasComParcela')(compras.filter(c=>c.parcelaDoMes).length)}</div>
     <button class="btn btn-gold press" style="margin-top:13px;padding:10px 16px;font-size:12.5px" onclick="openForm('debt')">${t('lancarDivida')}</button>
   </div>
@@ -1140,17 +1165,17 @@ function viewParcelas(){
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
           <div style="flex:1">
             <div style="font-size:16px;font-weight:800;letter-spacing:-.2px">${esc(b.title)}</div>
-            <div style="font-size:11px;color:var(--text2);margin-top:3px">${esc(b.paraOnde||catName(b.categoria))} · ${fmtBR(b.date)}
+            <div style="font-size:11px;color:var(--text2);margin-top:3px">${esc(b.paraOnde||catName(b.categoria))} Â· ${fmtBR(b.date)}
               ${b.emprestado?`<span class="pill" style="margin-left:5px;padding:2px 8px;font-size:9px">${t('emprestadoDe')(esc(b.cardName||''))}</span>`:''}
             </div>
           </div>
           <div style="text-align:right">
             <div style="font-size:11px;color:var(--text2)">${t('totalDaCompra')}</div>
-            <div class="tx-amt">${S.hide?'•••':money(total)}</div>
+            <div class="tx-amt">${S.hide?'â€¢â€¢â€¢':money(total)}</div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:9px;margin-top:13px;flex-wrap:wrap">
-          <div class="pill gold" style="font-size:11.5px;padding:6px 12px">${c.parcelas.length}x ${S.lang==='en'?'of':'de'} ${S.hide?'•••':money(per)}</div>
+          <div class="pill gold" style="font-size:11.5px;padding:6px 12px">${c.parcelas.length}x ${S.lang==='en'?'of':'de'} ${S.hide?'â€¢â€¢â€¢':money(per)}</div>
           <div class="pill">${t('pagasN')(c.paidCount)}</div>
           <div class="pill">${t('faltandoN')(c.parcelas.length-c.paidCount)}</div>
         </div>
@@ -1158,8 +1183,8 @@ function viewParcelas(){
         <div style="display:flex;gap:7px;margin-top:13px;overflow-x:auto">
           ${c.parcelas.map(p=>`
             <button class="press" onclick="togglePaid('${p.id}')" style="flex:0 0 auto;width:52px;padding:9px 4px;border-radius:12px;border:1.5px solid ${p.paid?'var(--green)':'var(--border)'};background:${p.paid?'color-mix(in srgb,var(--green) 13%,transparent)':'var(--panel2)'};text-align:center">
-              <div style="font-size:10px;font-weight:800;color:var(--text2)">${p.parcelaAtual}ª</div>
-              <div style="font-size:12px;font-weight:800;margin-top:2px">${p.paid?'✓':'○'}</div>
+              <div style="font-size:10px;font-weight:800;color:var(--text2)">${p.parcelaAtual}Âª</div>
+              <div style="font-size:12px;font-weight:800;margin-top:2px">${p.paid?'âœ“':'â—‹'}</div>
               <div style="font-size:8.5px;color:var(--text2);margin-top:2px">${fmtBR(p.faturaDate||p.date).slice(3)}</div>
             </button>`).join('')}
         </div>
@@ -1207,7 +1232,7 @@ function viewPerfil(){
   <div class="card-sh" style="padding:20px;margin-top:10px;display:flex;align-items:center;gap:14px">
     <div class="avatar" style="width:54px;height:54px;font-size:20px">${(S.user?.[0]||'A').toUpperCase()}</div>
     <div><div style="font-size:15px;font-weight:800">${esc(S.user||'')}</div>
-    <div style="font-size:11px;color:var(--text2);margin-top:2px">${t('appName')} · ${monthName(m)}/${y}</div></div>
+    <div style="font-size:11px;color:var(--text2);margin-top:2px">${t('appName')} Â· ${monthName(m)}/${y}</div></div>
     <div style="margin-left:auto"><span class="pill ${sum.sobrou>=0?'green':'red'}">${sum.sobrou>=0?t('lbSobrou'):t('lbFaltou2')} ${money0(sum.sobrou)}</span></div>
   </div>
 
@@ -1217,7 +1242,7 @@ function viewPerfil(){
       ${[[t('lbEntrou'),money0(sum.entrou),'var(--green)'],[t('lbContasPagas'),money0(sum.contasPagas),'var(--text)'],[t('lbCartoes'),money0(sum.cartoes),'var(--gold2)'],[t('lbFaltou'),money0(sum.sobrou),sum.sobrou>=0?'var(--green)':'var(--red)']].map(([lb,vl,cl])=>`
         <div style="padding:13px;border-radius:13px;background:var(--panel2);border:1px solid var(--border)">
           <div style="font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text2)">${lb}</div>
-          <div style="font-size:17px;font-weight:800;margin-top:4px;color:${cl}">${S.hide?'•••':vl}</div>
+          <div style="font-size:17px;font-weight:800;margin-top:4px;color:${cl}">${S.hide?'â€¢â€¢â€¢':vl}</div>
         </div>`).join('')}
     </div>
   </div>
@@ -1230,7 +1255,8 @@ function viewPerfil(){
     </div>
   </div>
 
-    <div class="card-sh" style="padding:18px;margin-top:16px">
+    ${shouldShowPlans() ? `
+<div class="card-sh" style="padding:18px;margin-top:16px">
     <div class="section-title">${t('planoTitulo')}</div>
 
     <div style="font-size:12px;color:var(--text2);margin-top:7px;line-height:1.6">
@@ -1260,25 +1286,20 @@ function viewPerfil(){
     </div>
   </div>
 
-  <div class="card-sh" style="padding:18px;margin-top:16px">
-    <div class="section-title">${t('backupTitulo')}</div>
-    <div style="font-size:12px;color:var(--text2);margin-top:7px;line-height:1.6">${t('backupDesc')}</div>
-    <div class="card-sh" style="padding:11px;margin-top:11px;background:color-mix(in srgb,var(--red) 8%,var(--panel));font-size:11px;line-height:1.6">${t('syncNota')}</div>
-    <button class="btn btn-block press" style="margin-top:12px" onclick="exportBackup()">${t('btnBackup')}</button>
-    <button class="btn btn-block press" style="margin-top:9px" onclick="document.getElementById('bkIn').click()">${t('btnRestaurar')}</button>
-    <input type="file" id="bkIn" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
-  </div>
+      ` : ``}
+
+
 
   <div class="card-sh" style="padding:18px;margin-top:16px">
     <div class="section-title">${t('idioma')}</div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      ${[['pt','🇧🇷 Português'],['en','🇺🇸 English'],['es','🇪🇸 Español']].map(([id,lb])=>`
+      ${[['pt','ðŸ‡§ðŸ‡· PortuguÃªs'],['en','ðŸ‡ºðŸ‡¸ English'],['es','ðŸ‡ªðŸ‡¸ EspaÃ±ol']].map(([id,lb])=>`
         <button class="chip press ${S.lang===id?'on':''}" style="flex:1;text-align:center" onclick="setLang('${id}')">${lb}</button>`).join('')}
     </div>
     <div class="section-title" style="margin-top:20px">${t('cores')}</div>
     <div style="display:flex;gap:8px;margin-top:12px">
-      ${[['noir','🖤 Noir'],['emerald','💚 Emerald'],['pearl','🤍 Pearl']].map(([id,lb])=>`
-        <button class="chip press ${S.theme===id?'on':''}" style="flex:1;text-align:center" onclick="applyTheme('${id}');render()">● ${lb}</button>`).join('')}
+      ${[['noir','ðŸ–¤ Noir'],['emerald','ðŸ’š Emerald'],['pearl','ðŸ¤ Pearl']].map(([id,lb])=>`
+        <button class="chip press ${S.theme===id?'on':''}" style="flex:1;text-align:center" onclick="applyTheme('${id}');render()">â— ${lb}</button>`).join('')}
     </div>
   </div>
 
@@ -1289,7 +1310,7 @@ function viewPerfil(){
 
 ${IS_ADMIN ? `
     <button class="btn btn-block press" style="border:1px solid var(--gold2);margin-top:9px" onclick="openAdminPanel()">
-      ⚙️ Administração
+      âš™ï¸ AdministraÃ§Ã£o
     </button>
   ` : ''}
 
@@ -1310,11 +1331,11 @@ async function openAdminPanel(){
   openSheet(`
     <div style="padding:4px 0 10px">
       <div style="font-size:18px;font-weight:900">
-        ⚙️ Administração
+        âš™ï¸ AdministraÃ§Ã£o
       </div>
 
       <div style="font-size:11px;color:var(--text2);margin-top:5px">
-        Gerencie e consulte os usuários do Alicerce.
+        Gerencie e consulte os usuÃ¡rios do Alicerce.
       </div>
 
       <div style="margin-top:16px">
@@ -1332,7 +1353,7 @@ async function openAdminPanel(){
         style="margin-top:9px"
         onclick="adminSearchUsers()"
       >
-        🔎 Buscar usuário
+        ðŸ”Ž Buscar usuÃ¡rio
       </button>
 
       <div id="adminResults" style="margin-top:14px">
@@ -1354,7 +1375,7 @@ async function adminSearchUsers(){
 
   results.innerHTML = `
     <div style="font-size:11px;color:var(--text2);text-align:center;padding:15px">
-      🔄 Buscando...
+      ðŸ”„ Buscando...
     </div>
   `;
 
@@ -1369,7 +1390,7 @@ async function adminSearchUsers(){
     if(error || !data?.ok){
       results.innerHTML = `
         <div class="card-sh" style="padding:14px;color:var(--red)">
-          Não foi possível consultar os usuários.
+          NÃ£o foi possÃ­vel consultar os usuÃ¡rios.
         </div>
       `;
       return;
@@ -1380,7 +1401,7 @@ async function adminSearchUsers(){
     if(!ADMIN_USERS.length){
       results.innerHTML = `
         <div class="card-sh" style="padding:14px;text-align:center">
-          <div style="font-weight:800">Nenhum usuário encontrado</div>
+          <div style="font-weight:800">Nenhum usuÃ¡rio encontrado</div>
           <div style="font-size:11px;color:var(--text2);margin-top:5px">
             Verifique o email ou nome informado.
           </div>
@@ -1397,11 +1418,11 @@ async function adminSearchUsers(){
 
       const started = sub?.started_at
         ? new Date(sub.started_at).toLocaleDateString('pt-BR')
-        : '—';
+        : 'â€”';
 
       const expires = sub?.expires_at
         ? new Date(sub.expires_at).toLocaleDateString('pt-BR')
-        : '—';
+        : 'â€”';
 
       return `
         <div class="card-sh" style="padding:15px;margin-top:10px">
@@ -1441,7 +1462,7 @@ async function adminSearchUsers(){
 
             <div style="padding:10px;border-radius:10px;background:var(--panel2)">
               <div style="font-size:9px;color:var(--text2);text-transform:uppercase">
-                Início
+                InÃ­cio
               </div>
               <div style="font-size:12px;font-weight:800;margin-top:3px">
                 ${started}
@@ -1460,17 +1481,16 @@ async function adminSearchUsers(){
           </div>
 
           <div style="font-size:10px;color:var(--text2);margin-top:10px">
-            Provider: ${esc(sub?.provider || '—')}
+            Provider: ${esc(sub?.provider || 'â€”')}
           </div>
 
           <button
-            class="btn btn-block press"
-            style="margin-top:12px"
-            onclick="toast('Gerenciamento será ativado no próximo passo')"
-          >
-            Gerenciar assinatura
-          </button>
-
+          class="btn btn-block press"
+          style="margin-top:12px"
+          onclick="openAdminSubscription('${u.user_id}')"
+>
+  âš™ï¸ Gerenciar assinatura
+</button>
         </div>
       `;
     }).join('');
@@ -1483,6 +1503,228 @@ async function adminSearchUsers(){
         Erro ao consultar o painel administrativo.
       </div>
     `;
+  }
+}
+
+function openAdminSubscription(userId){
+  if(!IS_ADMIN){
+    toast('Acesso administrativo negado');
+    return;
+  }
+
+  const user = ADMIN_USERS.find(u => u.user_id === userId);
+
+  if(!user){
+    toast('UsuÃ¡rio nÃ£o encontrado');
+    return;
+  }
+
+  const sub = user.subscription || {};
+
+  const plan = sub.plan || 'free';
+  const status = sub.status || 'active';
+
+  const expiresValue = sub.expires_at
+    ? new Date(sub.expires_at).toISOString().slice(0,10)
+    : '';
+
+  openSheet(`
+    <div style="padding:4px 0 10px">
+
+      <div style="font-size:18px;font-weight:900">
+        âš™ï¸ Gerenciar assinatura
+      </div>
+
+      <div style="font-size:11px;color:var(--text2);margin-top:5px">
+        ${esc(user.email || '')}
+      </div>
+
+      <div style="margin-top:18px">
+
+        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;margin-bottom:6px">
+          Plano
+        </div>
+
+        <select id="adminPlan" class="input">
+          <option value="free" ${plan==='free'?'selected':''}>ðŸ†“ FREE</option>
+          <option value="pro" ${plan==='pro'?'selected':''}>ðŸŸ¢ PRO</option>
+          <option value="trial" ${plan==='trial'?'selected':''}>ðŸ§ª TRIAL</option>
+          <option value="vitalicio" ${plan==='vitalicio'?'selected':''}>ðŸ‘‘ VITALÃCIO</option>
+        </select>
+
+      </div>
+
+      <div style="margin-top:14px">
+
+        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;margin-bottom:6px">
+          Status
+        </div>
+
+        <select id="adminStatus" class="input">
+          <option value="active" ${status==='active'?'selected':''}>Ativo</option>
+          <option value="inactive" ${status==='inactive'?'selected':''}>Inativo</option>
+        </select>
+
+      </div>
+
+      <div style="margin-top:14px">
+
+        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;margin-bottom:6px">
+          Data de expiraÃ§Ã£o
+        </div>
+
+        <input
+          id="adminExpires"
+          class="input"
+          type="date"
+          value="${expiresValue}"
+        >
+
+        <div style="font-size:10px;color:var(--text2);margin-top:5px">
+          ObrigatÃ³ria para PRO e TRIAL. VITALÃCIO nÃ£o expira.
+        </div>
+
+      </div>
+
+      <div style="margin-top:14px">
+
+        <div style="font-size:10px;color:var(--text2);text-transform:uppercase;margin-bottom:6px">
+          Provider
+        </div>
+
+        <select id="adminProvider" class="input">
+          <option value="manual" ${sub.provider==='manual' || !sub.provider ? 'selected':''}>Manual</option>
+          <option value="kirvano" ${sub.provider==='kirvano'?'selected':''}>Kirvano</option>
+        </select>
+
+      </div>
+
+      <button
+        class="btn btn-block press"
+        style="margin-top:18px"
+        onclick="adminSaveSubscription('${userId}')"
+      >
+        ðŸ’¾ Salvar assinatura
+      </button>
+
+      <button
+        class="btn btn-block btn-danger press"
+        style="margin-top:9px"
+        onclick="adminRemoveSubscription('${userId}')"
+      >
+        ðŸ—‘ Remover assinatura
+      </button>
+
+    </div>
+  `);
+}
+
+async function adminSaveSubscription(userId){
+  if(!IS_ADMIN){
+    toast('Acesso administrativo negado');
+    return;
+  }
+
+  const planEl = document.getElementById('adminPlan');
+  const statusEl = document.getElementById('adminStatus');
+  const expiresEl = document.getElementById('adminExpires');
+  const providerEl = document.getElementById('adminProvider');
+
+  if(!planEl || !statusEl || !expiresEl || !providerEl){
+    toast('FormulÃ¡rio de assinatura nÃ£o encontrado');
+    return;
+  }
+
+  const plan = planEl.value;
+  const status = statusEl.value;
+  const expiresDate = expiresEl.value;
+  const provider = providerEl.value;
+
+  if((plan === 'pro' || plan === 'trial') && !expiresDate){
+    toast('Informe a data de expiraÃ§Ã£o');
+    return;
+  }
+
+  const expiresAt =
+    (plan === 'pro' || plan === 'trial')
+      ? new Date(`${expiresDate}T23:59:59`).toISOString()
+      : null;
+
+  try{
+    const { data, error } = await SB.functions.invoke('alicerce-admin', {
+      body:{
+        action:'set_subscription',
+        user_id:userId,
+        plan,
+        status,
+        expires_at:expiresAt,
+        provider
+      }
+    });
+
+    if(error || !data?.ok){
+      console.error('ADMIN_SAVE_SUB_ERROR:', error, data);
+
+      toast(
+        data?.error ||
+        error?.message ||
+        'NÃ£o foi possÃ­vel salvar a assinatura'
+      );
+
+      return;
+    }
+
+    toast('Assinatura atualizada com sucesso');
+
+    closeSheet();
+
+    await adminSearchUsers();
+
+  }catch(e){
+    console.error('ADMIN_SAVE_SUB_ERROR:', e);
+    toast('Erro ao atualizar assinatura');
+  }
+}
+
+async function adminRemoveSubscription(userId){
+  if(!IS_ADMIN){
+    toast('Acesso administrativo negado');
+    return;
+  }
+
+  if(!confirm('Remover a assinatura deste usuÃ¡rio e voltar para FREE?')){
+    return;
+  }
+
+  try{
+    const { data, error } = await SB.functions.invoke('alicerce-admin', {
+      body:{
+        action:'remove_subscription',
+        user_id:userId
+      }
+    });
+
+    if(error || !data?.ok){
+      console.error('ADMIN_REMOVE_SUB_ERROR:', error, data);
+
+      toast(
+        data?.error ||
+        error?.message ||
+        'NÃ£o foi possÃ­vel remover a assinatura'
+      );
+
+      return;
+    }
+
+    toast('Assinatura removida');
+
+    closeSheet();
+
+    await adminSearchUsers();
+
+  }catch(e){
+    console.error('ADMIN_REMOVE_SUB_ERROR:', e);
+    toast('Erro ao remover assinatura');
   }
 }
 
@@ -1525,7 +1767,7 @@ function importBackup(input){
 }
 
 /* ============================================================
-   11. FORMULÁRIOS
+   11. FORMULÃRIOS
    ============================================================ */
 function openSheet(html){ $('#sheet').innerHTML=`<div class="handle"></div>${html}`; $('#sheetWrap').classList.add('open') }
 function closeSheet(){ $('#sheetWrap').classList.remove('open') }
@@ -1534,12 +1776,12 @@ function showPaywall(){ openSheet("Alicerce: acesso gratuito terminado"); }
 
 
 function openQuick(){
-  if(!hasFullAccess()){ showPaywall(); return; }
+  if(!canUseApp()){ showPaywall(); return; }
   openSheet(`
     <div class="sheet-title">${t('oQueFazer')}</div>
     <div class="sheet-sub">${t('escolhaOpcao')}</div>
     <div style="display:flex;flex-direction:column;gap:10px">
-      ${[['income','green','💰',t('qRecTitulo'),t('qRecDesc')],['expense','red','🛒',t('qGasTitulo'),t('qGasDesc')],['debt','gold','🧾',t('qDivTitulo'),t('qDivDesc')],['comp','blue','📌',t('qComTitulo'),t('qComDesc')]].map(([k,cls,em,ti,de])=>`
+      ${[['income','green','ðŸ’°',t('qRecTitulo'),t('qRecDesc')],['expense','red','ðŸ›’',t('qGasTitulo'),t('qGasDesc')],['debt','gold','ðŸ§¾',t('qDivTitulo'),t('qDivDesc')],['comp','blue','ðŸ“Œ',t('qComTitulo'),t('qComDesc')]].map(([k,cls,em,ti,de])=>`
       <button class="act ${cls} press" style="flex-direction:row;justify-content:flex-start;gap:14px;padding:17px" onclick="${k==='comp'?'openCompForm()':`openForm('${k}')`}">
         <span class="em">${em}</span>
         <span style="text-align:left;font-size:15px">${ti}<br><span style="font-size:11px;font-weight:600;opacity:.7">${de}</span></span>
@@ -1549,7 +1791,7 @@ function openQuick(){
 
 let F=null;
 function openForm(kind,dateStr){
-  if(!hasFullAccess()){ showPaywall(); return; }
+  if(!canUseApp()){ showPaywall(); return; }
   F={kind,editId:null,title:'',valor:'',date:dateStr||todayISO,categoria:kind==='income'?'outros':'comida',paraOnde:'',recurring:false,paid:false,
      pay:'cash',parcelas:1,cardName:'',emprestado:true,closing:20,due:25,anexo:null,firstDue:dateStr||todayISO};
   renderForm();
@@ -1585,7 +1827,7 @@ function renderForm(){
       ${F.pay==='card'?`
       <div style="margin-top:13px;padding-top:13px;border-top:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-          <div><div style="font-size:13px;font-weight:800">👥 ${t('empTitulo')}</div>
+          <div><div style="font-size:13px;font-weight:800">ðŸ‘¥ ${t('empTitulo')}</div>
           <div style="font-size:10.5px;color:var(--text2);margin-top:2px">${t('empDesc')}</div></div>
           <div style="display:flex;align-items:center;gap:9px;flex-shrink:0">
             <span class="pill ${F.emprestado?'gold':'green'}">${F.emprestado?t('empStateSim'):t('empStateNao')}</span>
@@ -1652,7 +1894,7 @@ function renderForm(){
       ${F.anexo?`<div style="margin-top:11px;display:flex;align-items:center;gap:10px">
         <img src="${F.anexo}" style="width:56px;height:56px;object-fit:cover;border-radius:12px;border:1px solid var(--border)">
         <span class="pill gold">${t('anexado')}</span>
-        <button class="pill red press" onclick="F.anexo=null;renderForm()">✕</button></div>`:''}
+        <button class="pill red press" onclick="F.anexo=null;renderForm()">âœ•</button></div>`:''}
     </div>
 
     <button class="btn btn-gold btn-block press" style="font-size:15px;padding:16px" onclick="saveForm()">${t('salvar')}</button>
@@ -1679,7 +1921,7 @@ function onFile(input){
   r.readAsDataURL(f);
 }
 function saveForm(){
-  if(!hasFullAccess()){ showPaywall(); return; }
+  if(!canUseApp()){ showPaywall(); return; }
   const val=parseFloat(String(F.valor).replace(/\./g,'').replace(',','.'));
   if(!F.title.trim()||!val||isNaN(val)||val<=0){ toast(t('fixaAviso')); return }
   const k=F.kind;
@@ -1777,7 +2019,7 @@ function deleteTx(id){
 /* ---- compromissos ---- */
 let C=null;
 function openCompForm(dateStr){
-  if(!hasFullAccess()){ showPaywall(); return; }
+  if(!canUseApp()){ showPaywall(); return; }
   C={editId:null,title:'',date:dateStr||todayISO,value:'',repeat:'none',done:false}; renderCompForm() }
 function renderCompForm(){
   openSheet(`
@@ -1796,7 +2038,7 @@ function renderCompForm(){
     <button class="btn btn-ghost btn-block press" style="margin-top:9px" onclick="closeSheet()">${t('cancelar')}</button>`);
 }
 function saveComp(){
-  if(!hasFullAccess()){ showPaywall(); return; }
+  if(!canUseApp()){ showPaywall(); return; }
   if(!C.title.trim()){ toast(t('tCompVazio')); return }
   const v=parseFloat(String(C.value).replace(/\./g,'').replace(',','.'))||0;
   if(C.editId) Object.assign(S.comps.find(k=>k.id===C.editId),{title:C.title.trim(),date:C.date,value:v,repeat:C.repeat});
@@ -1853,11 +2095,11 @@ function viewLogin(){
       <div class="serif" style="font-size:33px;font-weight:700;letter-spacing:-.5px;line-height:1.15">${t('loginTitle')}</div>
       <div style="font-size:13px;color:#B0A48E;margin-top:12px;line-height:1.65">${t('loginDesc')}</div>
     </div>
-    <!-- arte: calendário do mês flutuando -->
+    <!-- arte: calendÃ¡rio do mÃªs flutuando -->
     <div class="login-art">
       <div class="art-cal">
         <div style="display:flex;justify-content:space-between;align-items:center">
-          <div class="serif" style="font-size:15px;font-weight:700;letter-spacing:.2px">📅 ${monthName(new Date().getMonth())}</div>
+          <div class="serif" style="font-size:15px;font-weight:700;letter-spacing:.2px">ðŸ“… ${monthName(new Date().getMonth())}</div>
           <div style="display:flex;gap:4px"><i style="width:7px;height:7px;border-radius:99px;background:var(--green)"></i><i style="width:7px;height:7px;border-radius:99px;background:#E58B7B"></i><i style="width:7px;height:7px;border-radius:99px;background:var(--gold)"></i></div>
         </div>
         <div class="art-grid">
@@ -1868,9 +2110,9 @@ function viewLogin(){
           }).join('')}
         </div>
       </div>
-      <div class="art-chip art-chip1">💚 ${t('lbSobrou')} <b style="color:#7CE2A2">R$ 182</b></div>
-      <div class="art-chip art-chip2">🧾 12x ${S.lang==='en'?'of':'de'} <b style="color:var(--gold2)">R$ 179</b></div>
-      <div class="art-chip art-chip3">✅ ${t('lbContasPagas')} <b>R$ 1.201</b></div>
+      <div class="art-chip art-chip1">ðŸ’š ${t('lbSobrou')} <b style="color:#7CE2A2">R$ 182</b></div>
+      <div class="art-chip art-chip2">ðŸ§¾ 12x ${S.lang==='en'?'of':'de'} <b style="color:var(--gold2)">R$ 179</b></div>
+      <div class="art-chip art-chip3">âœ… ${t('lbContasPagas')} <b>R$ 1.201</b></div>
     </div>
     <div style="margin-top:26px;position:relative">
       <div style="font-size:17px;font-weight:800;margin-bottom:4px">${signup?t('tituloSignup'):t('tituloLogin')}</div>
@@ -1885,7 +2127,7 @@ function viewLogin(){
       </div>
       <div style="text-align:center;margin-top:11px;font-size:10.5px;color:#8A7E6A">${t('dadosSalvos')}</div>
       <div style="display:flex;gap:8px;justify-content:center;margin-top:15px">
-        ${[['pt','🇧🇷'],['en','🇺🇸'],['es','🇪🇸']].map(([id,lb])=>`
+        ${[['pt','ðŸ‡§ðŸ‡·'],['en','ðŸ‡ºðŸ‡¸'],['es','ðŸ‡ªðŸ‡¸']].map(([id,lb])=>`
           <button class="chip press ${S.lang===id?'on':''}" style="padding:8px 14px" onclick="setLang('${id}')">${lb}</button>`).join('')}
       </div>
     </div>
@@ -1942,15 +2184,15 @@ function doSignup(){
 }
 function forgotPw(){
   openSheet(`
-    <div class="sheet-title">🔑 ${t('esqueceu')}</div>
+    <div class="sheet-title">ðŸ”‘ ${t('esqueceu')}</div>
     <div class="sheet-sub">${t('esqueceuAviso')}</div>
-    <div class="card-sh" style="padding:14px;background:color-mix(in srgb,var(--gold) 9%,var(--panel));font-size:12px;line-height:1.7">💡 ${t('syncNota')}</div>
+    <div class="card-sh" style="padding:14px;background:color-mix(in srgb,var(--gold) 9%,var(--panel));font-size:12px;line-height:1.7">ðŸ’¡ ${t('syncNota')}</div>
     <button class="btn btn-block press" style="margin-top:16px" onclick="closeSheet();setAuthMode('signup')">${t('criarConta')}</button>
     <button class="btn btn-ghost btn-block press" style="margin-top:9px" onclick="closeSheet()">${t('cancelar')}</button>`);
 }
 
 /* ============================================================
-   13. CARROSSÉIS
+   13. CARROSSÃ‰IS
    ============================================================ */
 function bindCarousels(){
   document.querySelectorAll('[data-carousel]').forEach(el=>{
