@@ -614,6 +614,18 @@ async function loadSubscription(){
     return true;
   }catch(e){ return false }
 }
+function hasFullAccess(){
+  if(!SUB) return false;
+  if(SUB.plan==='free' && SUB.status==='active') return true;
+  if(SUB.plan==='pro' && SUB.status==='active'){
+    return !SUB.expires_at || new Date(SUB.expires_at)>new Date();
+  }
+  if(SUB.plan==='vitalicio' && SUB.status==='active') return true;
+  if(SUB.plan==='trial' && SUB.status==='active' && SUB.expires_at){
+    return new Date(SUB.expires_at)>new Date();
+  }
+  return false;
+}
 async function cloudLogin(email,pw){
   if(!SB) return 'local';
   const {data,error}=await SB.auth.signInWithPassword({email,password:pw});
@@ -1268,7 +1280,11 @@ function importBackup(input){
 function openSheet(html){ $('#sheet').innerHTML=`<div class="handle"></div>${html}`; $('#sheetWrap').classList.add('open') }
 function closeSheet(){ $('#sheetWrap').classList.remove('open') }
 
+function showPaywall(){ openSheet("Alicerce: acesso gratuito terminado"); }
+
+
 function openQuick(){
+  if(!hasFullAccess()){ showPaywall(); return; }
   openSheet(`
     <div class="sheet-title">${t('oQueFazer')}</div>
     <div class="sheet-sub">${t('escolhaOpcao')}</div>
@@ -1283,6 +1299,7 @@ function openQuick(){
 
 let F=null;
 function openForm(kind,dateStr){
+  if(!hasFullAccess()){ showPaywall(); return; }
   F={kind,editId:null,title:'',valor:'',date:dateStr||todayISO,categoria:kind==='income'?'outros':'comida',paraOnde:'',recurring:false,paid:false,
      pay:'cash',parcelas:1,cardName:'',emprestado:true,closing:20,due:25,anexo:null,firstDue:dateStr||todayISO};
   renderForm();
@@ -1412,6 +1429,7 @@ function onFile(input){
   r.readAsDataURL(f);
 }
 function saveForm(){
+  if(!hasFullAccess()){ showPaywall(); return; }
   const val=parseFloat(String(F.valor).replace(/\./g,'').replace(',','.'));
   if(!F.title.trim()||!val||isNaN(val)||val<=0){ toast(t('fixaAviso')); return }
   const k=F.kind;
@@ -1508,7 +1526,9 @@ function deleteTx(id){
 
 /* ---- compromissos ---- */
 let C=null;
-function openCompForm(dateStr){ C={editId:null,title:'',date:dateStr||todayISO,value:'',repeat:'none',done:false}; renderCompForm() }
+function openCompForm(dateStr){
+  if(!hasFullAccess()){ showPaywall(); return; }
+  C={editId:null,title:'',date:dateStr||todayISO,value:'',repeat:'none',done:false}; renderCompForm() }
 function renderCompForm(){
   openSheet(`
     <div class="sheet-title">${C.editId?t('editarComp'):t('marcarComp')}</div>
@@ -1526,6 +1546,7 @@ function renderCompForm(){
     <button class="btn btn-ghost btn-block press" style="margin-top:9px" onclick="closeSheet()">${t('cancelar')}</button>`);
 }
 function saveComp(){
+  if(!hasFullAccess()){ showPaywall(); return; }
   if(!C.title.trim()){ toast(t('tCompVazio')); return }
   const v=parseFloat(String(C.value).replace(/\./g,'').replace(',','.'))||0;
   if(C.editId) Object.assign(S.comps.find(k=>k.id===C.editId),{title:C.title.trim(),date:C.date,value:v,repeat:C.repeat});
