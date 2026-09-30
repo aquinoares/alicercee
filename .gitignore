@@ -1,1 +1,23 @@
+# Arquivos temporários de validação
+_alicerce_check.js
+
+# Scripts temporários de alteração
+alterar_*.py
+corrigir_*.py
+localizar_*.py
+remover_*.py
+
+# Backups locais do index.html
+index-antes-*.html
+index-atual-antes-*.html
+index-before-*.html
+index-encoding-backup.html
+index-git-original.html
+index-sem-emoji.html
+index-teste*.html
+teste-*.html
+
+# Configurações locais do editor
+.vscode/
+
 index-backup.html
