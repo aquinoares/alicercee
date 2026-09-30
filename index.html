@@ -1286,7 +1286,6 @@ function viewPerfil(){
     <button class="btn btn-block press" onclick="toast(t('tExtrato'))">${t('baixarExtrato')}</button>
     <button class="btn btn-block press" onclick="openFaq()">${t('duvidas')}</button>
 
-<button class="btn btn-block press" onclick="openFaq()">${t('duvidas')}</button>
 
 ${IS_ADMIN ? `
     <button class="btn btn-block press" style="border:1px solid var(--gold2);margin-top:9px" onclick="openAdminPanel()">
@@ -1294,7 +1293,6 @@ ${IS_ADMIN ? `
     </button>
   ` : ''}
 
-<button class="btn btn-block btn-danger press" onclick="confirmClear()">${t('apagarDados')}</button>
 
     <button class="btn btn-block btn-danger press" onclick="confirmClear()">${t('apagarDados')}</button>
     <button class="btn btn-block btn-ghost press" onclick="logout()">${t('sair')}</button>
