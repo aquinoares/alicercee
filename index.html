@@ -824,6 +824,7 @@ function boot(){
       const ok=await cloudLoad();
       if(ok){
         await loadSubscription();
+        await checkAdminStatus();
         render();
       }
     }
@@ -1171,6 +1172,35 @@ function viewParcelas(){
 /* ============================================================
    10. PERFIL
    ============================================================ */
+
+let IS_ADMIN = false;
+
+async function checkAdminStatus(){
+  if(!SB || !SB_USER){
+    IS_ADMIN = false;
+    return false;
+  }
+
+  try{
+    const { data, error } = await SB.functions.invoke('alicerce-admin', {
+      body: {
+        action: 'check_admin'
+      }
+    });
+
+    IS_ADMIN = !!(data?.ok && data?.admin);
+
+    if(error){
+      IS_ADMIN = false;
+    }
+
+    return IS_ADMIN;
+  }catch(e){
+    IS_ADMIN = false;
+    return false;
+  }
+}
+
 function viewPerfil(){
   const y=S.month.getFullYear(), m=S.month.getMonth(), sum=monthSummary(y,m);
   return `
@@ -1200,11 +1230,33 @@ function viewPerfil(){
     </div>
   </div>
 
-  <div class="card-sh" style="padding:18px;margin-top:16px">
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-      <div><div class="section-title">${t('planoTitulo')}</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:7px;line-height:1.6">${t('planoDesc')}</div></div>
-      <span class="pill gold" style="flex-shrink:0">${t('planoDemo')}</span>
+    <div class="card-sh" style="padding:18px;margin-top:16px">
+    <div class="section-title">${t('planoTitulo')}</div>
+
+    <div style="font-size:12px;color:var(--text2);margin-top:7px;line-height:1.6">
+      Escolha o plano do Alicerce e continue organizando sua vida financeira com clareza.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
+      <a href="https://pay.kirvano.com/76c6f3b9-a828-4290-a67f-270a5d8b444b"
+         target="_blank"
+         rel="noopener"
+         class="btn press"
+         style="text-decoration:none;text-align:center;display:block">
+        Mensal
+      </a>
+
+      <a href="https://pay.kirvano.com/c6d6c9a0-1a30-4bde-8642-4ef743b09825"
+         target="_blank"
+         rel="noopener"
+         class="btn press"
+         style="text-decoration:none;text-align:center;display:block">
+        Anual
+      </a>
+    </div>
+
+    <div style="font-size:10.5px;color:var(--text2);text-align:center;margin-top:10px">
+      Pagamento seguro pelo checkout da Kirvano.
     </div>
   </div>
 
@@ -1233,10 +1285,210 @@ function viewPerfil(){
   <div style="display:flex;flex-direction:column;gap:9px;margin-top:22px">
     <button class="btn btn-block press" onclick="toast(t('tExtrato'))">${t('baixarExtrato')}</button>
     <button class="btn btn-block press" onclick="openFaq()">${t('duvidas')}</button>
+
+<button class="btn btn-block press" onclick="openFaq()">${t('duvidas')}</button>
+
+${IS_ADMIN ? `
+    <button class="btn btn-block press" style="border:1px solid var(--gold2);margin-top:9px" onclick="openAdminPanel()">
+      ⚙️ Administração
+    </button>
+  ` : ''}
+
+<button class="btn btn-block btn-danger press" onclick="confirmClear()">${t('apagarDados')}</button>
+
     <button class="btn btn-block btn-danger press" onclick="confirmClear()">${t('apagarDados')}</button>
     <button class="btn btn-block btn-ghost press" onclick="logout()">${t('sair')}</button>
   </div>`;
 }
+
+let ADMIN_USERS = [];
+
+async function openAdminPanel(){
+  if(!IS_ADMIN){
+    toast('Acesso administrativo negado');
+    return;
+  }
+
+  openSheet(`
+    <div style="padding:4px 0 10px">
+      <div style="font-size:18px;font-weight:900">
+        ⚙️ Administração
+      </div>
+
+      <div style="font-size:11px;color:var(--text2);margin-top:5px">
+        Gerencie e consulte os usuários do Alicerce.
+      </div>
+
+      <div style="margin-top:16px">
+        <input
+          id="adminSearch"
+          class="input"
+          placeholder="Buscar por email ou nome"
+          autocomplete="off"
+          onkeydown="if(event.key==='Enter') adminSearchUsers()"
+        >
+      </div>
+
+      <button
+        class="btn btn-block press"
+        style="margin-top:9px"
+        onclick="adminSearchUsers()"
+      >
+        🔎 Buscar usuário
+      </button>
+
+      <div id="adminResults" style="margin-top:14px">
+        <div style="font-size:11px;color:var(--text2);text-align:center;padding:15px">
+          Digite um email ou nome para pesquisar.
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+async function adminSearchUsers(){
+  const input = document.getElementById('adminSearch');
+  const results = document.getElementById('adminResults');
+
+  if(!input || !results) return;
+
+  const search = input.value.trim();
+
+  results.innerHTML = `
+    <div style="font-size:11px;color:var(--text2);text-align:center;padding:15px">
+      🔄 Buscando...
+    </div>
+  `;
+
+  try{
+    const { data, error } = await SB.functions.invoke('alicerce-admin', {
+      body:{
+        action:'list_users',
+        search
+      }
+    });
+
+    if(error || !data?.ok){
+      results.innerHTML = `
+        <div class="card-sh" style="padding:14px;color:var(--red)">
+          Não foi possível consultar os usuários.
+        </div>
+      `;
+      return;
+    }
+
+    ADMIN_USERS = data.users || [];
+
+    if(!ADMIN_USERS.length){
+      results.innerHTML = `
+        <div class="card-sh" style="padding:14px;text-align:center">
+          <div style="font-weight:800">Nenhum usuário encontrado</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:5px">
+            Verifique o email ou nome informado.
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    results.innerHTML = ADMIN_USERS.map(u => {
+      const sub = u.subscription;
+
+      const plan = sub?.plan || 'free';
+      const status = sub?.status || 'sem assinatura';
+
+      const started = sub?.started_at
+        ? new Date(sub.started_at).toLocaleDateString('pt-BR')
+        : '—';
+
+      const expires = sub?.expires_at
+        ? new Date(sub.expires_at).toLocaleDateString('pt-BR')
+        : '—';
+
+      return `
+        <div class="card-sh" style="padding:15px;margin-top:10px">
+
+          <div style="font-size:13px;font-weight:900">
+            ${esc(u.name || 'Sem nome')}
+          </div>
+
+          <div style="font-size:11px;color:var(--text2);margin-top:3px">
+            ${esc(u.email || '')}
+          </div>
+
+          <div style="
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:8px;
+            margin-top:12px;
+          ">
+
+            <div style="padding:10px;border-radius:10px;background:var(--panel2)">
+              <div style="font-size:9px;color:var(--text2);text-transform:uppercase">
+                Plano
+              </div>
+              <div style="font-size:12px;font-weight:800;margin-top:3px">
+                ${esc(plan)}
+              </div>
+            </div>
+
+            <div style="padding:10px;border-radius:10px;background:var(--panel2)">
+              <div style="font-size:9px;color:var(--text2);text-transform:uppercase">
+                Status
+              </div>
+              <div style="font-size:12px;font-weight:800;margin-top:3px">
+                ${esc(status)}
+              </div>
+            </div>
+
+            <div style="padding:10px;border-radius:10px;background:var(--panel2)">
+              <div style="font-size:9px;color:var(--text2);text-transform:uppercase">
+                Início
+              </div>
+              <div style="font-size:12px;font-weight:800;margin-top:3px">
+                ${started}
+              </div>
+            </div>
+
+            <div style="padding:10px;border-radius:10px;background:var(--panel2)">
+              <div style="font-size:9px;color:var(--text2);text-transform:uppercase">
+                Expira
+              </div>
+              <div style="font-size:12px;font-weight:800;margin-top:3px">
+                ${expires}
+              </div>
+            </div>
+
+          </div>
+
+          <div style="font-size:10px;color:var(--text2);margin-top:10px">
+            Provider: ${esc(sub?.provider || '—')}
+          </div>
+
+          <button
+            class="btn btn-block press"
+            style="margin-top:12px"
+            onclick="toast('Gerenciamento será ativado no próximo passo')"
+          >
+            Gerenciar assinatura
+          </button>
+
+        </div>
+      `;
+    }).join('');
+
+  }catch(e){
+    console.error('ADMIN_SEARCH_ERROR:', e);
+
+    results.innerHTML = `
+      <div class="card-sh" style="padding:14px;color:var(--red)">
+        Erro ao consultar o painel administrativo.
+      </div>
+    `;
+  }
+}
+
+
 function setLang(l){ S.lang=l; save(); document.documentElement.lang=l==='pt'?'pt-BR':l; render() }
 function applyTheme(id){ S.theme=id; document.documentElement.dataset.theme=id; save() }
 function logout(){
@@ -1651,6 +1903,7 @@ function doLogin(){
       if(r==='ok'){
         LS.set('alicerce_logged',email); S.user=email; authMode='login';
         await cloudLoad();
+        await checkAdminStatus();
         if(S.user){ save() }
         render(); toast(t('tBemVindo')); return;
       }
