@@ -14,6 +14,8 @@ function json(data: unknown, status = 200) {
     headers: {
       ...corsHeaders,
       "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "Pragma": "no-cache",
     },
   });
 }
@@ -307,15 +309,7 @@ Deno.serve(async (req) => {
     if (!user) {
       console.warn("USUARIO_NAO_ENCONTRADO");
 
-      return json({
-        ok: true,
-        found: false,
-        pending: true,
-        email,
-        event,
-        message:
-          "Pagamento recebido, mas não existe uma conta Alicerce com este e-mail.",
-      });
+      return json({ ok: true, found: false, pending: true, event, message: "Pagamento recebido, mas não existe uma conta Alicerce com este e-mail." });
     }
 
     console.log("USUARIO_ENCONTRADO");
@@ -390,14 +384,7 @@ Deno.serve(async (req) => {
 
       console.log("ASSINATURA_LIBERADA");
 
-      return json({
-        ok: true,
-        action:
-          "subscription_activated",
-        event,
-        user_id: user.id,
-        subscription,
-      });
+      return json({ ok: true, action: "subscription_activated", event });
     }
 
     /*
@@ -463,14 +450,7 @@ Deno.serve(async (req) => {
 
       console.log("ASSINATURA_RENOVADA");
 
-      return json({
-        ok: true,
-        action:
-          "subscription_renewed",
-        event,
-        user_id: user.id,
-        subscription,
-      });
+      return json({ ok: true, action: "subscription_renewed", event });
     }
 
     /*
@@ -541,14 +521,7 @@ Deno.serve(async (req) => {
 
       console.log("ASSINATURA_CANCELADA");
 
-      return json({
-        ok: true,
-        action:
-          "subscription_canceled",
-        event,
-        user_id: user.id,
-        subscription,
-      });
+      return json({ ok: true, action: "subscription_canceled", event });
     }
 
     /*
@@ -614,16 +587,7 @@ Deno.serve(async (req) => {
           : "ACESSO_REVOGADO_CHARGEBACK"
       );
 
-      return json({
-        ok: true,
-        action:
-          event === "SALE_REFUNDED"
-            ? "subscription_refunded"
-            : "subscription_chargeback",
-        event,
-        user_id: user.id,
-        subscription,
-      });
+      return json({ ok: true, action: event === "SALE_REFUNDED" ? "subscription_refunded" : "subscription_chargeback", event });
     }
 
     /*
@@ -683,14 +647,7 @@ Deno.serve(async (req) => {
 
       console.log("ASSINATURA_EXPIRADA");
 
-      return json({
-        ok: true,
-        action:
-          "subscription_expired",
-        event,
-        user_id: user.id,
-        subscription,
-      });
+      return json({ ok: true, action: "subscription_expired", event });
     }
 
     /*
