@@ -14,6 +14,8 @@ function json(data: unknown, status = 200) {
     headers: {
       ...corsHeaders,
       "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      "Pragma": "no-cache",
     },
   });
 }
@@ -189,7 +191,7 @@ Deno.serve(async (req) => {
         const { data: subscription } = await adminClient
           .from("subscriptions")
           .select(
-            "plan,status,started_at,expires_at,provider,provider_transaction_id"
+            "plan,status,started_at,expires_at,provider"
           )
           .eq("user_id", u.id)
           .maybeSingle();
@@ -323,15 +325,9 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log(
-        "ASSINATURA_ATUALIZADA:",
-        JSON.stringify(subscription)
-      );
+      console.log("ASSINATURA_ATUALIZADA");
 
-      return json({
-        ok: true,
-        subscription,
-      });
+      return json({ ok: true });
     }
 
     if (action === "remove_subscription") {
@@ -387,15 +383,9 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log(
-        "ASSINATURA_REMOVIDA:",
-        JSON.stringify(subscription)
-      );
+      console.log("ASSINATURA_REMOVIDA");
 
-      return json({
-        ok: true,
-        subscription,
-      });
+      return json({ ok: true });
     }
 
     return json(
