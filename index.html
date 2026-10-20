@@ -5219,6 +5219,7 @@ function render(){
     const loading=document.getElementById('loading');
     if(loading)loading.classList.add('hidden');
     app.classList.remove('hidden');
+    if(Store.screen==='passwordRecovery'){app.innerHTML=renderPasswordRecovery();return}
     if(Store.screen==='login'){app.innerHTML=renderLogin();return}
     if(Store.userId&&!alPolAceiteGeralValido()&&Store.screen!=='politicasAceite'){
   Store.screen='politicasAceite';Store.screenData=null;
@@ -6257,23 +6258,125 @@ function alicerceLoginVoltar(){
   splash.classList.remove('hidden');
   window.__alicerceSplashSeen=false;
 }
-function alicerceLoginForgotPassword(){
-  var campo = document.getElementById('login-email');
-  var email = campo ? String(campo.value || '').trim() : '';
-  if(!email){ alert('Digite seu e-mail primeiro.'); if(campo) campo.focus(); return; }
-  var cliente = window.alicerceSupabase;
-  if(!cliente || !cliente.auth || typeof cliente.auth.resetPasswordForEmail !== 'function'){
-    alert('A recuperacao de senha nao esta disponivel neste momento.');
+function alicerceAuthFeedback(message, erro){
+  var host=document.querySelector('#loginLiving .login-card')||document.querySelector('#alicerceLoginFlow .login-card');
+  if(!host){alert(String(message||''));return}
+  var box=document.getElementById('alicerce-auth-feedback');
+  if(!box){
+    box=document.createElement('div');
+    box.id='alicerce-auth-feedback';
+    box.setAttribute('role',erro?'alert':'status');
+    box.style.cssText='margin-top:12px;padding:11px 12px;border-radius:10px;font-size:13px;line-height:1.45;overflow-wrap:anywhere;box-sizing:border-box;';
+    var form=host.querySelector('form');
+    if(form)form.insertAdjacentElement('afterend',box);else host.appendChild(box);
+  }
+  box.setAttribute('role',erro?'alert':'status');
+  box.style.background=erro?'rgba(179,56,46,.14)':'rgba(27,122,78,.14)';
+  box.style.color=erro?'#ffb4ac':'#a4efc5';
+  box.style.border='1px solid '+(erro?'rgba(255,92,92,.35)':'rgba(49,196,141,.35)');
+  box.textContent=String(message||'');
+}
+function alicerceRecoveryFeedback(message, erro){
+  var box=document.getElementById('alicerce-recovery-feedback');
+  if(!box){alert(String(message||''));return}
+  box.style.display='block';
+  box.style.background=erro?'rgba(179,56,46,.14)':'rgba(27,122,78,.14)';
+  box.style.color=erro?'#ffb4ac':'#a4efc5';
+  box.style.border='1px solid '+(erro?'rgba(255,92,92,.35)':'rgba(49,196,141,.35)');
+  box.textContent=String(message||'');
+}
+async function alicerceLoginForgotPassword(){
+  var campo=document.getElementById('login-email');
+  var email=campo?String(campo.value||'').trim():'';
+  if(!email){
+    alicerceAuthFeedback('Digite seu e-mail no campo acima antes de pedir a recuperação.',true);
+    if(campo)campo.focus();
     return;
   }
-  cliente.auth.resetPasswordForEmail(email).then(function(resultado){
-    if(resultado && resultado.error) throw resultado.error;
-    alert('Se esse e-mail estiver cadastrado, voce recebera as instrucoes para redefinir a senha.');
-  }).catch(function(erro){
-    alert((erro && erro.message) ? erro.message : 'Nao foi possivel solicitar a recuperacao agora.');
-  });
+  var cliente=window.alicerceSupabase;
+  if(!cliente||!cliente.auth||typeof cliente.auth.resetPasswordForEmail!=='function'){
+    alicerceAuthFeedback('A recuperação de senha não está disponível neste momento.',true);
+    return;
+  }
+  try{
+    var pageUrl=new URL(window.location.href);
+    pageUrl.search='';
+    pageUrl.hash='';
+    var redirectPath=pageUrl.pathname.replace(/[^/]*$/,'');
+    if(!redirectPath)redirectPath='/';
+    var redirectTo=pageUrl.origin+redirectPath;
+    var resultado=await cliente.auth.resetPasswordForEmail(email,{redirectTo:redirectTo});
+    if(resultado&&resultado.error)throw resultado.error;
+    alicerceAuthFeedback('Se este e-mail estiver cadastrado, enviaremos um link para redefinir a senha. Abra o link e escolha uma nova senha.',false);
+  }catch(erro){
+    var mensagem=String(erro&&erro.message||'');
+    if(/redirect.*(allow|allowed)|not.*allowed.*redirect/i.test(mensagem)){
+      alicerceAuthFeedback('Falta autorizar o endereço de recuperação no Supabase. Em Authentication → URL Configuration, adicione: https://aquinoares.github.io/alicercee/',true);
+    }else{
+      alicerceAuthFeedback(mensagem||'Não foi possível solicitar a recuperação agora. Tente novamente.',true);
+    }
+  }
 }
-function renderLogin(){
+function renderPasswordRecovery(){
+  window.__alicerceSplashSeen=true;
+  return '<main class="recovery-wrap" style="min-height:100vh;box-sizing:border-box;background:var(--bg);padding:24px;">'+
+    '<section style="width:100%;max-width:420px;box-sizing:border-box;padding:22px;border:1px solid var(--line);border-radius:20px;background:var(--surface);text-align:left;">'+
+    '<div style="font-size:.72rem;font-weight:800;letter-spacing:.14em;color:var(--accent);margin-bottom:12px;">ALICERCE</div>'+
+    '<h2 style="color:var(--text);font-size:1.5rem;line-height:1.2;margin:0 0 10px;">Defina sua nova senha</h2>'+
+    '<p style="color:var(--text2);font-size:.92rem;line-height:1.5;margin:0 0 20px;">Escolha uma senha nova com pelo menos 8 caracteres.</p>'+
+    '<form id="alicerce-password-recovery-form" onsubmit="event.preventDefault();alicerceSalvarNovaSenha();return false;">'+
+    '<label for="alicerce-recovery-password" style="display:block;font-size:.85rem;font-weight:700;margin:0 0 6px;">Nova senha</label>'+
+    '<input id="alicerce-recovery-password" class="login-input" type="password" autocomplete="new-password" minlength="8" required style="width:100%;box-sizing:border-box;margin-bottom:14px;">'+
+    '<label for="alicerce-recovery-confirm" style="display:block;font-size:.85rem;font-weight:700;margin:0 0 6px;">Confirmar nova senha</label>'+
+    '<input id="alicerce-recovery-confirm" class="login-input" type="password" autocomplete="new-password" minlength="8" required style="width:100%;box-sizing:border-box;margin-bottom:14px;">'+
+    '<button type="submit" class="btn btn-primary" style="width:100%;min-height:48px;">Salvar nova senha</button>'+
+    '<div id="alicerce-recovery-feedback" role="status" style="display:none;margin-top:12px;padding:11px 12px;border-radius:10px;font-size:13px;line-height:1.45;overflow-wrap:anywhere;"></div>'+
+    '</form>'+
+    '<button type="button" class="btn btn-secondary mt-2" onclick="alicerceCancelarRecuperacao()" style="width:100%;min-height:44px;">Voltar para entrar</button>'+
+    '</section></main>';
+}
+async function alicerceSalvarNovaSenha(){
+  var primeiro=document.getElementById('alicerce-recovery-password');
+  var segundo=document.getElementById('alicerce-recovery-confirm');
+  var senha=primeiro?String(primeiro.value||''):'';
+  var confirmacao=segundo?String(segundo.value||''):'';
+  if(senha.length<8){alicerceRecoveryFeedback('A nova senha precisa ter pelo menos 8 caracteres.',true);return}
+  if(senha!==confirmacao){alicerceRecoveryFeedback('As senhas não coincidem. Confira os dois campos.',true);return}
+  var cliente=window.alicerceSupabase;
+  if(!cliente||!cliente.auth||typeof cliente.auth.updateUser!=='function'){
+    alicerceRecoveryFeedback('Não foi possível validar a sessão de recuperação. Solicite um novo link.',true);
+    return;
+  }
+  try{
+    var resposta=await cliente.auth.updateUser({password:senha});
+    if(resposta&&resposta.error)throw resposta.error;
+    window.__alicerceRecoveryActive=false;
+    try{await cliente.auth.signOut({scope:'local'})}catch(ignorar){}
+    Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
+    window.__alicerceSplashSeen=true;
+    render();
+    alicerceAuthFeedback('Senha alterada com sucesso. Entre com seu e-mail e a nova senha.',false);
+  }catch(erro){
+    var mensagem=String(erro&&erro.message||'');
+    if(/expired|invalid.*token|session.*missing|auth session/i.test(mensagem)){
+      mensagem='Este link de recuperação expirou ou já foi usado. Solicite outro em “Esqueceu a senha?”.';
+    }
+    alicerceRecoveryFeedback(mensagem||'Não foi possível alterar a senha. Solicite um novo link e tente novamente.',true);
+  }
+}
+async function alicerceCancelarRecuperacao(){
+  window.__alicerceRecoveryActive=false;
+  try{
+    var cliente=window.alicerceSupabase;
+    if(cliente&&cliente.auth&&cliente.auth.signOut)await cliente.auth.signOut({scope:'local'});
+  }catch(ignorar){}
+  Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
+  window.__alicerceSplashSeen=true;
+  render();
+  alicerceAuthFeedback('Entre com seu e-mail e senha.',false);
+}
+
+function renderLogin(){function renderLogin(){
   var meses=['JANEIRO','FEVEREIRO','MAR&Ccedil;O','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
   var dias=['Domingo','Segunda','Ter&ccedil;a','Quarta','Quinta','Sexta','S&aacute;bado'];
   var diasCurto=['D','S','T','Q','Q','S','S'];
@@ -6348,72 +6451,72 @@ function renderLogin(){
 
 async function doLogin(){
   try{
-    const email=document.getElementById('login-email').value.trim();
-    const password=document.getElementById('login-pass').value;
-
+    var email=document.getElementById('login-email').value.trim();
+    var password=document.getElementById('login-pass').value;
     if(!email||!password){
-      showRecoveryScreen({message:'Informe e-mail e senha.'});
+      alicerceAuthFeedback('Informe seu e-mail e sua senha.',true);
       return;
     }
-
-    const {data,error}=await window.alicerceSupabase.auth.signInWithPassword({
-      email:email,
-      password:password
-    });
-
-    if(error) throw error;
-    if(!data.user) throw new Error('Usuario nao encontrado.');
-
+    var cliente=window.alicerceSupabase;
+    if(!cliente||!cliente.auth)throw new Error('Serviço de autenticação indisponível. Tente novamente.');
+    var resposta=await cliente.auth.signInWithPassword({email:email,password:password});
+    if(resposta&&resposta.error)throw resposta.error;
+    var data=resposta&&resposta.data?resposta.data:{};
+    if(!data.user)throw new Error('Não foi possível identificar a conta. Tente novamente.');
     await Store.init(data.user.id);
+    Store.userEmail=String(data.user.email||'');
     Store.screen='home';
+    Store.screenData=null;
     render();
-
-  }catch(e){
-    showRecoveryScreen({message:e.message||'Nao foi possivel entrar.'});
+  }catch(erro){
+    var mensagem=String(erro&&erro.message||'');
+    if(/invalid login credentials/i.test(mensagem)){
+      alicerceAuthFeedback('E-mail ou senha incorretos. Confira os dados ou use “Esqueceu a senha?”.',true);
+    }else{
+      alicerceAuthFeedback(mensagem||'Não foi possível entrar. Confira sua conexão e tente novamente.',true);
+    }
   }
 }
-
 async function doSignup(){
   try{
-    const email=document.getElementById('login-email').value.trim();
-    const password=document.getElementById('login-pass').value;
-
+    var email=document.getElementById('login-email').value.trim();
+    var password=document.getElementById('login-pass').value;
     if(!email||!password){
-      showRecoveryScreen({message:'Informe e-mail e senha para criar a conta.'});
+      alicerceAuthFeedback('Informe o e-mail e a senha para criar sua conta.',true);
       return;
     }
-
     if(password.length<6){
-      showRecoveryScreen({message:'A senha precisa ter pelo menos 6 caracteres.'});
+      alicerceAuthFeedback('A senha precisa ter pelo menos 6 caracteres.',true);
       return;
     }
-
-    let referralCode='';
+    var referralCode='';
     try{
-      const params=new URLSearchParams(window.location.search);
+      var params=new URLSearchParams(window.location.search);
       referralCode=(params.get('ref')||'').trim().toLowerCase();
-    }catch(e){}
-
-    const signupPayload={email:email,password:password};
-    if(referralCode){
-      signupPayload.options={data:{referral_code:referralCode}};
-    }
-
-    const {data,error}=await window.alicerceSupabase.auth.signUp(signupPayload);
-    if(error)throw error;
-
-    if(data.session&&data.user){
-      await Store.init(data.user.id);
-      Store.screen='home';
+    }catch(ignorar){}
+    var signupPayload={email:email,password:password};
+    if(referralCode)signupPayload.options={data:{referral_code:referralCode}};
+    var cliente=window.alicerceSupabase;
+    if(!cliente||!cliente.auth)throw new Error('Serviço de cadastro indisponível. Tente novamente.');
+    var resposta=await cliente.auth.signUp(signupPayload);
+    if(resposta&&resposta.error)throw resposta.error;
+    var data=resposta&&resposta.data?resposta.data:{};
+    if(!data.user)throw new Error('O serviço não confirmou a criação da conta. Tente novamente.');
+    if(data.session){
+      try{await cliente.auth.signOut({scope:'local'})}catch(erroSaida){console.warn('[Alicerce] Sessão inicial encerrada localmente:',erroSaida)}
+      Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
+      window.__alicerceSplashSeen=true;
       render();
+      alicerceAuthFeedback('Conta criada. Para continuar, entre com seu e-mail e senha.',false);
       return;
     }
-
-    showRecoveryScreen({
-      message:'Conta criada. Verifique seu e-mail para confirmar o cadastro.'
-    });
-  }catch(e){
-    showRecoveryScreen({message:e.message||'Nao foi possivel criar a conta.'});
+    Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
+    window.__alicerceSplashSeen=true;
+    render();
+    alicerceAuthFeedback('Cadastro enviado. Confira seu e-mail para confirmar a conta e depois entre.',false);
+  }catch(erro){
+    var mensagem=String(erro&&erro.message||'');
+    alicerceAuthFeedback(mensagem||'Não foi possível criar a conta. Confira os dados e tente novamente.',true);
   }
 }
 
@@ -13047,12 +13150,12 @@ async function alicerceInicializarSessaoPersistida(){
     if(sessao&&sessao.user&&sessao.user.id){
       await Store.init(sessao.user.id);
       Store.userEmail=String(sessao.user.email||'');
-      Store.screen='home';
+      Store.screen=window.__alicerceRecoveryActive?'passwordRecovery':'home';
       Store.screenData=null;
     }else{
       Store.userId=null;
       Store.userEmail='';
-      Store.screen='login';
+      Store.screen=window.__alicerceRecoveryActive?'passwordRecovery':'login';
       Store.screenData=null;
     }
     render();
@@ -13060,10 +13163,30 @@ async function alicerceInicializarSessaoPersistida(){
   }catch(e){
     console.warn('[Alicerce] Não foi possível restaurar a sessão persistida:',e);
     /* Mantém o login disponível; não apaga a sessão nem os dados salvos. */
-    if(!Store.userId)Store.screen='login';
+    if(!Store.userId)Store.screen=window.__alicerceRecoveryActive?'passwordRecovery':'login';
     render();
     removerGate();
   }
+}
+window.__alicerceRecoveryActive=false;
+try{
+  var alicerceAuth=window.alicerceSupabase&&window.alicerceSupabase.auth;
+  if(alicerceAuth&&typeof alicerceAuth.onAuthStateChange==='function'){
+    alicerceAuth.onAuthStateChange(function(event,session){
+      if(event!=='PASSWORD_RECOVERY')return;
+      window.__alicerceRecoveryActive=true;
+      window.__alicerceSplashSeen=true;
+      if(session&&session.user){
+        Store.userId=session.user.id;
+        Store.userEmail=String(session.user.email||'');
+      }
+      Store.screen='passwordRecovery';
+      Store.screenData=null;
+      render();
+    });
+  }
+}catch(erroAuthRecuperacao){
+  console.warn('[Alicerce] Não foi possível registrar a recuperação de senha:',erroAuthRecuperacao);
 }
 /* INIT */
 try{
