@@ -4,9 +4,9 @@
 -- through Edge Functions using server-only credentials.
 BEGIN;
 
-REVOKE INSERT, UPDATE, DELETE
+REVOKE ALL PRIVILEGES
   ON TABLE public.subscriptions
-  FROM anon, authenticated;
+  FROM PUBLIC, anon, authenticated;
 
 GRANT SELECT
   ON TABLE public.subscriptions
@@ -17,6 +17,6 @@ GRANT SELECT
 -- designed and tested for the WhatsApp linking flow.
 REVOKE ALL PRIVILEGES
   ON TABLE public.whatsapp_accounts
-  FROM anon, authenticated;
+  FROM PUBLIC, anon, authenticated;
 
 COMMIT;
