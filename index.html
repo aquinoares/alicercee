@@ -6258,33 +6258,6 @@ function alicerceLoginVoltar(){
   splash.classList.remove('hidden');
   window.__alicerceSplashSeen=false;
 }
-function alicerceAuthFeedback(message, erro){
-  var host=document.querySelector('#loginLiving .login-card')||document.querySelector('#alicerceLoginFlow .login-card');
-  if(!host){alert(String(message||''));return}
-  var box=document.getElementById('alicerce-auth-feedback');
-  if(!box){
-    box=document.createElement('div');
-    box.id='alicerce-auth-feedback';
-    box.setAttribute('role',erro?'alert':'status');
-    box.style.cssText='margin-top:12px;padding:11px 12px;border-radius:10px;font-size:13px;line-height:1.45;overflow-wrap:anywhere;box-sizing:border-box;';
-    var form=host.querySelector('form');
-    if(form)form.insertAdjacentElement('afterend',box);else host.appendChild(box);
-  }
-  box.setAttribute('role',erro?'alert':'status');
-  box.style.background=erro?'rgba(179,56,46,.14)':'rgba(27,122,78,.14)';
-  box.style.color=erro?'#ffb4ac':'#a4efc5';
-  box.style.border='1px solid '+(erro?'rgba(255,92,92,.35)':'rgba(49,196,141,.35)');
-  box.textContent=String(message||'');
-}
-function alicerceRecoveryFeedback(message, erro){
-  var box=document.getElementById('alicerce-recovery-feedback');
-  if(!box){alert(String(message||''));return}
-  box.style.display='block';
-  box.style.background=erro?'rgba(179,56,46,.14)':'rgba(27,122,78,.14)';
-  box.style.color=erro?'#ffb4ac':'#a4efc5';
-  box.style.border='1px solid '+(erro?'rgba(255,92,92,.35)':'rgba(49,196,141,.35)');
-  box.textContent=String(message||'');
-}
 async function alicerceLoginForgotPassword(){
   var campo=document.getElementById('login-email');
   var email=campo?String(campo.value||'').trim():'';
@@ -6311,12 +6284,43 @@ async function alicerceLoginForgotPassword(){
   }catch(erro){
     var mensagem=String(erro&&erro.message||'');
     if(/redirect.*(allow|allowed)|not.*allowed.*redirect/i.test(mensagem)){
-      alicerceAuthFeedback('Falta autorizar o endereço de recuperação no Supabase. Em Authentication → URL Configuration, adicione: https://aquinoares.github.io/alicercee/',true);
+      alicerceAuthFeedback('Falta autorizar o endereço de recuperação no Supabase. Em Authentication → URL Configuration, adicione: https://alicerce-swart.vercel.app/',true);
     }else{
       alicerceAuthFeedback(mensagem||'Não foi possível solicitar a recuperação agora. Tente novamente.',true);
     }
   }
 }
+
+
+function alicerceAuthFeedback(message, erro){
+  var host=document.querySelector('#loginLiving .login-card')||document.querySelector('#alicerceLoginFlow .login-card');
+  if(!host){alert(String(message||''));return}
+  var box=document.getElementById('alicerce-auth-feedback');
+  if(!box){
+    box=document.createElement('div');
+    box.id='alicerce-auth-feedback';
+    box.setAttribute('role',erro?'alert':'status');
+    box.style.cssText='margin-top:12px;padding:11px 12px;border-radius:10px;font-size:13px;line-height:1.45;overflow-wrap:anywhere;box-sizing:border-box;';
+    var form=host.querySelector('form');
+    if(form)form.insertAdjacentElement('afterend',box);else host.appendChild(box);
+  }
+  box.setAttribute('role',erro?'alert':'status');
+  box.style.background=erro?'rgba(179,56,46,.14)':'rgba(27,122,78,.14)';
+  box.style.color=erro?'#ffb4ac':'#a4efc5';
+  box.style.border='1px solid '+(erro?'rgba(255,92,92,.35)':'rgba(49,196,141,.35)');
+  box.textContent=String(message||'');
+}
+
+function alicerceRecoveryFeedback(message, erro){
+  var box=document.getElementById('alicerce-recovery-feedback');
+  if(!box){alert(String(message||''));return}
+  box.style.display='block';
+  box.style.background=erro?'rgba(179,56,46,.14)':'rgba(27,122,78,.14)';
+  box.style.color=erro?'#ffb4ac':'#a4efc5';
+  box.style.border='1px solid '+(erro?'rgba(255,92,92,.35)':'rgba(49,196,141,.35)');
+  box.textContent=String(message||'');
+}
+
 function renderPasswordRecovery(){
   window.__alicerceSplashSeen=true;
   return '<main class="recovery-wrap" style="min-height:100vh;box-sizing:border-box;background:var(--bg);padding:24px;">'+
@@ -6335,6 +6339,7 @@ function renderPasswordRecovery(){
     '<button type="button" class="btn btn-secondary mt-2" onclick="alicerceCancelarRecuperacao()" style="width:100%;min-height:44px;">Voltar para entrar</button>'+
     '</section></main>';
 }
+
 async function alicerceSalvarNovaSenha(){
   var primeiro=document.getElementById('alicerce-recovery-password');
   var segundo=document.getElementById('alicerce-recovery-confirm');
@@ -6364,6 +6369,7 @@ async function alicerceSalvarNovaSenha(){
     alicerceRecoveryFeedback(mensagem||'Não foi possível alterar a senha. Solicite um novo link e tente novamente.',true);
   }
 }
+
 async function alicerceCancelarRecuperacao(){
   window.__alicerceRecoveryActive=false;
   try{
@@ -6376,7 +6382,7 @@ async function alicerceCancelarRecuperacao(){
   alicerceAuthFeedback('Entre com seu e-mail e senha.',false);
 }
 
-function renderLogin(){function renderLogin(){
+function renderLogin(){
   var meses=['JANEIRO','FEVEREIRO','MAR&Ccedil;O','ABRIL','MAIO','JUNHO','JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
   var dias=['Domingo','Segunda','Ter&ccedil;a','Quarta','Quinta','Sexta','S&aacute;bado'];
   var diasCurto=['D','S','T','Q','Q','S','S'];
@@ -6477,6 +6483,8 @@ async function doLogin(){
     }
   }
 }
+
+
 async function doSignup(){
   try{
     var email=document.getElementById('login-email').value.trim();
@@ -6519,6 +6527,7 @@ async function doSignup(){
     alicerceAuthFeedback(mensagem||'Não foi possível criar a conta. Confira os dados e tente novamente.',true);
   }
 }
+
 
 /* HOME com cards + timers seguros */
 let _dcTimer=null,_dcPaused=false,_dcIndex=0;
@@ -13168,6 +13177,7 @@ async function alicerceInicializarSessaoPersistida(){
     removerGate();
   }
 }
+
 window.__alicerceRecoveryActive=false;
 try{
   var alicerceAuth=window.alicerceSupabase&&window.alicerceSupabase.auth;
