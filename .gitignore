@@ -1,3 +1,11 @@
+# Segredos e configuracoes locais: nunca versionar chaves ou tokens
+.env
+.env.*
+!.env.example
+!.env.*.example
+!**/.env.example
+!**/.env.*.example
+
 # Arquivos temporários de validação
 _alicerce_check.js
 
