@@ -170,10 +170,7 @@ Deno.serve(async (req) => {
      */
     const payload = await req.json();
 
-    console.log(
-      "KIRVANO_WEBHOOK_RECEBIDO:",
-      JSON.stringify(payload)
-    );
+    console.log("KIRVANO_WEBHOOK_RECEBIDO");
 
     /*
      * Identifica o evento.
@@ -186,10 +183,7 @@ Deno.serve(async (req) => {
 
     console.log("KIRVANO_EVENTO:", event);
 
-   console.log(
-      "KIRVANO_PRODUTOS:",
-      JSON.stringify(payload?.products || [])
-   );
+   // Não registrar dados de produtos/payload: podem conter dados de cliente.
 
     /*
      * Carrinho abandonado não altera assinatura.
@@ -311,10 +305,7 @@ Deno.serve(async (req) => {
      * Não criamos conta automaticamente.
      */
     if (!user) {
-      console.warn(
-        "USUARIO_NAO_ENCONTRADO:",
-        email
-      );
+      console.warn("USUARIO_NAO_ENCONTRADO");
 
       return json({
         ok: true,
@@ -327,11 +318,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(
-      "USUARIO_ENCONTRADO:",
-      user.id,
-      user.email
-    );
+    console.log("USUARIO_ENCONTRADO");
 
     /*
      * ID da transação.
@@ -401,10 +388,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log(
-        "ASSINATURA_LIBERADA:",
-        JSON.stringify(subscription)
-      );
+      console.log("ASSINATURA_LIBERADA");
 
       return json({
         ok: true,
@@ -477,10 +461,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log(
-        "ASSINATURA_RENOVADA:",
-        JSON.stringify(subscription)
-      );
+      console.log("ASSINATURA_RENOVADA");
 
       return json({
         ok: true,
@@ -558,10 +539,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log(
-        "ASSINATURA_CANCELADA:",
-        JSON.stringify(subscription)
-      );
+      console.log("ASSINATURA_CANCELADA");
 
       return json({
         ok: true,
@@ -632,9 +610,8 @@ Deno.serve(async (req) => {
 
       console.log(
         event === "SALE_REFUNDED"
-          ? "ACESSO_REVOGADO_REEMBOLSO:"
-          : "ACESSO_REVOGADO_CHARGEBACK:",
-        JSON.stringify(subscription)
+          ? "ACESSO_REVOGADO_REEMBOLSO"
+          : "ACESSO_REVOGADO_CHARGEBACK"
       );
 
       return json({
@@ -704,10 +681,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log(
-        "ASSINATURA_EXPIRADA:",
-        JSON.stringify(subscription)
-      );
+      console.log("ASSINATURA_EXPIRADA");
 
       return json({
         ok: true,
