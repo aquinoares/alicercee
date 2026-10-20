@@ -1,0 +1,44 @@
+name: Dependency security audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "41 8 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  supabase-js-audit:
+    name: Audit the pinned Supabase JS SDK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Read the exact SDK version pinned in index.html
+        id: sdk
+        shell: bash
+        run: |
+          set -euo pipefail
+          match="$(grep -oE 'https://cdn\.jsdelivr\.net/npm/@supabase/supabase-js@[0-9]+\.[0-9]+\.[0-9]+/dist/umd/supabase\.min\.js' index.html | head -n 1 || true)"
+          if [ -z "$match" ]; then
+            echo "Pinned Supabase SDK URL not found in index.html" >&2
+            exit 1
+          fi
+          version="$(printf '%s' "$match" | sed -E 's#.*@([0-9]+\.[0-9]+\.[0-9]+)/dist/.*#\1#')"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "Auditing @supabase/supabase-js@$version"
+      - name: Audit package dependency tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          audit_dir="$(mktemp -d)"
+          trap 'rm -rf "$audit_dir"' EXIT
+          cd "$audit_dir"
+          npm init -y >/dev/null
+          npm install --package-lock-only --ignore-scripts --save-exact "@supabase/supabase-js@${{ steps.sdk.outputs.version }}"
+          npm audit --audit-level=high
