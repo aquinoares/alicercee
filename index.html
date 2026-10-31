@@ -10293,7 +10293,8 @@ function selectGastoCardType(tipo){
 function renderAddGasto(){
   const data=Store.screenData||{};
   const html=[];
-  html.push('<div class="content" style="max-width:620px;margin:0 auto;padding-bottom:160px;position:relative;z-index:1">');
+  html.push('<div id="alicerce-add-gasto" class="content" style="max-width:620px;margin:0 auto;padding-bottom:160px;position:relative;z-index:1">');
+  html.push('<style id="alicerce-add-gasto-layout">#alicerce-add-gasto .gasto-payment-grid{align-items:stretch}#alicerce-add-gasto .gasto-payment-grid .btn{display:flex;width:100%;min-width:0;min-height:72px;padding:10px 5px;flex-direction:column;align-items:center;justify-content:center;gap:5px;line-height:1.15;text-align:center;white-space:normal}#alicerce-add-gasto .gasto-payment-grid .ico{width:18px;height:18px;flex:0 0 18px}#alicerce-add-gasto .gasto-option-grid{align-items:stretch}#alicerce-add-gasto .gasto-option-grid .btn{display:flex;width:100%;min-width:0;min-height:50px;padding:9px 7px;align-items:center;justify-content:center;line-height:1.2;text-align:center;white-space:normal}</style>');
   html.push('<button type="button" class="btn btn-secondary btn-sm mt-4" onclick="go(\''+(data.novaCompraFlow?'cartoes':'add')+'\')">'+icon('back','ico-sm')+' '+(data.novaCompraFlow?'Voltar aos cartoes':'Voltar')+'</button>');
   html.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:22px">');
   html.push('<div><div style="font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text2)">NOVO LANÇAMENTO</div><h2 style="margin:5px 0 0;color:var(--text)">Adicionar gasto</h2></div>');
@@ -10304,7 +10305,7 @@ function renderAddGasto(){
   html.push('<div class="form-group mt-4"><label class="form-label" for="ag-item">O que você comprou?</label><input id="ag-item" type="text" autocomplete="off" placeholder="Ex.: Almoço, roupa, combustível" value="'+esc(data.itemInput||'')+'"></div>');
   html.push('<div class="form-group mt-3"><label class="form-label" for="ag-local">Onde foi?</label><input id="ag-local" type="text" autocomplete="off" placeholder="Nome do estabelecimento (opcional)" value="'+esc(data.localInput||'')+'"></div>');
   /* ALICERCE_NOVA_COMPRA_SO_CARTAO_V5 */
-  html.push('<div style="margin-top:24px"><div class="form-label" style="margin-bottom:10px">Forma de pagamento</div><div style="display:grid;grid-template-columns:'+(data.novaCompraFlow?'1fr':'repeat(3,minmax(0,1fr))')+';gap:8px">');
+  html.push('<div style="margin-top:24px"><div class="form-label" style="margin-bottom:10px">Forma de pagamento</div><div class="gasto-payment-grid" style="display:grid;grid-template-columns:'+(data.novaCompraFlow?'1fr':'repeat(3,minmax(0,1fr))')+';gap:8px">');
   if(data.novaCompraFlow){
     html.push('<button type="button" id="pay-card" class="btn btn-primary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' Cartão</button></div></div>');
   }else{
@@ -10319,10 +10320,10 @@ function renderAddGasto(){
     html.push('<option value="'+esc(card.id)+'" '+(String(data.cardId||'')===String(card.id)?'selected':'')+'>'+esc(card.nome||'Cartão')+'</option>');
   });
   html.push('</select></div>');
-  html.push('<div class="form-group mt-3"><label class="form-label">Tipo de cartão</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+  html.push('<div class="form-group mt-3"><label class="form-label">Tipo de cartão</label><div class="gasto-option-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
   html.push('<button type="button" id="gasto-card-credit" class="btn '+(data.cardType==='credito'?'btn-primary':'btn-secondary')+'" onclick="selectGastoCardType(\'credito\')">Crédito</button>');
   html.push('<button type="button" id="gasto-card-debit" class="btn '+(data.cardType==='debito'?'btn-primary':'btn-secondary')+'" onclick="selectGastoCardType(\'debito\')">Débito</button></div></div>');
-  html.push('<div class="form-group mt-3"><label class="form-label">Este cartão é</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
+  html.push('<div class="form-group mt-3"><label class="form-label">Este cartão é</label><div class="gasto-option-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">');
   html.push('<button type="button" id="card-own" class="btn btn-secondary" onclick="selectGastoCardOwner(\'meu\')">Meu cartão</button>');
   html.push('<button type="button" id="card-borrowed" class="btn btn-secondary" onclick="selectGastoCardOwner(\'emprestado\')">Emprestado</button></div></div>');
   html.push('<div id="gasto-borrowed-owner" style="display:'+(data.cardOwnerType==='emprestado'?'block':'none')+'"><div class="form-group mt-3"><label class="form-label" for="ag-card-owner">Quem vai reembolsar?</label><input id="ag-card-owner" type="text" autocomplete="off" value="'+esc(data.cardOwner||'')+'" placeholder="Nome da pessoa"><div style="color:var(--text2);font-size:.78rem;margin-top:6px">Você poderá acompanhar o valor a receber.</div></div></div>');
