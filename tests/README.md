@@ -1,35 +1,42 @@
-# Alicerce — testes de interface e acessibilidade
+# Alicerce — testes de interface, acessibilidade e regressão
 
-Esta etapa acrescenta Playwright e axe-core sem alterar o index.html, o motor financeiro ou as integrações do aplicativo.
+Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da interface com dados artificiais. As alterações visuais do aplicativo nesta proposta são limitadas à acessibilidade inicial; os novos cenários ampliam principalmente a cobertura automatizada.
 
-## Cobertura inicial
+## Cobertura atual
 
-- Recuperação de sessão sem usuário conectado e exibição da abertura.
-- Transição da abertura para o login.
-- Feedback esperado para credenciais inválidas, usando um cliente Supabase simulado.
-- Larguras de celular de 320, 360 e 390 pixels, com captura de tela e verificação de rolagem horizontal.
-- Baseline axe nas telas de abertura e login, nos quatro temas: azul/grafite, claro/prata, marinho e moderno.
+- Inicialização sem sessão e transição da abertura para o login.
+- Retorno seguro para credenciais inválidas.
+- Cadastro com confirmação por e-mail, incluindo o código de indicação quando presente.
+- Solicitação de recuperação de senha e endereço de retorno configurado pelo aplicativo.
+- Layout mobile em 320, 360 e 390 pixels e permissão de zoom do navegador.
+- Baseline axe na abertura e no login nos quatro temas (grafite, prata, marinho e moderno).
+- Renderização de Home, Gastos, Cartões e Configurações.
+- Cadastro de gasto manual e de cartão, com verificação dos dados persistidos no localStorage após recarregar a página.
+- Pré-visualização dos PDFs de Gastos e Visão Financeira.
+- Baseline axe das telas Home, Gastos, Cartões e Configurações.
 
-## Isolamento
+## Isolamento e limites
 
-- O script CDN do Supabase é interceptado pelo teste e substituído por um mock.
-- Chamadas para o domínio Supabase do Alicerce são bloqueadas no navegador de teste.
-- O teste não usa conta, senha, token ou dados financeiros reais.
-- O servidor estático local lê os arquivos do repositório, sem modificar o aplicativo.
+- O CDN do Supabase é interceptado pelo Playwright e substituído por um mock local.
+- Chamadas ao domínio Supabase do projeto são bloqueadas no navegador de teste.
+- Os fluxos de escrita usam um identificador fictício e validam o armazenamento local; a sessão simulada permanece nula e o teste exige zero operações upsert.
+- Nenhuma conta, senha, token ou dado financeiro real é usado.
+- A suíte não comprova entrega real de e-mail, autenticação com o Supabase de produção ou sincronização real em nuvem. Esses cenários exigem ambiente de homologação isolado e credenciais próprias, não dados de clientes.
+- O teste de arquivo/imagem não implementa OCR real; o OCR continua fora do escopo desta suíte.
 
-## Requisito de ambiente e execução local
+## Execução
 
-Use Node.js 22.12.0 ou superior, exigido pelo axe-core/playwright 4.14.0.
+Use Node.js 22.12.0 ou superior.
 
+```sh
 npm ci
 npx playwright install chromium
 npm run test:e2e
 npm run test:e2e:report
+```
 
-As dependências e suas dependências transitivas ficam fixadas no package-lock.json. O CI usa npm ci para reproduzir exatamente essa árvore.
+O CI executa `npm ci` com versões fixadas no `package-lock.json`, instala Chromium e anexa o relatório/capturas ao workflow.
 
-## Política do baseline
+## Acessibilidade
 
-As violações axe são coletadas como diagnóstico e anexadas ao relatório; não bloqueiam o primeiro baseline. Depois de revisar e corrigir as ocorrências, as regras aprovadas podem ser convertidas em critérios bloqueantes.
-
-Nenhuma alteração visual ou correção no aplicativo é feita automaticamente nesta etapa.
+O axe-core é executado com critérios WCAG 2.1 A/AA. As telas financeiras principais são bloqueadas quando uma violação é encontrada; a abertura e o login mantêm relatório de baseline para revisão contínua.
