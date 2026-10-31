@@ -1,0 +1,272 @@
+[
+  {
+    "id": "card-carrefour-terminal",
+    "text": "PAG*CARREFOUR 00482 39,90",
+    "merchant": "Carrefour",
+    "amount": 39.9,
+    "item": null,
+    "categoria": "comida",
+    "subcategoria": "mercado",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-ifood-restaurant",
+    "text": "IFOOD*RESTAURANTE 00482 28,50",
+    "merchant": "Ifood",
+    "amount": 28.5,
+    "item": null,
+    "categoria": "comida",
+    "subcategoria": "delivery",
+    "confidence": "medium"
+  },
+  {
+    "id": "bill-celpe-payment",
+    "text": "PAGTO CELPE NSU 884433 134,20",
+    "merchant": "Neoenergia",
+    "amount": 134.2,
+    "item": null,
+    "categoria": "moradia",
+    "subcategoria": "energia",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-uber-trip",
+    "text": "EC*PAG*UBER TRIP 17,90",
+    "merchant": "Uber",
+    "amount": 17.9,
+    "item": null,
+    "categoria": "transporte",
+    "subcategoria": "uber",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-99-app",
+    "text": "99APP*CORRIDA 00128 12,40",
+    "merchant": "99",
+    "amount": 12.4,
+    "item": null,
+    "categoria": "transporte",
+    "subcategoria": "99",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-ipiranga-fuel",
+    "text": "DEB*POSTO IPIRANGA 00481 50,00",
+    "merchant": "Ipiranga",
+    "amount": 50,
+    "item": null,
+    "categoria": "transporte",
+    "subcategoria": "combustivel",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-drogasil",
+    "text": "PAG*DROGASIL 7,50",
+    "merchant": "Drogasil",
+    "amount": 7.5,
+    "item": null,
+    "categoria": "saude",
+    "subcategoria": "farmacia",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-bompreco",
+    "text": "COMPRA APROVADA SUPERMERCADO BOMPRECO 00009 78,40",
+    "merchant": "Bompreco",
+    "amount": 78.4,
+    "item": null,
+    "categoria": "comida",
+    "subcategoria": "mercado",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-unknown-mercearia",
+    "text": "PG*MERCEARIA SAO JOAO 000478 26,30",
+    "merchant": null,
+    "amount": 26.3,
+    "item": null,
+    "categoria": null,
+    "subcategoria": null,
+    "confidence": "low"
+  },
+  {
+    "id": "card-unknown-generic",
+    "text": "PAGAMENTO LOJA 00482 39,90",
+    "merchant": null,
+    "amount": 39.9,
+    "item": null,
+    "categoria": null,
+    "subcategoria": null,
+    "confidence": "low"
+  },
+  {
+    "id": "card-carrefour-currency",
+    "text": "COMPRA R$ 1.234,56 CARREFOUR",
+    "merchant": "Carrefour",
+    "amount": 1234.56,
+    "item": null,
+    "categoria": "comida",
+    "subcategoria": "mercado",
+    "confidence": "medium"
+  },
+  {
+    "id": "bill-compesa",
+    "text": "PIX COMPESA FATURA 123456 81,65",
+    "merchant": "Compesa",
+    "amount": 81.65,
+    "item": null,
+    "categoria": "moradia",
+    "subcategoria": "agua",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-neoenergia-visa",
+    "text": "VISA DEBITO SUPERMERCADO BOMPRECO NSU 998877 VALOR 78,40",
+    "merchant": "Bompreco",
+    "amount": 78.4,
+    "item": null,
+    "categoria": "comida",
+    "subcategoria": "mercado",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-supermercados-bh",
+    "text": "PAG*SUPERMERCADOS BH LJ 012 45,90",
+    "merchant": "Supermercados bh",
+    "amount": 45.9,
+    "item": null,
+    "categoria": "comida",
+    "subcategoria": "mercado",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-zona-sul",
+    "text": "COMPRA ZONA SUL 22331 62,40",
+    "merchant": "Zona sul",
+    "amount": 62.4,
+    "item": null,
+    "categoria": "comida",
+    "subcategoria": "mercado",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-oba-hortifruti",
+    "text": "COMPRA OBA HORTIFRUTI 04598 35,00",
+    "merchant": "Oba hortifruti",
+    "amount": 35,
+    "item": null,
+    "categoria": "comida",
+    "subcategoria": "feira",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-mateus",
+    "text": "PG*SUPERMERCADO MATEUS 88331 78,50",
+    "merchant": "Mateus supermercados",
+    "amount": 78.5,
+    "item": null,
+    "categoria": "comida",
+    "subcategoria": "mercado",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-drogaria-sp",
+    "text": "PAG*DROGARIA SAO PAULO 00314 16,30",
+    "merchant": "Drogaria sao paulo",
+    "amount": 16.3,
+    "item": null,
+    "categoria": "saude",
+    "subcategoria": "farmacia",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-pacheco",
+    "text": "COMPRA DROGARIA PACHECO 00412 29,90",
+    "merchant": "Drogaria pacheco",
+    "amount": 29.9,
+    "item": null,
+    "categoria": "saude",
+    "subcategoria": "farmacia",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-panvel",
+    "text": "PANVEL FARMACIAS 0182 22,80",
+    "merchant": "Panvel",
+    "amount": 22.8,
+    "item": null,
+    "categoria": "saude",
+    "subcategoria": "farmacia",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-nissei",
+    "text": "NISSEI FARMACIAS 0194 18,50",
+    "merchant": "Nissei",
+    "amount": 18.5,
+    "item": null,
+    "categoria": "saude",
+    "subcategoria": "farmacia",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-extrafarma",
+    "text": "PAG*EXTRAFARMA 0182 21,40",
+    "merchant": "Extrafarma",
+    "amount": 21.4,
+    "item": null,
+    "categoria": "saude",
+    "subcategoria": "farmacia",
+    "confidence": "medium"
+  },
+  {
+    "id": "bill-equatorial",
+    "text": "PAG*EQUATORIAL ENERGIA 009991 142,70",
+    "merchant": "Equatorial energia",
+    "amount": 142.7,
+    "item": null,
+    "categoria": "moradia",
+    "subcategoria": "energia",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-renner",
+    "text": "COMPRA LOJAS RENNER 00091 119,90",
+    "merchant": "Lojas renner",
+    "amount": 119.9,
+    "item": null,
+    "categoria": "vestuario",
+    "subcategoria": "roupas",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-riachuelo",
+    "text": "PAG*RIACHUELO 00831 89,90",
+    "merchant": "Riachuelo",
+    "amount": 89.9,
+    "item": null,
+    "categoria": "vestuario",
+    "subcategoria": "roupas",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-99-taxi-compact",
+    "text": "COMPRA 99 TAXI 00128 12,40",
+    "merchant": "99",
+    "amount": 12.4,
+    "item": null,
+    "categoria": "transporte",
+    "subcategoria": "99",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-value-not-99-merchant",
+    "text": "PAGAMENTO 99,90 COD 004827",
+    "merchant": null,
+    "amount": 99.9,
+    "item": null,
+    "categoria": null,
+    "subcategoria": null,
+    "confidence": "low"
+  }
+]

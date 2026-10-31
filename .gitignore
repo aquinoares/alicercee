@@ -29,3 +29,8 @@ teste-*.html
 .vscode/
 
 index-backup.html
+
+# Testes automatizados de interface
+node_modules/
+playwright-report/
+test-results/
