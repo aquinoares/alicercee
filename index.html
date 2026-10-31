@@ -4899,7 +4899,18 @@ const ALICERCE_MERCHANT_ALIASES = [
   {key:'99',aliases:['99 app','99app','99 pop','99pop','99 taxi','99taxi','99']},
   {key:'raia',aliases:['droga raia']},
   {key:'neoenergia',aliases:['neoenergia pernambuco','neoenergia cosern','neoenergia','celpe']},
-  {key:'compesa',aliases:['compesa']}
+  {key:'compesa',aliases:['compesa']},
+  {key:'supermercados bh',aliases:['supermercados bh','supermercado bh','bh supermercados']},
+  {key:'zona sul',aliases:['supermercado zona sul','zona sul']},
+  {key:'oba hortifruti',aliases:['oba hortifruti','hortifruti oba']},
+  {key:'mateus supermercados',aliases:['supermercados mateus','supermercado mateus','mix mateus','hiper mateus','mateus supermercados']},
+  {key:'drogaria sao paulo',aliases:['drogaria sao paulo','drogaria sp']},
+  {key:'drogaria pacheco',aliases:['drogaria pacheco','drogarias pacheco']},
+  {key:'panvel',aliases:['farmacias panvel','farmacia panvel','panvel']},
+  {key:'nissei',aliases:['farmacias nissei','farmacia nissei','nissei']},
+  {key:'extrafarma',aliases:['extrafarma']},
+  {key:'equatorial energia',aliases:['equatorial energia']},
+  {key:'lojas renner',aliases:['lojas renner','renner']}
 ];
 
 function normalizeAlicerMerchantIdentity(value){
@@ -4947,6 +4958,10 @@ const Interpreter={
     'pao de acucar':{c:'comida',s:'mercado'},
     'big':{c:'comida',s:'mercado'},
     'bompreco':{c:'comida',s:'mercado'},
+    'supermercados bh':{c:'comida',s:'mercado'},
+    'zona sul':{c:'comida',s:'mercado'},
+    'oba hortifruti':{c:'comida',s:'feira'},
+    'mateus supermercados':{c:'comida',s:'mercado'},
     'supermercado':{c:'comida',s:'mercado'},
     'padaria':{c:'comida',s:'padaria'},
     'ifood':{c:'comida',s:'delivery'},
@@ -4970,9 +4985,15 @@ const Interpreter={
     'pague menos':{c:'saude',s:'farmacia'},
     'drogasil':{c:'saude',s:'farmacia'},
     'raia':{c:'saude',s:'farmacia'},
+    'drogaria sao paulo':{c:'saude',s:'farmacia'},
+    'drogaria pacheco':{c:'saude',s:'farmacia'},
+    'panvel':{c:'saude',s:'farmacia'},
+    'nissei':{c:'saude',s:'farmacia'},
+    'extrafarma':{c:'saude',s:'farmacia'},
     'netflix':{c:'lazer',s:'streaming'},
     'spotify':{c:'lazer',s:'streaming'},
     'neoenergia':{c:'moradia',s:'energia'},
+    'equatorial energia':{c:'moradia',s:'energia'},
     'sabesp':{c:'moradia',s:'agua'},
     'compesa':{c:'moradia',s:'agua'},
 
@@ -5003,6 +5024,7 @@ const Interpreter={
     'shein':{c:'vestuario',s:'roupas'},
     'renner':{c:'vestuario',s:'roupas'},
     'riachuelo':{c:'vestuario',s:'roupas'},
+    'lojas renner':{c:'vestuario',s:'roupas'},
     'cea':{c:'vestuario',s:'roupas'},
 
     'aposta':{c:'apostas',s:'apostas_esportivas'},
