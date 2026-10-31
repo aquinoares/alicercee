@@ -34,24 +34,65 @@ async function abrirAbertura(page) {
   await expect(page.locator('#livingSplash')).toBeVisible();
 }
 
+async function prepararTelaSemNuvem(page, screen) {
+  await abrirAbertura(page);
+  await page.evaluate(function (screenName) {
+    Store.userId = null;
+    Store.userEmail = '';
+    Store.lang = 'pt';
+    Store.theme = 'azul';
+    Store.screenData = null;
+    Store.subscription = null;
+    Store.settings = { lang: 'pt', theme: 'azul' };
+    Store.movements = [];
+    Store.cards = [];
+    Store.loans = [];
+    Store.installments = [];
+    Store.commitments = [];
+    Store.financing = [];
+    Store.consortium = [];
+    Store.extraIncome = [];
+    Store.insurance = [];
+    Store.familyPeople = [];
+    Store.familyCategories = [];
+    Store.doctors = [];
+    Store.medications = [];
+    Store.doseLogs = [];
+    Store.learning = {};
+    Store.screen = screenName;
+    document.body.setAttribute('data-theme', 'azul');
+    var app = document.getElementById('app');
+    app.classList.remove('hidden');
+    app.innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  }, screen);
+  await expect(page.locator('#app')).toBeVisible();
+}
+
 async function registrarAxe(page, testInfo, nome) {
   const resultado = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
     .analyze();
 
+  const violacoes = resultado.violations.map(function (item) {
+    return {
+      id: item.id,
+      impacto: item.impact,
+      regra: item.help,
+      quantidadeElementos: item.nodes.length,
+      elementos: item.nodes.slice(0, 12).map(function (node) {
+        return {
+          seletores: node.target,
+          resumo: node.failureSummary
+        };
+      })
+    };
+  });
+
   const resumo = {
     estado: nome,
     url: page.url(),
-    totalViolacoes: resultado.violations.length,
-    violacoes: resultado.violations.map(function (item) {
-      return {
-        id: item.id,
-        impacto: item.impact,
-        regra: item.help,
-        quantidadeElementos: item.nodes.length,
-        seletores: item.nodes.slice(0, 10).map(function (node) { return node.target; })
-      };
-    }),
+    totalViolacoes: violacoes.length,
+    violacoes: violacoes,
     incompletas: resultado.incomplete.map(function (item) {
       return { id: item.id, regra: item.help };
     })
@@ -61,14 +102,15 @@ async function registrarAxe(page, testInfo, nome) {
     body: Buffer.from(JSON.stringify(resumo, null, 2), 'utf8'),
     contentType: 'application/json'
   });
-  console.log('[axe:' + nome + '] ' + resumo.totalViolacoes + ' violações; relatório anexado ao teste.');
+  console.log('[axe:' + nome + '] ' + JSON.stringify(violacoes));
   expect(resultado.violations).toBeInstanceOf(Array);
 }
 
 test('restaura sem sessão persistida e libera a abertura do Alicerce', async function ({ page }) {
   await abrirAbertura(page);
   await expect(page.locator('#loginLiving')).toBeHidden();
-  await expect(page.getByRole('button', { name: /começar/i })).toBeVisible();
+  await expect(page.locator('#calGlassBtn')).toBeVisible();
+  await expect(page.locator('#calGlassBtn')).toHaveAttribute('type', 'button');
 });
 
 test('mostra retorno seguro quando o login recebe credenciais inválidas', async function ({ page }) {
@@ -116,6 +158,15 @@ test('mantém o layout dentro das larguras comuns de celular', async function ({
   }
 });
 
+test('não bloqueia o zoom do navegador no celular', async function ({ page }) {
+  await abrirAbertura(page);
+  const viewport = await page.locator('meta[name="viewport"]').getAttribute('content');
+  expect(viewport).toContain('width=device-width');
+  expect(viewport).toContain('initial-scale=1');
+  expect(viewport).not.toMatch(/user-scalable\s*=\s*no/i);
+  expect(viewport).not.toMatch(/maximum-scale\s*=\s*1(?:\.0+)?(?:,|$)/i);
+});
+
 test('registra baseline axe nas quatro opções de tema, na abertura e no login', async function ({ page }, testInfo) {
   await abrirAbertura(page);
 
@@ -139,5 +190,87 @@ test('registra baseline axe nas quatro opções de tema, na abertura e no login'
       document.body.setAttribute('data-theme', name);
     }, theme.name);
     await registrarAxe(page, testInfo, 'login-' + theme.name);
+  }
+});
+
+test('renderiza Home, Gastos, Cartões e Configurações com estado isolado', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await expect(page.locator('.balance-grid')).toBeVisible();
+  await expect(page.locator('.section-title')).toContainText(/compromissos/i);
+
+  await prepararTelaSemNuvem(page, 'gastos');
+  await expect(page.locator('#alicerce-gastos-screen')).toBeVisible();
+  await expect(page.locator('#alicerce-gastos-screen')).toContainText('Meus gastos');
+
+  await prepararTelaSemNuvem(page, 'cartoes');
+  await expect(page.locator('.ccr-head')).toBeVisible();
+  await expect(page.locator('.cc2-empty')).toBeVisible();
+
+  await prepararTelaSemNuvem(page, 'config');
+  await expect(page.locator('h2')).toContainText(/configura/i);
+  await expect(page.locator('select').first().locator('option')).toHaveCount(4);
+  await expect(page.locator('select').nth(1).locator('option')).toHaveCount(3);
+});
+
+test('gera prévias dos PDFs de Gastos e Visão Financeira sem abrir janela externa', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'gastos');
+  await page.evaluate(function () {
+    var hoje = Clock.now();
+    var data = String(hoje.getFullYear()) + '-' + String(hoje.getMonth() + 1).padStart(2, '0') + '-15';
+    Store.userId = 'alicerce-e2e-local';
+    Store.movements = [
+      {
+        id: 'e2e-expense-1',
+        userId: Store.userId,
+        tipo: 'despesa',
+        status: 'pago',
+        data: data,
+        valor: 123.45,
+        categoria: 'comida',
+        subcategoria: 'mercado',
+        descricao: 'Compra de teste Alicerce'
+      },
+      {
+        id: 'e2e-income-1',
+        userId: Store.userId,
+        tipo: 'receita',
+        status: 'recebido',
+        data: data,
+        valor: 250.00,
+        descricao: 'Entrada de teste Alicerce'
+      }
+    ];
+    document.getElementById('app').innerHTML = renderHeader() + renderGastos() + renderBottomNav();
+  });
+
+  const popupInicial = page.context().pages().length;
+  await page.locator('#alicerce-gastos-screen button[aria-label="Exportar extrato em PDF"]').click();
+  await expect(page.locator('#alicerce-gastos-pdf-preview')).toBeVisible();
+  const gastosBody = page.frameLocator('#al-gastos-pdf-frame').locator('body');
+  await expect(gastosBody).toContainText('RELATÓRIO DE GASTOS');
+  await expect(gastosBody).toContainText('Compra de teste Alicerce');
+  await expect(page.locator('#al-gastos-pdf-print')).toBeEnabled();
+  await page.locator('#al-gastos-pdf-close').click();
+  await expect(page.locator('#alicerce-gastos-pdf-preview')).toHaveCount(0);
+
+  await page.evaluate(function () {
+    generateMonthlyPDF();
+  });
+  await expect(page.locator('#alicerce-pdf-visao-preview')).toBeVisible();
+  const monthlyBody = page.frameLocator('#al-pdf-preview-frame').locator('body');
+  await expect(monthlyBody).toContainText('Relatório de análise financeira');
+  await expect(monthlyBody).toContainText('Compra de teste Alicerce');
+  await expect(page.locator('#al-pdf-preview-print')).toBeEnabled();
+  await page.locator('#al-pdf-preview-close').click();
+  await expect(page.locator('#alicerce-pdf-visao-preview')).toHaveCount(0);
+
+  expect(page.context().pages().length).toBe(popupInicial);
+});
+
+test('registra baseline axe nas telas financeiras principais em celular', async function ({ page }, testInfo) {
+  for (const screen of ['home', 'gastos', 'cartoes', 'config']) {
+    await prepararTelaSemNuvem(page, screen);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await registrarAxe(page, testInfo, 'tela-' + screen);
   }
 });
