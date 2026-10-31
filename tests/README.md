@@ -23,11 +23,12 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 - Aprendizado por correção explícita vinculado a estabelecimento + produto, sem contaminar outros itens.
 - Reconhecimento de lanches, fast food e subcategorias válidas da taxonomia.
 - Normalização conservadora de aliases brasileiros e sufixos de loja/terminal, preservando a identidade de estabelecimentos desconhecidos.
+- Benchmark curado de 37 exemplos brasileiros sintéticos, com medição de acerto por categoria e subcategoria.
 - Baseline axe das telas Home, Gastos, Cartões e Configurações.
 
 ## Resultado automatizado atual
 
-A suíte reúne 27 cenários Playwright. O conjunto de casos brasileiros é uma base de regressão curada para detectar erros conhecidos; ele não representa, sozinho, a precisão real da classificação em transações de produção. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
+A suíte reúne 28 cenários Playwright e executa um benchmark com 37 exemplos brasileiros curados. Os exemplos são sintéticos e servem para regressão do comportamento esperado; não são transações de clientes e não representam, sozinhos, a precisão real em produção. O CI imprime acertos e total por categoria e par categoria/subcategoria. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
 
 ## Isolamento e limites
 
