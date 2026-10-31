@@ -12,8 +12,15 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 - Baseline axe na abertura e no login nos quatro temas (grafite, prata, marinho e moderno).
 - Renderização de Home, Gastos, Cartões e Configurações.
 - Cadastro de gasto manual e de cartão, com verificação dos dados persistidos no localStorage após recarregar a página.
+- Reclassificação de categoria/subcategoria e confirmação de gasto.
+- Compra no crédito à vista e parcelada, com conferência de valores em centavos, número de parcelas e vencimentos.
+- Edição e exclusão de cartões, verificando a preservação de parcelas e empréstimos não relacionados.
 - Pré-visualização dos PDFs de Gastos e Visão Financeira.
 - Baseline axe das telas Home, Gastos, Cartões e Configurações.
+
+## Resultado automatizado atual
+
+A suíte reúne 17 cenários Playwright. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
 
 ## Isolamento e limites
 
