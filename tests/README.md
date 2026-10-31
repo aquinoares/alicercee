@@ -29,10 +29,12 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 - Testes de colisão para identificadores numéricos e calibração conservadora de confiança: loja isolada = média, produto ou correção individual = alta, descrição sem evidência = baixa.
 - Extração monetária que prioriza valores com moeda/rótulo e valores decimais finais, sem confundir NSU/IDs longos com o total da compra.
 - Baseline axe das telas Home, Gastos, Cartões e Configurações.
+- Interpretação contextual da Alicerce IA com perguntas por categoria/subcategoria, continuidade de período, receitas, saldo disponível e simulação de economia usando dados financeiros sintéticos.
+- Isolamento do histórico da conversa quando a conta ativa muda; histórico mantido apenas em memória da sessão.
 
 ## Resultado automatizado atual
 
-A suíte reúne 30 cenários Playwright, executa um benchmark de 43 exemplos de despesas brasileiras e um segundo benchmark com 27 descrições bancárias ruidosas. Os exemplos são sintéticos e servem para regressão do comportamento esperado; não são transações de clientes e não representam, sozinhos, a precisão real em produção. O CI imprime acertos e total por categoria e par categoria/subcategoria. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
+A suíte reúne 39 cenários Playwright, executa um benchmark de 43 exemplos de despesas brasileiras e um segundo benchmark com 27 descrições bancárias ruidosas. Os exemplos são sintéticos e servem para regressão do comportamento esperado; não são transações de clientes e não representam, sozinhos, a precisão real em produção. O CI imprime acertos e total por categoria e par categoria/subcategoria. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
 
 ## Isolamento e limites
 
