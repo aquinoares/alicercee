@@ -19,11 +19,15 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 - Isolamento de dois usuários no mock que reproduz a regra de acesso por proprietário, incluindo bloqueio de gravação com sessão incompatível.
 - Falha simulada de sincronização, verificando que a cópia local permanece preservada.
 - Pré-visualização dos PDFs de Gastos e Visão Financeira.
+- Classificação de produto antes da categoria ampla do estabelecimento, com exemplos como shampoo e detergente no Carrefour.
+- Aprendizado por correção explícita vinculado a estabelecimento + produto, sem contaminar outros itens.
+- Reconhecimento de lanches, fast food e subcategorias válidas da taxonomia.
+- Normalização conservadora de aliases brasileiros e sufixos de loja/terminal, preservando a identidade de estabelecimentos desconhecidos.
 - Baseline axe das telas Home, Gastos, Cartões e Configurações.
 
 ## Resultado automatizado atual
 
-A suíte reúne 20 cenários Playwright. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
+A suíte reúne 27 cenários Playwright. O conjunto de casos brasileiros é uma base de regressão curada para detectar erros conhecidos; ele não representa, sozinho, a precisão real da classificação em transações de produção. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
 
 ## Isolamento e limites
 
