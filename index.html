@@ -10306,10 +10306,10 @@ function renderAddGasto(){
   /* ALICERCE_NOVA_COMPRA_SO_CARTAO_V5 */
   html.push('<div style="margin-top:24px"><div class="form-label" style="margin-bottom:10px">Forma de pagamento</div><div style="display:grid;grid-template-columns:'+(data.novaCompraFlow?'1fr':'repeat(3,minmax(0,1fr))')+';gap:8px">');
   if(data.novaCompraFlow){
-    html.push('<button type="button" id="pay-card" class="btn btn-primary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' CartÃ£o</button></div></div>');
+    html.push('<button type="button" id="pay-card" class="btn btn-primary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' Cartão</button></div></div>');
   }else{
     html.push('<button type="button" id="pay-pix" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'pix\')">Pix</button>');
-    html.push('<button type="button" id="pay-card" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' CartÃ£o</button>');
+    html.push('<button type="button" id="pay-card" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' Cartão</button>');
     html.push('<button type="button" id="pay-cash" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'dinheiro\')">'+icon('banknote','ico-sm')+' Dinheiro</button></div></div>');
   }
   html.push('<div id="gasto-card-options" style="display:'+(data.paymentMethod==='cartao'?'block':'none')+';margin-top:16px;border:1px solid var(--field-border);border-radius:18px;padding:16px;background:var(--surface)">');
