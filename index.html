@@ -10715,6 +10715,7 @@ AlicerceIA.renderDashboard=function(){
     }
   };
   var ui=copy[lang]||copy.pt;
+  var actionAttr=function(question){return 'onclick="AlicerceIA.perguntarDashboard('+JSON.stringify(question).replace(/\"/g,'&quot;')+')"';};
   var html='<section class="visao-ai-dashboard" id="alicerce-ai-dashboard" aria-label="Alicerce IA">';
   html+='<div class="visao-ai-heading"><div><div class="visao-ai-kicker">ALICERCE IA</div><h2>'+esc(ui.heading)+'</h2><p>'+esc(ui.intro)+'</p></div></div>';
   if(!current.length){
@@ -10724,42 +10725,42 @@ AlicerceIA.renderDashboard=function(){
     var deltaText=delta===null?ui.noHistory:(Math.abs(delta)<5?ui.stable:(Math.round(Math.abs(delta))+'% '+(delta>0?ui.up:ui.down)));
     var topCategory=categories[0]||null;
     html+='<div class="visao-ai-kpis">';
-    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-total" onclick="AlicerceIA.perguntarDashboard(\\'Quanto gastei este mês?\\')"><span>'+esc(ui.period)+'</span><strong>'+fmtMoney(total)+'</strong><small>'+esc(ui.view)+'</small></button>';
-    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-compare" onclick="AlicerceIA.perguntarDashboard(\\'Compare com o mês passado\\')"><span>'+esc(ui.compare)+'</span><strong>'+esc(deltaText)+'</strong><small>'+ (previousTotal>0?fmtMoney(previousTotal)+' → '+fmtMoney(total):esc(ui.view))+'</small></button>';
-    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-biggest" onclick="AlicerceIA.perguntarDashboard(\\'Onde gastei mais?\\')"><span>'+esc(ui.biggest)+'</span><strong>'+(topCategory?esc(this._nice(topCategory.key)):'—')+'</strong><small>'+(topCategory?fmtMoney(topCategory.total):esc(ui.none))+'</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-total" '+actionAttr('Quanto gastei este mês?')+'><span>'+esc(ui.period)+'</span><strong>'+fmtMoney(total)+'</strong><small>'+esc(ui.view)+'</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-compare" '+actionAttr('Compare com o mês passado')+'><span>'+esc(ui.compare)+'</span><strong>'+esc(deltaText)+'</strong><small>'+ (previousTotal>0?fmtMoney(previousTotal)+' → '+fmtMoney(total):esc(ui.view))+'</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-biggest" '+actionAttr('Onde gastei mais?')+'><span>'+esc(ui.biggest)+'</span><strong>'+(topCategory?esc(this._nice(topCategory.key)):'—')+'</strong><small>'+(topCategory?fmtMoney(topCategory.total):esc(ui.none))+'</small></button>';
     html+='</div>';
     html+='<section class="visao-ai-alert">';
     html+='<div class="visao-ai-section-label">'+esc(ui.attention)+'</div>';
     if(anomaly){
       html+='<p>'+esc(this._label('anomalyInsight',{amount:fmtMoney(anomaly.amount),item:this._nice(anomaly.comparisonItem||anomaly.subcategory||anomaly.category),median:fmtMoney(anomaly.median)}))+'</p>';
-      html+='<button type="button" id="visao-ai-anomalies" onclick="AlicerceIA.perguntarDashboard(\\'Mostre meus gastos fora do padrão\\')">'+esc(ui.anomalyAction)+'</button>';
+      html+='<button type="button" id="visao-ai-anomalies" '+actionAttr('Mostre meus gastos fora do padrão')+'>'+esc(ui.anomalyAction)+'</button>';
     }else if(categoryRise){
       html+='<p>'+esc(this._label('categoryRise',{item:this._nice(categoryRise.key),percent:categoryRise.percent,current:fmtMoney(categoryRise.current),previous:fmtMoney(categoryRise.previous)}))+'</p>';
-      html+='<button type="button" id="visao-ai-anomalies" onclick="AlicerceIA.perguntarDashboard(\\'O que aumentou nos meus gastos?\\')">'+esc(ui.view)+'</button>';
+      html+='<button type="button" id="visao-ai-anomalies" '+actionAttr('O que aumentou nos meus gastos?')+'>'+esc(ui.view)+'</button>';
     }else{
       html+='<p>'+esc(ui.calm)+'</p>';
-      html+='<button type="button" id="visao-ai-anomalies" onclick="AlicerceIA.perguntarDashboard(\\'Mostre meus gastos fora do padrão\\')">'+esc(ui.anomalyAction)+'</button>';
+      html+='<button type="button" id="visao-ai-anomalies" '+actionAttr('Mostre meus gastos fora do padrão')+'>'+esc(ui.anomalyAction)+'</button>';
     }
     html+='</section>';
     html+='<div class="visao-ai-two-panels">';
     html+='<section class="visao-ai-panel"><div class="visao-ai-section-label">'+esc(ui.categories)+'</div>';
     categories.slice(0,3).forEach(function(item){
       var pct=total>0?Math.round(item.total/total*100):0;
-      html+='<button type="button" class="visao-ai-breakdown" onclick="AlicerceIA.perguntarDashboard(\\'Quanto gastei com '+esc(this._nice(item.key)).replace(/&#39;/g,'')+'?\\')"><span><b>'+esc(this._nice(item.key))+'</b><small>'+pct+'%</small></span><strong>'+fmtMoney(item.total)+'</strong><i><em style="width:'+Math.min(100,pct)+'%"></em></i></button>';
+      html+='<button type="button" class="visao-ai-breakdown" '+actionAttr('Quanto gastei com '+this._nice(item.key)+'?')+'><span><b>'+esc(this._nice(item.key))+'</b><small>'+pct+'%</small></span><strong>'+fmtMoney(item.total)+'</strong><i><em style="width:'+Math.min(100,pct)+'%"></em></i></button>';
     },this);
     if(!categories.length)html+='<p class="visao-ai-muted">'+esc(ui.none)+'</p>';
     html+='</section>';
     html+='<section class="visao-ai-panel"><div class="visao-ai-section-label">'+esc(ui.merchants)+'</div>';
     merchants.slice(0,3).forEach(function(item){
-      html+='<button type="button" class="visao-ai-merchant" onclick="AlicerceIA.perguntarDashboard(\\'Qual estabelecimento levou mais dinheiro?\\')"><span>'+esc(item.key)+'</span><strong>'+fmtMoney(item.total)+'</strong></button>';
+      html+='<button type="button" class="visao-ai-merchant" '+actionAttr('Qual estabelecimento levou mais dinheiro?')+'><span>'+esc(item.key)+'</span><strong>'+fmtMoney(item.total)+'</strong></button>';
     });
     if(!merchants.length)html+='<p class="visao-ai-muted">'+esc(ui.none)+'</p>';
     html+='</section></div>';
     html+='<section class="visao-ai-recurring"><div><div class="visao-ai-section-label">'+esc(ui.recurring)+'</div><p>'+(recurring?esc(this._label('recurringInsight',{item:recurring.merchant,amount:fmtMoney(recurring.amount),months:recurring.months})):esc(ui.recurringNone))+'</p></div>';
-    html+='<button type="button" id="visao-ai-recurring" onclick="AlicerceIA.perguntarDashboard(\\'Quais pagamentos parecem recorrentes?\\')">'+esc(ui.recurringAction)+'</button></section>';
+    html+='<button type="button" id="visao-ai-recurring" '+actionAttr('Quais pagamentos parecem recorrentes?')+'>'+esc(ui.recurringAction)+'</button></section>';
     html+='<div class="visao-ai-actions">';
-    html+='<button type="button" onclick="AlicerceIA.perguntarDashboard(\\'Compare com o mês passado\\')">'+esc(ui.compareAction)+'</button>';
-    html+='<button type="button" onclick="AlicerceIA.perguntarDashboard(\\'Onde gastei mais?\\')">'+esc(ui.topAction)+'</button>';
+    html+='<button type="button" '+actionAttr('Compare com o mês passado')+'>'+esc(ui.compareAction)+'</button>';
+    html+='<button type="button" '+actionAttr('Onde gastei mais?')+'>'+esc(ui.topAction)+'</button>';
     html+='</div>';
   }
   if(this._answer){
