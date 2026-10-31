@@ -1233,7 +1233,7 @@ test('Alicerce IA responde perguntas sobre gastos por subcategoria e respeita a 
     Store.lang = 'pt';
     Store.movements = [
       { id: 'ia-1', tipo: 'despesa', categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 48.50, data: Clock.today(), status: 'pago' },
-      { id: 'ia-2', tipo: 'despesa', categoria: 'moradia', subcategoria: 'energia', descricao: 'Conta de luz', estabelecimento: 'Neoenergia', valor: 70, data: Clock.today(), status: 'pago' }
+      { id: 'ia-2', tipo: 'despesa', categoria: 'moradia', subcategoria: 'energia', descricao: 'Conta de luz', estabelecimento: 'Neoenergia', valor: 20, data: Clock.today(), status: 'pago' }
     ];
     Store.installments = [];
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
@@ -1262,8 +1262,9 @@ test('Alicerce IA também aparece na Visão Financeira e compara períodos equiv
     var agora = Clock.now();
     var anoAtual = agora.getFullYear();
     var mesAtual = agora.getMonth();
-    var dia = String(agora.getDate()).padStart(2, '0');
     var mesAnterior = new Date(anoAtual, mesAtual - 1, 1);
+    var diaAnterior = Math.min(agora.getDate(), new Date(mesAnterior.getFullYear(), mesAnterior.getMonth() + 1, 0).getDate());
+    var dia = String(diaAnterior).padStart(2, '0');
     var dataAnterior = mesAnterior.getFullYear() + '-' +
       String(mesAnterior.getMonth() + 1).padStart(2, '0') + '-' + dia;
     var dataAtual = Clock.today();
