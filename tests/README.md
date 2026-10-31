@@ -17,14 +17,16 @@ Esta etapa acrescenta Playwright e axe-core sem alterar o index.html, o motor fi
 - O teste não usa conta, senha, token ou dados financeiros reais.
 - O servidor estático local lê os arquivos do repositório, sem modificar o aplicativo.
 
-## Executar localmente
+## Requisito de ambiente e execução local
 
-npm install
+Use Node.js 22.12.0 ou superior, exigido pelo axe-core/playwright 4.14.0.
+
+npm ci
 npx playwright install chromium
 npm run test:e2e
 npm run test:e2e:report
 
-O CI instala as dependências com as versões diretas fixadas em package.json. Para uma reprodução estrita local, mantenha o package-lock.json gerado pelo npm versionado.
+As dependências e suas dependências transitivas ficam fixadas no package-lock.json. O CI usa npm ci para reproduzir exatamente essa árvore.
 
 ## Política do baseline
 
