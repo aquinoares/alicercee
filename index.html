@@ -5053,12 +5053,13 @@ const AlicerceIA = {
     html+='<div class="alicerce-ai-head"><div class="alicerce-ai-name">'+esc(ui.title)+'</div><div class="alicerce-ai-eyebrow">'+esc(ui.eyebrow)+'</div></div>';
     html+='<p class="alicerce-ai-intro">'+esc(ui.intro)+'</p>';
     html+='<p class="alicerce-ai-insight" id="alicerce-ai-insight">'+esc(this.insight())+'</p>';
-    html+='<div class="alicerce-ai-form"><input class="alicerce-ai-input" id="alicerce-ai-question" type="text" maxlength="180" autocomplete="off" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" value="'+esc(this._question)+'" onkeydown="if(event.key===\\'Enter\\'){AlicerçeIA.perguntar()}">';
-    html+='<button class="alicerce-ai-button" type="button" onclick="AlicerçeIA.perguntar()">'+esc(ui.ask)+'</button></div>';
+    html+='<div class="alicerce-ai-form"><input class="alicerce-ai-input" id="alicerce-ai-question" type="text" maxlength="180" autocomplete="off" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" value="'+esc(this._question)+'" onkeydown="if(event.key===&#39;Enter&#39;){AlicerceIA.perguntar()}">';
+    html+='<button class="alicerce-ai-button" type="button" onclick="AlicerceIA.perguntar()">'+esc(ui.ask)+'</button></div>';
     if(this._answer)html+='<div class="alicerce-ai-answer" id="alicerce-ai-answer" role="status" aria-live="polite">'+esc(this._answer)+'</div>';
     html+='<div class="alicerce-ai-suggestions">';
     ui.suggestions.forEach(function(question,index){
-      html+='<button class="alicerce-ai-suggestion" type="button" onclick="AlicerçeIA.perguntarSugestao(\\''+esc(question).replace(/'/g,'&#39;')+'\\')">'+esc(question)+'</button>';
+      var safeQuestion=JSON.stringify(question).replace(/"/g,'&quot;');
+      html+='<button class="alicerce-ai-suggestion" type="button" onclick="AlicerceIA.perguntarSugestao('+safeQuestion+')">'+esc(question)+'</button>';
     });
     html+='</div></section>';
     return html;
@@ -7220,7 +7221,7 @@ function homeRenderComunicados() {
   html+='</div>';}
     // ============================================================
   // ============================================================
-  html+=AlicerçeIA.renderCard();
+  html+=AlicerceIA.renderCard();
   html+=homeRenderComunicados();
   // 4 MINI CARDS DA HOME
   // FONTE CENTRAL: MOTOR FINANCEIRO
@@ -10269,7 +10270,7 @@ function renderVisao(){
   html+='<div class="visao-atualizado">Atualizado hoje, '+hora+'</div>';
   html+='</section>';
 
-  html+=AlicerçeIA.renderCard();
+  html+=AlicerceIA.renderCard();
   html+='<div class="visao-section-title">Mês atual</div>';
   html+='<div class="visao-lista">';
 
