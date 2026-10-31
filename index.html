@@ -1112,7 +1112,7 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 [data-theme="azul"] .cc2-dot.active{background:var(--accent)!important}
 
 /* Review de gasto — acao primaria na identidade Preto+Laranja */
-body .gasto-review .gr-primary{background:#FF6500;border-color:#FF6500;color:#0B0B0D}
+body .gasto-review .gr-primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .cc2-section{margin-top:14px}
 .cc2-shortcuts{display:flex;gap:14px;justify-content:flex-start;flex-wrap:wrap;margin:4px 0 6px}
 .cc2-shortcut{width:56px;min-width:56px;display:flex;flex-direction:column;align-items:center;gap:6px;background:transparent;border:none;cursor:pointer;padding:4px}
@@ -2391,6 +2391,77 @@ body:has(.visao-financeira){background:#080A11;color:#E9ECF1}
  .alicerce-login-flow .living-bg,.alicerce-login-flow .splash,.alicerce-login-flow .login{transition:none}
 }
 </style>
+
+<style id="alicerce-theme-unification-2026">
+/* Compatibilidade dos modulos legados com as quatro paletas oficiais. */
+body{
+  --card-bg:var(--surface);--border-color:var(--line);--muted:var(--text2);
+  --text-color:var(--text);--card:var(--surface);--border:var(--line);
+}
+/* Cartoes */
+.cc2-page.cc2-redesign{background:var(--bg)!important;color:var(--text)!important}
+.cc2-page.cc2-redesign .cc2-card{
+  background:linear-gradient(145deg,var(--surface2),var(--surface))!important;
+  color:var(--text)!important;border:1px solid var(--line)!important;box-shadow:var(--highlight)!important;
+}
+.cc2-page.cc2-redesign .cc2-cardtop{background:transparent!important}
+.cc2-page.cc2-redesign .cc2-art{background:var(--chrome)!important;color:var(--on-accent)!important}
+.cc2-page.cc2-redesign .cc2-name,.cc2-page.cc2-redesign .cc2-big,
+.cc2-page.cc2-redesign .cc2-seu,.cc2-page.cc2-redesign .cc2-redesign-detail,
+.cc2-page.cc2-redesign .cc2-redesign-between strong,.cc2-page.cc2-redesign .cc2-redesign-people h3,
+.cc2-page.cc2-redesign .cc2-redesign-person,.cc2-page.cc2-redesign .cc2-redesign-person-name,
+.cc2-page.cc2-redesign .cc2-redesign-total-value{color:var(--text)!important}
+.cc2-page.cc2-redesign .cc2-chip{color:var(--accent)!important;background:var(--tint-accent)!important;border-color:var(--line)!important}
+.cc2-page.cc2-redesign .cc2-eyebtn,.cc2-page.cc2-redesign .cc2-redesign-month button,
+.cc2-page.cc2-redesign .cc2-redesign-markall{color:var(--text)!important;background:var(--surface2)!important;border-color:var(--line)!important}
+.cc2-page.cc2-redesign .cc2-panel{background:transparent!important;color:var(--text)!important}
+.cc2-page.cc2-redesign .cc2-plabel,.cc2-page.cc2-redesign .cc2-redesign-label,
+.cc2-page.cc2-redesign .cc2-redesign-between.muted,.cc2-page.cc2-redesign .cc2-redesign-dates,
+.cc2-page.cc2-redesign .cc2-redesign-person-sub,.cc2-page.cc2-redesign .cc2-redesign-empty{color:var(--text2)!important}
+.cc2-page.cc2-redesign .cc2-bestday{color:var(--accent)!important}
+.cc2-page.cc2-redesign .cc2-deg.ok{color:var(--positive)!important}
+.cc2-page.cc2-redesign .cc2-deg.warn{color:var(--warning)!important}
+.cc2-page.cc2-redesign .cc2-deg.danger{color:var(--negative)!important}
+.cc2-page.cc2-redesign .cc2-bar{background:var(--line)!important}
+.cc2-page.cc2-redesign .cc2-bar-fill{background:var(--accent)!important}
+.cc2-page.cc2-redesign .cc2-bar-fill.danger,.cc2-page.cc2-redesign .cc2-bar-fill.over{background:var(--negative)!important}
+.cc2-page.cc2-redesign .cc2-bar-fill.warn{background:var(--warning)!important}
+.cc2-page.cc2-redesign .cc2-dot{background:var(--line)!important}
+.cc2-page.cc2-redesign .cc2-dot.active{background:var(--accent)!important}
+.cc2-page.cc2-redesign .cc2-redesign-total,.cc2-page.cc2-redesign .cc2-redesign-person,
+.cc2-page.cc2-redesign .cc2-redesign-details{color:var(--text)!important;background:var(--surface2)!important;border-color:var(--line)!important}
+.cc2-page.cc2-redesign .cc2-redesign-split{background:var(--line)!important}
+.cc2-page.cc2-redesign .cc2-redesign-split span:first-child{background:var(--accent)!important}
+.cc2-page.cc2-redesign .cc2-redesign-split span:last-child{background:var(--text2)!important}
+.cc2-page.cc2-redesign .cc2-redesign-details .cc2-buy{border-color:var(--line)!important}
+.cc2-page.cc2-redesign .cc2-redesign-details .cc2-buy-name,.cc2-page.cc2-redesign .cc2-redesign-details .cc2-buy-val{color:var(--text)!important}
+.cc2-page.cc2-redesign .cc2-redesign-details .text-muted,.cc2-page.cc2-redesign .cc2-redesign-details .cc2-hint{color:var(--text2)!important}
+.cc2-page.cc2-redesign .cc2-redesign-details .cc2-parcela{background:var(--surface)!important;border-color:var(--line)!important;color:var(--text)!important}
+.cc2-page.cc2-redesign .cc2-bottom-actions{background:var(--surface2)!important;border-color:var(--line)!important}
+.cc2-page.cc2-redesign .ccr-panel{background:linear-gradient(160deg,var(--tint-accent),var(--surface2))!important;border-color:var(--line)!important}
+.cc2-page.cc2-redesign .ccr-csum-cell:nth-child(2) strong{color:var(--accent)!important}
+.cc2-page.cc2-redesign .ccr-dico{background:var(--tint-accent)!important;border-color:var(--accent)!important;color:var(--accent)!important}
+.cc2-page.cc2-redesign .ccr-primary{box-shadow:var(--highlight)!important}
+.cc2-page.cc2-redesign .cc2-redesign-person-right,.cc2-page.cc2-redesign .cc2-redesign-chevron{color:var(--text)!important}
+/* Visao financeira */
+body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!important}
+.app:has(.visao-financeira){background:var(--bg)!important;border-color:var(--line)!important}
+.app:has(.visao-financeira) .header{background:var(--bg)!important;border-bottom:1px solid var(--line)!important}
+.app:has(.visao-financeira) .bottom-nav{background:var(--bg2)!important;border-color:var(--line)!important}
+.app:has(.visao-financeira) .bottom-nav-item{color:var(--text2)!important}
+.app:has(.visao-financeira) .bottom-nav-item.active{color:var(--accent)!important}
+.visao-financeira{background:var(--bg)!important;color:var(--text)!important}
+.visao-logo,.visao-saldo{color:var(--accent)!important}
+.visao-subtitulo,.visao-section-title,.visao-item-nome{color:var(--text)!important}
+.visao-hero{background:linear-gradient(145deg,var(--surface2),var(--surface))!important;border-color:var(--line)!important}
+.visao-hero:before,.visao-hero:after{background:var(--accent)!important;box-shadow:0 0 18px var(--glow)!important}
+.visao-pill{background:var(--tint-accent)!important;color:var(--accent)!important}
+.visao-atualizado,.visao-item-valor{color:var(--text2)!important}
+.visao-item{border-color:var(--line)!important}
+.visao-icone{background:var(--tint-accent)!important;border-color:var(--accent)!important;color:var(--accent)!important}
+.visao-icone .ico svg{stroke:currentColor!important}
+.visao-pdf{background:var(--surface2)!important;color:var(--accent)!important;border-color:var(--line)!important}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -3241,8 +3312,9 @@ const Store={
     if(!this.settings.lang)this.settings.lang='pt';
     try{migrateFinancialData()}catch(e){console.info('[Alicerce] migracao financeira:',e)}
     if(!this.settings.theme)this.settings.theme='azul';
-    this.theme=this.settings.theme;
-    document.body.setAttribute('data-theme',this.theme==='claro'?'claro':(this.theme==='marinho'?'marinho':'azul'));
+    this.theme=(this.settings.theme==='claro'||this.settings.theme==='marinho'||this.settings.theme==='moderno')?this.settings.theme:'azul';
+    this.settings.theme=this.theme;
+    document.body.setAttribute('data-theme',this.theme);
     try {
       const {data:assinatura,error:erroAssinatura}=await window.alicerceSupabase
         .from('subscriptions')
@@ -6965,7 +7037,7 @@ function renderGastos(){
 
   html+='<div style="display:flex;gap:12px;overflow-x:auto;padding:2px 1px 12px;scrollbar-width:thin">';
   html+='<button data-cat="" onclick="filtrarGastosCategoria(this.getAttribute(\'data-cat\'))" class="gastos-categoria-chip" style="flex:0 0 72px;border:0;background:transparent;color:inherit;text-align:center;padding:0;cursor:pointer;opacity:'+(selected?'0.62':'1')+'">';
-  html+='<span style="display:flex;width:58px;height:58px;margin:0 auto 8px;border-radius:50%;align-items:center;justify-content:center;background:'+(selected?'var(--card-bg,#242424)':'#c8a962')+';color:'+(selected?'inherit':'#171717')+';font-size:20px;font-weight:850;border:'+(selected?'1px solid var(--border-color,#555)':'2px solid #c8a962')+'">⌂</span>';
+  html+='<span style="display:flex;width:58px;height:58px;margin:0 auto 8px;border-radius:50%;align-items:center;justify-content:center;background:'+(selected?'var(--surface2)':'var(--accent)')+';color:'+(selected?'var(--text)':'var(--on-accent)')+';font-size:20px;font-weight:850;border:'+(selected?'1px solid var(--line)':'2px solid var(--accent)')+'">⌂</span>';
   html+='<span class="gastos-categoria-label">Todas</span>';
   html+='<span style="display:block;font-size:10px;opacity:.65;margin-top:3px">'+money(totalMonth)+'</span></button>';
 
@@ -6975,7 +7047,7 @@ function renderGastos(){
     const active=selected===cat;
     const initial=String(label||'?').trim().charAt(0).toUpperCase();
     html+='<button data-cat="'+safe(cat)+'" onclick="filtrarGastosCategoria(this.getAttribute(\'data-cat\'))" class="gastos-categoria-chip" style="flex:0 0 72px;border:0;background:transparent;color:inherit;text-align:center;padding:0;cursor:pointer;opacity:'+(selected&&!active?'0.48':'1')+'">';
-    html+='<span style="display:flex;width:58px;height:58px;margin:0 auto 8px;border-radius:50%;align-items:center;justify-content:center;background:'+(active?'#c8a962':'var(--card-bg,#242424)')+';color:'+(active?'#171717':'inherit')+';font-size:21px;font-weight:850;border:'+(active?'2px solid #c8a962':'1px solid var(--border-color,#444)')+'">'+gastosIconeCategoria(cat)+'</span>';
+    html+='<span style="display:flex;width:58px;height:58px;margin:0 auto 8px;border-radius:50%;align-items:center;justify-content:center;background:'+(active?'var(--accent)':'var(--surface2)')+';color:'+(active?'var(--on-accent)':'var(--text)')+';font-size:21px;font-weight:850;border:'+(active?'2px solid var(--accent)':'1px solid var(--line)')+'">'+gastosIconeCategoria(cat)+'</span>';
     html+='<span class="gastos-categoria-label">'+safe(label)+'</span>';
     html+='<span style="display:block;font-size:10px;opacity:.7;margin-top:3px">'+money(info.total)+'</span>';
     html+='</button>';
@@ -6991,7 +7063,7 @@ function renderGastos(){
   if(selected){
     html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">';
     html+='<span style="font-size:12px;opacity:.75">Categoria: '+safe(Interpreter.catDisplay(selected))+'</span>';
-    html+='<button onclick="filtrarGastosCategoria(\'\')" style="border:0;background:transparent;color:#c8a962;font-size:12px;font-weight:750;cursor:pointer">Limpar filtro ×</button></div>';
+    html+='<button onclick="filtrarGastosCategoria(\'\')" style="border:0;background:transparent;color:var(--accent);font-size:12px;font-weight:750;cursor:pointer">Limpar filtro ×</button></div>';
   }
 
   if(!filtered.length){
@@ -10616,20 +10688,20 @@ function renderAddGastoDoubt(){
   const paymentName=payment==='cartao'?'Cartão de '+cardTypeName.toLowerCase():(payment==='pix'?'Pix':(payment==='dinheiro'?'Dinheiro':'Não informado'));
 
   let html='<style>';
-  html+='.gasto-review{color:#e8e9ed;background:#101114;border:1px solid #45474e;border-radius:22px;padding:20px;margin-top:16px;box-shadow:0 12px 32px rgba(0,0,0,.22)}';
-  html+='.gasto-review *{box-sizing:border-box}.gasto-review .gr-muted{color:#a6a8b0;font-size:12px;letter-spacing:.5px;text-transform:uppercase}';
-  html+='.gasto-review .gr-amount{font-size:36px;font-weight:800;letter-spacing:-1px;color:#f4f4f6;margin:5px 0 8px;overflow-wrap:anywhere}';
-  html+='.gasto-review .gr-panel{background:#191a1f;border:1px solid #34363d;border-radius:15px;padding:14px;margin-top:12px}';
-  html+='.gasto-review .gr-line{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:9px 0;border-bottom:1px solid #303138}';
+  html+='.gasto-review{color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px;margin-top:16px;box-shadow:0 12px 32px rgba(0,0,0,.22)}';
+  html+='.gasto-review *{box-sizing:border-box}.gasto-review .gr-muted{color:var(--text2);font-size:12px;letter-spacing:.5px;text-transform:uppercase}';
+  html+='.gasto-review .gr-amount{font-size:36px;font-weight:800;letter-spacing:-1px;color:var(--text);margin:5px 0 8px;overflow-wrap:anywhere}';
+  html+='.gasto-review .gr-panel{background:var(--surface2);border:1px solid var(--line);border-radius:15px;padding:14px;margin-top:12px}';
+  html+='.gasto-review .gr-line{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}';
   html+='.gasto-review .gr-line:last-child{border-bottom:0}.gasto-review .gr-value{text-align:right;font-weight:600;overflow-wrap:anywhere;max-width:62%}';
-  html+='.gasto-review .gr-chip{display:inline-block;border:1px solid #666a74;background:#25262c;border-radius:99px;padding:6px 10px;font-size:12px;color:#f0f0f2;margin:4px 4px 0 0}';
-  html+='.gasto-review .gr-label{display:block;color:#d7d8dd;font-size:13px;font-weight:700;margin:13px 0 7px}';
-  html+='.gasto-review .gr-input{width:100%;background:#17181c;color:#f4f4f6;border:1px solid #555861;border-radius:11px;padding:12px;font-size:14px;outline:none}';
-  html+='.gasto-review .gr-input:focus{border-color:#d6d8de;box-shadow:0 0 0 2px rgba(214,216,222,.12)}';
-  html+='.gasto-review .gasto-suggestions{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.gasto-review .gasto-suggestions .btn{border-radius:99px;background:#25262c;border:1px solid #5a5d66;color:#eee;padding:8px 11px}';
-  html+='.gasto-review .gr-primary{display:block;width:100%;border:1px solid #f1f1f3;background:#e1e2e6;color:#111216;border-radius:13px;padding:15px;font-size:15px;font-weight:800;margin-top:15px;cursor:pointer}';
-  html+='.gasto-review .gr-secondary{display:block;width:100%;border:1px solid #555861;background:#1b1c21;color:#eee;border-radius:13px;padding:13px;font-size:14px;font-weight:600;margin-top:9px;cursor:pointer}';
-  html+='.gasto-review .gr-hint{color:#b8bac2;font-size:12px;line-height:1.5;margin-top:8px}.gasto-review .gr-step{display:flex;justify-content:space-between;align-items:center;color:#bfc1c8;font-size:12px;margin-bottom:15px}';
+  html+='.gasto-review .gr-chip{display:inline-block;border:1px solid var(--field-border);background:var(--surface2);border-radius:99px;padding:6px 10px;font-size:12px;color:var(--text);margin:4px 4px 0 0}';
+  html+='.gasto-review .gr-label{display:block;color:var(--text2);font-size:13px;font-weight:700;margin:13px 0 7px}';
+  html+='.gasto-review .gr-input{width:100%;background:var(--surface);color:var(--text);border:1px solid var(--field-border);border-radius:11px;padding:12px;font-size:14px;outline:none}';
+  html+='.gasto-review .gr-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--tint-accent)}';
+  html+='.gasto-review .gasto-suggestions{display:flex;flex-wrap:wrap;gap:7px;margin-top:8px}.gasto-review .gasto-suggestions .btn{border-radius:99px;background:var(--surface2);border:1px solid var(--line);color:var(--text);padding:8px 11px}';
+  html+='.gasto-review .gr-primary{display:block;width:100%;border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);border-radius:13px;padding:15px;font-size:15px;font-weight:800;margin-top:15px;cursor:pointer}';
+  html+='.gasto-review .gr-secondary{display:block;width:100%;border:1px solid var(--line);background:var(--surface2);color:var(--text);border-radius:13px;padding:13px;font-size:14px;font-weight:600;margin-top:9px;cursor:pointer}';
+  html+='.gasto-review .gr-hint{color:var(--text2);font-size:12px;line-height:1.5;margin-top:8px}.gasto-review .gr-step{display:flex;justify-content:space-between;align-items:center;color:var(--text2);font-size:12px;margin-bottom:15px}';
   html+='</style>';
 
   html+='<div class="content" style="padding-bottom:150px">';
@@ -11695,11 +11767,11 @@ function renderDiagComposicao(){
   return h+'</div>';
 }
 function renderDiagnostico(){
-  return '<div class="content"><h2 class="mt-4">'+t('diagnostico')+'</h2><div class="card mt-4"><p class="text-muted text-sm">Diagnostics.run() - percorre todas as rotas nos 3 idiomas e 2 temas.</p><button class="btn btn-primary btn-block mt-2" onclick="runDiagnostics()">Run</button><div id="diag-results"></div></div>'+renderDiagRepetidos()+renderDiagComposicao()+'</div>';
+  return '<div class="content"><h2 class="mt-4">'+t('diagnostico')+'</h2><div class="card mt-4"><p class="text-muted text-sm">Diagnostics.run() - percorre todas as rotas nos 3 idiomas e 4 temas.</p><button class="btn btn-primary btn-block mt-2" onclick="runDiagnostics()">Run</button><div id="diag-results"></div></div>'+renderDiagRepetidos()+renderDiagComposicao()+'</div>';
 }
 function runDiagnostics(){
   const routes=['home','gastos','cartoes','emprestimos','calendario','visao','config','conta','trocarSenha','add','addGasto','addEntrada','addEmprestimo','addCompromisso','addLembrete','alerts','family','insurance','rendaExtra','financiamento','consorcio','trafego','trafegoMetricas','trafegoForm','trafegoModerar','politicas','politicasAceite','trafegoRegras','login'];
-  const langs=['pt','en','es'];const themes=['azul','claro'];
+  const langs=['pt','en','es'];const themes=['azul','claro','marinho','moderno'];
   let results=[];
   const origLang=Store.lang;const origTheme=Store.theme;const origScreen=Store.screen;const origData=Store.screenData;
   langs.forEach(lang=>{
