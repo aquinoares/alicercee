@@ -68,6 +68,22 @@ async function prepararTelaSemNuvem(page, screen) {
   await expect(page.locator('#app')).toBeVisible();
 }
 
+
+async function prepararConferenciaGasto(page, dados, cartoes) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function (config) {
+    Store.userId = null;
+    Store.cards = config.cartoes || [];
+    Store.movements = [];
+    Store.installments = [];
+    Store.loans = [];
+    Store.screenData = config.dados;
+    Store.screen = 'addGastoDoubt';
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  }, { dados: dados, cartoes: cartoes || [] });
+  await expect(page.locator('#btn-save-gasto-doubt')).toBeVisible();
+}
+
 async function registrarAxe(page, testInfo, nome) {
   const resultado = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -403,6 +419,263 @@ test('cadastra um cartão e mantém os dados no armazenamento local após recarr
     nome: 'Cartão fictício',
     limite: 2500
   });
+});
+
+
+test('confirma um gasto após reclassificar categoria e subcategoria', async function ({ page }) {
+  const dados = {
+    interpretation: {
+      amount: 76.5,
+      categoria: 'comida',
+      subcategoria: 'mercado',
+      merchant: 'Corrida de teste',
+      item: 'Deslocamento de teste'
+    },
+    amountInput: 76.5,
+    itemInput: 'Deslocamento de teste',
+    localInput: 'Corrida de teste',
+    date: '2026-10-31',
+    paymentMethod: 'pix'
+  };
+  await prepararConferenciaGasto(page, dados, []);
+
+  await page.locator('#edit-gasto-category-search').fill('Transporte');
+  await page.locator('#gasto-category-suggestions button').filter({ hasText: 'Transporte' }).click();
+  await expect(page.locator('#edit-gasto-category')).toHaveValue('transporte');
+
+  await page.locator('#edit-gasto-subcategory-search').fill('Uber');
+  await page.locator('#gasto-subcategory-suggestions button').filter({ hasText: 'Uber' }).click();
+  await expect(page.locator('#edit-gasto-subcategory')).toHaveValue('uber');
+
+  await page.locator('#btn-save-gasto-doubt').click();
+  const resultado = await page.evaluate(function () {
+    return {
+      screen: Store.screen,
+      movements: Store.movements,
+      installments: Store.installments,
+      upserts: window.__alicerceMockUpserts
+    };
+  });
+  expect(resultado.screen).toBe('home');
+  expect(resultado.movements).toHaveLength(1);
+  expect(resultado.movements[0]).toMatchObject({
+    tipo: 'despesa',
+    categoria: 'transporte',
+    subcategoria: 'uber',
+    descricao: 'Deslocamento de teste',
+    estabelecimento: 'Corrida de teste',
+    valor: 76.5,
+    paymentMethod: 'pix',
+    status: 'pago'
+  });
+  expect(resultado.installments).toEqual([]);
+  expect(resultado.upserts).toEqual([]);
+});
+
+test('registra compra no crédito à vista como uma parcela na fatura', async function ({ page }) {
+  const cartao = {
+    id: 'cartao-credito-a-vista',
+    nome: 'Cartão fictício',
+    fechamento: 20,
+    vencimento: 27,
+    limite: 2500,
+    ativo: true
+  };
+  const dados = {
+    interpretation: {
+      amount: 89.9,
+      categoria: 'comida',
+      subcategoria: 'restaurante',
+      merchant: 'Restaurante fictício',
+      item: 'Almoço de teste'
+    },
+    amountInput: 89.9,
+    itemInput: 'Almoço de teste',
+    localInput: 'Restaurante fictício',
+    date: '2026-10-31',
+    paymentMethod: 'cartao',
+    cardId: cartao.id,
+    cardOwnerType: 'meu',
+    cardType: 'credito',
+    installment: false,
+    installments: 1
+  };
+  await prepararConferenciaGasto(page, dados, [cartao]);
+
+  await page.locator('#btn-save-gasto-doubt').click();
+  const resultado = await page.evaluate(function () {
+    return {
+      screen: Store.screen,
+      movements: Store.movements,
+      installments: Store.installments,
+      upserts: window.__alicerceMockUpserts
+    };
+  });
+  expect(resultado.screen).toBe('cartoes');
+  expect(resultado.movements).toEqual([]);
+  expect(resultado.installments).toHaveLength(1);
+  expect(resultado.installments[0]).toMatchObject({
+    cardId: cartao.id,
+    tipo: 'cartao',
+    categoria: 'comida',
+    subcategoria: 'restaurante',
+    descricao: 'Almoço de teste',
+    parcelaAtual: 1,
+    parcelas: 1,
+    valor: 89.9,
+    status: 'pendente',
+    responsavel: 'Eu',
+    dataCompra: '2026-10-31'
+  });
+  expect(resultado.installments[0].data).toBe('2026-11-27');
+  expect(resultado.upserts).toEqual([]);
+});
+
+test('divide compra de crédito em parcelas com soma exata do valor original', async function ({ page }) {
+  const cartao = {
+    id: 'cartao-credito-parcelado',
+    nome: 'Cartão parcelado fictício',
+    fechamento: 20,
+    vencimento: 27,
+    limite: 3000,
+    ativo: true
+  };
+  const dados = {
+    interpretation: {
+      amount: 100,
+      categoria: 'vestuario',
+      subcategoria: 'roupas',
+      merchant: 'Loja fictícia',
+      item: 'Compra parcelada de teste'
+    },
+    amountInput: 100,
+    itemInput: 'Compra parcelada de teste',
+    localInput: 'Loja fictícia',
+    date: '2026-10-31',
+    paymentMethod: 'cartao',
+    cardId: cartao.id,
+    cardOwnerType: 'meu',
+    cardType: 'credito',
+    installment: true,
+    installments: 3
+  };
+  await prepararConferenciaGasto(page, dados, [cartao]);
+
+  await page.locator('#btn-save-gasto-doubt').click();
+  const resultado = await page.evaluate(function () {
+    return {
+      screen: Store.screen,
+      installments: Store.installments,
+      upserts: window.__alicerceMockUpserts
+    };
+  });
+  expect(resultado.screen).toBe('cartoes');
+  expect(resultado.installments).toHaveLength(3);
+  expect(resultado.installments.map(function (item) { return item.valor; })).toEqual([33.33, 33.33, 33.34]);
+  expect(resultado.installments.reduce(function (sum, item) { return Math.round((sum + item.valor) * 100) / 100; }, 0)).toBe(100);
+  expect(resultado.installments.map(function (item) { return item.parcelaAtual; })).toEqual([1, 2, 3]);
+  expect(resultado.installments.map(function (item) { return item.parcelas; })).toEqual([3, 3, 3]);
+  expect(resultado.installments.map(function (item) { return item.data; })).toEqual([
+    '2026-11-27',
+    '2026-12-27',
+    '2027-01-27'
+  ]);
+  expect(resultado.installments.every(function (item) {
+    return item.cardId === cartao.id && item.compraId === resultado.installments[0].compraId;
+  })).toBe(true);
+  expect(resultado.upserts).toEqual([]);
+});
+
+test('edita os dados de um cartão e persiste as alterações localmente', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'editCard');
+  await page.evaluate(function () {
+    Store.userId = 'e2e-editar-cartao';
+    Store.cards = [{
+      id: 'cartao-editar',
+      userId: Store.userId,
+      nome: 'Cartão antigo',
+      fechamento: 10,
+      vencimento: 17,
+      limite: 1000,
+      ativo: true
+    }];
+    Store.screenData = { id: 'cartao-editar' };
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await page.locator('#edit-card-nome').fill('Cartão atualizado');
+  await page.locator('#edit-card-fechamento').fill('18');
+  await page.locator('#edit-card-vencimento').fill('25');
+  await page.locator('#edit-card-limite').fill('4200');
+  await page.locator('button[onclick="saveEditCard(\'cartao-editar\')"]').click();
+
+  const resultado = await page.evaluate(function () {
+    return {
+      cards: Store.cards,
+      stored: JSON.parse(localStorage.getItem('alicerce_e2e-editar-cartao_cards') || '[]'),
+      upserts: window.__alicerceMockUpserts
+    };
+  });
+  expect(resultado.cards[0]).toMatchObject({
+    id: 'cartao-editar',
+    nome: 'Cartão atualizado',
+    fechamento: 18,
+    vencimento: 25,
+    limite: 4200
+  });
+  expect(resultado.stored[0]).toMatchObject({
+    id: 'cartao-editar',
+    nome: 'Cartão atualizado',
+    fechamento: 18,
+    vencimento: 25,
+    limite: 4200
+  });
+  expect(resultado.upserts).toEqual([]);
+});
+
+test('exclui cartão e remove apenas parcelas e empréstimos vinculados', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'cartoes');
+  await page.evaluate(function () {
+    Store.userId = 'e2e-excluir-cartao';
+    Store.cards = [
+      { id: 'cartao-excluir', nome: 'Cartão a excluir', fechamento: 10, vencimento: 17, limite: 1000 },
+      { id: 'cartao-preservar', nome: 'Cartão a preservar', fechamento: 20, vencimento: 27, limite: 2000 }
+    ];
+    Store.installments = [
+      { id: 'parcela-excluir', tipo: 'cartao', cardId: 'cartao-excluir', valor: 50, data: '2026-11-17' },
+      { id: 'parcela-preservar', tipo: 'cartao', cardId: 'cartao-preservar', valor: 75, data: '2026-11-27' }
+    ];
+    Store.loans = [
+      { id: 'reembolso-excluir', tipo: 'emprestei', fromCard: true, cardId: 'cartao-excluir' },
+      { id: 'emprestimo-preservar', tipo: 'peguei', fromCard: false, cardId: 'cartao-preservar' }
+    ];
+  });
+  page.on('dialog', async function (dialog) {
+    await dialog.accept();
+  });
+
+  await page.evaluate(function () {
+    cc2ExcluirCartao('cartao-excluir');
+  });
+
+  const resultado = await page.evaluate(function () {
+    return {
+      cards: Store.cards,
+      installments: Store.installments,
+      loans: Store.loans,
+      storedCards: JSON.parse(localStorage.getItem('alicerce_e2e-excluir-cartao_cards') || '[]'),
+      storedInstallments: JSON.parse(localStorage.getItem('alicerce_e2e-excluir-cartao_installments') || '[]'),
+      storedLoans: JSON.parse(localStorage.getItem('alicerce_e2e-excluir-cartao_loans') || '[]'),
+      upserts: window.__alicerceMockUpserts
+    };
+  });
+  expect(resultado.cards.map(function (item) { return item.id; })).toEqual(['cartao-preservar']);
+  expect(resultado.installments.map(function (item) { return item.id; })).toEqual(['parcela-preservar']);
+  expect(resultado.loans.map(function (item) { return item.id; })).toEqual(['emprestimo-preservar']);
+  expect(resultado.storedCards.map(function (item) { return item.id; })).toEqual(['cartao-preservar']);
+  expect(resultado.storedInstallments.map(function (item) { return item.id; })).toEqual(['parcela-preservar']);
+  expect(resultado.storedLoans.map(function (item) { return item.id; })).toEqual(['emprestimo-preservar']);
+  expect(resultado.upserts).toEqual([]);
 });
 
 test('registra baseline axe nas telas financeiras principais em celular', async function ({ page }, testInfo) {
