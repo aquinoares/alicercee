@@ -11165,6 +11165,7 @@ function saveManualGasto(){
     return;
   }
   const mv=Store.addMovement({tipo:'despesa',categoria:cat,subcategoria:sub,estabelecimento:estab,valor:val,data:date,forma:'pix',status:'pago',descricao:desc});
+  if(estab&&desc)Store.learnCorrection(estab,cat,sub,desc);
   showToast(t('gastoSalvo',{valor:fmtMoney(val),cat:Interpreter.catDisplay(cat),sub:Interpreter.subDisplay(sub)}),()=>{Store.removeMovement(mv.id);render()});go('home');
 }
 
