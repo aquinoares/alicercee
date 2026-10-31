@@ -24,13 +24,15 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 - Reconhecimento de lanches, fast food e subcategorias válidas da taxonomia.
 - Normalização conservadora de aliases brasileiros e sufixos de loja/terminal, preservando a identidade de estabelecimentos desconhecidos.
 - Benchmark curado de 43 exemplos brasileiros sintéticos, com medição de acerto por categoria e subcategoria.
-- Benchmark de 13 descrições bancárias ruidosas, validando estabelecimento, valor, categoria, subcategoria, confiança e ausência de produto inventado.
+- Benchmark de 27 descrições bancárias ruidosas, validando estabelecimento, valor, categoria, subcategoria, confiança e ausência de produto inventado.
+- Catálogo adicional de redes brasileiras de supermercados, hortifrúti, farmácias, energia e vestuário.
+- Testes de colisão para identificadores numéricos e calibração conservadora de confiança: loja isolada = média, produto ou correção individual = alta, descrição sem evidência = baixa.
 - Extração monetária que prioriza valores com moeda/rótulo e valores decimais finais, sem confundir NSU/IDs longos com o total da compra.
 - Baseline axe das telas Home, Gastos, Cartões e Configurações.
 
 ## Resultado automatizado atual
 
-A suíte reúne 29 cenários Playwright, executa um benchmark de 43 exemplos de despesas brasileiras e um segundo benchmark com 13 descrições bancárias ruidosas. Os exemplos são sintéticos e servem para regressão do comportamento esperado; não são transações de clientes e não representam, sozinhos, a precisão real em produção. O CI imprime acertos e total por categoria e par categoria/subcategoria. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
+A suíte reúne 30 cenários Playwright, executa um benchmark de 43 exemplos de despesas brasileiras e um segundo benchmark com 27 descrições bancárias ruidosas. Os exemplos são sintéticos e servem para regressão do comportamento esperado; não são transações de clientes e não representam, sozinhos, a precisão real em produção. O CI imprime acertos e total por categoria e par categoria/subcategoria. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
 
 ## Isolamento e limites
 
