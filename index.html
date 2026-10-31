@@ -5214,6 +5214,7 @@ function alicerceSplashEntrar(){
 function render(){
   try{
     clearAllTimers();
+    if(Store.screen!=='trafegoModerar')window.__tfModerationViewAuthorizedUser='';
     const app=document.getElementById('app');
     if(!app)return;
     const loading=document.getElementById('loading');
@@ -9849,6 +9850,7 @@ async function doLogout(){
     showToast('Não foi possível encerrar a sessão no serviço. Tente novamente.');
     return;
   }
+  tfInvalidarCacheAdmin();
   Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
   ['movements','cards','loans','installments','commitments','financing','consortium','extraIncome','insurance','familyPeople','familyCategories','doctors','medications','doseLogs','learning'].forEach(k=>{Store[k]=Array.isArray(Store[k])?[]:{}});
   clearAllTimers();render();
@@ -12258,7 +12260,7 @@ const Trafego={
   LOJA:'trafego_ads',
   LIM:{titulo:50,descricao:120,negocio:60,contato:80,arquivoMax:3*1024*1024,base64Max:260000,
     imgRe:/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/},
-  _remoto:null,_admin:null,_syncRodando:false,
+  _remoto:null,_admin:null,_adminUserId:'',_syncRodando:false,
   ehVip(){try{
     const s=Store.subscription;
     if(!s||String(s.status||'').toLowerCase()!=='active')return false;
@@ -12372,18 +12374,54 @@ const Trafego={
       imagem:ad.imagem||'',status:ad.status,motivo:ad.motivo||'',atualizadoEm:ad.atualizadoEm})).then(function(){},function(){})}catch(e){}},
   rpcRemoto(id,acao){try{const sb=window.alicerceSupabase;if(!sb||!sb.from||!id)return;
     if(acao==='delete')Promise.resolve(sb.from('ad_campaigns').delete().eq('id',id)).then(function(){},function(){})}catch(e){}},
-  /* Moderacao depende de RPC validada no servidor (ver migracao proposta) */
+  /* Acesso administrativo validado pela sessao e pelo RPC do servidor. */
   async adminDisponivel(){
-    if(this._admin!==null)return this._admin;
+    const userId=String(Store.userId||'');
+    if(!userId){
+      this._admin=false;
+      this._adminUserId='';
+      return false;
+    }
+    if(this._adminUserId===userId&&this._admin!==null)return this._admin;
+
+    this._admin=null;
+    this._adminUserId='';
     try{
       const sb=window.alicerceSupabase;
-      if(!sb||!sb.rpc){this._admin=false;return false}
+      if(!sb||!sb.rpc||!sb.auth||!sb.auth.getSession)return false;
+
+      const sessaoAntes=await sb.auth.getSession();
+      const usuarioAntes=sessaoAntes&&sessaoAntes.data&&sessaoAntes.data.session&&sessaoAntes.data.session.user;
+      if(!usuarioAntes||String(usuarioAntes.id)!==userId){
+        if(String(Store.userId||'')===userId){
+          this._admin=false;
+          this._adminUserId=userId;
+        }
+        return false;
+      }
+
       const r=await sb.rpc('alicerce_eh_admin');
-      this._admin=!!(r&&!r.error&&r.data===true);
-      if(r&&r.error)console.error('Falha ao verificar administrador:',r.error);
+      const sessaoDepois=await sb.auth.getSession();
+      const usuarioDepois=sessaoDepois&&sessaoDepois.data&&sessaoDepois.data.session&&sessaoDepois.data.session.user;
+      if(String(Store.userId||'')!==userId||!usuarioDepois||String(usuarioDepois.id)!==userId){
+        this._admin=null;
+        this._adminUserId='';
+        return false;
+      }
+
+      if(!r||r.error||typeof r.data!=='boolean'){
+        this._admin=null;
+        this._adminUserId='';
+        if(r&&r.error)console.error('Falha ao verificar administrador:',r.error);
+        return false;
+      }
+
+      this._adminUserId=userId;
+      this._admin=r.data===true;
       return this._admin;
     }catch(e){
-      this._admin=false;
+      this._admin=null;
+      this._adminUserId='';
       console.error('Falha ao verificar administrador:',e);
       return false;
     }
@@ -12993,7 +13031,57 @@ async function trafegoSalvar(enviar) {
 }
 /* ----- Moderacao administrativa (somente com autorizacao validada no servidor) ----- */
 /* ALICERCE_MANUAL_MODERATION_REVIEW_V1 */
+function tfInvalidarCacheAdmin(){
+  try{
+    Trafego._admin=null;
+    Trafego._adminUserId='';
+  }catch(e){}
+  window.__tfModerationCheckId=Number(window.__tfModerationCheckId||0)+1;
+  window.__tfModerationViewAuthorizedUser='';
+  window.__tfModerationCheckPending='';
+}
+function tfSolicitarAcessoModeracao(userId){
+  if(window.__tfModerationCheckPending===userId)return;
+  const checkId=Number(window.__tfModerationCheckId||0)+1;
+  window.__tfModerationCheckId=checkId;
+  window.__tfModerationCheckPending=userId;
+  Trafego.adminDisponivel().then(function(ok){
+    if(Number(window.__tfModerationCheckId||0)!==checkId)return;
+    if(String(Store.userId||'')!==userId||Store.screen!=='trafegoModerar')return;
+    if(!ok){
+      window.__tfModerationViewAuthorizedUser='';
+      Store.screen='trafego';
+      Store.screenData=null;
+      render();
+      return;
+    }
+    window.__tfModerationViewAuthorizedUser=userId;
+    render();
+  }).catch(function(e){
+    console.error('Falha ao validar acesso à moderação:',e);
+    if(Number(window.__tfModerationCheckId||0)===checkId&&String(Store.userId||'')===userId&&Store.screen==='trafegoModerar'){
+      window.__tfModerationViewAuthorizedUser='';
+      Store.screen='trafego';
+      Store.screenData=null;
+      render();
+    }
+  }).finally(function(){
+    if(Number(window.__tfModerationCheckId||0)===checkId)window.__tfModerationCheckPending='';
+  });
+}
 function renderTrafegoModerar(){
+  const userId=String(Store.userId||'');
+  if(!userId){
+    setTimeout(function(){
+      if(Store.screen==='trafegoModerar'&&!Store.userId)go('login');
+    },0);
+    return '<div class="content"><div class="card mt-4" role="status">Verificando acesso...</div></div>';
+  }
+  if(window.__tfModerationViewAuthorizedUser!==userId){
+    tfSolicitarAcessoModeracao(userId);
+    const mensagem=Store.lang==='en'?'Checking administrative access...':(Store.lang==='es'?'Verificando acceso administrativo...':'Verificando acesso administrativo...');
+    return '<div class="content"><div class="card mt-4" role="status">'+esc(mensagem)+'</div></div>';
+  }
   const lang=Store.lang==='en'?'en':Store.lang==='es'?'es':'pt';
   const c=lang==='en'?{
     title:'Manual ad moderation',intro:'Review each submission before deciding whether to publish it.',guide:'Checklist before approving',checks:[
@@ -13044,7 +13132,12 @@ function tfCarregarModeracao(){
 
   Trafego.adminDisponivel().then(async function(ok){
     if(!ok){
-      if(st)st.textContent=t('tfModIndisponivel');
+      if(Store.screen==='trafegoModerar'){
+        window.__tfModerationViewAuthorizedUser='';
+        go('trafego');
+      }else if(st){
+        st.textContent=t('tfModIndisponivel');
+      }
       return;
     }
 
@@ -13201,6 +13294,20 @@ try{
   var alicerceAuth=window.alicerceSupabase&&window.alicerceSupabase.auth;
   if(alicerceAuth&&typeof alicerceAuth.onAuthStateChange==='function'){
     alicerceAuth.onAuthStateChange(function(event,session){
+      var authUserId=session&&session.user?String(session.user.id||''):'';
+      if(authUserId!==String(window.__tfAuthUserId||'')){
+        window.__tfAuthUserId=authUserId;
+        tfInvalidarCacheAdmin();
+        if(!authUserId&&Store.screen==='trafegoModerar'){
+          Store.screen='login';
+          Store.screenData=null;
+          render();
+        }else if(authUserId&&Store.screen==='trafegoModerar'){
+          Store.screen='trafego';
+          Store.screenData=null;
+          render();
+        }
+      }
       if(event!=='PASSWORD_RECOVERY')return;
       window.__alicerceRecoveryActive=true;
       window.__alicerceSplashSeen=true;
