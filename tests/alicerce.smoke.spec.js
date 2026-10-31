@@ -1401,3 +1401,58 @@ test('Alicerce IA entende periodos, estabelecimentos e aumentos por categoria', 
   expect(result.merchant).toContain('Mercado Bom');
   expect(result.categoryRise).toContain('aumentaram 95%');
 });
+
+
+test('Alicerce IA identifica pagamentos possivelmente recorrentes sem modelo ou API externa', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [89.90, 89.90, 94.90].map(function (amount, index) {
+      var date = new Date(now.getFullYear(), now.getMonth() - (2 - index), Math.min(10, now.getDate()));
+      return {
+        id: 'internet-recorrente-' + index, tipo: 'despesa', status: 'pago',
+        categoria: 'moradia', subcategoria: 'internet',
+        estabelecimento: 'NET FIBRA', descricao: 'Internet residencial',
+        valor: amount, data: format(date)
+      };
+    });
+    return {
+      recurring: AlicerceIA._detectRecurring(AlicerceIA._rows()),
+      insight: AlicerceIA.insight(),
+      answer: AlicerceIA.responder('Quais pagamentos parecem recorrentes?')
+    };
+  });
+  expect(result.recurring).toHaveLength(1);
+  expect(result.recurring[0].merchant).toBe('NET FIBRA');
+  expect(result.recurring[0].months).toBe(3);
+  expect(result.recurring[0].amount).toBeCloseTo(89.90, 2);
+  expect(result.insight).toContain('NET FIBRA');
+  expect(result.answer).toContain('NET FIBRA');
+});
+
+test('Alicerce IA nao confunde compras variaveis com assinaturas confirmadas', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [30, 90, 170].map(function (amount, index) {
+      var date = new Date(now.getFullYear(), now.getMonth() - (2 - index), Math.min(10, now.getDate()));
+      return {
+        id: 'internet-variavel-' + index, tipo: 'despesa', status: 'pago',
+        categoria: 'moradia', subcategoria: 'internet',
+        estabelecimento: 'NET FIBRA', valor: amount, data: format(date)
+      };
+    });
+    return AlicerceIA._detectRecurring(AlicerceIA._rows());
+  });
+  expect(result).toEqual([]);
+});
