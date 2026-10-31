@@ -104,6 +104,9 @@ async function registrarAxe(page, testInfo, nome) {
   });
   console.log('[axe:' + nome + '] ' + JSON.stringify(violacoes));
   expect(resultado.violations).toBeInstanceOf(Array);
+  if (nome.indexOf('tela-') === 0) {
+    expect(violacoes, 'A tela ' + nome + ' deve começar sem violações axe.').toEqual([]);
+  }
 }
 
 test('restaura sem sessão persistida e libera a abertura do Alicerce', async function ({ page }) {
@@ -208,8 +211,12 @@ test('renderiza Home, Gastos, Cartões e Configurações com estado isolado', as
 
   await prepararTelaSemNuvem(page, 'config');
   await expect(page.locator('h2')).toContainText(/configura/i);
-  await expect(page.locator('select').first().locator('option')).toHaveCount(4);
-  await expect(page.locator('select').nth(1).locator('option')).toHaveCount(3);
+  await expect(page.locator('#alicerce-config-theme')).toHaveCount(1);
+  await expect(page.locator('#alicerce-config-lang')).toHaveCount(1);
+  await expect(page.getByLabel(/aparência/i)).toHaveCount(1);
+  await expect(page.getByLabel(/idioma/i)).toHaveCount(1);
+  await expect(page.locator('#alicerce-config-theme option')).toHaveCount(4);
+  await expect(page.locator('#alicerce-config-lang option')).toHaveCount(3);
 });
 
 test('gera prévias dos PDFs de Gastos e Visão Financeira sem abrir janela externa', async function ({ page }) {
@@ -259,7 +266,9 @@ test('gera prévias dos PDFs de Gastos e Visão Financeira sem abrir janela exte
   await expect(page.locator('#alicerce-pdf-visao-preview')).toBeVisible();
   const monthlyBody = page.frameLocator('#al-pdf-preview-frame').locator('body');
   await expect(monthlyBody).toContainText('Relatório de análise financeira');
-  await expect(monthlyBody).toContainText('Compra de teste Alicerce');
+  await expect(monthlyBody).toContainText('Comida');
+  await expect(monthlyBody).toContainText('R$ 123,45');
+  await expect(monthlyBody).toContainText('R$ 250,00');
   await expect(page.locator('#al-pdf-preview-print')).toBeEnabled();
   await page.locator('#al-pdf-preview-close').click();
   await expect(page.locator('#alicerce-pdf-visao-preview')).toHaveCount(0);
