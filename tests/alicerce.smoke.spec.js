@@ -1289,7 +1289,11 @@ test('Visão Financeira apresenta pontos principais e permite abrir análises co
 
   await page.locator('#visao-ai-compare').click();
   await expect(page.locator('#visao-ai-answer')).toContainText('50%');
-  await expect(page.locator('#visao-ai-answer')).toContainText('R
+  await expect(page.locator('#visao-ai-answer')).toContainText('150,00');
+
+  await page.locator('#visao-ai-merchant-0').click();
+  await expect(page.locator('#visao-ai-answer')).toContainText('Mercado Bom');
+  await expect(page.locator('#visao-ai-answer')).toContainText('150,00');
 });
 
 test('Alicerce IA respeita o motor financeiro e exclui pendencias, transferencias e cartao emprestado', async function ({ page }) {
