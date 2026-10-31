@@ -5536,7 +5536,7 @@ AlicerceIA._assistantTopic=function(question,rows){
     var alias=aliases[a];
     for(var t=0;t<alias.terms.length;t++){
       var term=this._norm(alias.terms[t]);
-      if(term&&(' '+q+' ').indexOf(' '+term+' ')>=0)return {type:alias.type,keys:alias.keys,key:alias.keys[0],label:alias.label};
+      if(term&&(' '+q+' ').indexOf(' '+term+' ')>=0)return {type:alias.type,keys:alias.keys,key:alias.keys[0],label:alias.label,terms:alias.terms};
     }
   }
   var categories=typeof ALICERCE_CATEGORIES!=='undefined'?ALICERCE_CATEGORIES:{};
@@ -5578,7 +5578,11 @@ AlicerceIA._assistantFilterRows=function(rows,topic){
     if(topic.type==='merchant')return this._norm(row.local)===topic.key;
     if(topic.type==='category')return row.categoria===topic.key;
     if(topic.type==='subcategory')return row.subcategoria===topic.key;
-    if(topic.type==='subcategories')return topic.keys.indexOf(row.subcategoria)>=0;
+    if(topic.type==='subcategories'){
+      if(topic.keys.indexOf(row.subcategoria)>=0)return true;
+      var description=this._norm([row.descricao,row.local].join(' '));
+      return (topic.terms||[]).some(function(term){return description.indexOf(this._norm(term))>=0;},this);
+    }
     return false;
   },this);
 };
@@ -5752,7 +5756,8 @@ AlicerceIA.responder=function(question){
   }
   if(intent==='why'){
     var detailRows=filtered.length?filtered:selected;
-    var groupField=topic&&topic.type==='category'?'subcategoria':'local';
+    var groupField=topic&&topic.type==='category'?'subcategoria':(topic?'local':'categoria');
+    if(groupField==='local'&&!detailRows.some(function(row){return !!row.local;}))groupField='descricao';
     var details=this._groups(detailRows,groupField)[0];
     if(!details)return finish(this._assistantMessage('noDetails'));
     return finish(this._assistantMessage('why',{
