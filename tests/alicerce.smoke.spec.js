@@ -1230,6 +1230,7 @@ test('Alicerce IA responde perguntas sobre gastos por subcategoria e respeita a 
   await prepararTelaSemNuvem(page, 'home');
   await page.evaluate(function () {
     Store.userId = 'ia-conta-teste-a';
+    Store.settings = Object.assign({}, Store.settings, { alicerceLegalAcceptance: { termsVersion: '2026-10-20-v1', privacyVersion: '2026-10-20-v1', acceptedAt: '2026-10-31T12:00:00.000Z' } });
     Store.lang = 'pt';
     Store.movements = [
       { id: 'ia-1', tipo: 'despesa', categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 48.50, data: Clock.today(), status: 'pago' },
@@ -1240,7 +1241,7 @@ test('Alicerce IA responde perguntas sobre gastos por subcategoria e respeita a 
   });
 
   await expect(page.locator('#alicerce-ai-card')).toBeVisible();
-  await expect(page.locator('#alicerce-ai-insight')).toContainText('lanchonete');
+  await expect(page.locator('#alicerce-ai-insight')).toContainText(/lanchonete/i);
   await page.locator('#alicerce-ai-question').fill('Quanto gastei com lanche este mês?');
   await page.locator('.alicerce-ai-button').click();
   await expect(page.locator('#alicerce-ai-answer')).toContainText('48,50');
@@ -1269,6 +1270,7 @@ test('Alicerce IA também aparece na Visão Financeira e compara períodos equiv
       String(mesAnterior.getMonth() + 1).padStart(2, '0') + '-' + dia;
     var dataAtual = Clock.today();
     Store.userId = 'ia-conta-comparacao';
+    Store.settings = Object.assign({}, Store.settings, { alicerceLegalAcceptance: { termsVersion: '2026-10-20-v1', privacyVersion: '2026-10-20-v1', acceptedAt: '2026-10-31T12:00:00.000Z' } });
     Store.movements = [
       { id: 'ia-prev', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', valor: 100, data: dataAnterior },
       { id: 'ia-now', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', valor: 150, data: dataAtual }
