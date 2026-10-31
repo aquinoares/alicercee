@@ -910,6 +910,71 @@ test('reconhece lanches e estabelecimentos de fast food com subcategorias válid
   expect(resultado.almoco).toMatchObject({ categoria: 'comida', subcategoria: 'restaurante' });
 });
 
+test('normaliza descritores brasileiros e reaproveita aprendizado sem misturar produtos', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function () {
+    const keyPairs = [
+      [
+        alicerLearningKey('CARREFOUR EXPRESS LOJA 023', 'Shampoo'),
+        alicerLearningKey('Carrefour', 'Shampoo')
+      ],
+      [
+        alicerLearningKey('Drogaria Pague Menos Filial 18', 'Dipirona'),
+        alicerLearningKey('Pague Menos', 'Dipirona')
+      ],
+      [
+        alicerLearningKey('MC DONALDS LJ 31', 'Big Mac'),
+        alicerLearningKey("McDonald's", 'Big Mac')
+      ],
+      [
+        alicerLearningKey('CELPE 123456', 'Conta de luz'),
+        alicerLearningKey('Neoenergia Pernambuco', 'Conta de luz')
+      ]
+    ];
+    const unknownA = normalizeAlicerMerchantIdentity('Mercadinho São João Loja 12');
+    const unknownB = normalizeAlicerMerchantIdentity('MERCADINHO SAO JOAO FILIAL 07');
+    const unknownDifferent = normalizeAlicerMerchantIdentity('Mercadinho São Pedro Loja 07');
+    const extracted = [
+      Interpreter.extractMerchant('COMPRA DEBITO MC DONALDS LOJA 031 NSU 123456'),
+      Interpreter.extractMerchant('PAGAMENTO CELPE NSU 884433'),
+      Interpreter.extractMerchant('PIX COMPESA ID 123456')
+    ];
+
+    Store.learning = {};
+    Store.learnCorrection('Carrefour Express Loja 23', 'comida', 'mercado', 'Shampoo');
+    const corrected = Interpreter.interpretLocal('Valor: 42 | Item: Shampoo | Local: CARREFOUR LJ 07');
+    const otherProduct = Interpreter.interpretLocal('Valor: 18 | Item: Detergente | Local: Carrefour Express Filial 2');
+
+    return {
+      keyPairs: keyPairs,
+      unknownA: unknownA,
+      unknownB: unknownB,
+      unknownDifferent: unknownDifferent,
+      extracted: extracted,
+      corrected: corrected,
+      otherProduct: otherProduct
+    };
+  });
+
+  resultado.keyPairs.forEach(function (pair) {
+    expect(pair[0]).toBe(pair[1]);
+  });
+  expect(resultado.unknownA).toBe('mercadinho sao joao');
+  expect(resultado.unknownB).toBe(resultado.unknownA);
+  expect(resultado.unknownDifferent).not.toBe(resultado.unknownA);
+  expect(resultado.extracted).toEqual(['Mcdonald s', 'Neoenergia', 'Compesa']);
+  expect(resultado.corrected).toMatchObject({
+    categoria: 'comida',
+    subcategoria: 'mercado',
+    source: 'learning'
+  });
+  expect(resultado.otherProduct).toMatchObject({
+    categoria: 'casa_dia_a_dia',
+    subcategoria: 'produtos_limpeza',
+    source: 'item'
+  });
+});
+
 test('mantém todas as regras e o dicionário dentro da taxonomia oficial', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   const resultado = await page.evaluate(function () {
