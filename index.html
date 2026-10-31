@@ -2375,8 +2375,8 @@ body:has(.visao-financeira){background:#080A11;color:#E9ECF1}
 </head>
 <body data-theme="azul">
 
-<div id="loading" class="loading-screen hidden"><div class="logo-text">Alicerce</div><p class="text-muted mt-2">...</p></div>
-<div id="app" class="app"><main class="al-login-screen"><video class="al-login-video" autoplay="" muted="" playsinline="" loop="" preload="auto" aria-hidden="true"><source src="videos/noite.mp4" type="video/mp4"></video><div class="al-login-overlay"></div><header class="al-login-brand"><span class="al-brand-mark">A</span><span>Alicer<span class="al-brand-accent">ce</span></span></header><section class="al-login-layout"><div class="al-login-story"><span class="al-login-eyebrow"><i></i> SUA VIDA FINANCEIRA, COM MAIS INTENÇÃO</span><h1>O futuro que você quer começa <em>nas escolhas de hoje.</em></h1><p>Organize seu dinheiro, acompanhe seus objetivos e construa uma relação mais tranquila com cada escolha financeira.</p><div class="al-login-points"><span><b>01</b> Entenda seu dinheiro</span><span><b>02</b> Planeje seus próximos passos</span><span><b>03</b> Avance no seu ritmo</span></div></div><div class="al-login-card"><div class="al-login-card-top"><span class="al-login-kicker">BEM-VINDO AO ALICERCE</span><span class="al-login-orb" aria-hidden="true">↗</span></div><h2>Entrar na sua conta</h2><p class="al-login-description">Digite seu e-mail e senha para continuar.</p><form class="al-login-form" onsubmit="event.preventDefault();doLogin()"><label for="login-email">Seu e-mail</label><div class="al-login-input"><span aria-hidden="true">✉</span><input id="login-email" type="email" autocomplete="email" placeholder="seu@email.com" required=""></div><div class="al-login-password-label"><label for="login-pass">Senha</label></div><div class="al-login-input"><span aria-hidden="true">⌑</span><input id="login-pass" type="password" autocomplete="current-password" placeholder="Sua senha" required=""><button type="button" class="al-login-eye" onclick="alternarVisibilidade('login-pass',this)" aria-label="Mostrar senha">◉</button></div><button type="submit" class="al-login-submit"><span>Entrar</span><span aria-hidden="true">→</span></button></form><div class="al-login-divider"><span>AINDA NÃO TEM CONTA?</span></div><button type="button" class="al-login-signup" onclick="doSignup()">Criar conta<span aria-hidden="true">↗</span></button><p class="al-login-privacy"><span aria-hidden="true">◈</span> Seus dados financeiros merecem cuidado.</p></div></section><footer class="al-login-footer"><span>ALICERCE © 2026</span><span>PEQUENAS ESCOLHAS. GRANDES CONSTRUÇÕES.</span></footer></main></div>
+<div id="loading" class="loading-screen"><div class="logo-text">Alicerce</div><p class="text-muted mt-2">...</p></div>
+<div id="app" class="app hidden"><main class="al-login-screen"><video class="al-login-video" autoplay="" muted="" playsinline="" loop="" preload="auto" aria-hidden="true"><source src="videos/noite.mp4" type="video/mp4"></video><div class="al-login-overlay"></div><header class="al-login-brand"><span class="al-brand-mark">A</span><span>Alicer<span class="al-brand-accent">ce</span></span></header><section class="al-login-layout"><div class="al-login-story"><span class="al-login-eyebrow"><i></i> SUA VIDA FINANCEIRA, COM MAIS INTENÇÃO</span><h1>O futuro que você quer começa <em>nas escolhas de hoje.</em></h1><p>Organize seu dinheiro, acompanhe seus objetivos e construa uma relação mais tranquila com cada escolha financeira.</p><div class="al-login-points"><span><b>01</b> Entenda seu dinheiro</span><span><b>02</b> Planeje seus próximos passos</span><span><b>03</b> Avance no seu ritmo</span></div></div><div class="al-login-card"><div class="al-login-card-top"><span class="al-login-kicker">BEM-VINDO AO ALICERCE</span><span class="al-login-orb" aria-hidden="true">↗</span></div><h2>Entrar na sua conta</h2><p class="al-login-description">Digite seu e-mail e senha para continuar.</p><form class="al-login-form" onsubmit="event.preventDefault();doLogin()"><label for="login-email">Seu e-mail</label><div class="al-login-input"><span aria-hidden="true">✉</span><input id="login-email" type="email" autocomplete="email" placeholder="seu@email.com" required=""></div><div class="al-login-password-label"><label for="login-pass">Senha</label></div><div class="al-login-input"><span aria-hidden="true">⌑</span><input id="login-pass" type="password" autocomplete="current-password" placeholder="Sua senha" required=""><button type="button" class="al-login-eye" onclick="alternarVisibilidade('login-pass',this)" aria-label="Mostrar senha">◉</button></div><button type="submit" class="al-login-submit"><span>Entrar</span><span aria-hidden="true">→</span></button></form><div class="al-login-divider"><span>AINDA NÃO TEM CONTA?</span></div><button type="button" class="al-login-signup" onclick="doSignup()">Criar conta<span aria-hidden="true">↗</span></button><p class="al-login-privacy"><span aria-hidden="true">◈</span> Seus dados financeiros merecem cuidado.</p></div></section><footer class="al-login-footer"><span>ALICERCE © 2026</span><span>PEQUENAS ESCOLHAS. GRANDES CONSTRUÇÕES.</span></footer></main></div>
 <div id="menu-overlay" class="menu-overlay"></div>
 <div id="menu-panel" class="menu-panel"></div>
 <div id="toast" class="toast"></div>
@@ -6456,31 +6456,49 @@ function renderLogin(){
 }
 
 async function doLogin(){
+  if(window.__alicerceLoginBusy)return;
+
+  window.__alicerceLoginBusy=true;
+  var botao=document.querySelector('#loginLiving .login-btn');
+  if(botao)botao.disabled=true;
+
   try{
     var email=document.getElementById('login-email').value.trim();
     var password=document.getElementById('login-pass').value;
+
     if(!email||!password){
       alicerceAuthFeedback('Informe seu e-mail e sua senha.',true);
       return;
     }
+
     var cliente=window.alicerceSupabase;
     if(!cliente||!cliente.auth)throw new Error('Serviço de autenticação indisponível. Tente novamente.');
+
     var resposta=await cliente.auth.signInWithPassword({email:email,password:password});
     if(resposta&&resposta.error)throw resposta.error;
+
     var data=resposta&&resposta.data?resposta.data:{};
     if(!data.user)throw new Error('Não foi possível identificar a conta. Tente novamente.');
+
     await Store.init(data.user.id);
     Store.userEmail=String(data.user.email||'');
     Store.screen='home';
     Store.screenData=null;
     render();
+
   }catch(erro){
     var mensagem=String(erro&&erro.message||'');
+
     if(/invalid login credentials/i.test(mensagem)){
       alicerceAuthFeedback('E-mail ou senha incorretos. Confira os dados ou use “Esqueceu a senha?”.',true);
     }else{
       alicerceAuthFeedback(mensagem||'Não foi possível entrar. Confira sua conexão e tente novamente.',true);
     }
+
+  }finally{
+    window.__alicerceLoginBusy=false;
+    var botaoAtual=document.querySelector('#loginLiving .login-btn');
+    if(botaoAtual)botaoAtual.disabled=false;
   }
 }
 
