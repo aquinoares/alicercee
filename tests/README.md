@@ -15,12 +15,15 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 - Reclassificação de categoria/subcategoria e confirmação de gasto.
 - Compra no crédito à vista e parcelada, com conferência de valores em centavos, número de parcelas e vencimentos.
 - Edição e exclusão de cartões, verificando a preservação de parcelas e empréstimos não relacionados.
+- Restauração de gastos e cartões pelo repositório cloud simulado após remover o cache local.
+- Isolamento de dois usuários no mock que reproduz a regra de acesso por proprietário, incluindo bloqueio de gravação com sessão incompatível.
+- Falha simulada de sincronização, verificando que a cópia local permanece preservada.
 - Pré-visualização dos PDFs de Gastos e Visão Financeira.
 - Baseline axe das telas Home, Gastos, Cartões e Configurações.
 
 ## Resultado automatizado atual
 
-A suíte reúne 17 cenários Playwright. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
+A suíte reúne 20 cenários Playwright. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
 
 ## Isolamento e limites
 
