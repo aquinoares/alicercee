@@ -453,7 +453,8 @@ test('confirma um gasto após reclassificar categoria e subcategoria', async fun
       screen: Store.screen,
       movements: Store.movements,
       installments: Store.installments,
-      upserts: window.__alicerceMockUpserts
+      upserts: window.__alicerceMockUpserts,
+      learning: Store.learning
     };
   });
   expect(resultado.screen).toBe('home');
@@ -470,6 +471,11 @@ test('confirma um gasto após reclassificar categoria e subcategoria', async fun
   });
   expect(resultado.installments).toEqual([]);
   expect(resultado.upserts).toEqual([]);
+  expect(resultado.learning['corrida de teste::deslocamento de teste']).toMatchObject({
+    categoria: 'transporte',
+    subcategoria: 'uber',
+    scope: 'merchant_item'
+  });
 });
 
 test('registra compra no crédito à vista como uma parcela na fatura', async function ({ page }) {
@@ -852,4 +858,125 @@ test('registra baseline axe nas telas financeiras principais em celular', async 
     await page.setViewportSize({ width: 390, height: 844 });
     await registrarAxe(page, testInfo, 'tela-' + screen);
   }
+});
+
+
+test('classifica o produto antes da categoria ampla do supermercado', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function () {
+    Store.learning = {
+      carrefour: { categoria: 'comida', subcategoria: 'mercado' }
+    };
+    const shampoo = Interpreter.interpretLocal('Valor: 42 | Item: Shampoo | Local: Carrefour');
+    const detergente = Interpreter.interpretLocal('Valor: 18 | Item: Detergente | Local: Carrefour');
+    return {
+      shampoo: shampoo,
+      detergente: detergente,
+      legacyForItem: Store.getLearned('Carrefour', 'Shampoo')
+    };
+  });
+
+  expect(resultado.shampoo).toMatchObject({
+    categoria: 'beleza',
+    subcategoria: 'cosmeticos',
+    source: 'item',
+    confidence: 'high'
+  });
+  expect(resultado.detergente).toMatchObject({
+    categoria: 'casa_dia_a_dia',
+    subcategoria: 'produtos_limpeza',
+    source: 'item'
+  });
+  expect(resultado.legacyForItem).toBeNull();
+});
+
+test('reconhece lanches e estabelecimentos de fast food com subcategorias válidas', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function () {
+    return {
+      lanche: Interpreter.interpretLocal('Valor: 23 | Item: Coxinha | Local: Lanchonete do Ze'),
+      fastFood: Interpreter.interpretLocal('Valor: 39 | Item: Big Mac | Local: McDonald\\'s'),
+      almoco: Interpreter.interpretLocal('Valor: 48 | Item: Almoco | Local: Restaurante Central')
+    };
+  });
+
+  expect(resultado.lanche).toMatchObject({ categoria: 'comida', subcategoria: 'lanchonete' });
+  expect(resultado.fastFood).toMatchObject({ categoria: 'comida', subcategoria: 'fast_food' });
+  expect(resultado.almoco).toMatchObject({ categoria: 'comida', subcategoria: 'restaurante' });
+});
+
+test('mantém todas as regras e o dicionário dentro da taxonomia oficial', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function () {
+    const invalidMerchants = Object.keys(Interpreter.merchantDict).filter(function (key) {
+      const item = Interpreter.merchantDict[key];
+      return !alicerClassificationPairIsValid(item.c, item.s);
+    });
+    const invalidRules = Interpreter.rules.filter(function (rule) {
+      return rule.c && rule.s && !alicerClassificationPairIsValid(rule.c, rule.s);
+    }).map(function (rule) {
+      return { category: rule.c, subcategory: rule.s };
+    });
+    return {
+      invalidMerchants: invalidMerchants,
+      invalidRules: invalidRules,
+      allCategories: Object.keys(ALICERCE_CATEGORIES)
+    };
+  });
+
+  expect(resultado.invalidMerchants).toEqual([]);
+  expect(resultado.invalidRules).toEqual([]);
+  expect(resultado.allCategories).toContain('beleza');
+  expect(resultado.allCategories).toContain('animais');
+});
+
+test('não transforma uma sugestão apenas confirmada em aprendizado permanente', async function ({ page }) {
+  const dados = {
+    interpretation: {
+      amount: 42,
+      categoria: 'comida',
+      subcategoria: 'mercado',
+      merchant: 'Carrefour',
+      item: 'Arroz'
+    },
+    amountInput: 42,
+    itemInput: 'Arroz',
+    localInput: 'Carrefour',
+    date: '2026-10-31',
+    paymentMethod: 'pix'
+  };
+  await prepararConferenciaGasto(page, dados, []);
+  await page.locator('#btn-save-gasto-doubt').click();
+
+  const resultado = await page.evaluate(function () {
+    return {
+      movements: Store.movements,
+      learning: Store.learning
+    };
+  });
+  expect(resultado.movements).toHaveLength(1);
+  expect(resultado.learning).toEqual({});
+});
+
+test('formulário manual utiliza a taxonomia completa e subcategorias correspondentes', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function () {
+    document.getElementById('app').innerHTML = renderGastoManual();
+    const categories = Array.prototype.map.call(
+      document.getElementById('gm-cat').options,
+      function (item) { return item.value; }
+    );
+    updateSubcats('beleza');
+    const beautySubs = Array.prototype.map.call(
+      document.getElementById('gm-sub').options,
+      function (item) { return item.value; }
+    );
+    return { categories: categories, beautySubs: beautySubs };
+  });
+
+  expect(resultado.categories).toContain('beleza');
+  expect(resultado.categories).toContain('animais');
+  expect(resultado.categories).toContain('casa_dia_a_dia');
+  expect(resultado.beautySubs).toContain('unhas');
+  expect(resultado.beautySubs).toContain('cosmeticos');
 });
