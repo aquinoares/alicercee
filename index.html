@@ -4908,7 +4908,7 @@ const ALICERCE_MERCHANT_ALIASES = [
   {key:'drogaria pacheco',aliases:['drogaria pacheco','drogarias pacheco']},
   {key:'panvel',aliases:['panvel farmacias','panvel farmacia','farmacias panvel','farmacia panvel','panvel']},
   {key:'nissei',aliases:['nissei farmacias','nissei farmacia','farmacias nissei','farmacia nissei','nissei']},
-  {key:'extrafarma',aliases:['extrafarma']},
+  {key:'extrafarma',aliases:['extrafarma','extra farma']},
   {key:'equatorial energia',aliases:['equatorial energia']},
   {key:'lojas renner',aliases:['lojas renner','renner']}
 ];
@@ -5056,7 +5056,7 @@ const Interpreter={
     {p:/(internet|wifi)/i,c:'moradia',s:'internet'},
     {p:/\b(aluguel|aluga|rent(al)?)\b/i,c:'moradia',s:'aluguel'},
     {p:/\buber\b/i,c:'transporte',s:'uber'},
-    {p:/(^|[^0-9.,])99([^0-9.,]|$)/i,c:'transporte',s:'99'},
+    {p:/\b99\s*(?:app|pop|taxi)\b/i,c:'transporte',s:'99'},
     {p:VEHICLE_RE,c:'transporte',s:'combustivel'},
     {p:/\b(botijao|p13|gas\s*de\s*cozinha|gas\s*encanado|gas\s*natural|cooking\s*gas|propane|gas\s*bill|gas\s*de\s*cocina|garrafa\s*de\s*gas|bombona)\b/i,c:'moradia',s:'gas'},
     {p:/\bgas\b/i,c:null,s:null,low:true},
@@ -5254,8 +5254,17 @@ const Interpreter={
       const marketplace=['mercado livre','mercadolivre','amazon','shopee','magalu','magazine luiza','aliexpress','temu'];
       const isMarketplace=marketplace.some(k=>lower.indexOf(this.norm(k))!==-1);
       if(!isMarketplace){
-        for(const key of Object.keys(this.merchantDict)){
-          if(lower.indexOf(this.norm(key))===-1)continue;
+        const exactMerchant=this.merchantDict[lower];
+        if(exactMerchant&&alicerClassificationPairIsValid(exactMerchant.c,exactMerchant.s)){
+          return{amount,date,merchant,item,categoria:exactMerchant.c,subcategoria:exactMerchant.s,confidence:'medium',source:'dictionary'};
+        }
+        const merchantKeys=Object.keys(this.merchantDict).sort(function(a,b){
+          return normalizeAlicerClassificationText(b).length-normalizeAlicerClassificationText(a).length;
+        });
+        for(const key of merchantKeys){
+          const normalizedKey=this.norm(key);
+          const matcher=new RegExp('(^|[^a-z0-9])'+normalizedKey+'([^a-z0-9]|$)');
+          if(!matcher.test(lower))continue;
           const d=this.merchantDict[key];
           if(!d||!alicerClassificationPairIsValid(d.c,d.s))continue;
           return{amount,date,merchant,item,categoria:d.c,subcategoria:d.s,confidence:'medium',source:'dictionary'};
