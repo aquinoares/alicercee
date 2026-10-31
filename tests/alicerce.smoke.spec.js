@@ -1272,8 +1272,8 @@ test('Alicerce IA também aparece na Visão Financeira e compara períodos equiv
     Store.userId = 'ia-conta-comparacao';
     Store.settings = Object.assign({}, Store.settings, { alicerceLegalAcceptance: { termsVersion: '2026-10-20-v1', privacyVersion: '2026-10-20-v1', acceptedAt: '2026-10-31T12:00:00.000Z' } });
     Store.movements = [
-      { id: 'ia-prev', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', valor: 100, data: dataAnterior },
-      { id: 'ia-now', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', valor: 150, data: dataAtual }
+      { id: 'ia-prev', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', valor: 100, data: dataAnterior, status: 'pago' },
+      { id: 'ia-now', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', valor: 150, data: dataAtual, status: 'pago' }
     ];
     Store.installments = [];
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
@@ -1285,4 +1285,119 @@ test('Alicerce IA também aparece na Visão Financeira e compara períodos equiv
   await page.locator('#alicerce-ai-question').fill('Compare com o mês passado');
   await page.locator('.alicerce-ai-button').click();
   await expect(page.locator('#alicerce-ai-answer')).toContainText('50%');
+});
+
+
+test('Alicerce IA respeita o motor financeiro e exclui pendencias, transferencias e cartao emprestado', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var today = Clock.today();
+    Store.loans = [{ id: 'loan-emprestado', tipo: 'emprestei', fromCard: true }];
+    Store.movements = [
+      { id: 'realizado', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', valor: 75, data: today, status: 'pago' },
+      { id: 'pendente', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', valor: 999, data: today, status: 'pendente' },
+      { id: 'transferencia', tipo: 'transferencia', direction: 'saida', valor: 500, data: today, status: 'pago' },
+      { id: 'cartao-emprestado', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', valor: 400, data: today, status: 'pago', loanId: 'loan-emprestado' }
+    ];
+    Store.installments = [
+      { id: 'parcela-propria', tipo: 'cartao', compraId: 'compra-propria', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compra pessoal', valor: 20, data: today, status: 'pendente' },
+      { id: 'parcela-emprestada', tipo: 'cartao', compraId: 'compra-emprestada', categoria: 'comida', subcategoria: 'mercado', valor: 300, data: today, status: 'pendente', loanId: 'loan-emprestado' }
+    ];
+    return {
+      rows: AlicerceIA._rows(),
+      total: AlicerceIA._sum(AlicerceIA._rows())
+    };
+  });
+  expect(result.total).toBe(95);
+  expect(result.rows).toHaveLength(2);
+  expect(result.rows.map(function (row) { return row.source; }).sort()).toEqual(['card', 'movement']);
+});
+
+test('Alicerce IA identifica um gasto muito acima da mediana pessoal quando existe historico suficiente', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [];
+    [20, 22, 18, 20, 21].forEach(function (amount, index) {
+      var date = new Date(now.getFullYear(), now.getMonth() - (index + 1), 10);
+      Store.movements.push({
+        id: 'historico-' + index, tipo: 'despesa', status: 'pago',
+        categoria: 'comida', subcategoria: 'lanchonete',
+        valor: amount, data: format(date), descricao: 'Lanche'
+      });
+    });
+    Store.movements.push({
+      id: 'fora-padrao', tipo: 'despesa', status: 'pago',
+      categoria: 'comida', subcategoria: 'lanchonete',
+      valor: 150, data: Clock.today(), descricao: 'Lanche especial'
+    });
+    return {
+      anomalies: AlicerceIA._detectAnomalies(AlicerceIA._rows()),
+      insight: AlicerceIA.insight()
+    };
+  });
+  expect(result.anomalies).toHaveLength(1);
+  expect(result.anomalies[0]).toMatchObject({ amount: 150, median: 20, category: 'comida' });
+  expect(result.insight).toContain('R$ 150,00');
+  expect(result.insight).toContain('R$ 20,00');
+});
+
+test('Alicerce IA nao chama um gasto de anormal sem cinco registros anteriores comparaveis', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [20, 22, 18, 1000].map(function (amount, index) {
+      var date = index === 3 ? now : new Date(now.getFullYear(), now.getMonth() - (index + 1), 10);
+      return {
+        id: 'historico-curto-' + index, tipo: 'despesa', status: 'pago',
+        categoria: 'comida', subcategoria: 'lanchonete',
+        valor: amount, data: format(date)
+      };
+    });
+    return AlicerceIA._detectAnomalies(AlicerceIA._rows());
+  });
+  expect(result).toEqual([]);
+});
+
+test('Alicerce IA entende periodos, estabelecimentos e aumentos por categoria', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    var previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 5);
+    var currentDate = Clock.today();
+    var previousMonthDate = format(previousMonth);
+    var yesterdayDate = format(yesterday);
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [
+      { id: 'last-month', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compra antiga', estabelecimento: 'Mercado Bom', valor: 70, data: previousMonthDate },
+      { id: 'yesterday', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'padaria', descricao: 'Pao', estabelecimento: 'Padaria Central', valor: 15, data: yesterdayDate },
+      { id: 'today-a', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Feira', estabelecimento: 'Mercado Bom', valor: 90, data: currentDate },
+      { id: 'today-b', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Mercado', estabelecimento: 'Mercado Bom', valor: 90, data: currentDate }
+    ];
+    return {
+      lastMonth: AlicerceIA.responder('Quanto gastei no mês passado?'),
+      yesterday: AlicerceIA.responder('Quanto gastei ontem?'),
+      merchant: AlicerceIA.responder('Qual estabelecimento levou mais dinheiro?'),
+      categoryRise: AlicerceIA.insight()
+    };
+  });
+  expect(result.lastMonth).toContain('R$ 70,00');
+  expect(result.yesterday).toContain('R$ 15,00');
+  expect(result.merchant).toContain('Mercado Bom');
+  expect(result.categoryRise).toContain('aumentaram 157%');
 });
