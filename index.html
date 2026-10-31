@@ -4883,13 +4883,54 @@ function normalizeAlicerClassificationText(value){
     .replace(/[^a-z0-9]+/g,' ')
     .replace(/\s+/g,' ').trim();
 }
+
+/* Aliases brasileiros conservadores: só unem variações conhecidas da mesma marca. */
+const ALICERCE_MERCHANT_ALIASES = [
+  {key:'carrefour',aliases:['carrefour express','carrefour market','carrefour bairro','carrefour hiper','carrefour']},
+  {key:'pao de acucar',aliases:['pao de acucar','paodeacucar']},
+  {key:'atacadao',aliases:['atacadao']},
+  {key:'assai',aliases:['assai','assai atacadista']},
+  {key:'mcdonald s',aliases:['mc donalds','mc donald s','mcdonalds','mcdonald s']},
+  {key:'burger king',aliases:['burger king','burgerking']},
+  {key:'pague menos',aliases:['drogaria pague menos','pague menos']},
+  {key:'ifood',aliases:['ifood','i food']},
+  {key:'rappi',aliases:['rappi']},
+  {key:'uber',aliases:['uber do brasil','uber trip','uber']},
+  {key:'99',aliases:['99 pop','99 taxi','99 app','99']},
+  {key:'raia',aliases:['droga raia']},
+  {key:'neoenergia',aliases:['neoenergia pernambuco','neoenergia cosern','neoenergia','celpe']},
+  {key:'compesa',aliases:['compesa']}
+];
+
+function normalizeAlicerMerchantIdentity(value){
+  var n=normalizeAlicerClassificationText(value);
+  if(!n)return '';
+
+  n=n
+    .replace(/^(?:(?:compra|pagamento|pagto|transacao|pix|debito|credito|cartao|visa|mastercard|elo|maestro|mp|pagseguro|stone|cielo|rede)\s+)+/,'')
+    .replace(/\b(?:compra|pagamento|pagto|transacao|pix|debito|credito|cartao|visa|mastercard|elo|maestro|aprovado|aprovada)\b/g,' ')
+    .replace(/\b(?:loja|lj|filial|unidade|pdv|pos|terminal|term|nsu|aut|doc|ref)\s*#?\s*\d+\b/g,' ')
+    .replace(/\b\d{5,}\b/g,' ')
+    .replace(/\s+/g,' ').trim();
+
+  if(!n)return '';
+  for(var i=0;i<ALICERCE_MERCHANT_ALIASES.length;i++){
+    var entry=ALICERCE_MERCHANT_ALIASES[i];
+    for(var j=0;j<entry.aliases.length;j++){
+      var alias=entry.aliases[j];
+      if(n===alias||n.indexOf(alias+' ')===0)return entry.key;
+    }
+  }
+  return n;
+}
+
 function alicerClassificationPairIsValid(category,subcategory){
   return !!(ALICERCE_CATEGORIES&&ALICERCE_CATEGORIES[category]&&
     Array.isArray(ALICERCE_CATEGORIES[category].subs)&&
     ALICERCE_CATEGORIES[category].subs.indexOf(subcategory)!==-1);
 }
 function alicerLearningKey(merchant,item){
-  const merchantKey=normalizeAlicerClassificationText(merchant);
+  const merchantKey=normalizeAlicerMerchantIdentity(merchant);
   const itemKey=normalizeAlicerClassificationText(item);
   if(!merchantKey)return '';
   return merchantKey+(itemKey?'::'+itemKey:'');
@@ -4933,6 +4974,7 @@ const Interpreter={
     'spotify':{c:'lazer',s:'streaming'},
     'neoenergia':{c:'moradia',s:'energia'},
     'sabesp':{c:'moradia',s:'agua'},
+    'compesa':{c:'moradia',s:'agua'},
 
     'unha':{c:'beleza',s:'unhas'},
     'unhas':{c:'beleza',s:'unhas'},
@@ -5132,7 +5174,12 @@ const Interpreter={
     const labeledLocal=String(text||'').match(/(?:^|\|)\s*local\s*:\s*([^|]*)/i);
     if(labeledLocal)return labeledLocal[1].trim()||null;
     const n=this.semValor(text),amt=this.extractAmount(text);
-    for(const key of Object.keys(this.merchantDict)){const k=this.norm(key);if(n.indexOf(k)<0)continue;const bd=/^\d+$/.test(k)?'[^0-9.,]':'[^a-z0-9]',re=k==='posto'?new RegExp('(^|'+bd+')'+POSTO_RE.source+'('+bd+'|$)'):new RegExp('(^|'+bd+')'+k.replace(/[^a-z0-9 ]/g,m=>'\\'+m)+'('+bd+'|$)');if(!re.test(n))continue;if(k==='99'&&amt!==null&&String(amt)===k)continue;return key.charAt(0).toUpperCase()+key.slice(1)}
+    const normalizedMerchant=normalizeAlicerMerchantIdentity(n);
+    if(this.merchantDict[normalizedMerchant]){
+      if(normalizedMerchant==='99'&&amt!==null&&String(amt)==='99')return null;
+      return normalizedMerchant.charAt(0).toUpperCase()+normalizedMerchant.slice(1);
+    }
+    for(const key of Object.keys(this.merchantDict)){const k=this.norm(key);if(n.indexOf(k)<0)continue;const bd=/^\d+$/.test(k)?'[^0-9.,]':'[^a-z0-9]',re=k==='posto'?new RegExp('(^|'+bd+')'+POSTO_RE.source+'('+bd+'|$)'):new RegExp('(^|'+bd+')'+k.replace(/[^a-z0-9 ]/g,m=>'\\'+m)+'('+bd+'|$)');if(!re.test(n))continue;if(k==='99'&&amt!==null&&String(amt)==='99')continue;return key.charAt(0).toUpperCase()+key.slice(1)}
     return null;
   },
   interpretLocal(text){
