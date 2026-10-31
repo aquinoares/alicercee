@@ -3,6 +3,7 @@ import { AxeBuilder } from '@axe-core/playwright';
 import { readFileSync } from 'node:fs';
 
 const supabaseMock = readFileSync(new URL('./fixtures/supabase-mock.js', import.meta.url), 'utf8');
+const classificationBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-benchmark-ptbr.json', import.meta.url), 'utf8'));
 const supabaseCdn = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js';
 const supabaseProject = 'https://hwmpwvbvgiqotdzkmgwh.supabase.co';
 
@@ -893,6 +894,43 @@ test('classifica o produto antes da categoria ampla do supermercado', async func
   });
   expect(resultado.legacyForItem).toBeNull();
   expect(resultado.explicitCorrection).toMatchObject({ categoria: 'comida', subcategoria: 'mercado', source: 'learning' });
+});
+
+test('mede o benchmark brasileiro curado por categoria e subcategoria', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function (cases) {
+    return cases.map(function (example) {
+      const actual = Interpreter.interpretLocal(example.text);
+      return {
+        id: example.id,
+        expected: example.categoria + '/' + example.subcategoria,
+        actual: actual ? actual.categoria + '/' + actual.subcategoria : 'sem_classificacao',
+        source: actual ? actual.source : null,
+        confidence: actual ? actual.confidence : null
+      };
+    });
+  }, classificationBenchmark);
+
+  const groups = {};
+  resultado.forEach(function (item) {
+    const category = item.expected.split('/')[0];
+    if (!groups[category]) groups[category] = { total: 0, correct: 0 };
+    groups[category].total++;
+    if (item.actual === item.expected) groups[category].correct++;
+  });
+  const totalCorrect = resultado.filter(function (item) {
+    return item.actual === item.expected;
+  }).length;
+  console.log('[benchmark-ptbr] ' + JSON.stringify({
+    total: resultado.length,
+    correct: totalCorrect,
+    accuracy: resultado.length ? Number((totalCorrect / resultado.length * 100).toFixed(1)) : 0,
+    byCategory: groups
+  }));
+
+  expect(resultado.filter(function (item) {
+    return item.actual !== item.expected;
+  })).toEqual([]);
 });
 
 test('reconhece lanches e estabelecimentos de fast food com subcategorias válidas', async function ({ page }) {
