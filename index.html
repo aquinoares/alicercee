@@ -11935,7 +11935,10 @@ function generateMonthlyPDF(){
   }
 }
 function generateGastosPDF(){
-  if(window.__alicerceGastosPDFAtivo)return;
+  if(window.__alicerceGastosPDFAtivo){
+    try{if(window.__alicerceGastosPDFPopup&&!window.__alicerceGastosPDFPopup.closed)window.__alicerceGastosPDFPopup.focus()}catch(e){}
+    return;
+  }
   window.__alicerceGastosPDFAtivo=true;
 
   try{
@@ -12174,17 +12177,19 @@ function generateGastosPDF(){
     var popupPDF=null;
     try{
       var htmlParaImprimir=html.replace(/<\/body>\s*<\/html>\s*$/i,
-        '<scr'+'ipt>window.addEventListener("load",function(){setTimeout(function(){window.focus();window.print();},350);});<\/scr'+'ipt></body></html>');
+        '<scr'+'ipt>(function(){var jaImprimiu=false;window.addEventListener("load",function(){if(jaImprimiu)return;jaImprimiu=true;setTimeout(function(){window.focus();window.print();},350);},{once:true});window.addEventListener("afterprint",function(){try{if(window.opener&&!window.opener.closed)window.opener.__alicerceGastosPDFAtivo=false}catch(e){}});})();<\/scr'+'ipt></body></html>');
       if(htmlParaImprimir===html){
         throw new Error('Nao foi possivel preparar a janela de impressao do relatorio.');
       }
 
       var blobPDF=new Blob([htmlParaImprimir],{type:'text/html;charset=UTF-8'});
       var urlPDF=URL.createObjectURL(blobPDF);
-      popupPDF=window.open(urlPDF,'_blank');
+      popupPDF=window.open(urlPDF,'alicerceGastosPDF');
+      window.__alicerceGastosPDFPopup=popupPDF;
       if(!popupPDF){
         URL.revokeObjectURL(urlPDF);
         window.__alicerceGastosPDFAtivo=false;
+        window.__alicerceGastosPDFPopup=null;
         alert('O navegador bloqueou a nova janela. Permita pop-ups para exportar o PDF.');
         return;
       }
@@ -12194,6 +12199,7 @@ function generateGastosPDF(){
     }catch(erroPDFAbrir){
       window.__alicerceGastosPDFAtivo=false;
       try{if(popupPDF&&!popupPDF.closed)popupPDF.close();}catch(e){}
+      window.__alicerceGastosPDFPopup=null;
       throw erroPDFAbrir;
     }
 
