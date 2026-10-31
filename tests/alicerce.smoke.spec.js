@@ -900,7 +900,7 @@ test('reconhece lanches e estabelecimentos de fast food com subcategorias válid
   const resultado = await page.evaluate(function () {
     return {
       lanche: Interpreter.interpretLocal('Valor: 23 | Item: Coxinha | Local: Lanchonete do Ze'),
-      fastFood: Interpreter.interpretLocal('Valor: 39 | Item: Big Mac | Local: McDonald\\'s'),
+      fastFood: Interpreter.interpretLocal('Valor: 39 | Item: Big Mac | Local: McDonald\'s'),
       almoco: Interpreter.interpretLocal('Valor: 48 | Item: Almoco | Local: Restaurante Central')
     };
   });
