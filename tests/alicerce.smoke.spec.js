@@ -678,6 +678,174 @@ test('exclui cartão e remove apenas parcelas e empréstimos vinculados', async 
   expect(resultado.upserts).toEqual([]);
 });
 
+
+test('recarrega gastos e cartões do armazenamento cloud simulado sem depender do cache local', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+
+  const resultado = await page.evaluate(async function () {
+    var uid = 'cloud-user-restauracao';
+    var movimentos = [{
+      id: 'cloud-gasto-1',
+      userId: uid,
+      tipo: 'despesa',
+      categoria: 'comida',
+      subcategoria: 'mercado',
+      descricao: 'Mercado sincronizado',
+      valor: 145.7,
+      data: '2026-10-31',
+      status: 'pago'
+    }];
+    var cartoes = [{
+      id: 'cloud-cartao-1',
+      userId: uid,
+      nome: 'Cartão sincronizado',
+      fechamento: 18,
+      vencimento: 25,
+      limite: 3200,
+      ativo: true
+    }];
+
+    window.__alicerceMockSessionUserId = uid;
+    var gravaGastos = await Repository.cloudSet(uid, 'movements', movimentos);
+    var gravaCartoes = await Repository.cloudSet(uid, 'cards', cartoes);
+
+    localStorage.removeItem(Repository._key(uid, 'movements'));
+    localStorage.removeItem(Repository._key(uid, 'cards'));
+    localStorage.setItem('alicerce_' + uid + '_financialMigrationVersion', String(financialMigrationVersion));
+
+    await Store.init(uid);
+
+    return {
+      gravaGastos: gravaGastos,
+      gravaCartoes: gravaCartoes,
+      userId: Store.userId,
+      movimentos: Store.movements,
+      cartoes: Store.cards,
+      cacheMovimentos: Repository.get(uid, 'movements', []),
+      cacheCartoes: Repository.get(uid, 'cards', []),
+      cloudRows: window.__alicerceMockCloudRows,
+      upserts: window.__alicerceMockUpserts
+    };
+  });
+
+  expect(resultado.gravaGastos).toEqual({ ok: true });
+  expect(resultado.gravaCartoes).toEqual({ ok: true });
+  expect(resultado.userId).toBe('cloud-user-restauracao');
+  expect(resultado.movimentos).toHaveLength(1);
+  expect(resultado.movimentos[0]).toMatchObject({
+    id: 'cloud-gasto-1',
+    descricao: 'Mercado sincronizado',
+    valor: 145.7
+  });
+  expect(resultado.cartoes).toHaveLength(1);
+  expect(resultado.cartoes[0]).toMatchObject({
+    id: 'cloud-cartao-1',
+    nome: 'Cartão sincronizado',
+    limite: 3200
+  });
+  expect(resultado.cacheMovimentos).toEqual(resultado.movimentos);
+  expect(resultado.cacheCartoes).toEqual(resultado.cartoes);
+  expect(resultado.cloudRows).toHaveLength(2);
+  expect(resultado.upserts).toHaveLength(2);
+  expect(resultado.upserts.every(function (item) {
+    return item.table === 'alicerce_data' && item.payload.user_id === 'cloud-user-restauracao';
+  })).toBe(true);
+});
+
+test('isola dados na nuvem entre usuários e bloqueia gravação com sessão incompatível', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+
+  const resultado = await page.evaluate(async function () {
+    var usuarioA = 'cloud-user-a';
+    var usuarioB = 'cloud-user-b';
+    window.__alicerceMockSessionUserId = usuarioA;
+    var gravaA = await Repository.cloudSet(usuarioA, 'movements', [{
+      id: 'gasto-privado-a',
+      descricao: 'Dado privado A',
+      valor: 10
+    }]);
+
+    window.__alicerceMockSessionUserId = usuarioB;
+    var gravaB = await Repository.cloudSet(usuarioB, 'movements', [{
+      id: 'gasto-privado-b',
+      descricao: 'Dado privado B',
+      valor: 20
+    }]);
+
+    window.__alicerceMockSessionUserId = usuarioA;
+    var leituraBComoA = await Repository.cloudLoadAll(usuarioB);
+    var leituraAComoA = await Repository.cloudLoadAll(usuarioA);
+    var tentativaGravacaoBComoA = await Repository.cloudSet(usuarioB, 'movements', [{
+      id: 'nao-deve-ser-gravado',
+      descricao: 'Tentativa cruzada',
+      valor: 999
+    }]);
+
+    window.__alicerceMockSessionUserId = usuarioB;
+    var leituraBComoB = await Repository.cloudLoadAll(usuarioB);
+
+    return {
+      gravaA: gravaA,
+      gravaB: gravaB,
+      leituraBComoA: leituraBComoA,
+      leituraAComoA: leituraAComoA,
+      tentativaGravacaoBComoA: tentativaGravacaoBComoA,
+      leituraBComoB: leituraBComoB,
+      upserts: window.__alicerceMockUpserts,
+      cloudRows: window.__alicerceMockCloudRows
+    };
+  });
+
+  expect(resultado.gravaA).toEqual({ ok: true });
+  expect(resultado.gravaB).toEqual({ ok: true });
+  expect(resultado.leituraBComoA).toEqual({});
+  expect(resultado.leituraAComoA.movements[0]).toMatchObject({
+    id: 'gasto-privado-a',
+    descricao: 'Dado privado A'
+  });
+  expect(resultado.tentativaGravacaoBComoA).toEqual({ ok: true, semNuvem: true });
+  expect(resultado.leituraBComoB.movements[0]).toMatchObject({
+    id: 'gasto-privado-b',
+    descricao: 'Dado privado B'
+  });
+  expect(resultado.upserts).toHaveLength(2);
+  expect(resultado.cloudRows).toHaveLength(2);
+});
+
+test('reporta falha de sincronização cloud sem apagar o dado local', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+
+  const resultado = await page.evaluate(async function () {
+    var uid = 'cloud-user-falha';
+    var movimento = [{
+      id: 'gasto-local-preservado',
+      descricao: 'Continua no dispositivo',
+      valor: 31.5
+    }];
+    window.__alicerceMockSessionUserId = uid;
+    window.__alicerceMockUpsertError = 'falha simulada de rede';
+
+    Repository.set(uid, 'movements', movimento);
+    var local = Repository.get(uid, 'movements', []);
+    var cloud = await Repository.cloudSet(uid, 'cards', []);
+
+    window.__alicerceMockUpsertError = null;
+    return {
+      local: local,
+      cloud: cloud,
+      cloudRows: window.__alicerceMockCloudRows
+    };
+  });
+
+  expect(resultado.local).toEqual([{
+    id: 'gasto-local-preservado',
+    descricao: 'Continua no dispositivo',
+    valor: 31.5
+  }]);
+  expect(resultado.cloud).toEqual({ ok: false });
+  expect(resultado.cloudRows).toEqual([]);
+});
+
 test('registra baseline axe nas telas financeiras principais em celular', async function ({ page }, testInfo) {
   for (const screen of ['home', 'gastos', 'cartoes', 'config']) {
     await prepararTelaSemNuvem(page, screen);
