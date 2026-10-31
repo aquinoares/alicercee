@@ -912,11 +912,17 @@ test('mede o benchmark brasileiro curado por categoria e subcategoria', async fu
   }, classificationBenchmark);
 
   const groups = {};
+  const subgroups = {};
   resultado.forEach(function (item) {
     const category = item.expected.split('/')[0];
     if (!groups[category]) groups[category] = { total: 0, correct: 0 };
+    if (!subgroups[item.expected]) subgroups[item.expected] = { total: 0, correct: 0 };
     groups[category].total++;
-    if (item.actual === item.expected) groups[category].correct++;
+    subgroups[item.expected].total++;
+    if (item.actual === item.expected) {
+      groups[category].correct++;
+      subgroups[item.expected].correct++;
+    }
   });
   const totalCorrect = resultado.filter(function (item) {
     return item.actual === item.expected;
@@ -925,7 +931,8 @@ test('mede o benchmark brasileiro curado por categoria e subcategoria', async fu
     total: resultado.length,
     correct: totalCorrect,
     accuracy: resultado.length ? Number((totalCorrect / resultado.length * 100).toFixed(1)) : 0,
-    byCategory: groups
+    byCategory: groups,
+    bySubcategory: subgroups
   }));
 
   expect(resultado.filter(function (item) {
