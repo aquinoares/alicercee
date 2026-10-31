@@ -6741,8 +6741,8 @@ function homeRenderComunicados() {
   const hour=Clock.currentHour();
   const greeting=hour<12?t('greeting'):hour<18?t('goodAfternoon'):t('goodEvening');
   const _hojeCompromissos=Clock.today();
-  const upcoming=dedupLista(Store.installments.filter(i=>i&&/^\d{4}-\d{2}-\d{2}$/.test(String(i.data||''))&&i.data<=_hojeCompromissos&&i.status!=='pago'&&i.status!=='recebido').sort((a,b)=>String(a.data).localeCompare(String(b.data)))).slice(0,3);
-  const commitments=dedupLista(Store.commitments.filter(c=>c&&/^\d{4}-\d{2}-\d{2}$/.test(String(c.data||''))&&c.data<=_hojeCompromissos&&c.status!=='concluido').sort((a,b)=>String(a.data).localeCompare(String(b.data)))).slice(0,3);
+  const upcoming=dedupLista(Store.installments.filter(i=>i&&/^\d{4}-\d{2}-\d{2}$/.test(String(i.data||''))&&i.data>=_hojeCompromissos&&i.status!=='pago'&&i.status!=='recebido').sort((a,b)=>String(a.data).localeCompare(String(b.data)))).slice(0,3);
+  const commitments=dedupLista(Store.commitments.filter(c=>c&&/^\d{4}-\d{2}-\d{2}$/.test(String(c.data||''))&&c.data>=_hojeCompromissos&&c.status!=='concluido').sort((a,b)=>String(a.data).localeCompare(String(b.data)))).slice(0,3);
   let html='<div class="content">';
   html+='<div class="mt-4"><p class="text-muted text-sm">'+greeting+'</p></div>';
   if(smartCards.length>0){html+='<div class="dynamic-card-wrap mt-2"><div class="dynamic-card-track" id="dc-track">';
