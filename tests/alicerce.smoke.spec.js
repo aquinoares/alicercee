@@ -1464,12 +1464,6 @@ test('Alicerce IA nao confunde compras variaveis com assinaturas confirmadas', a
   });
   expect(result).toEqual([]);
 });
-);
-
-  await page.locator('#visao-ai-merchant-0').click();
-  await expect(page.locator('#visao-ai-answer')).toContainText('Mercado Bom');
-  await expect(page.locator('#visao-ai-answer')).toContainText('150,00');
-});
 
 test('Alicerce IA respeita o motor financeiro e exclui pendencias, transferencias e cartao emprestado', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
