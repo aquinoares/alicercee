@@ -2038,6 +2038,51 @@ body:has(.visao-financeira){background:#080A11;color:#E9ECF1}
   }
 }
 /* FIM ALICERCE_CARTOES_VISUAL_V2 */
+
+.visao-ai-dashboard{margin:0 0 18px;padding:0;color:#E9ECF1}
+.visao-ai-heading{margin:0 0 14px}
+.visao-ai-kicker{font-size:10px;font-weight:850;letter-spacing:1.5px;color:#FF8A3D;margin-bottom:6px}
+.visao-ai-heading h2{font-size:20px;line-height:1.25;font-weight:750;color:#F8FAFC;margin:0}
+.visao-ai-heading p{font-size:12px;line-height:1.5;color:#9299A8;margin:6px 0 0}
+.visao-ai-kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 12px}
+.visao-ai-kpi{min-width:0;text-align:left;padding:13px 12px;border:1px solid #2A2F3B;border-radius:14px;background:#11151E;color:#E9ECF1;cursor:pointer}
+.visao-ai-kpi:first-child{grid-column:1/-1}
+.visao-ai-kpi span,.visao-ai-kpi small{display:block;font-size:10px;color:#9299A8;line-height:1.4}
+.visao-ai-kpi strong{display:block;margin:5px 0 3px;font-size:18px;line-height:1.2;color:#FF8A3D;overflow-wrap:anywhere}
+.visao-ai-kpi:first-child strong{font-size:27px}
+.visao-ai-kpi:focus-visible,.visao-ai-dashboard button:focus-visible{outline:2px solid #FF8A3D;outline-offset:2px}
+.visao-ai-alert,.visao-ai-panel,.visao-ai-recurring,.visao-ai-answer,.visao-ai-empty{padding:14px;border:1px solid #2A2F3B;border-radius:15px;background:#11151E;margin-bottom:11px}
+.visao-ai-alert{border-color:rgba(255,138,61,.35);background:linear-gradient(145deg,rgba(255,138,61,.09),#11151E 70%)}
+.visao-ai-section-label{font-size:10px;letter-spacing:.7px;text-transform:uppercase;font-weight:850;color:#FF9B58;margin-bottom:8px}
+.visao-ai-alert p,.visao-ai-recurring p,.visao-ai-answer p{font-size:12px;line-height:1.55;color:#E0E5ED;margin:0 0 9px;overflow-wrap:anywhere}
+.visao-ai-alert button,.visao-ai-recurring button{min-height:36px;padding:7px 11px;border:1px solid rgba(255,138,61,.4);border-radius:10px;background:rgba(255,138,61,.1);color:#FFB27F;font-size:11px;font-weight:750;cursor:pointer}
+.visao-ai-two-panels{display:grid;grid-template-columns:1fr;gap:10px}
+.visao-ai-panel{min-width:0}
+.visao-ai-breakdown,.visao-ai-merchant{display:block;width:100%;padding:9px 0;border:0;border-top:1px solid #242A35;background:transparent;color:#E9ECF1;text-align:left;cursor:pointer}
+.visao-ai-breakdown:first-of-type,.visao-ai-merchant:first-of-type{border-top:0}
+.visao-ai-breakdown span{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.visao-ai-breakdown b,.visao-ai-merchant span{font-size:12px;font-weight:650;overflow-wrap:anywhere}
+.visao-ai-breakdown small{font-size:10px;color:#9299A8}
+.visao-ai-breakdown strong,.visao-ai-merchant strong{display:block;font-size:12px;font-weight:750;color:#F1F5F9;margin-top:3px}
+.visao-ai-breakdown i{display:block;height:5px;border-radius:99px;background:#2A2F3B;overflow:hidden;margin-top:7px}
+.visao-ai-breakdown em{display:block;height:100%;border-radius:99px;background:#FF8A3D}
+.visao-ai-merchant{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.visao-ai-merchant strong{margin:0;white-space:nowrap}
+.visao-ai-muted{font-size:11px;color:#9299A8;margin:0}
+.visao-ai-recurring{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.visao-ai-recurring>div{min-width:0;flex:1}
+.visao-ai-recurring p{margin:0}
+.visao-ai-recurring button{flex:0 0 auto;max-width:48%;white-space:normal}
+.visao-ai-actions{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 12px}
+.visao-ai-actions button{flex:1 1 120px;min-height:38px;padding:8px 10px;border:1px solid #303744;border-radius:10px;background:#171D27;color:#DCE2EB;font-size:11px;font-weight:700;cursor:pointer}
+.visao-ai-answer{border-color:rgba(255,138,61,.3)}
+.visao-ai-question{font-size:11px;color:#FFB27F;font-weight:750;margin-bottom:5px}
+.visao-ai-empty{font-size:12px;line-height:1.55;color:#AAB2C0}
+.visao-details{margin:0 0 14px;border:1px solid #2A2F3B;border-radius:14px;background:#10141C}
+.visao-details summary{padding:13px 14px;color:#E5EAF2;font-size:12px;font-weight:750;cursor:pointer}
+.visao-details[open] .visao-lista{padding:0 14px 8px}
+@media(min-width:560px){.visao-ai-two-panels{grid-template-columns:1fr 1fr}}
+@media(max-width:360px){.visao-ai-kpi{padding:11px 9px}.visao-ai-kpi strong{font-size:16px}.visao-ai-kpi:first-child strong{font-size:24px}.visao-ai-recurring{align-items:flex-start;flex-direction:column}.visao-ai-recurring button{max-width:100%}}
 </style>
 
 <style id="alicerce-cartoes-carrossel-fix">
@@ -10566,11 +10611,177 @@ function getVisaoFinanceira(){
 }
 
 /* VISAO */
+
+AlicerceIA.renderDashboard=function(){
+  this._resetUser();
+  var rows=this._rows();
+  var current=this._periodRows(0);
+  var previous=this._periodRows(1);
+  var total=this._sum(current);
+  var previousTotal=this._sum(previous);
+  var categories=this._groups(current,'categoria');
+  var merchants=this._groups(current,'local').filter(function(item){return item.key&&item.key!=='outros';});
+  var anomaly=this._detectAnomalies(rows)[0]||null;
+  var categoryRise=this._categoryChanges(current,previous)[0]||null;
+  var recurring=this._detectRecurring(rows)[0]||null;
+  var lang=Store.lang||'pt';
+  var copy={
+    pt:{
+      heading:'O que merece sua atenção',
+      intro:'Os principais pontos da sua vida financeira, com base nos lançamentos da sua conta.',
+      period:'Despesas registradas neste mês',
+      compare:'Comparação com o mesmo período anterior',
+      noHistory:'Ainda não há histórico suficiente para comparar.',
+      biggest:'Maior categoria',
+      none:'Ainda sem dados suficientes',
+      attention:'Ponto de atenção',
+      anomaly:'Um gasto ficou acima do seu padrão histórico.',
+      categoryRise:'Uma categoria aumentou em relação ao mês passado.',
+      calm:'Não encontrei um alerta estatístico com histórico suficiente.',
+      recurring:'Possíveis pagamentos recorrentes',
+      recurringNone:'Ainda não há recorrências com histórico suficiente.',
+      categories:'Onde o dinheiro está indo',
+      merchants:'Estabelecimentos com maior gasto',
+      view:'Ver análise',
+      compareAction:'Comparar períodos',
+      anomalyAction:'Ver gastos fora do padrão',
+      recurringAction:'Ver possíveis recorrências',
+      topAction:'Ver onde gastei mais',
+      answerTitle:'Análise detalhada',
+      commitments:'Compromissos e projeções',
+      pdf:'Gerar relatório PDF',
+      up:'acima',
+      down:'abaixo',
+      stable:'praticamente igual',
+      empty:'Registre suas despesas para que a Alicerce possa identificar padrões e pontos importantes.'
+    },
+    en:{
+      heading:'What deserves your attention',
+      intro:'The key points in your finances, based on your account records.',
+      period:'Expenses recorded this month',
+      compare:'Compared with the same previous period',
+      noHistory:'There is not enough history to compare yet.',
+      biggest:'Largest category',
+      none:'Not enough data yet',
+      attention:'Point of attention',
+      anomaly:'An expense is above your historical pattern.',
+      categoryRise:'A category increased compared with last month.',
+      calm:'No statistical alert with sufficient history was found.',
+      recurring:'Possible recurring payments',
+      recurringNone:'There are no recurring patterns with enough history yet.',
+      categories:'Where your money is going',
+      merchants:'Merchants with the highest spending',
+      view:'View analysis',
+      compareAction:'Compare periods',
+      anomalyAction:'View unusual expenses',
+      recurringAction:'View possible recurring payments',
+      topAction:'View highest spending',
+      answerTitle:'Detailed analysis',
+      commitments:'Commitments and projections',
+      pdf:'Generate PDF report',
+      up:'above',
+      down:'below',
+      stable:'about the same',
+      empty:'Record your expenses so Alicerce can identify patterns and important points.'
+    },
+    es:{
+      heading:'Lo que merece tu atención',
+      intro:'Los puntos principales de tus finanzas, según los registros de tu cuenta.',
+      period:'Gastos registrados este mes',
+      compare:'Comparación con el mismo período anterior',
+      noHistory:'Todavía no hay historial suficiente para comparar.',
+      biggest:'Categoría principal',
+      none:'Aún no hay datos suficientes',
+      attention:'Punto de atención',
+      anomaly:'Un gasto está por encima de tu patrón histórico.',
+      categoryRise:'Una categoría aumentó frente al mes pasado.',
+      calm:'No se encontró una alerta estadística con historial suficiente.',
+      recurring:'Posibles pagos recurrentes',
+      recurringNone:'Aún no hay recurrencias con historial suficiente.',
+      categories:'A dónde va tu dinero',
+      merchants:'Comercios con mayor gasto',
+      view:'Ver análisis',
+      compareAction:'Comparar períodos',
+      anomalyAction:'Ver gastos fuera de lo normal',
+      recurringAction:'Ver posibles recurrencias',
+      topAction:'Ver dónde gastaste más',
+      answerTitle:'Análisis detallado',
+      commitments:'Compromisos y proyecciones',
+      pdf:'Generar informe PDF',
+      up:'por encima',
+      down:'por debajo',
+      stable:'prácticamente igual',
+      empty:'Registra tus gastos para que Alicerce pueda identificar patrones y puntos importantes.'
+    }
+  };
+  var ui=copy[lang]||copy.pt;
+  var html='<section class="visao-ai-dashboard" id="alicerce-ai-dashboard" aria-label="Alicerce IA">';
+  html+='<div class="visao-ai-heading"><div><div class="visao-ai-kicker">ALICERCE IA</div><h2>'+esc(ui.heading)+'</h2><p>'+esc(ui.intro)+'</p></div></div>';
+  if(!current.length){
+    html+='<div class="visao-ai-empty">'+esc(ui.empty)+'</div>';
+  }else{
+    var delta=previousTotal>0?((total-previousTotal)/previousTotal)*100:null;
+    var deltaText=delta===null?ui.noHistory:(Math.abs(delta)<5?ui.stable:(Math.round(Math.abs(delta))+'% '+(delta>0?ui.up:ui.down)));
+    var topCategory=categories[0]||null;
+    html+='<div class="visao-ai-kpis">';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-total" onclick="AlicerceIA.perguntarDashboard(\\'Quanto gastei este mês?\\')"><span>'+esc(ui.period)+'</span><strong>'+fmtMoney(total)+'</strong><small>'+esc(ui.view)+'</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-compare" onclick="AlicerceIA.perguntarDashboard(\\'Compare com o mês passado\\')"><span>'+esc(ui.compare)+'</span><strong>'+esc(deltaText)+'</strong><small>'+ (previousTotal>0?fmtMoney(previousTotal)+' → '+fmtMoney(total):esc(ui.view))+'</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-biggest" onclick="AlicerceIA.perguntarDashboard(\\'Onde gastei mais?\\')"><span>'+esc(ui.biggest)+'</span><strong>'+(topCategory?esc(this._nice(topCategory.key)):'—')+'</strong><small>'+(topCategory?fmtMoney(topCategory.total):esc(ui.none))+'</small></button>';
+    html+='</div>';
+    html+='<section class="visao-ai-alert">';
+    html+='<div class="visao-ai-section-label">'+esc(ui.attention)+'</div>';
+    if(anomaly){
+      html+='<p>'+esc(this._label('anomalyInsight',{amount:fmtMoney(anomaly.amount),item:this._nice(anomaly.comparisonItem||anomaly.subcategory||anomaly.category),median:fmtMoney(anomaly.median)}))+'</p>';
+      html+='<button type="button" id="visao-ai-anomalies" onclick="AlicerceIA.perguntarDashboard(\\'Mostre meus gastos fora do padrão\\')">'+esc(ui.anomalyAction)+'</button>';
+    }else if(categoryRise){
+      html+='<p>'+esc(this._label('categoryRise',{item:this._nice(categoryRise.key),percent:categoryRise.percent,current:fmtMoney(categoryRise.current),previous:fmtMoney(categoryRise.previous)}))+'</p>';
+      html+='<button type="button" id="visao-ai-anomalies" onclick="AlicerceIA.perguntarDashboard(\\'O que aumentou nos meus gastos?\\')">'+esc(ui.view)+'</button>';
+    }else{
+      html+='<p>'+esc(ui.calm)+'</p>';
+      html+='<button type="button" id="visao-ai-anomalies" onclick="AlicerceIA.perguntarDashboard(\\'Mostre meus gastos fora do padrão\\')">'+esc(ui.anomalyAction)+'</button>';
+    }
+    html+='</section>';
+    html+='<div class="visao-ai-two-panels">';
+    html+='<section class="visao-ai-panel"><div class="visao-ai-section-label">'+esc(ui.categories)+'</div>';
+    categories.slice(0,3).forEach(function(item){
+      var pct=total>0?Math.round(item.total/total*100):0;
+      html+='<button type="button" class="visao-ai-breakdown" onclick="AlicerceIA.perguntarDashboard(\\'Quanto gastei com '+esc(this._nice(item.key)).replace(/&#39;/g,'')+'?\\')"><span><b>'+esc(this._nice(item.key))+'</b><small>'+pct+'%</small></span><strong>'+fmtMoney(item.total)+'</strong><i><em style="width:'+Math.min(100,pct)+'%"></em></i></button>';
+    },this);
+    if(!categories.length)html+='<p class="visao-ai-muted">'+esc(ui.none)+'</p>';
+    html+='</section>';
+    html+='<section class="visao-ai-panel"><div class="visao-ai-section-label">'+esc(ui.merchants)+'</div>';
+    merchants.slice(0,3).forEach(function(item){
+      html+='<button type="button" class="visao-ai-merchant" onclick="AlicerceIA.perguntarDashboard(\\'Qual estabelecimento levou mais dinheiro?\\')"><span>'+esc(item.key)+'</span><strong>'+fmtMoney(item.total)+'</strong></button>';
+    });
+    if(!merchants.length)html+='<p class="visao-ai-muted">'+esc(ui.none)+'</p>';
+    html+='</section></div>';
+    html+='<section class="visao-ai-recurring"><div><div class="visao-ai-section-label">'+esc(ui.recurring)+'</div><p>'+(recurring?esc(this._label('recurringInsight',{item:recurring.merchant,amount:fmtMoney(recurring.amount),months:recurring.months})):esc(ui.recurringNone))+'</p></div>';
+    html+='<button type="button" id="visao-ai-recurring" onclick="AlicerceIA.perguntarDashboard(\\'Quais pagamentos parecem recorrentes?\\')">'+esc(ui.recurringAction)+'</button></section>';
+    html+='<div class="visao-ai-actions">';
+    html+='<button type="button" onclick="AlicerceIA.perguntarDashboard(\\'Compare com o mês passado\\')">'+esc(ui.compareAction)+'</button>';
+    html+='<button type="button" onclick="AlicerceIA.perguntarDashboard(\\'Onde gastei mais?\\')">'+esc(ui.topAction)+'</button>';
+    html+='</div>';
+  }
+  if(this._answer){
+    html+='<section class="visao-ai-answer" id="visao-ai-answer" role="status" aria-live="polite"><div class="visao-ai-section-label">'+esc(ui.answerTitle)+'</div>';
+    if(this._question)html+='<div class="visao-ai-question">'+esc(this._question)+'</div>';
+    html+='<p>'+esc(this._answer)+'</p></section>';
+  }
+  html+='</section>';
+  return html;
+};
+AlicerceIA.perguntarDashboard=function(question){
+  this._resetUser();
+  this._question=String(question||'').trim();
+  if(!this._question)return;
+  this._answer=this.responder(this._question);
+  render();
+};
+
 function renderVisao(){
   const v=getVisaoFinanceira();
   const agora=Clock.now();
   const hora=String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0');
-
   const itens=[
     {nome:'Mês atual',valor:v.mesAtual,icone:'clock'},
     {nome:'Custos fixos',valor:v.custosFixos,icone:'refresh'},
@@ -10579,37 +10790,20 @@ function renderVisao(){
     {nome:'Financiamento',valor:v.financiamento,icone:'trend'},
     {nome:'Seguro',valor:v.seguro,icone:'shield'}
   ];
-
   let html='<div class="content visao-financeira">';
-  html+='<div class="visao-topo">';
-  html+='<div class="visao-logo">Alicerce</div>';
-  html+='<div class="visao-subtitulo">Visão financeira</div>';
-  html+='</div>';
-
-  html+='<section class="visao-hero">';
-  html+='<div class="visao-pill">Disponível agora</div>';
-  html+='<div class="visao-saldo">'+fmtMoney(v.disponivel)+'</div>';
-  html+='<div class="visao-atualizado">Atualizado hoje, '+hora+'</div>';
-  html+='</section>';
-
-  html+=AlicerceIA.renderCard();
-  html+='<div class="visao-section-title">Mês atual</div>';
-  html+='<div class="visao-lista">';
-
+  html+='<div class="visao-topo"><div class="visao-logo">Alicerce</div><div class="visao-subtitulo">Visão financeira</div></div>';
+  html+='<section class="visao-hero"><div class="visao-pill">Disponível agora</div><div class="visao-saldo">'+fmtMoney(v.disponivel)+'</div><div class="visao-atualizado">Atualizado hoje, '+hora+'</div></section>';
+  html+=AlicerceIA.renderDashboard();
+  html+='<details class="visao-details"><summary>'+esc((Store.lang==='en'?'Commitments and projections':Store.lang==='es'?'Compromisos y proyecciones':'Compromissos e projeções'))+'</summary><div class="visao-lista">';
   itens.forEach(function(item){
-    html+='<div class="visao-item">';
-    html+='<div class="visao-icone">'+icon(item.icone,'')+'</div>';
-    html+='<div class="visao-item-nome">'+item.nome+'</div>';
-    html+='<div class="visao-item-valor">'+fmtMoney(item.valor ? -Math.abs(Number(item.valor)||0) : 0)+'</div>';
-    html+='</div>';
+    html+='<div class="visao-item"><div class="visao-icone">'+icon(item.icone,'')+'</div><div class="visao-item-nome">'+esc(item.nome)+'</div><div class="visao-item-valor">'+fmtMoney(item.valor? -Math.abs(Number(item.valor)||0):0)+'</div></div>';
   });
-
-  html+='</div>';
+  html+='</div></details>';
   html+='<button class="btn btn-secondary btn-block visao-pdf" onclick="generateMonthlyPDF()">'+icon('file','ico-sm')+' '+t('impressao')+'</button>';
   html+='</div>';
   return html;
 }
-/* CONFIG */
+
 function renderConfig(){
   let html='<div class="content"><h2 class="mt-4">'+t('config')+'</h2><div class="section-divider"></div>';
   html+='<div class="form-group"><label class="form-label" for="alicerce-config-theme">'+t('aparência')+'</label><select id="alicerce-config-theme" onchange="changeTheme(this.value)"><option value="azul"'+(Store.theme==='azul'?' selected':'')+'>'+t('temaAzul')+'</option><option value="claro"'+(Store.theme==='claro'?' selected':'')+'>'+t('temaClaro')+'</option><option value="marinho"'+(Store.theme==='marinho'?' selected':'')+'>'+t('temaMarinho')+'</option><option value="moderno"'+(Store.theme==='moderno'?' selected':'')+'>Moderno</option></select></div>';
