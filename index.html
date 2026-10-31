@@ -286,18 +286,20 @@ a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .fatura-doc-title{font-weight:800;font-size:1.05rem}
 .fatura-doc-sub{font-size:.9rem;color:var(--text2);margin-top:2px}
 .fatura-doc-meta{font-size:.78rem;color:var(--text2);margin-top:4px}
-.fatura-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:6px}
+.fatura-table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:.8rem;margin-top:6px}
 .fatura-table th{text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);padding:6px;border-bottom:1px solid var(--line)}
 .fatura-table td{padding:7px 6px;border-bottom:1px solid var(--line);vertical-align:top}
 .fatura-val{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .fatura-tag-terceiro{font-size:.62rem;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:1px 6px;margin-left:4px;white-space:nowrap}
 .fatura-total-row{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-weight:800;font-size:.95rem}
 .fatura-situacao{font-size:.78rem;color:var(--text2);margin-top:4px}
-#print-fatura-area{display:none}
+#print-fatura-area{display:none;width:100%}
 @media print{
+  @page{size:A4 portrait;margin:12mm}
+  html,body{width:186mm!important;max-width:none!important;margin:0 auto!important}
   body.fatura-printing #app,body.fatura-printing .header,body.fatura-printing .bottom-nav,body.fatura-printing .menu-panel,body.fatura-printing .menu-overlay,body.fatura-printing .toast,body.fatura-printing .three-dot-menu{display:none!important}
-  body.fatura-printing #print-fatura-area{display:block!important}
-  .fatura-print-doc{border:none!important;background:#fff!important;color:#000!important;padding:0}
+  body.fatura-printing #print-fatura-area{display:block!important;width:100%!important;max-width:186mm!important;margin:0 auto!important}
+  .fatura-print-doc{width:100%!important;max-width:186mm!important;margin:0 auto!important;border:none!important;background:#fff!important;color:#000!important;padding:0}
   .fatura-print-doc .fatura-doc-title,.fatura-print-doc .fatura-total-row{color:#000!important}
   .fatura-print-doc .fatura-table th,.fatura-print-doc .fatura-table td,.fatura-print-doc .fatura-doc-head{border-color:#bbb!important}
   .fatura-print-doc .fatura-doc-sub,.fatura-print-doc .fatura-doc-meta,.fatura-print-doc .fatura-situacao,.fatura-print-doc .fatura-table th{color:#333!important}
@@ -2380,7 +2382,6 @@ body:has(.visao-financeira){background:#080A11;color:#E9ECF1}
 <div id="menu-overlay" class="menu-overlay"></div>
 <div id="menu-panel" class="menu-panel"></div>
 <div id="toast" class="toast"></div>
-<iframe id="pdf-frame" style="position:fixed;right:0;bottom:0;width:0;height:0;border:0" src="./Alicerce_files/saved_resource.html"></iframe>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js"></script>
 <script>
@@ -9293,6 +9294,7 @@ function cc2ExportarPDF(){
 }
 
 function ccExportarFaturaPDF(cardIdDireto,ymDireto){
+  if(window.__alicerceInvoicePdfBusy)return;
   try{
     const sel=document.getElementById('fatura-periodo');
     const cardId=cardIdDireto||(Store.screenData&&Store.screenData.id);
@@ -9301,14 +9303,15 @@ function ccExportarFaturaPDF(cardIdDireto,ymDireto){
     let area=document.getElementById('print-fatura-area');
     if(!area){area=document.createElement('div');area.id='print-fatura-area';document.body.appendChild(area)}
     area.innerHTML=ccRenderFaturaDetalhada(cardId,ym,true);
+    window.__alicerceInvoicePdfBusy=true;
     document.body.classList.add('fatura-printing');
     const limpar=function(){try{document.body.classList.remove('fatura-printing')}catch(e){}};
     let done=false;
-    const fim=function(){if(done)return;done=true;setTimeout(limpar,120)};
+    const fim=function(){if(done)return;done=true;window.__alicerceInvoicePdfBusy=false;setTimeout(limpar,120)};
     window.addEventListener('afterprint',fim,{once:true});
     window.print();
-    setTimeout(fim,1500);
-  }catch(e){try{document.body.classList.remove('fatura-printing')}catch(e2){};showToast('Nao foi possivel exportar.')}
+    setTimeout(fim,60000);
+  }catch(e){window.__alicerceInvoicePdfBusy=false;try{document.body.classList.remove('fatura-printing')}catch(e2){};showToast('Nao foi possivel exportar.')}
 }
 
 function atualizarSubcategoriasCompra(){
@@ -10294,8 +10297,8 @@ function selectGastoCardType(tipo){
 function renderAddGasto(){
   const data=Store.screenData||{};
   const html=[];
-  html.push('<div id="alicerce-add-gasto" class="content" style="max-width:620px;margin:0 auto;padding-bottom:160px;position:relative;z-index:1">');
-  html.push('<style id="alicerce-add-gasto-layout">#alicerce-add-gasto .gasto-payment-grid{align-items:stretch}#alicerce-add-gasto .gasto-payment-grid .btn{display:flex;width:100%;min-width:0;min-height:72px;padding:10px 5px;flex-direction:column;align-items:center;justify-content:center;gap:5px;line-height:1.15;text-align:center;white-space:normal}#alicerce-add-gasto .gasto-payment-grid .ico{width:18px;height:18px;flex:0 0 18px}#alicerce-add-gasto .gasto-option-grid{align-items:stretch}#alicerce-add-gasto .gasto-option-grid .btn{display:flex;width:100%;min-width:0;min-height:50px;padding:9px 7px;align-items:center;justify-content:center;line-height:1.2;text-align:center;white-space:normal}</style>');
+  html.push('<div id="alicerce-add-gasto" class="content" style="width:100%;max-width:420px;margin:0 auto;padding:0 16px 110px;box-sizing:border-box;position:relative;z-index:1;overflow-x:hidden">');
+  html.push('<style id="alicerce-add-gasto-layout">#alicerce-add-gasto{min-width:0}#alicerce-add-gasto .gasto-payment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}#alicerce-add-gasto .gasto-payment-grid .btn{box-sizing:border-box;display:flex;width:100%;min-width:0;min-height:62px;padding:8px 4px;flex-direction:column;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);border-radius:13px;background:var(--surface2);font-size:.78rem;font-weight:700;line-height:1.1;text-align:center;white-space:nowrap}#alicerce-add-gasto .gasto-payment-grid .btn.btn-primary{border-color:var(--accent)}#alicerce-add-gasto .gasto-payment-grid .ico{width:18px;height:18px;flex:0 0 18px}#alicerce-add-gasto .gasto-option-grid{align-items:stretch}#alicerce-add-gasto .gasto-option-grid .btn{box-sizing:border-box;display:flex;width:100%;min-width:0;min-height:48px;padding:8px 7px;align-items:center;justify-content:center;line-height:1.2;text-align:center;white-space:normal}#alicerce-add-gasto .form-group{min-width:0}#alicerce-add-gasto input,#alicerce-add-gasto select{max-width:100%;min-width:0}</style>');
   html.push('<button type="button" class="btn btn-secondary btn-sm mt-4" onclick="go(\''+(data.novaCompraFlow?'cartoes':'add')+'\')">'+icon('back','ico-sm')+' '+(data.novaCompraFlow?'Voltar aos cartoes':'Voltar')+'</button>');
   html.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:22px">');
   html.push('<div><div style="font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text2)">NOVO LANÇAMENTO</div><h2 style="margin:5px 0 0;color:var(--text)">Adicionar gasto</h2></div>');
@@ -10310,7 +10313,7 @@ function renderAddGasto(){
   if(data.novaCompraFlow){
     html.push('<button type="button" id="pay-card" class="btn btn-primary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' Cartão</button></div></div>');
   }else{
-    html.push('<button type="button" id="pay-pix" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'pix\')">Pix</button>');
+    html.push('<button type="button" id="pay-pix" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'pix\')">'+icon('qr-code','ico-sm')+' Pix</button>');
     html.push('<button type="button" id="pay-card" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' Cartão</button>');
     html.push('<button type="button" id="pay-cash" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'dinheiro\')">'+icon('banknote','ico-sm')+' Dinheiro</button></div></div>');
   }
@@ -11738,7 +11741,6 @@ function generateMonthlyPDF(){
 
   };
 
-  window.__alicerceMonthlyPdfUnlockTimer=setTimeout(liberarTravaPdfMensal,60000);
 
   try{
     const now=Clock.now();
@@ -11838,7 +11840,7 @@ function generateMonthlyPDF(){
     });
     if(!categoriasHtmlPDF)categoriasHtmlPDF='<p class="vazio">Nenhum gasto registrado neste período.</p>';
     const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>Relatório Alicerce</title><style>'+
-      '@page{size:A4;margin:16mm}*{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:#202124;font-size:10pt;line-height:1.5;background:#fff}.capa{background:#101114;color:#fff;padding:25px 24px 22px;border-bottom:5px solid #FF6500;margin-bottom:22px}.marca{font-size:17pt;font-weight:800;letter-spacing:5px;color:#FF6500}.submarca{font-size:8pt;letter-spacing:3px;margin-top:4px;color:#ddd}.confidencial{float:right;font-size:8pt;letter-spacing:1.5px;border:1px solid #FF6500;color:#FF6500;padding:5px 8px}.rotulo{font-size:8pt;letter-spacing:2px;color:#777;margin-top:27px}.capa h1{font-size:22pt;line-height:1.2;margin:5px 0 14px;max-width:440px}.mes{font-size:17pt;font-weight:700;color:#FF6500;text-transform:capitalize}.periodo{font-size:9pt;color:#ddd;margin-top:5px}.secao-titulo{font-size:9pt;font-weight:700;letter-spacing:1.5px;margin:21px 0 10px;padding-bottom:7px;border-bottom:1px solid #ddd}.saldo{border:1px solid #e1e1e1;border-left:4px solid #FF6500;padding:13px 16px;margin-bottom:12px}.rotulo-menor{font-size:8pt;letter-spacing:1.3px;color:#666}.valor-saldo{font-size:25pt;font-weight:800;margin-top:3px}.indicadores{display:grid;grid-template-columns:1fr 1fr;gap:12px}.indicador{border:1px solid #e1e1e1;padding:12px 14px}.indicador strong{display:block;font-size:17pt;margin-top:4px}.entrada{color:#276749}.gasto{color:#9B3B32}.categoria{margin:13px 0}.categoria-topo{display:flex;justify-content:space-between;gap:14px;margin-bottom:5px}.categoria-topo span{font-weight:600}.barra{height:7px;background:#eee;border-radius:5px;overflow:hidden}.barra i{display:block;height:100%;background:#FF6500;border-radius:5px}.texto-analise{border-left:3px solid #FF6500;padding:10px 14px;background:#f7f6f2}.proximos{padding-left:18px}.proximos li{padding:3px 0}.vazio{color:#666;font-style:italic}.rodape{margin-top:28px;padding-top:12px;border-top:1px solid #ddd;font-size:8pt;color:#555;display:flex;justify-content:space-between;gap:15px}.rodape strong{color:#222}.nota{font-size:8pt;color:#666;margin-top:10px}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.capa,.saldo,.indicador,.categoria,.texto-analise{break-inside:avoid;page-break-inside:avoid}}'+
+      '@page{size:A4 portrait;margin:12mm}*{box-sizing:border-box}html,body{margin:0;padding:0}body{width:100%;max-width:186mm;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#202124;font-size:10pt;line-height:1.5;background:#fff}.capa{background:#101114;color:#fff;padding:25px 24px 22px;border-bottom:5px solid #FF6500;margin-bottom:22px}.marca{font-size:17pt;font-weight:800;letter-spacing:5px;color:#FF6500}.submarca{font-size:8pt;letter-spacing:3px;margin-top:4px;color:#ddd}.confidencial{float:right;font-size:8pt;letter-spacing:1.5px;border:1px solid #FF6500;color:#FF6500;padding:5px 8px}.rotulo{font-size:8pt;letter-spacing:2px;color:#777;margin-top:27px}.capa h1{font-size:22pt;line-height:1.2;margin:5px 0 14px;max-width:440px}.mes{font-size:17pt;font-weight:700;color:#FF6500;text-transform:capitalize}.periodo{font-size:9pt;color:#ddd;margin-top:5px}.secao-titulo{font-size:9pt;font-weight:700;letter-spacing:1.5px;margin:21px 0 10px;padding-bottom:7px;border-bottom:1px solid #ddd}.saldo{border:1px solid #e1e1e1;border-left:4px solid #FF6500;padding:13px 16px;margin-bottom:12px}.rotulo-menor{font-size:8pt;letter-spacing:1.3px;color:#666}.valor-saldo{font-size:25pt;font-weight:800;margin-top:3px}.indicadores{display:grid;grid-template-columns:1fr 1fr;gap:12px}.indicador{border:1px solid #e1e1e1;padding:12px 14px}.indicador strong{display:block;font-size:17pt;margin-top:4px}.entrada{color:#276749}.gasto{color:#9B3B32}.categoria{margin:13px 0}.categoria-topo{display:flex;justify-content:space-between;gap:14px;margin-bottom:5px}.categoria-topo span{font-weight:600}.barra{height:7px;background:#eee;border-radius:5px;overflow:hidden}.barra i{display:block;height:100%;background:#FF6500;border-radius:5px}.texto-analise{border-left:3px solid #FF6500;padding:10px 14px;background:#f7f6f2}.proximos{padding-left:18px}.proximos li{padding:3px 0}.vazio{color:#666;font-style:italic}.rodape{margin-top:28px;padding-top:12px;border-top:1px solid #ddd;font-size:8pt;color:#555;display:flex;justify-content:space-between;gap:15px}.rodape strong{color:#222}.nota{font-size:8pt;color:#666;margin-top:10px}@media print{html,body{width:186mm;max-width:none;margin:0 auto}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.capa,.saldo,.indicador,.categoria,.texto-analise{break-inside:avoid;page-break-inside:avoid}}'+
       '</style></head><body>'+
       '<header class="capa"><span class="confidencial">CONFIDENCIAL</span><div class="marca">ALICERCE</div><div class="submarca">INTELIGÊNCIA FINANCEIRA</div><div class="rotulo">RELATÓRIO DE ANÁLISE FINANCEIRA</div><h1>Relatório de análise financeira</h1><div class="mes">'+esc(nomeMesPDF)+'</div><div class="periodo">01 a '+String(selectedEnd.getDate()).padStart(2,'0')+' de '+esc(nomeMesPDF)+' · Documento AL-'+year+'-'+String(month).padStart(2,'0')+'</div></header>'+
       '<section><div class="secao-titulo">VISÃO GERAL DO PERÍODO</div><div class="saldo"><div class="rotulo-menor">SALDO DISPONÍVEL</div><div class="valor-saldo">'+fmtMoney(saldoPDF)+'</div></div><div class="indicadores"><div class="indicador"><div class="rotulo-menor">ENTRADAS</div><strong class="entrada">'+fmtMoney(entradasPDF)+'</strong></div><div class="indicador"><div class="rotulo-menor">GASTOS</div><strong class="gasto">'+fmtMoney(gastosPDF)+'</strong></div></div></section>'+
@@ -12114,9 +12116,10 @@ function generateGastosPDF(){
     var html='<!DOCTYPE html><html lang="pt-BR"><head>'+
       '<meta charset="UTF-8"><title>Relatório de Gastos — Alicerce</title>'+
       '<style>'+
-      '@page{size:A4 portrait;margin:7mm}'+
+      '@page{size:A4 portrait;margin:12mm}'+
       '*{box-sizing:border-box}'+
-      'body{font-family:Arial,Helvetica,sans-serif;color:#202124;margin:0;font-size:7.5pt;line-height:1.25}'+
+      'html,body{margin:0;padding:0}'+
+      'body{width:100%;max-width:186mm;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#202124;font-size:7.5pt;line-height:1.25}'+
       'header{background:#101114;color:#fff;padding:10px 13px;border-bottom:3px solid #FF6500;margin-bottom:8px}'+
       '.marca{font-size:9pt;font-weight:bold;letter-spacing:2px;color:#FF6500}'+
       'h1{font-size:14pt;line-height:1.15;margin:5px 0 8px}'+
@@ -12154,7 +12157,7 @@ function generateGastosPDF(){
       'tr{break-inside:avoid;page-break-inside:avoid}'+
       '.vazio{color:#666;font-style:italic;padding:5px 2px}'+
       '.rodape{margin-top:7px;padding-top:4px;border-top:1px solid #ddd;color:#666;font-size:5.8pt}'+
-      '@media print{html,body{width:auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}}'+
+      '@media print{html,body{width:186mm;max-width:none;margin:0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}}'+
       '</style></head><body>'+
       '<header><div class="marca">ALICERCE</div>'+
       '<h1>RELATÓRIO DE GASTOS</h1>'+
