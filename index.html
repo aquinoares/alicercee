@@ -5172,7 +5172,12 @@ const Interpreter={
   },
   extractMerchant(text){
     const labeledLocal=String(text||'').match(/(?:^|\|)\s*local\s*:\s*([^|]*)/i);
-    if(labeledLocal)return labeledLocal[1].trim()||null;
+    if(labeledLocal){
+      const local=labeledLocal[1].trim();
+      const normalized=normalizeAlicerMerchantIdentity(local);
+      if(normalized&&this.merchantDict[normalized])return normalized.charAt(0).toUpperCase()+normalized.slice(1);
+      return local||null;
+    }
     const n=this.semValor(text),amt=this.extractAmount(text);
     const normalizedMerchant=normalizeAlicerMerchantIdentity(n);
     if(this.merchantDict[normalizedMerchant]){
