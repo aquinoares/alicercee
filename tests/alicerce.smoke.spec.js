@@ -869,12 +869,13 @@ test('classifica o produto antes da categoria ampla do supermercado', async func
     };
     const shampoo = Interpreter.interpretLocal('Valor: 42 | Item: Shampoo | Local: Carrefour');
     const detergente = Interpreter.interpretLocal('Valor: 18 | Item: Detergente | Local: Carrefour');
+    const legacyForItem = Store.getLearned('Carrefour', 'Shampoo');
     Store.learnCorrection('Carrefour', 'comida', 'mercado', 'Shampoo');
     const explicitCorrection = Interpreter.interpretLocal('Valor: 42 | Item: Shampoo | Local: Carrefour');
     return {
       shampoo: shampoo,
       detergente: detergente,
-      legacyForItem: Store.getLearned('Carrefour', 'Shampoo'),
+      legacyForItem: legacyForItem,
       explicitCorrection: explicitCorrection
     };
   });
@@ -890,7 +891,7 @@ test('classifica o produto antes da categoria ampla do supermercado', async func
     subcategoria: 'produtos_limpeza',
     source: 'item'
   });
-  expect(resultado.legacyForItem).toMatchObject({ categoria: 'comida', subcategoria: 'mercado' });
+  expect(resultado.legacyForItem).toBeNull();
   expect(resultado.explicitCorrection).toMatchObject({ categoria: 'comida', subcategoria: 'mercado', source: 'learning' });
 });
 
