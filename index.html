@@ -4904,6 +4904,11 @@ const AlicerceIA = {
         compareUp:'Até hoje, você gastou {percent}% a mais que no mesmo período do mês passado ({current} contra {previous}).',
         compareDown:'Até hoje, você gastou {percent}% a menos que no mesmo período do mês passado ({current} contra {previous}).',
         compareSame:'Seus gastos estão praticamente no mesmo nível do mesmo período do mês passado: {current} contra {previous}.',
+        anomalyInsight:'Atenção: um gasto de {amount} em {item} ficou acima do seu padrão anterior. Suas despesas anteriores nessa categoria tinham mediana de {median}.',
+        categoryRise:'Seus gastos com {item} aumentaram {percent}% em relação ao mesmo período do mês passado ({current} contra {previous}).',
+        noAnomalies:'Não encontrei valores fora do seu padrão com histórico suficiente para comparar. Isso não garante ausência de problemas; significa apenas que não há evidência estatística suficiente.',
+        topMerchantAnswer:'O estabelecimento em que você mais gastou foi {item}, com {amount}.',
+        periodTotal:'No período consultado, suas despesas somam {amount}.' ,
         help:'Posso consultar o total do mês, localizar gastos por categoria ou comparar com o mesmo período do mês passado. Experimente perguntar: “Quanto gastei com lanche?”',
         suggestions:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado']
       },
@@ -4927,6 +4932,11 @@ const AlicerceIA = {
         compareUp:'So far, you spent {percent}% more than in the same period last month ({current} vs. {previous}).',
         compareDown:'So far, you spent {percent}% less than in the same period last month ({current} vs. {previous}).',
         compareSame:'Your spending is about the same as the same period last month: {current} vs. {previous}.',
+        anomalyInsight:'A {amount} expense in {item} is above your previous pattern. Earlier expenses in this category had a median of {median}.',
+        categoryRise:'Your spending on {item} increased {percent}% compared with the same period last month ({current} vs. {previous}).',
+        noAnomalies:'I did not find values outside your pattern with enough history to compare. This does not guarantee there are no issues; it means there is not enough statistical evidence.',
+        topMerchantAnswer:'Your highest-spending merchant was {item}, at {amount}.',
+        periodTotal:'Your recorded expenses for this period total {amount}.' ,
         help:'I can check this month’s total, find spending by category, or compare it with the same period last month. Try: “How much did I spend on snacks?”',
         suggestions:['How much did I spend this month?','Where did I spend the most?','Compare with last month']
       },
@@ -4950,6 +4960,11 @@ const AlicerceIA = {
         compareUp:'Hasta hoy, gastaste un {percent}% más que en el mismo período del mes pasado ({current} frente a {previous}).',
         compareDown:'Hasta hoy, gastaste un {percent}% menos que en el mismo período del mes pasado ({current} frente a {previous}).',
         compareSame:'Tus gastos están casi al mismo nivel que en el mismo período del mes pasado: {current} frente a {previous}.',
+        anomalyInsight:'Un gasto de {amount} en {item} está por encima de tu patrón anterior. Los gastos anteriores en esta categoría tenían una mediana de {median}.',
+        categoryRise:'Tus gastos en {item} aumentaron un {percent}% frente al mismo período del mes pasado ({current} frente a {previous}).',
+        noAnomalies:'No encontré valores fuera de tu patrón con historial suficiente para comparar. Esto no garantiza que no haya problemas; significa que no hay suficiente evidencia estadística.',
+        topMerchantAnswer:'El establecimiento donde más gastaste fue {item}, con {amount}.',
+        periodTotal:'Tus gastos registrados en este período suman {amount}.' ,
         help:'Puedo consultar el total del mes, encontrar gastos por categoría o comparar con el mismo período del mes pasado. Prueba: “¿Cuánto gasté en comida?”',
         suggestions:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Comparar con el mes pasado']
       }
@@ -5065,6 +5080,240 @@ const AlicerceIA = {
     return html;
   }
 };
+
+/* =============================================================
+   ALICERCE IA — camada estatistica e interpretacao de perguntas
+   Sem rede, sem APIs pagas, sem alterar o motor financeiro.
+   ============================================================= */
+AlicerceIA._rows=function(){
+  var rows=[];
+  var validDate=function(value){return /^\d{4}-\d{2}-\d{2}$/.test(String(value||''));};
+  var borrowedLoans={};
+  (Store.loans||[]).forEach(function(loan){
+    if(loan&&loan.fromCard===true&&loan.tipo==='emprestei')borrowedLoans[String(loan.id)]=true;
+  });
+  (Store.movements||[]).forEach(function(m){
+    if(!m||m.tipo!=='despesa'||(m.status!=='pago'&&m.status!=='recebido')||!validDate(m.data))return;
+    if(m.loanId&&borrowedLoans[String(m.loanId)])return;
+    var value=Number(m.valor)||0;
+    if(value<=0)return;
+    rows.push({
+      data:String(m.data),valor:value,
+      categoria:m.categoria||'outros',
+      subcategoria:m.subcategoria||'outros',
+      descricao:m.descricao||m.item||'',
+      local:m.estabelecimento||m.local||'',
+      source:'movement'
+    });
+  });
+  (Store.installments||[]).forEach(function(i){
+    if(!i||i.tipo!=='cartao'||!i.compraId||i.loanId||i.fromCard||!validDate(i.data))return;
+    var value=Number(i.valor)||0;
+    if(value<=0)return;
+    rows.push({
+      data:String(i.data),valor:value,
+      categoria:i.categoria||'outros',
+      subcategoria:i.subcategoria||'outros',
+      descricao:i.descricao||'Compra no cartao',
+      local:i.local||'',
+      source:'card'
+    });
+  });
+  return rows;
+};
+AlicerceIA._iso=function(date){
+  return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+};
+AlicerceIA._questionRange=function(question){
+  var q=this._norm(question);
+  var now=Clock.now();
+  var today=this._iso(now);
+  var start,end;
+  var monthStart=function(offset){
+    var d=new Date(now.getFullYear(),now.getMonth()+offset,1);
+    return this._iso(d);
+  }.bind(this);
+  if(/ultimos 3 meses|ultimos tres meses|ultimas 3 meses|trimestre/.test(q)){
+    start=monthStart(-2);end=today;
+  }else if(/ultimos 7 dias|ultima semana|ultimos sete dias/.test(q)){
+    start=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-6));end=today;
+  }else if(/semana passada/.test(q)){
+    var day=now.getDay()||7;
+    var thisMonday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-day+1);
+    var prevMonday=new Date(thisMonday.getFullYear(),thisMonday.getMonth(),thisMonday.getDate()-7);
+    var prevSunday=new Date(thisMonday.getFullYear(),thisMonday.getMonth(),thisMonday.getDate()-1);
+    start=this._iso(prevMonday);end=this._iso(prevSunday);
+  }else if(/esta semana|nessa semana/.test(q)){
+    var weekDay=now.getDay()||7;
+    start=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-weekDay+1));end=today;
+  }else if(/\bontem\b/.test(q)){
+    start=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-1));end=start;
+  }else if(/\bhoje\b/.test(q)){
+    start=today;end=today;
+  }else if(/mes passado|mes anterior/.test(q)){
+    var previous=new Date(now.getFullYear(),now.getMonth()-1,1);
+    start=this._iso(previous);
+    end=this._iso(new Date(now.getFullYear(),now.getMonth(),0));
+  }else{
+    start=monthStart(0);end=today;
+  }
+  return {start:start,end:end};
+};
+AlicerceIA._rangeRows=function(start,end,rows){
+  return (rows||this._rows()).filter(function(row){return row.data>=start&&row.data<=end;});
+};
+AlicerceIA._median=function(values){
+  if(!values||!values.length)return 0;
+  var ordered=values.slice().sort(function(a,b){return a-b;});
+  var middle=Math.floor(ordered.length/2);
+  return ordered.length%2?ordered[middle]:(ordered[middle-1]+ordered[middle])/2;
+};
+AlicerceIA._detectAnomalies=function(rows){
+  var now=Clock.now();
+  var currentMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  var cutoff=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-180));
+  var current=(rows||this._rows()).filter(function(row){
+    return row.source==='movement'&&row.data.slice(0,7)===currentMonth;
+  });
+  var history=(rows||this._rows()).filter(function(row){
+    return row.source==='movement'&&row.data>=cutoff&&row.data.slice(0,7)!==currentMonth;
+  });
+  var anomalies=[];
+  current.forEach(function(row){
+    var prior=history.filter(function(item){return item.categoria===row.categoria;});
+    if(prior.length<5)return;
+    var amounts=prior.map(function(item){return Number(item.valor)||0;});
+    var median=this._median(amounts);
+    if(median<=0)return;
+    var deviations=amounts.map(function(value){return Math.abs(value-median);});
+    var mad=this._median(deviations);
+    var threshold=Math.max(100,median*3,median+Math.max(mad*4,median*1.5));
+    if(row.valor<threshold)return;
+    anomalies.push({
+      amount:row.valor,
+      category:row.categoria,
+      subcategory:row.subcategoria,
+      median:median,
+      ratio:row.valor/median,
+      merchant:row.local||row.descricao||''
+    });
+  },this);
+  return anomalies.sort(function(a,b){return b.ratio-a.ratio;});
+};
+AlicerceIA._categoryChanges=function(current,previous){
+  var now=this._groups(current,'categoria');
+  var before=this._groups(previous,'categoria');
+  var result=[];
+  now.forEach(function(item){
+    var old=before.find(function(row){return row.key===item.key;});
+    if(!old||old.total<80||item.total<old.total*1.35||item.total-old.total<80)return;
+    var currentCount=current.filter(function(row){return row.categoria===item.key;}).length;
+    if(currentCount<2)return;
+    result.push({key:item.key,current:item.total,previous:old.total,percent:Math.round((item.total-old.total)/old.total*100),difference:item.total-old.total});
+  });
+  return result.sort(function(a,b){return b.difference-a.difference;});
+};
+AlicerceIA._knownMerchantRows=function(question,rows){
+  var q=this._norm(question);
+  var merchants={};
+  (rows||[]).forEach(function(row){
+    var name=String(row.local||'').trim();
+    var key=this._norm(name);
+    if(key.length>=4)merchants[key]=name;
+  },this);
+  var keys=Object.keys(merchants).sort(function(a,b){return b.length-a.length;});
+  var match=keys.find(function(key){return q.indexOf(key)>=0;});
+  if(!match)return null;
+  return (rows||[]).filter(function(row){return this._norm(row.local)===match;},this);
+};
+AlicerceIA.insight=function(){
+  this._resetUser();
+  var current=this._periodRows(0);
+  var previous=this._periodRows(1);
+  if(!current.length)return this._label('emptyInsight');
+  var anomalies=this._detectAnomalies(this._rows());
+  if(anomalies.length){
+    var anomaly=anomalies[0];
+    return this._label('anomalyInsight',{
+      amount:fmtMoney(anomaly.amount),
+      item:this._nice(anomaly.subcategory||anomaly.category),
+      median:fmtMoney(anomaly.median)
+    });
+  }
+  var changes=this._categoryChanges(current,previous);
+  if(changes.length){
+    var change=changes[0];
+    return this._label('categoryRise',{
+      item:this._nice(change.key),
+      percent:change.percent,
+      current:fmtMoney(change.current),
+      previous:fmtMoney(change.previous)
+    });
+  }
+  var total=this._sum(current);
+  var previousTotal=this._sum(previous);
+  if(previousTotal>0){
+    var percent=((total-previousTotal)/previousTotal)*100;
+    if(percent>=20)return this._label('upInsight',{amount:fmtMoney(total),percent:Math.round(percent)});
+    if(percent<=-20)return this._label('downInsight',{amount:fmtMoney(total),percent:Math.round(Math.abs(percent))});
+  }
+  var top=this._groups(current,'subcategoria')[0];
+  if(top&&top.total>0)return this._label('topInsight',{item:this._nice(top.key),amount:fmtMoney(top.total),total:fmtMoney(total)});
+  return this._label('totalInsight',{amount:fmtMoney(total)});
+};
+AlicerceIA.responder=function(question){
+  this._resetUser();
+  var q=this._norm(question);
+  var rows=this._rows();
+  var range=this._questionRange(question);
+  var selected=this._rangeRows(range.start,range.end,rows);
+  if(!selected.length)return this._label('noData');
+  if(/fora do padrao|fora do normal|anomal|estranho|incomum/.test(q)){
+    var anomalies=this._detectAnomalies(rows);
+    if(!anomalies.length)return this._label('noAnomalies');
+    var item=anomalies[0];
+    return this._label('anomalyInsight',{amount:fmtMoney(item.amount),item:this._nice(item.subcategory||item.category),median:fmtMoney(item.median)});
+  }
+  if(/compar|aument|diminu|evolu|mais que|menos que|em relacao|versus/.test(q)){
+    var now=this._periodRows(0);
+    var before=this._periodRows(1);
+    var currentTotal=this._sum(now);
+    var previousTotal=this._sum(before);
+    if(previousTotal<=0)return this._label('noPrevious');
+    var delta=((currentTotal-previousTotal)/previousTotal)*100;
+    if(delta>=5)return this._label('compareUp',{percent:Math.round(delta),current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)});
+    if(delta<=-5)return this._label('compareDown',{percent:Math.round(Math.abs(delta)),current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)});
+    return this._label('compareSame',{current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)});
+  }
+  if(/estabelecimento|qual loja|em qual loja|onde compro|loja que|comercio/.test(q)){
+    var merchants=this._groups(selected,'local').filter(function(item){return item.key&&item.key!=='outros';});
+    if(merchants.length)return this._label('topMerchantAnswer',{item:merchants[0].key,amount:fmtMoney(merchants[0].total)});
+  }
+  if(/onde|maior|mais gastei|principal categoria|categoria principal/.test(q)){
+    var top=this._groups(selected,'categoria')[0];
+    if(!top)return this._label('noData');
+    return this._label('topAnswer',{item:this._nice(top.key),amount:fmtMoney(top.total)});
+  }
+  var matches=this._matchedRows(question,selected);
+  if(matches){
+    var item=this._norm(question).replace(/\b(quanto|gastei|gasto|gastos|com|no|na|nos|nas|este|essa|esse|mes|mês|total|valor|foi|do|da|de|sobre|ultimos|ultimas|dias|semana|passada|passado)\b/g,' ').trim();
+    if(!matches.length)return this._label('noTerm',{term:item||question});
+    return this._label('termAnswer',{amount:fmtMoney(this._sum(matches)),term:item||question});
+  }
+  var known=this._knownMerchantRows(question,selected);
+  if(known){
+    if(!known.length)return this._label('noTerm',{term:question});
+    return this._label('termAnswer',{amount:fmtMoney(this._sum(known)),term:question});
+  }
+  if(/ultimos 3 meses|ultimos tres meses|ultimas 3 meses|trimestre/.test(q)||/ultimos 7 dias|ultima semana|ultimos sete dias|semana passada|esta semana/.test(q)){
+    return this._label('periodTotal',{amount:fmtMoney(this._sum(selected))});
+  }
+  if(/quanto|total|gastei|gasto|gastos|despesa|despesas|valor/.test(q)){
+    return this._label('totalAnswer',{amount:fmtMoney(this._sum(selected))});
+  }
+  return this._label('help');
+};
+
 
 function fmtVal(v){return fmtMoney(v)}
 function fmtDate(d){return Store.fmtDate(d)}
