@@ -4753,8 +4753,33 @@ const detalhes={
     }catch(e){return d}
   },
   _uid(){return Math.random().toString(36).substr(2,9)+Date.now().toString(36)},
-  learnCorrection(estab,cat,sub){if(!estab)return;this.learning[estab.toLowerCase()]={categoria:cat,subcategoria:sub,updatedAt:new Date().toISOString()};this.save()},
-  getLearned(estab){if(!estab)return null;return this.learning[estab.toLowerCase()]||null}
+  learnCorrection(estab,cat,sub,item){
+    if(!estab||!alicerClassificationPairIsValid(cat,sub))return false;
+    const key=alicerLearningKey(estab,item);
+    if(!key)return false;
+    this.learning=this.learning||{};
+    this.learning[key]={
+      categoria:cat,subcategoria:sub,
+      itemKey:normalizeAlicerClassificationText(item),
+      scope:normalizeAlicerClassificationText(item)?'merchant_item':'merchant',
+      updatedAt:new Date().toISOString()
+    };
+    this.save();
+    return true;
+  },
+  getLearned(estab,item){
+    if(!estab)return null;
+    this.learning=this.learning||{};
+    const itemKey=normalizeAlicerClassificationText(item);
+    const key=alicerLearningKey(estab,item);
+    if(itemKey){
+      const exact=this.learning[key];
+      return exact&&alicerClassificationPairIsValid(exact.categoria,exact.subcategoria)?exact:null;
+    }
+    const merchantKey=alicerLearningKey(estab,'');
+    const legacy=this.learning[merchantKey]||this.learning[String(estab).toLowerCase()];
+    return legacy&&alicerClassificationPairIsValid(legacy.categoria,legacy.subcategoria)?legacy:null;
+  }
 };
 
 function fmtVal(v){return fmtMoney(v)}
@@ -4852,6 +4877,24 @@ const ALICERCE_CATEGORIES = {
   }
 };
 
+function normalizeAlicerClassificationText(value){
+  return String(value||'').toLowerCase().normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function alicerClassificationPairIsValid(category,subcategory){
+  return !!(ALICERCE_CATEGORIES&&ALICERCE_CATEGORIES[category]&&
+    Array.isArray(ALICERCE_CATEGORIES[category].subs)&&
+    ALICERCE_CATEGORIES[category].subs.indexOf(subcategory)!==-1);
+}
+function alicerLearningKey(merchant,item){
+  const merchantKey=normalizeAlicerClassificationText(merchant);
+  const itemKey=normalizeAlicerClassificationText(item);
+  if(!merchantKey)return '';
+  return merchantKey+(itemKey?'::'+itemKey:'');
+}
+
 const POSTO_RE=/postos?(?!(?:\s+(?:de\s+)?)?(?:saude|salud|policia|policial|fiscal|medico|vacinacao)\b)/;
 const VEHICLE_RE=/\b(gnv|gas\s*natural\s*veicular|gasolina|gasolinera|nafta|bencina|combustivel|combustible|etanol|diesel|abastec\w*|abasteci|filled\s*up|gas\s*station|petrol|fuel|postos?(?!(?:\s+(?:de\s+)?)?(?:saude|salud|policia|policial|fiscal|medico|vacinacao)\b))\b/i;
 const Interpreter={
@@ -4867,6 +4910,15 @@ const Interpreter={
     'padaria':{c:'comida',s:'padaria'},
     'ifood':{c:'comida',s:'delivery'},
     'rappi':{c:'comida',s:'delivery'},
+    'mcdonald s':{c:'comida',s:'fast_food'},
+    'burger king':{c:'comida',s:'fast_food'},
+    'subway':{c:'comida',s:'fast_food'},
+    'kfc':{c:'comida',s:'fast_food'},
+    'habibs':{c:'comida',s:'fast_food'},
+    'bobs':{c:'comida',s:'fast_food'},
+    'madero':{c:'comida',s:'fast_food'},
+    'outback':{c:'comida',s:'fast_food'},
+    'giraffas':{c:'comida',s:'fast_food'},
     'bar do luiz':{c:'comida',s:'bar'},
     'shell':{c:'transporte',s:'combustivel'},
     'ipiranga':{c:'transporte',s:'combustivel'},
@@ -4928,13 +4980,15 @@ const Interpreter={
   },
   rules:[
     {p:/\b(mercados?|supermercados?|supermarkets?)\b/i,c:'comida',s:'mercado'},
-    {p:/(restaurante|restauran|restaurant)/i,c:'comida',s:'restaurantes'},
+    {p:/(restaurante|restauran|restaurant)/i,c:'comida',s:'restaurante'},
     {p:/(delivery|ifood|uber\s?eats|rappi)/i,c:'comida',s:'delivery'},
+    {p:/\b(lanchonete|snack bar)\b/i,c:'comida',s:'lanchonete'},
     {p:/(energia|luz\b|energy|electric)/i,c:'moradia',s:'energia'},
     {p:/\b(agua|water)\b/i,c:'moradia',s:'agua'},
     {p:/(internet|wifi)/i,c:'moradia',s:'internet'},
     {p:/\b(aluguel|aluga|rent(al)?)\b/i,c:'moradia',s:'aluguel'},
-    {p:/(uber\b|(^|[^0-9.,])99([^0-9.,]|$))/i,c:'transporte',s:'aplicativo'},
+    {p:/\buber\b/i,c:'transporte',s:'uber'},
+    {p:/(^|[^0-9.,])99([^0-9.,]|$)/i,c:'transporte',s:'99'},
     {p:VEHICLE_RE,c:'transporte',s:'combustivel'},
     {p:/\b(botijao|p13|gas\s*de\s*cozinha|gas\s*encanado|gas\s*natural|cooking\s*gas|propane|gas\s*bill|gas\s*de\s*cocina|garrafa\s*de\s*gas|bombona)\b/i,c:'moradia',s:'gas'},
     {p:/\bgas\b/i,c:null,s:null,low:true},
@@ -4946,7 +5000,7 @@ const Interpreter={
     {p:/(seguro|insurance|apolice|poliza)/i,c:'transporte',s:'seguro'},
     {p:/(porto seguro|bradesco seguro|sul america|mapfre|liberty|allianz)/i,c:'transporte',s:'seguro'}
   ],
-  norm(t){return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')},
+  norm(t){return normalizeAlicerClassificationText(t)},
   semValor(t){const m=String(t||'').match(/R?\$?\s*(\d{1,6}(?:[.,]\d{1,2})?)\s*(?:reais?|reals?|R\$|BRL)?/i);return this.norm(m&&m[1]?String(t).replace(m[1],' '):t)},
   extractAmount(text){
     const patterns=[
@@ -5037,68 +5091,41 @@ const Interpreter={
     return null;
   },
   inferItemCategory(item,text){
-    const n=this.norm(String(item||'')+' '+String(text||''));
-
-    if(/\b(tenis|sapato|sandalia|chinelo|bota|calcado|calcados)\b/i.test(n))
-      return {c:'vestuario',s:'calcados'};
-
-    if(/\b(camiseta|camisa|blusa|calca|bermuda|short|vestido|saia|roupa|roupas|jaqueta|casaco)\b/i.test(n))
-      return {c:'vestuario',s:'roupas'};
-
-    if(/\b(carteira|cinto|oculos de sol|relogio|relogios|brinco|brincos|colar|pulseira|anel)\b/i.test(n))
-      return {c:'vestuario',s:'acessorios'};
-
-    if(/\b(tv|televisao|televisor|smart\s*tv)\b/i.test(n))
-      return {c:'eletronicos',s:'televisao'};
-
-    if(/\b(celular|iphone|smartphone)\b/i.test(n))
-      return {c:'eletronicos',s:'celular'};
-
-    if(/\b(notebook|computador|pc|laptop)\b/i.test(n))
-      return {c:'eletronicos',s:'notebook'};
-
-    if(/\b(tablet|ipad)\b/i.test(n))
-      return {c:'eletronicos',s:'tablet'};
-
-    if(/\b(fone de ouvido|fone bluetooth|headset|airpods)\b/i.test(n))
-      return {c:'eletronicos',s:'fones'};
-
-    if(/\b(video game|videogame|playstation|xbox|nintendo switch|console)\b/i.test(n))
-      return {c:'eletronicos',s:'consoles'};
-
-    if(/\b(carregador|cabo usb|capa de celular|pelicula de celular|mouse|teclado|pendrive)\b/i.test(n))
-      return {c:'eletronicos',s:'acessorios'};
-
-    if(/\b(produto[s]?\s+de\s+limpeza|detergente|sabao|desinfetante|agua\s+sanitaria|amaciante|limpeza)\b/i.test(n))
-      return {c:'casa_dia_a_dia',s:'produtos_limpeza'};
-
-    if(/\b(panela|frigideira|talheres|prato|pratos|copos|xicaras|utensilios de cozinha)\b/i.test(n))
-      return {c:'casa_dia_a_dia',s:'cozinha'};
-
-    if(/\b(lencol|fronha|travesseiro|cobertor|edredom)\b/i.test(n))
-      return {c:'casa_dia_a_dia',s:'cama'};
-
-    if(/\b(toalha|toalhas|tapete de banheiro)\b/i.test(n))
-      return {c:'casa_dia_a_dia',s:'banho'};
-
-    if(/\b(racao|areia para gato|coleira para cachorro)\b/i.test(n))
-      return {c:'animais',s:'racao'};
-
-    if(/\b(livro|livros|apostila)\b/i.test(n))
-      return {c:'educacao',s:'livros'};
-
-    if(/\b(fralda|leite em po|mamadeira|chupeta)\b/i.test(n))
-      return {c:'familia',s:'filhos'};
-
-    if(/\b(perfume|desodorante|creme hidratante|protetor solar|shampoo|condicionador|maquiagem|batom)\b/i.test(n))
-      return {c:'beleza',s:'cosmeticos'};
-
-    if(/\b(medicamento|remedio|comprimidos|vitamina|analgesico)\b/i.test(n))
-      return {c:'saude',s:'medicamentos'};
-
-    if(/\b(arroz|feijao|macarrao|carne|frango|ovos|leite|cafe|acucar|oleo de cozinha)\b/i.test(n))
-      return {c:'comida',s:'mercado'};
-
+    const product=this.norm(item||'');
+    const n=product||this.norm(text||'');
+    if(!n)return null;
+    const rules=[
+      {p:/\b(tenis|sapato|sandalia|chinelo|bota|calcado|calcados)\b/i,c:'vestuario',s:'calcados'},
+      {p:/\b(camiseta|camisa|blusa|calca|bermuda|short|vestido|saia|roupa|roupas|jaqueta|casaco)\b/i,c:'vestuario',s:'roupas'},
+      {p:/\b(carteira|cinto|oculos de sol|relogio|relogios|brinco|brincos|colar|pulseira|anel)\b/i,c:'vestuario',s:'acessorios'},
+      {p:/\b(tv|televisao|televisor|smart tv)\b/i,c:'eletronicos',s:'televisao'},
+      {p:/\b(celular|iphone|smartphone)\b/i,c:'eletronicos',s:'celular'},
+      {p:/\b(notebook|computador|pc|laptop)\b/i,c:'eletronicos',s:'notebook'},
+      {p:/\b(tablet|ipad)\b/i,c:'eletronicos',s:'tablet'},
+      {p:/\b(fone de ouvido|fone bluetooth|headset|airpods)\b/i,c:'eletronicos',s:'fones'},
+      {p:/\b(video game|videogame|playstation|xbox|nintendo switch|console)\b/i,c:'eletronicos',s:'consoles'},
+      {p:/\b(carregador|cabo usb|capa de celular|pelicula de celular|mouse|teclado|pendrive)\b/i,c:'eletronicos',s:'acessorios'},
+      {p:/\b(produtos? de limpeza|detergente|sabao|desinfetante|agua sanitaria|amaciante|limpeza)\b/i,c:'casa_dia_a_dia',s:'produtos_limpeza'},
+      {p:/\b(panela|frigideira|talheres|prato|pratos|copos|xicaras|utensilios de cozinha)\b/i,c:'casa_dia_a_dia',s:'cozinha'},
+      {p:/\b(lencol|fronha|travesseiro|cobertor|edredom)\b/i,c:'casa_dia_a_dia',s:'cama'},
+      {p:/\b(toalha|toalhas|tapete de banheiro)\b/i,c:'casa_dia_a_dia',s:'banho'},
+      {p:/\b(racao|areia para gato|coleira para cachorro)\b/i,c:'animais',s:'racao'},
+      {p:/\b(veterinario|clinica veterinaria)\b/i,c:'animais',s:'veterinario'},
+      {p:/\b(livro|livros|apostila)\b/i,c:'educacao',s:'livros'},
+      {p:/\b(fralda|leite em po|mamadeira|chupeta)\b/i,c:'familia',s:'filhos'},
+      {p:/\b(perfume|desodorante|creme hidratante|protetor solar|shampoo|condicionador|maquiagem|batom)\b/i,c:'beleza',s:'cosmeticos'},
+      {p:/\b(corte de cabelo|cabeleireiro|barbearia|manicure|pedicure|unha|unhas)\b/i,c:'beleza',s:'unhas'},
+      {p:/\b(medicamento|remedio|comprimidos|vitamina|analgesico|antibiotico)\b/i,c:'saude',s:'medicamentos'},
+      {p:/\b(lanche|sanduiche|hamburguer|pastel|coxinha|salgado|esfiha|empada|hot dog|cachorro quente|batata frita|tapioca)\b/i,c:'comida',s:'lanchonete'},
+      {p:/\b(bolo|doce|doces|chocolate|sorvete|acai|brigadeiro|sobremesa)\b/i,c:'comida',s:'doces'},
+      {p:/\b(cafe|cafezinho|refrigerante|agua mineral|suco|bebida|cerveja)\b/i,c:'comida',s:'bebidas'},
+      {p:/\b(almoco|jantar|refeicao|rodizio)\b/i,c:'comida',s:'restaurante'},
+      {p:/\b(pao frances|pao integral|paes|padaria|sonho de padaria)\b/i,c:'comida',s:'padaria'},
+      {p:/\b(arroz|feijao|macarrao|carne|frango|ovos|leite|acucar|oleo de cozinha|farinha|fuba)\b/i,c:'comida',s:'mercado'}
+    ];
+    for(const rule of rules){
+      if(rule.p.test(n)&&alicerClassificationPairIsValid(rule.c,rule.s))return{c:rule.c,s:rule.s};
+    }
     return null;
   },
   extractMerchant(text){
@@ -5109,8 +5136,7 @@ const Interpreter={
     return null;
   },
   interpretLocal(text){
-    if(!text||!text.trim())return null;
-
+    if(!text||!String(text).trim())return null;
     const amount=this.extractAmount(text);
     const date=this.extractDate(text);
     const merchant=this.extractMerchant(text);
@@ -5118,93 +5144,44 @@ const Interpreter={
     const n=this.semValor(text);
 
     if(merchant){
-      const learned=Store.getLearned(merchant);
-      if(learned){
-        return{
-          amount,date,merchant,item,
-          categoria:learned.categoria,
-          subcategoria:learned.subcategoria,
-          confidence:'high',
-          source:'learning'
-        };
+      const learned=Store.getLearned(merchant,item);
+      if(learned&&alicerClassificationPairIsValid(learned.categoria,learned.subcategoria)){
+        return{amount,date,merchant,item,categoria:learned.categoria,subcategoria:learned.subcategoria,confidence:'high',source:'learning'};
       }
     }
 
-    if(VEHICLE_RE.test(n)){
-      return{
-        amount,date,merchant,item,
-        categoria:'transporte',
-        subcategoria:'combustivel',
-        confidence:amount?'high':'medium',
-        source:'local'
-      };
+    const itemCategory=this.inferItemCategory(item,n);
+    if(itemCategory&&alicerClassificationPairIsValid(itemCategory.c,itemCategory.s)){
+      return{amount,date,merchant,item,categoria:itemCategory.c,subcategoria:itemCategory.s,confidence:'high',source:'item'};
     }
 
-    const itemCategory=this.inferItemCategory(item,n);
-    if(itemCategory){
-      return{
-        amount,date,merchant,item,
-        categoria:itemCategory.c,
-        subcategoria:itemCategory.s,
-        confidence:amount?'high':'medium',
-        source:'item'
-      };
+    if(VEHICLE_RE.test(n)){
+      const fuelExplicit=/\b(gasolina|etanol|diesel|combustivel|combustible|abastec|filled up|fuel)\b/i.test(n);
+      return{amount,date,merchant,item,categoria:'transporte',subcategoria:'combustivel',confidence:fuelExplicit?'high':'medium',source:'local'};
     }
 
     if(merchant){
       const lower=this.norm(merchant);
-
-      const marketplace=[
-        'mercado livre',
-        'mercadolivre',
-        'amazon',
-        'shopee',
-        'magalu',
-        'magazine luiza',
-        'aliexpress',
-        'temu'
-      ];
-
-      const isMarketplace=marketplace.some(k=>lower.includes(k));
-
+      const marketplace=['mercado livre','mercadolivre','amazon','shopee','magalu','magazine luiza','aliexpress','temu'];
+      const isMarketplace=marketplace.some(k=>lower.indexOf(this.norm(k))!==-1);
       if(!isMarketplace){
         for(const key of Object.keys(this.merchantDict)){
-          if(lower.includes(this.norm(key))){
-            const d=this.merchantDict[key];
-            return{
-              amount,date,merchant,item,
-              categoria:d.c,
-              subcategoria:d.s,
-              confidence:amount?'high':'medium',
-              source:'dictionary'
-            };
-          }
+          if(lower.indexOf(this.norm(key))===-1)continue;
+          const d=this.merchantDict[key];
+          if(!d||!alicerClassificationPairIsValid(d.c,d.s))continue;
+          return{amount,date,merchant,item,categoria:d.c,subcategoria:d.s,confidence:'medium',source:'dictionary'};
         }
       }
     }
 
     for(const rule of this.rules){
       if(rule.p.test(n)){
-        return{
-          amount,date,merchant,item,
-          categoria:rule.c||null,
-          subcategoria:rule.s||null,
-          confidence:rule.low?'low':(amount?'high':'medium'),
-          source:'local'
-        };
+        if(rule.c&&rule.s&&!alicerClassificationPairIsValid(rule.c,rule.s))continue;
+        return{amount,date,merchant,item,categoria:rule.c||null,subcategoria:rule.s||null,confidence:rule.low?'low':'medium',source:'local'};
       }
     }
 
-    if(amount){
-      return{
-        amount,date,merchant,item,
-        categoria:null,
-        subcategoria:null,
-        confidence:'low',
-        source:'partial'
-      };
-    }
-
+    if(amount)return{amount,date,merchant,item,categoria:null,subcategoria:null,confidence:'low',source:'partial'};
     return null;
   },
   async interpretWithAI(text){
@@ -10671,6 +10648,9 @@ function confirmGastoInteligente(){
     source:'app'
   };
   const mv=Store.addMovement(movementPayload);
+  if(data.classificationCorrection&&interp.merchant){
+    Store.learnCorrection(interp.merchant,interp.categoria,interp.subcategoria,interp.item);
+  }
 
   showToast(t('gastoSalvo',{
     valor:fmtMoney(mv.valor),
@@ -11049,6 +11029,17 @@ function saveDoubtGasto(){
 
   const data=Store.screenData||{};
   const interp=data.interpretation||{};
+  const originalCategory=String(interp.categoria||'');
+  const originalSubcategory=String(interp.subcategoria||'');
+  const edits=data.gastoEdits||{};
+  const hasExplicitClassificationEdit=
+    Object.prototype.hasOwnProperty.call(edits,'category')&&
+    Object.prototype.hasOwnProperty.call(edits,'subcategory');
+  const classificationWasCorrected=!!(
+    hasExplicitClassificationEdit&&
+    (String(edits.category||'')!==originalCategory||
+     String(edits.subcategory||'')!==originalSubcategory)
+  );
 
   interp.amount=value;
   if(merchant)interp.merchant=merchant.value.trim();
@@ -11061,6 +11052,7 @@ function saveDoubtGasto(){
   data.localInput=interp.merchant;
   data.itemInput=interp.item;
   data.text=interp.item;
+  data.classificationCorrection=classificationWasCorrected;
   data.context=interp.merchant;
   const payment=document.getElementById('edit-gasto-payment');
   const cardOwnerType=document.getElementById('edit-gasto-card-owner');
@@ -11115,9 +11107,12 @@ function saveDoubtGasto(){
 
   const antes=Store.movements.length;
   try{
-    if(interp.merchant&&interp.categoria&&interp.subcategoria)Store.learnCorrection(interp.merchant,interp.categoria,interp.subcategoria);
+
     if(data.paymentMethod==='cartao'&&data.cardType==='credito'){
       if(salvarGastoCreditoCartao(data,interp)){
+        if(data.classificationCorrection&&interp.merchant){
+          Store.learnCorrection(interp.merchant,interp.categoria,interp.subcategoria,interp.item);
+        }
         showToast('Compra no crédito salva na fatura.');
         go('cartoes');
       }else if(button){
@@ -11140,18 +11135,22 @@ function renderGastoManual(){
   html+='<h2 class="mt-4">'+t('manual')+'</h2>';
   html+='<div class="form-group mt-4"><label class="form-label">'+t('descricao')+'</label><input id="gm-desc"></div>';
   html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('valor')+'</label><input id="gm-val" type="number" step="0.01"></div><div class="form-group"><label class="form-label">'+t('data')+'</label><input id="gm-date" type="date" value="'+today()+'"></div></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('categoria')+'</label><select id="gm-cat" onchange="updateSubcats(this.value)">'+['comida','moradia','transporte','saude','lazer','educacao','outros'].map(c=>'<option value="'+c+'">'+t(c)+'</option>').join('')+'</select></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('subcategoria')+'</label><select id="gm-sub"></select></div>';
+  const manualCategories=Object.keys(ALICERCE_CATEGORIES);
+  const manualSubs=ALICERCE_CATEGORIES.comida.subs;
+  html+='<div class="form-group"><label class="form-label">'+t('categoria')+'</label><select id="gm-cat" onchange="updateSubcats(this.value)">'+manualCategories.map(c=>'<option value="'+c+'">'+Interpreter.catDisplay(c)+'</option>').join('')+'</select></div>';
+  html+='<div class="form-group"><label class="form-label">'+t('subcategoria')+'</label><select id="gm-sub">'+manualSubs.map(sub=>'<option value="'+sub+'">'+Interpreter.subDisplay(sub)+'</option>').join('')+'</select></div>';
   html+='<div class="form-group"><label class="form-label">'+t('estabelecimento')+'</label><input id="gm-estab"></div>';
   html+='<button class="btn btn-primary btn-block" onclick="saveManualGasto()">'+t('salvar')+'</button></div>';
   return html;
 }
 function updateSubcats(cat){
-  try{
-    const sel=document.getElementById('gm-sub');
-    const subs={comida:['mercado','restaurantes','bares','delivery'],moradia:['energia','agua','gas','internet','aluguel'],transporte:['combustivel','aplicativo','seguro'],saude:['farmacia','consulta','terapia','exame','medicamentos'],lazer:['streaming','cinema'],educacao:['curso'],outros:['outros']};
-    sel.innerHTML=(subs[cat]||['outros']).map(s=>'<option value="'+s+'">'+Interpreter.subDisplay(s)+'</option>').join('');
-  }catch(e){}
+  const sel=document.getElementById('gm-sub');
+  if(!sel)return;
+  const config=ALICERCE_CATEGORIES[cat];
+  const subs=config&&Array.isArray(config.subs)?config.subs:[];
+  sel.innerHTML=subs.map(function(sub){
+    return '<option value="'+safe(sub)+'">'+esc(Interpreter.subDisplay(sub))+'</option>';
+  }).join('');
 }
 function saveManualGasto(){
   const desc=document.getElementById('gm-desc').value.trim();
@@ -11161,6 +11160,10 @@ function saveManualGasto(){
   const sub=document.getElementById('gm-sub').value;
   const estab=document.getElementById('gm-estab').value.trim();
   if(val<=0)return;
+  if(!alicerClassificationPairIsValid(cat,sub)){
+    showToast('Selecione uma categoria e subcategoria válidas.');
+    return;
+  }
   const mv=Store.addMovement({tipo:'despesa',categoria:cat,subcategoria:sub,estabelecimento:estab,valor:val,data:date,forma:'pix',status:'pago',descricao:desc});
   showToast(t('gastoSalvo',{valor:fmtMoney(val),cat:Interpreter.catDisplay(cat),sub:Interpreter.subDisplay(sub)}),()=>{Store.removeMovement(mv.id);render()});go('home');
 }
