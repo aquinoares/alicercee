@@ -5573,7 +5573,7 @@ AlicerceIA._assistantTopic=function(question,rows){
 
 AlicerceIA._assistantFilterRows=function(rows,topic){
   if(!topic)return rows||[];
-  if(topic.type==='matched')return topic.matched||[];
+  if(topic.type==='matched')return (rows||[]).filter(function(row){return (topic.matched||[]).indexOf(row)>=0;});
   return (rows||[]).filter(function(row){
     if(topic.type==='merchant')return this._norm(row.local)===topic.key;
     if(topic.type==='category')return row.categoria===topic.key;
@@ -5596,7 +5596,7 @@ AlicerceIA.responder=function(question){
   var followReference=/^(e\s+)?(e quanto|e como|e qual|e quais|e onde|e em qual|e no caso)\b/.test(q);
   if(!topic&&previousContext&&(followPeriod||followWhy||followReference))topic=previousContext.topic||null;
   var intent='spend';
-  var isCompare=/compar|versus|em relacao|diferenca entre|aument|diminu|evolu/.test(q);
+  var isCompare=/compar|versus|em relacao|diferenca entre|aument|diminu|evolu|mais que|menos que|mudou/.test(q);
   var isAdvice=/economiz|poupar|reduzir|diminuir gastos|cortar gastos|gastar menos|gastando demais|orcamento|organizar meus gastos|como posso guardar/.test(q);
   var isIncome=/receita|renda|salario|salário|quanto recebi|quanto ganho|quanto ganhei|entradas/.test(q);
   var isBalance=/saldo|disponivel|disponível|quanto tenho na conta|quanto tenho hoje/.test(q);
