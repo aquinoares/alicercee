@@ -11149,7 +11149,7 @@ function updateSubcats(cat){
   const config=ALICERCE_CATEGORIES[cat];
   const subs=config&&Array.isArray(config.subs)?config.subs:[];
   sel.innerHTML=subs.map(function(sub){
-    return '<option value="'+safe(sub)+'">'+esc(Interpreter.subDisplay(sub))+'</option>';
+    return '<option value="'+esc(sub)+'">'+esc(Interpreter.subDisplay(sub))+'</option>';
   }).join('');
 }
 function saveManualGasto(){
