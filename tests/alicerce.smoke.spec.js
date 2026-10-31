@@ -1224,3 +1224,62 @@ test('usa um gasto manual confirmado como exemplo de aprendizado da própria con
     scope: 'merchant_item'
   });
 });
+
+
+test('Alicerce IA responde perguntas sobre gastos por subcategoria e respeita a conta ativa', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'ia-conta-teste-a';
+    Store.lang = 'pt';
+    Store.movements = [
+      { id: 'ia-1', tipo: 'despesa', categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 48.50, data: Clock.today(), status: 'pago' },
+      { id: 'ia-2', tipo: 'despesa', categoria: 'moradia', subcategoria: 'energia', descricao: 'Conta de luz', estabelecimento: 'Neoenergia', valor: 70, data: Clock.today(), status: 'pago' }
+    ];
+    Store.installments = [];
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await expect(page.locator('#alicerce-ai-card')).toBeVisible();
+  await expect(page.locator('#alicerce-ai-insight')).toContainText('lanchonete');
+  await page.locator('#alicerce-ai-question').fill('Quanto gastei com lanche este mês?');
+  await page.locator('.alicerce-ai-button').click();
+  await expect(page.locator('#alicerce-ai-answer')).toContainText('48,50');
+
+  await page.evaluate(function () {
+    Store.userId = 'ia-conta-teste-b';
+    Store.movements = [];
+    Store.installments = [];
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+  await expect(page.locator('#alicerce-ai-answer')).toHaveCount(0);
+  await expect(page.locator('#alicerce-ai-question')).toHaveValue('');
+  await expect(page.locator('#alicerce-ai-insight')).not.toContainText('48,50');
+});
+
+test('Alicerce IA também aparece na Visão Financeira e compara períodos equivalentes', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'visao');
+  const resultado = await page.evaluate(function () {
+    var agora = Clock.now();
+    var anoAtual = agora.getFullYear();
+    var mesAtual = agora.getMonth();
+    var dia = String(agora.getDate()).padStart(2, '0');
+    var mesAnterior = new Date(anoAtual, mesAtual - 1, 1);
+    var dataAnterior = mesAnterior.getFullYear() + '-' +
+      String(mesAnterior.getMonth() + 1).padStart(2, '0') + '-' + dia;
+    var dataAtual = Clock.today();
+    Store.userId = 'ia-conta-comparacao';
+    Store.movements = [
+      { id: 'ia-prev', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', valor: 100, data: dataAnterior },
+      { id: 'ia-now', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', valor: 150, data: dataAtual }
+    ];
+    Store.installments = [];
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+    return { insight: AlicerceIA.insight(), month: dataAtual.slice(0, 7) };
+  });
+
+  await expect(page.locator('#alicerce-ai-card')).toBeVisible();
+  expect(resultado.insight).toContain('50%');
+  await page.locator('#alicerce-ai-question').fill('Compare com o mês passado');
+  await page.locator('.alicerce-ai-button').click();
+  await expect(page.locator('#alicerce-ai-answer')).toContainText('50%');
+});
