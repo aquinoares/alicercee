@@ -248,5 +248,25 @@
     "categoria": "vestuario",
     "subcategoria": "roupas",
     "confidence": "medium"
+  },
+  {
+    "id": "card-99-taxi-compact",
+    "text": "COMPRA 99 TAXI 00128 12,40",
+    "merchant": "99",
+    "amount": 12.4,
+    "item": null,
+    "categoria": "transporte",
+    "subcategoria": "99",
+    "confidence": "medium"
+  },
+  {
+    "id": "card-value-not-99-merchant",
+    "text": "PAGAMENTO 99,90 COD 004827",
+    "merchant": null,
+    "amount": 99.9,
+    "item": null,
+    "categoria": null,
+    "subcategoria": null,
+    "confidence": "low"
   }
 ]
