@@ -1384,7 +1384,7 @@ test('Alicerce IA entende periodos, estabelecimentos e aumentos por categoria', 
     Store.loans = [];
     Store.installments = [];
     Store.movements = [
-      { id: 'last-month', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compra antiga', estabelecimento: 'Mercado Bom', valor: 70, data: previousMonthDate },
+      { id: 'last-month', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compra antiga', estabelecimento: 'Mercado Bom', valor: 100, data: previousMonthDate },
       { id: 'yesterday', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'padaria', descricao: 'Pao', estabelecimento: 'Padaria Central', valor: 15, data: yesterdayDate },
       { id: 'today-a', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Feira', estabelecimento: 'Mercado Bom', valor: 90, data: currentDate },
       { id: 'today-b', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Mercado', estabelecimento: 'Mercado Bom', valor: 90, data: currentDate }
@@ -1396,8 +1396,8 @@ test('Alicerce IA entende periodos, estabelecimentos e aumentos por categoria', 
       categoryRise: AlicerceIA.insight()
     };
   });
-  expect(result.lastMonth).toContain('R$ 70,00');
+  expect(result.lastMonth).toContain('R$ 100,00');
   expect(result.yesterday).toContain('R$ 15,00');
   expect(result.merchant).toContain('Mercado Bom');
-  expect(result.categoryRise).toContain('aumentaram 157%');
+  expect(result.categoryRise).toContain('aumentaram 95%');
 });
