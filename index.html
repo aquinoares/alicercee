@@ -5404,7 +5404,7 @@ AlicerceIA._assistantMessage=function(key,data){
       income:'No período {period}, suas receitas recebidas somam {amount}.',
       incomeEmpty:'Não encontrei receitas recebidas no período {period}.',
       balance:'O saldo disponível calculado pelo motor financeiro do Alicerce é {amount}.',
-      debt:'Pelas parcelas de empréstimos registradas, há {pay} a pagar e {receive} a receber.',
+      debt:'O motor financeiro mostra {pay} em parcelas de empréstimos a pagar, {commitments} em compromissos (cartão, financiamento, consórcio e seguro) e {receive} a receber.',
       noDebt:'Não encontrei parcelas de empréstimos pendentes registradas.',
       topCategory:'A categoria com maior gasto no período foi {topic}, com {amount}. O total das despesas foi {total}.',
       topMerchant:'O estabelecimento com maior gasto no período foi {topic}, com {amount}.',
@@ -5418,7 +5418,7 @@ AlicerceIA._assistantMessage=function(key,data){
       recurring:'Encontrei um possível pagamento recorrente em {topic}: cerca de {amount} por mês, observado em {months} meses. Confira os lançamentos antes de tratá-lo como assinatura.',
       noRecurring:'Ainda não encontrei pagamentos recorrentes com histórico suficiente para confirmar esse padrão.',
       upcoming:'No mês consultado, o motor financeiro projeta {amount} em compromissos e parcelas pendentes.',
-      summary:'Neste mês, você registrou {income} em receitas e {expenses} em despesas. O saldo disponível calculado pelo motor é {balance}. Em parcelas de empréstimos, há {pay} a pagar e {receive} a receber.',
+      summary:'Neste mês, você registrou {income} em receitas e {expenses} em despesas. O saldo disponível é {balance}. Há {pay} em parcelas de empréstimos a pagar, {commitments} em outros compromissos e {receive} a receber.',
       goal:'Posso ajudar a planejar essa meta, mas ainda não encontrei uma meta com valor e prazo cadastrados nesta conta. Diga quanto pretende juntar e em quantos meses para eu calcular uma contribuição mensal.',
       noData:'Ainda não há despesas registradas no período {period}.',
       help:'Consigo analisar gastos por categoria ou estabelecimento, receitas, saldo disponível, empréstimos, parcelas, recorrências e comparar períodos. Exemplos: “Quanto gastei com lanche?”, “Como posso economizar?” ou “E no mês passado?”.',
@@ -5431,7 +5431,7 @@ AlicerceIA._assistantMessage=function(key,data){
       income:'Your received income for {period} totals {amount}.',
       incomeEmpty:'I found no received income for {period}.',
       balance:'Your available balance, calculated by Alicerce’s financial engine, is {amount}.',
-      debt:'Based on recorded loan installments, {pay} is due and {receive} is expected.',
+      debt:'The financial engine shows {pay} in loan installments due, {commitments} in commitments (cards, financing, consortium and insurance), and {receive} expected.',
       noDebt:'I found no pending loan installments.',
       topCategory:'Your highest-spending category for this period was {topic}, at {amount}. Total expenses were {total}.',
       topMerchant:'Your highest-spending merchant for this period was {topic}, at {amount}.',
@@ -5445,7 +5445,7 @@ AlicerceIA._assistantMessage=function(key,data){
       recurring:'I found a possible recurring payment at {topic}: about {amount} per month across {months} months. Check the records before treating it as a subscription.',
       noRecurring:'I could not find enough history to identify a recurring payment.',
       upcoming:'The financial engine projects {amount} in pending commitments and installments for the selected month.',
-      summary:'This month you recorded {income} in income and {expenses} in expenses. The available balance calculated by the engine is {balance}. Loan installments show {pay} due and {receive} expected.',
+      summary:'This month you recorded {income} in income and {expenses} in expenses. Your available balance is {balance}. Loan installments show {pay} due, other commitments total {commitments}, and {receive} is expected.',
       goal:'I can help plan this goal, but there is no goal with an amount and deadline registered for this account yet. Tell me how much you want to save and in how many months.',
       noData:'There are no recorded expenses for {period} yet.',
       help:'I can analyze spending by category or merchant, income, available balance, loans, installments, recurring payments, and period comparisons. Try: “How much did I spend on lunch?”, “How can I save?”, or “What about last month?”.',
@@ -5458,7 +5458,7 @@ AlicerceIA._assistantMessage=function(key,data){
       income:'Tus ingresos recibidos en {period} suman {amount}.',
       incomeEmpty:'No encontré ingresos recibidos en {period}.',
       balance:'El saldo disponible calculado por el motor financiero de Alicerce es {amount}.',
-      debt:'Según las cuotas de préstamos registradas, hay {pay} por pagar y {receive} por recibir.',
+      debt:'El motor financiero muestra {pay} en cuotas de préstamos por pagar, {commitments} en compromisos (tarjetas, financiación, consorcio y seguros) y {receive} por recibir.',
       noDebt:'No encontré cuotas de préstamos pendientes.',
       topCategory:'La categoría con mayor gasto en el período fue {topic}, con {amount}. Los gastos totales fueron {total}.',
       topMerchant:'El comercio con mayor gasto en el período fue {topic}, con {amount}.',
@@ -5472,7 +5472,7 @@ AlicerceIA._assistantMessage=function(key,data){
       recurring:'Encontré un posible pago recurrente en {topic}: cerca de {amount} al mes, observado durante {months} meses. Revisa los registros antes de considerarlo una suscripción.',
       noRecurring:'Aún no hay suficiente historial para identificar pagos recurrentes.',
       upcoming:'El motor financiero proyecta {amount} en compromisos y cuotas pendientes para el mes consultado.',
-      summary:'Este mes registraste {income} en ingresos y {expenses} en gastos. El saldo disponible calculado por el motor es {balance}. En cuotas de préstamos hay {pay} por pagar y {receive} por recibir.',
+      summary:'Este mes registraste {income} en ingresos y {expenses} en gastos. Tu saldo disponible es {balance}. Hay {pay} en cuotas de préstamos por pagar, {commitments} en otros compromisos y {receive} por recibir.',
       goal:'Puedo ayudarte a planificar esa meta, pero aún no hay una meta con importe y plazo registrada en esta cuenta. Dime cuánto quieres ahorrar y en cuántos meses.',
       noData:'Aún no hay gastos registrados en {period}.',
       help:'Puedo analizar gastos por categoría o comercio, ingresos, saldo disponible, préstamos, cuotas, pagos recurrentes y comparar períodos. Prueba: “¿Cuánto gasté en comida?”, “¿Cómo puedo ahorrar?” o “¿Y el mes pasado?”.',
@@ -5593,7 +5593,8 @@ AlicerceIA.responder=function(question){
   var topic=this._assistantTopic(question,rows);
   var followPeriod=/^(e\s+)?(no\s+)?(mes passado|mes anterior|esta semana|semana passada|ultimos 7 dias|ultima semana|ultimos 3 meses|trimestre|hoje|ontem)\s*$/.test(q);
   var followWhy=/^(e\s+)?(por que|porque|como assim|me explica|explique melhor)\s*$/.test(q);
-  if(!topic&&previousContext&&(followPeriod||followWhy))topic=previousContext.topic||null;
+  var followReference=/^(e\s+)?(e quanto|e como|e qual|e quais|e onde|e em qual|e no caso)\b/.test(q);
+  if(!topic&&previousContext&&(followPeriod||followWhy||followReference))topic=previousContext.topic||null;
   var intent='spend';
   var isCompare=/compar|versus|em relacao|diferenca entre|aument|diminu|evolu/.test(q);
   var isAdvice=/economiz|poupar|reduzir|diminuir gastos|cortar gastos|gastar menos|gastando demais|orcamento|organizar meus gastos|como posso guardar/.test(q);
@@ -5605,10 +5606,12 @@ AlicerceIA.responder=function(question){
   var isTop=/onde gastei mais|maior categoria|categoria principal|mais gastei|maior gasto|mais pesou/.test(q);
   var isWhy=followWhy||/por que gastei|porque gastei|o que explica|qual o motivo/.test(q);
   var isGoal=/meta|objetivo|juntar dinheiro|guardar dinheiro|comprar uma casa|comprar um carro|planejar uma viagem/.test(q);
+  var isSummary=/resumo|visao geral|situacao financeira|como estou financeiramente|panorama da conta/.test(q);
   var isUpcoming=/compromisso|parcelas|vou pagar|preciso pagar|contas futuras|proximo mes|próximo mês/.test(q);
   if(followPeriod&&previousContext)intent=previousContext.intent||'spend';
   else if(followWhy&&previousContext)intent='why';
   else if(isGoal)intent='goal';
+  else if(isSummary)intent='summary';
   else if(isAdvice)intent='advice';
   else if(isIncome)intent='income';
   else if(isBalance)intent='balance';
@@ -5628,7 +5631,7 @@ AlicerceIA.responder=function(question){
   }else{
     range=this._questionRange(question);
   }
-  var period=this._assistantPeriodLabel(question);
+  var period=(isCompare&&/mes passado|mes anterior/.test(q))?this._assistantPeriodLabel('este mes'):this._assistantPeriodLabel(question);
   var selected=this._rangeRows(range.start,range.end,rows);
   var filtered=this._assistantFilterRows(selected,topic);
   var incomeRows=(Store.movements||[]).filter(function(m){
@@ -5655,8 +5658,16 @@ AlicerceIA.responder=function(question){
   }
   if(intent==='debt'){
     var loans=typeof Store.calcLoanPending==='function'?Store.calcLoanPending():null;
-    if(!loans||(!(Number(loans.aPagar)>0)&&!(Number(loans.aReceber)>0)))return finish(this._assistantMessage('noDebt'));
-    return finish(this._assistantMessage('debt',{pay:fmtMoney(Number(loans.aPagar)||0),receive:fmtMoney(Number(loans.aReceber)||0)}));
+    var debtMotor=typeof Store.getMotorFinanceiro==='function'?Store.getMotorFinanceiro():null;
+    var loanPay=Number(loans&&loans.aPagar)||0;
+    var loanReceive=Number(loans&&loans.aReceber)||0;
+    var otherCommitments=Number(debtMotor&&debtMotor.totalComprometido)||0;
+    if(loanPay<=0&&loanReceive<=0&&otherCommitments<=0)return finish(this._assistantMessage('noDebt'));
+    return finish(this._assistantMessage('debt',{
+      pay:fmtMoney(loanPay),
+      commitments:fmtMoney(otherCommitments),
+      receive:fmtMoney(loanReceive)
+    }));
   }
   if(intent==='summary'){
     var summaryMotor=typeof Store.getMotorFinanceiro==='function'?Store.getMotorFinanceiro():{};
@@ -5666,6 +5677,7 @@ AlicerceIA.responder=function(question){
       expenses:fmtMoney(expenseTotal),
       balance:fmtMoney(Number(summaryMotor.disponivel)||0),
       pay:fmtMoney(Number(summaryLoans&&summaryLoans.aPagar)||0),
+      commitments:fmtMoney(Number(summaryMotor.totalComprometido)||0),
       receive:fmtMoney(Number(summaryLoans&&summaryLoans.aReceber)||0)
     }));
   }
@@ -5687,6 +5699,18 @@ AlicerceIA.responder=function(question){
     return finish(this._assistantMessage('upcoming',{amount:fmtMoney(Number(projection.total)||0)}));
   }
   if(intent==='compare'){
+    if(!topic&&/categoria|categorias|aument|cresceu|subiu/.test(q)){
+      var categoryChanges=this._categoryChanges(this._periodRows(0),this._periodRows(1));
+      if(categoryChanges.length){
+        var categoryChange=categoryChanges[0];
+        return finish(this._assistantMessage('compareUp',{
+          scope:this._nice(categoryChange.key),
+          percent:categoryChange.percent,
+          current:fmtMoney(categoryChange.current),
+          previous:fmtMoney(categoryChange.previous)
+        }));
+      }
+    }
     var previousRange=this._assistantShiftRange(range,-1);
     var previousRows=this._rangeRows(previousRange.start,previousRange.end,rows);
     var currentScope=this._assistantFilterRows(selected,topic);
