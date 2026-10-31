@@ -11137,7 +11137,7 @@ function renderGastoManual(){
   html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('valor')+'</label><input id="gm-val" type="number" step="0.01"></div><div class="form-group"><label class="form-label">'+t('data')+'</label><input id="gm-date" type="date" value="'+today()+'"></div></div>';
   const manualCategories=Object.keys(ALICERCE_CATEGORIES);
   const manualSubs=ALICERCE_CATEGORIES.comida.subs;
-  html+='<div class="form-group"><label class="form-label">'+t('categoria')+'</label><select id="gm-cat" onchange="updateSubcats(this.value)">'+manualCategories.map(c=>'<option value="'+c+'">'+Interpreter.catDisplay(c)+'</option>').join('')+'</select></div>';
+  html+='<div class="form-group"><label class="form-label">'+t('categoria')+'</label><select id="gm-cat" onchange="updateSubcats(this.value)">'+manualCategories.map(c=>'<option value="'+c+'">'+esc(t(c)===c?Interpreter.catDisplay(c):t(c))+'</option>').join('')+'</select></div>';
   html+='<div class="form-group"><label class="form-label">'+t('subcategoria')+'</label><select id="gm-sub">'+manualSubs.map(sub=>'<option value="'+sub+'">'+Interpreter.subDisplay(sub)+'</option>').join('')+'</select></div>';
   html+='<div class="form-group"><label class="form-label">'+t('estabelecimento')+'</label><input id="gm-estab"></div>';
   html+='<button class="btn btn-primary btn-block" onclick="saveManualGasto()">'+t('salvar')+'</button></div>';
