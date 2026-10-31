@@ -4995,10 +4995,12 @@ const AlicerceIA = {
     });
     if(!terms.length){
       Object.keys(ALICERCE_CATEGORIES||{}).some(function(category){
-        if(q.indexOf(this._norm(category))>=0){terms=[this._norm(category)];return true}
+        var categoryTerm=this._norm(category);
+        if(categoryTerm&&(' '+q+' ').indexOf(' '+categoryTerm+' ')>=0){terms=[categoryTerm];return true}
         var subs=ALICERCE_CATEGORIES[category].subs||[];
         return subs.some(function(sub){
-          if(q.indexOf(this._norm(sub))>=0){terms=[this._norm(sub)];return true}
+          var subTerm=this._norm(sub);
+          if(subTerm&&(' '+q+' ').indexOf(' '+subTerm+' ')>=0){terms=[subTerm];return true}
           return false;
         },this);
       },this);
