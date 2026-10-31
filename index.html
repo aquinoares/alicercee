@@ -5119,14 +5119,24 @@ const AlicerceIA = {
       es:{title:'Alicerce IA',eyebrow:'ANÁLISIS DE TU CUENTA',intro:'Tus finanzas, analizadas con tus propios registros.',placeholder:'Pregunta sobre tus gastos...',ask:'Preguntar',suggestions:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Comparar con el mes pasado']}
     };
     var ui=labels[lang]||labels.pt;
-    var html='<style id="alicerce-ai-styles">.alicerce-ai-card{box-sizing:border-box;width:100%;margin:14px 0 18px;padding:16px;border:1px solid var(--line,rgba(128,128,128,.3));border-radius:18px;background:var(--card-bg,rgba(128,128,128,.08));color:var(--text-color,inherit);min-width:0}.alicerce-ai-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.alicerce-ai-name{font-size:15px;font-weight:850;letter-spacing:.1px}.alicerce-ai-eyebrow{font-size:9px;font-weight:800;letter-spacing:.8px;opacity:.65}.alicerce-ai-intro{font-size:11px;line-height:1.4;opacity:.7;margin:5px 0 12px}.alicerce-ai-insight{font-size:13px;line-height:1.55;font-weight:650;margin:0 0 14px;overflow-wrap:anywhere}.alicerce-ai-form{display:flex;gap:8px;align-items:stretch;min-width:0}.alicerce-ai-input{box-sizing:border-box;min-width:0;flex:1;width:100%;height:44px;padding:0 11px;border:1px solid var(--line,rgba(128,128,128,.4));border-radius:11px;background:var(--input-bg,transparent);color:var(--text-color,inherit);font:inherit;font-size:12px}.alicerce-ai-button{flex:0 0 auto;min-height:44px;padding:0 13px;border:0;border-radius:11px;background:#1f2937;color:#fff;font-size:12px;font-weight:800;cursor:pointer}.alicerce-ai-answer{margin-top:11px;padding:10px 12px;border-radius:11px;background:rgba(128,128,128,.1);font-size:12px;line-height:1.5;overflow-wrap:anywhere}.alicerce-ai-suggestions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.alicerce-ai-suggestion{min-height:32px;padding:6px 9px;border:1px solid var(--line,rgba(128,128,128,.3));border-radius:999px;background:transparent;color:inherit;font-size:10px;cursor:pointer}.alicerce-ai-input:focus-visible,.alicerce-ai-button:focus-visible,.alicerce-ai-suggestion:focus-visible{outline:2px solid var(--accent,#3567d6);outline-offset:2px}@media(max-width:360px){.alicerce-ai-card{padding:13px}.alicerce-ai-form{gap:6px}.alicerce-ai-button{padding:0 10px;font-size:11px}}</style>';
+    var html='<style id="alicerce-ai-styles">.alicerce-ai-card{box-sizing:border-box;width:100%;margin:14px 0 18px;padding:16px;border:1px solid var(--line,rgba(128,128,128,.3));border-radius:18px;background:var(--card-bg,rgba(128,128,128,.08));color:var(--text-color,inherit);min-width:0}.alicerce-ai-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.alicerce-ai-name{font-size:15px;font-weight:850;letter-spacing:.1px}.alicerce-ai-eyebrow{font-size:9px;font-weight:800;letter-spacing:.8px;opacity:.65}.alicerce-ai-intro{font-size:11px;line-height:1.4;opacity:.7;margin:5px 0 12px}.alicerce-ai-insight{font-size:13px;line-height:1.55;font-weight:650;margin:0 0 14px;overflow-wrap:anywhere}.alicerce-ai-form{display:flex;gap:8px;align-items:stretch;min-width:0}.alicerce-ai-input{box-sizing:border-box;min-width:0;flex:1;width:100%;height:44px;padding:0 11px;border:1px solid var(--line,rgba(128,128,128,.4));border-radius:11px;background:var(--input-bg,transparent);color:var(--text-color,inherit);font:inherit;font-size:12px}.alicerce-ai-button{flex:0 0 auto;min-height:44px;padding:0 13px;border:0;border-radius:11px;background:#1f2937;color:#fff;font-size:12px;font-weight:800;cursor:pointer}.alicerce-ai-answer{margin-top:11px;padding:10px 12px;border-radius:11px;background:rgba(128,128,128,.1);font-size:12px;line-height:1.5;overflow-wrap:anywhere}.alicerce-ai-suggestions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.alicerce-ai-suggestion{min-height:32px;padding:6px 9px;border:1px solid var(--line,rgba(128,128,128,.3));border-radius:999px;background:transparent;color:inherit;font-size:10px;cursor:pointer}.alicerce-ai-input:focus-visible,.alicerce-ai-button:focus-visible,.alicerce-ai-suggestion:focus-visible{outline:2px solid var(--accent,#3567d6);outline-offset:2px}.alicerce-ai-history{display:flex;flex-direction:column;gap:8px;margin-top:12px;max-height:360px;overflow:auto}.alicerce-ai-message{max-width:94%;padding:9px 11px;border-radius:12px;background:rgba(128,128,128,.10);overflow-wrap:anywhere}.alicerce-ai-message.user{align-self:flex-end;background:rgba(80,120,190,.13)}.alicerce-ai-message.assistant{align-self:flex-start}.alicerce-ai-message span{display:block;margin-bottom:3px;font-size:10px;font-weight:800;opacity:.65}.alicerce-ai-message p{margin:0;font-size:12px;line-height:1.5}@media(max-width:360px){.alicerce-ai-card{padding:13px}.alicerce-ai-form{gap:6px}.alicerce-ai-button{padding:0 10px;font-size:11px}}</style>';
     html+='<section class="alicerce-ai-card" id="alicerce-ai-card" aria-label="'+esc(ui.title)+'">';
     html+='<div class="alicerce-ai-head"><div class="alicerce-ai-name">'+esc(ui.title)+'</div><div class="alicerce-ai-eyebrow">'+esc(ui.eyebrow)+'</div></div>';
     html+='<p class="alicerce-ai-intro">'+esc(ui.intro)+'</p>';
     html+='<p class="alicerce-ai-insight" id="alicerce-ai-insight">'+esc(this.insight())+'</p>';
     html+='<div class="alicerce-ai-form"><input class="alicerce-ai-input" id="alicerce-ai-question" type="text" maxlength="180" autocomplete="off" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" value="'+esc(this._question)+'" onkeydown="if(event.key===&#39;Enter&#39;){AlicerceIA.perguntar()}">';
     html+='<button class="alicerce-ai-button" type="button" onclick="AlicerceIA.perguntar()">'+esc(ui.ask)+'</button></div>';
-    if(this._answer)html+='<div class="alicerce-ai-answer" id="alicerce-ai-answer" role="status" aria-live="polite">'+esc(this._answer)+'</div>';
+    if(this._history&&this._history.length){
+      html+='<div class="alicerce-ai-history" id="alicerce-ai-history" aria-live="polite">';
+      var visibleHistory=this._history.slice(-8);
+      visibleHistory.forEach(function(item,index){
+        var role=item.role==='user'?'user':'assistant';
+        var who=item.role==='user'?(Store.lang==='en'?'You':(Store.lang==='es'?'Tú':'Você')):'Alicerce';
+        var answerId=role==='assistant'&&index===visibleHistory.length-1?' id="alicerce-ai-answer"':'';
+        html+='<div class="alicerce-ai-message '+role+'"'+answerId+'><span>'+esc(who)+'</span><p>'+esc(item.text)+'</p></div>';
+      });
+      html+='</div>';
+    }else if(this._answer)html+='<div class="alicerce-ai-answer" id="alicerce-ai-answer" role="status" aria-live="polite">'+esc(this._answer)+'</div>';
     html+='<div class="alicerce-ai-suggestions">';
     ui.suggestions.forEach(function(question,index){
       var safeQuestion=JSON.stringify(question).replace(/"/g,'&quot;');
@@ -5374,63 +5384,438 @@ AlicerceIA.insight=function(){
   if(top&&top.total>0)return this._label('topInsight',{item:this._nice(top.key),amount:fmtMoney(top.total),total:fmtMoney(total)});
   return this._label('totalInsight',{amount:fmtMoney(total)});
 };
+AlicerceIA._resetUser=function(){
+  var uid=String(Store.userId||'');
+  if(uid!==this._userId){
+    this._userId=uid;
+    this._question='';
+    this._answer='';
+    this._history=[];
+    this._lastContext=null;
+  }
+  if(!Array.isArray(this._history))this._history=[];
+};
+
+AlicerceIA._assistantMessage=function(key,data){
+  var lang=Store.lang||'pt';
+  var copy={
+    pt:{
+      spendAll:'No período {period}, suas despesas registradas somam {amount}.',
+      spendTopic:'No período {period}, encontrei {amount} em {topic}.',
+      noTopic:'Não encontrei despesas registradas para {topic} no período {period}.',
+      income:'No período {period}, suas receitas recebidas somam {amount}.',
+      incomeEmpty:'Não encontrei receitas recebidas no período {period}.',
+      balance:'O saldo disponível calculado pelo motor financeiro do Alicerce é {amount}.',
+      debt:'O motor financeiro mostra {pay} em parcelas de empréstimos a pagar, {commitments} em compromissos (cartão, financiamento, consórcio e seguro) e {receive} a receber.',
+      noDebt:'Não encontrei parcelas de empréstimos pendentes registradas.',
+      topCategory:'A categoria com maior gasto no período foi {topic}, com {amount}. O total das despesas foi {total}.',
+      topMerchant:'O estabelecimento com maior gasto no período foi {topic}, com {amount}.',
+      compareUp:'As despesas {scope} aumentaram {percent}% em relação ao período anterior: {current} contra {previous}.',
+      compareDown:'As despesas {scope} diminuíram {percent}% em relação ao período anterior: {current} contra {previous}.',
+      compareSame:'As despesas {scope} ficaram praticamente estáveis: {current} contra {previous}.',
+      noPrevious:'Ainda não há registros suficientes no período anterior para uma comparação justa.',
+      adviceIncome:'No período, você registrou {expenses} em despesas e {income} em receitas recebidas. Isso equivale a {percent}% da receita. Sua maior categoria foi {topic}, com {amount}. Uma redução simulada de 10% nela liberaria cerca de {saving}. É uma simulação baseada nos registros, não uma garantia.',
+      adviceNoIncome:'Sua maior categoria no período foi {topic}, com {amount}. Uma redução simulada de 10% nela liberaria cerca de {saving}. Para avaliar o peso dos gastos na renda, preciso que exista receita registrada no período.',
+      why:'Dentro de {topic}, o maior grupo de lançamentos foi {detail}, somando {amount}. Esse é o principal fator identificado nos registros disponíveis.',
+      recurring:'Encontrei um possível pagamento recorrente em {topic}: cerca de {amount} por mês, observado em {months} meses. Confira os lançamentos antes de tratá-lo como assinatura.',
+      noRecurring:'Ainda não encontrei pagamentos recorrentes com histórico suficiente para confirmar esse padrão.',
+      upcoming:'No mês consultado, o motor financeiro projeta {amount} em compromissos e parcelas pendentes.',
+      summary:'Neste mês, você registrou {income} em receitas e {expenses} em despesas. O saldo disponível é {balance}. Há {pay} em parcelas de empréstimos a pagar, {commitments} em outros compromissos e {receive} a receber.',
+      goal:'Posso ajudar a planejar essa meta, mas ainda não encontrei uma meta com valor e prazo cadastrados nesta conta. Diga quanto pretende juntar e em quantos meses para eu calcular uma contribuição mensal.',
+      noData:'Ainda não há despesas registradas no período {period}.',
+      help:'Consigo analisar gastos por categoria ou estabelecimento, receitas, saldo disponível, empréstimos, parcelas, recorrências e comparar períodos. Exemplos: “Quanto gastei com lanche?”, “Como posso economizar?” ou “E no mês passado?”.',
+      noDetails:'Não encontrei detalhes suficientes nos lançamentos para explicar esse ponto com segurança.'
+    },
+    en:{
+      spendAll:'Your recorded expenses for {period} total {amount}.',
+      spendTopic:'For {period}, I found {amount} in {topic}.',
+      noTopic:'I found no recorded expenses for {topic} during {period}.',
+      income:'Your received income for {period} totals {amount}.',
+      incomeEmpty:'I found no received income for {period}.',
+      balance:'Your available balance, calculated by Alicerce’s financial engine, is {amount}.',
+      debt:'The financial engine shows {pay} in loan installments due, {commitments} in commitments (cards, financing, consortium and insurance), and {receive} expected.',
+      noDebt:'I found no pending loan installments.',
+      topCategory:'Your highest-spending category for this period was {topic}, at {amount}. Total expenses were {total}.',
+      topMerchant:'Your highest-spending merchant for this period was {topic}, at {amount}.',
+      compareUp:'Expenses {scope} increased {percent}% compared with the previous period: {current} versus {previous}.',
+      compareDown:'Expenses {scope} decreased {percent}% compared with the previous period: {current} versus {previous}.',
+      compareSame:'Expenses {scope} were nearly unchanged: {current} versus {previous}.',
+      noPrevious:'There is not enough data from the previous period for a fair comparison.',
+      adviceIncome:'You recorded {expenses} in expenses and {income} in received income. That is {percent}% of income. Your largest category was {topic}, at {amount}. A simulated 10% reduction would free about {saving}. This is an estimate based on your records, not a guarantee.',
+      adviceNoIncome:'Your largest category was {topic}, at {amount}. A simulated 10% reduction would free about {saving}. I need recorded income to assess spending against your income.',
+      why:'Within {topic}, the largest group of records was {detail}, totaling {amount}. This is the main factor visible in the available records.',
+      recurring:'I found a possible recurring payment at {topic}: about {amount} per month across {months} months. Check the records before treating it as a subscription.',
+      noRecurring:'I could not find enough history to identify a recurring payment.',
+      upcoming:'The financial engine projects {amount} in pending commitments and installments for the selected month.',
+      summary:'This month you recorded {income} in income and {expenses} in expenses. Your available balance is {balance}. Loan installments show {pay} due, other commitments total {commitments}, and {receive} is expected.',
+      goal:'I can help plan this goal, but there is no goal with an amount and deadline registered for this account yet. Tell me how much you want to save and in how many months.',
+      noData:'There are no recorded expenses for {period} yet.',
+      help:'I can analyze spending by category or merchant, income, available balance, loans, installments, recurring payments, and period comparisons. Try: “How much did I spend on lunch?”, “How can I save?”, or “What about last month?”.',
+      noDetails:'There are not enough transaction details to explain this safely.'
+    },
+    es:{
+      spendAll:'Tus gastos registrados en {period} suman {amount}.',
+      spendTopic:'En {period}, encontré {amount} en {topic}.',
+      noTopic:'No encontré gastos registrados para {topic} en {period}.',
+      income:'Tus ingresos recibidos en {period} suman {amount}.',
+      incomeEmpty:'No encontré ingresos recibidos en {period}.',
+      balance:'El saldo disponible calculado por el motor financiero de Alicerce es {amount}.',
+      debt:'El motor financiero muestra {pay} en cuotas de préstamos por pagar, {commitments} en compromisos (tarjetas, financiación, consorcio y seguros) y {receive} por recibir.',
+      noDebt:'No encontré cuotas de préstamos pendientes.',
+      topCategory:'La categoría con mayor gasto en el período fue {topic}, con {amount}. Los gastos totales fueron {total}.',
+      topMerchant:'El comercio con mayor gasto en el período fue {topic}, con {amount}.',
+      compareUp:'Los gastos {scope} aumentaron un {percent}% frente al período anterior: {current} contra {previous}.',
+      compareDown:'Los gastos {scope} disminuyeron un {percent}% frente al período anterior: {current} contra {previous}.',
+      compareSame:'Los gastos {scope} se mantuvieron prácticamente iguales: {current} contra {previous}.',
+      noPrevious:'Aún no hay datos suficientes del período anterior para una comparación justa.',
+      adviceIncome:'Registraste {expenses} en gastos y {income} en ingresos recibidos. Esto representa el {percent}% de tus ingresos. Tu categoría principal fue {topic}, con {amount}. Una reducción simulada del 10% liberaría aproximadamente {saving}. Es una simulación basada en tus registros, no una garantía.',
+      adviceNoIncome:'Tu categoría principal fue {topic}, con {amount}. Una reducción simulada del 10% liberaría aproximadamente {saving}. Necesito ingresos registrados para evaluar los gastos frente a tus ingresos.',
+      why:'Dentro de {topic}, el grupo con más registros fue {detail}, con un total de {amount}. Es el principal factor identificado en los datos disponibles.',
+      recurring:'Encontré un posible pago recurrente en {topic}: cerca de {amount} al mes, observado durante {months} meses. Revisa los registros antes de considerarlo una suscripción.',
+      noRecurring:'Aún no hay suficiente historial para identificar pagos recurrentes.',
+      upcoming:'El motor financiero proyecta {amount} en compromisos y cuotas pendientes para el mes consultado.',
+      summary:'Este mes registraste {income} en ingresos y {expenses} en gastos. Tu saldo disponible es {balance}. Hay {pay} en cuotas de préstamos por pagar, {commitments} en otros compromisos y {receive} por recibir.',
+      goal:'Puedo ayudarte a planificar esa meta, pero aún no hay una meta con importe y plazo registrada en esta cuenta. Dime cuánto quieres ahorrar y en cuántos meses.',
+      noData:'Aún no hay gastos registrados en {period}.',
+      help:'Puedo analizar gastos por categoría o comercio, ingresos, saldo disponible, préstamos, cuotas, pagos recurrentes y comparar períodos. Prueba: “¿Cuánto gasté en comida?”, “¿Cómo puedo ahorrar?” o “¿Y el mes pasado?”.',
+      noDetails:'No encontré suficientes detalles en los registros para explicar este punto con seguridad.'
+    }
+  };
+  var text=(copy[lang]||copy.pt)[key]||copy.pt[key]||copy.pt.help;
+  Object.keys(data||{}).forEach(function(name){
+    text=text.replace(new RegExp('\\{'+name+'\\}','g'),String(data[name]));
+  });
+  return text;
+};
+
+AlicerceIA._assistantPeriodLabel=function(question){
+  var q=this._norm(question);
+  if(/mes passado|mes anterior/.test(q))return Store.lang==='en'?'last month':(Store.lang==='es'?'el mes pasado':'o mês passado');
+  if(/\bontem\b/.test(q))return Store.lang==='en'?'yesterday':(Store.lang==='es'?'ayer':'ontem');
+  if(/\bhoje\b/.test(q))return Store.lang==='en'?'today':(Store.lang==='es'?'hoy':'hoje');
+  if(/ultimos 7 dias|ultima semana|ultimos sete dias/.test(q))return Store.lang==='en'?'the last 7 days':(Store.lang==='es'?'los últimos 7 días':'os últimos 7 dias');
+  if(/ultimos 3 meses|ultimos tres meses|ultimas 3 meses|trimestre/.test(q))return Store.lang==='en'?'the last 3 months':(Store.lang==='es'?'los últimos 3 meses':'os últimos 3 meses');
+  if(/semana passada/.test(q))return Store.lang==='en'?'last week':(Store.lang==='es'?'la semana pasada':'a semana passada');
+  return Store.lang==='en'?'this month':(Store.lang==='es'?'este mes':'este mês');
+};
+
+AlicerceIA._assistantShiftRange=function(range,months){
+  var shift=function(value){
+    var parts=String(value).split('-').map(Number);
+    var date=new Date(parts[0],parts[1]-1+months,1);
+    var last=new Date(date.getFullYear(),date.getMonth()+1,0).getDate();
+    var day=Math.min(parts[2]||1,last);
+    return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+  };
+  return {start:shift(range.start),end:shift(range.end)};
+};
+
+AlicerceIA._assistantTopic=function(question,rows){
+  var q=this._norm(question);
+  var known=this._knownMerchantRows(question,rows);
+  if(known&&known.length)return {type:'merchant',key:this._norm(known[0].local),label:known[0].local};
+  var aliases=[
+    {type:'subcategories',keys:['lanchonete','fast_food'],label:'lanches',terms:['lanche','lanches','lanchonete','hamburguer','hamburgueria','salgado']},
+    {type:'subcategories',keys:['delivery'],label:'delivery',terms:['delivery','ifood','i food','rappi']},
+    {type:'subcategories',keys:['mercado','feira'],label:'mercado e feira',terms:['mercado','supermercado','feira','atacadao','atacadão']},
+    {type:'subcategories',keys:['combustivel'],label:'combustível',terms:['combustivel','gasolina','posto']},
+    {type:'subcategories',keys:['farmacia','medicamentos'],label:'farmácia e medicamentos',terms:['farmacia','remedio','medicamento','medicamentos']},
+    {type:'subcategories',keys:['restaurante'],label:'restaurantes',terms:['restaurante','restaurantes','almoco','jantar']},
+    {type:'category',keys:['comida'],label:'alimentação',terms:['comida','alimentacao','alimentar']},
+    {type:'category',keys:['transporte'],label:'transporte',terms:['transporte','locomocao']},
+    {type:'category',keys:['moradia'],label:'moradia',terms:['moradia','casa','habitacao']},
+    {type:'category',keys:['saude'],label:'saúde',terms:['saude','saúde']},
+    {type:'category',keys:['beleza'],label:'beleza e cuidados',terms:['beleza','cuidados pessoais']},
+    {type:'category',keys:['lazer'],label:'lazer',terms:['lazer','diversao','entretenimento']},
+    {type:'category',keys:['vestuario'],label:'vestuário',terms:['vestuario','roupas','roupa','calcados','calçados']},
+    {type:'category',keys:['familia'],label:'família',terms:['familia','filhos']},
+    {type:'category',keys:['educacao'],label:'educação',terms:['educacao','estudos']},
+    {type:'category',keys:['animais'],label:'animais',terms:['animais','pet','pets']},
+    {type:'category',keys:['financeiro'],label:'financeiro',terms:['financeiro','tarifas','juros']},
+    {type:'category',keys:['dividas'],label:'dívidas',terms:['dividas','compromissos financeiros']}
+  ];
+  for(var a=0;a<aliases.length;a++){
+    var alias=aliases[a];
+    for(var t=0;t<alias.terms.length;t++){
+      var term=this._norm(alias.terms[t]);
+      if(term&&(' '+q+' ').indexOf(' '+term+' ')>=0)return {type:alias.type,keys:alias.keys,key:alias.keys[0],label:alias.label,terms:alias.terms};
+    }
+  }
+  var categories=typeof ALICERCE_CATEGORIES!=='undefined'?ALICERCE_CATEGORIES:{};
+  var categoryKeys=Object.keys(categories);
+  for(var c=0;c<categoryKeys.length;c++){
+    var category=categoryKeys[c];
+    if(category==='outros')continue;
+    var categoryName=this._norm(categories[category].name||category);
+    var categoryKey=this._norm(category);
+    if((categoryName&&(' '+q+' ').indexOf(' '+categoryName+' ')>=0)||(categoryKey&&(' '+q+' ').indexOf(' '+categoryKey+' ')>=0)){
+      return {type:'category',key:category,label:categories[category].name||this._nice(category)};
+    }
+  }
+  var subMatches=[];
+  categoryKeys.forEach(function(category){
+    (categories[category].subs||[]).forEach(function(sub){
+      if(sub==='outros'||sub==='nao_identificado')return;
+      var term=this._norm(sub);
+      if(term.length<4)return;
+      if((' '+q+' ').indexOf(' '+term+' ')>=0)subMatches.push({type:'subcategory',key:sub,label:this._nice(sub)});
+    },this);
+  },this);
+  if(subMatches.length){
+    subMatches.sort(function(a,b){return b.key.length-a.key.length;});
+    return subMatches[0];
+  }
+  var matched=this._matchedRows(question,rows);
+  if(matched&&matched.length){
+    var label=String(question||'').replace(/[?!.]/g,'').trim();
+    return {type:'matched',key:'',label:label,matched:matched};
+  }
+  return null;
+};
+
+AlicerceIA._assistantFilterRows=function(rows,topic){
+  if(!topic)return rows||[];
+  if(topic.type==='matched')return (rows||[]).filter(function(row){return (topic.matched||[]).indexOf(row)>=0;});
+  return (rows||[]).filter(function(row){
+    if(topic.type==='merchant')return this._norm(row.local)===topic.key;
+    if(topic.type==='category')return row.categoria===topic.key;
+    if(topic.type==='subcategory')return row.subcategoria===topic.key;
+    if(topic.type==='subcategories'){
+      if(topic.keys.indexOf(row.subcategoria)>=0)return true;
+      var description=this._norm([row.descricao,row.local].join(' '));
+      return (topic.terms||[]).some(function(term){return description.indexOf(this._norm(term))>=0;},this);
+    }
+    return false;
+  },this);
+};
+
 AlicerceIA.responder=function(question){
   this._resetUser();
+  var self=this;
+  question=String(question||'').trim();
   var q=this._norm(question);
   var rows=this._rows();
-  var range=this._questionRange(question);
+  var previousContext=this._lastContext;
+  var topic=this._assistantTopic(question,rows);
+  var followPeriod=/^(e\s+)?(no\s+)?(mes passado|mes anterior|esta semana|semana passada|ultimos 7 dias|ultima semana|ultimos 3 meses|trimestre|hoje|ontem)\s*$/.test(q);
+  var followWhy=/^(e\s+)?(por que|porque|como assim|me explica|explique melhor)\s*$/.test(q);
+  var followReference=/^(e\s+)?(e quanto|e como|e qual|e quais|e onde|e em qual|e no caso)\b/.test(q);
+  if(!topic&&previousContext&&(followPeriod||followWhy||followReference))topic=previousContext.topic||null;
+  var intent='spend';
+  var isCompare=/compar|versus|em relacao|diferenca entre|aument|diminu|evolu|mais que|menos que|mudou/.test(q);
+  var isAdvice=/economiz|poupar|reduzir|diminuir gastos|cortar gastos|gastar menos|gastando demais|orcamento|organizar meus gastos|como posso guardar/.test(q);
+  var isIncome=/receita|renda|salario|salário|quanto recebi|quanto ganho|quanto ganhei|entradas/.test(q);
+  var isBalance=/saldo|disponivel|disponível|quanto tenho na conta|quanto tenho hoje/.test(q);
+  var isDebt=/divida|dívida|emprest|devo|a pagar|parcelas pendentes/.test(q);
+  var isRecurring=/recorrente|assinatura|pagamento fixo|se repete/.test(q);
+  var isTopMerchant=/qual loja|qual estabelecimento|onde compro|loja que|estabelecimento/.test(q);
+  var isTop=/onde gastei mais|maior categoria|categoria principal|mais gastei|maior gasto|mais pesou/.test(q);
+  var isWhy=followWhy||/por que gastei|porque gastei|o que explica|qual o motivo/.test(q);
+  var isGoal=/meta|objetivo|juntar dinheiro|guardar dinheiro|comprar uma casa|comprar um carro|planejar uma viagem/.test(q);
+  var isSummary=/resumo|visao geral|situacao financeira|como estou financeiramente|panorama da conta/.test(q);
+  var isUpcoming=/compromisso|parcelas|vou pagar|preciso pagar|contas futuras|proximo mes|próximo mês/.test(q);
+  if(followPeriod&&previousContext)intent=previousContext.intent||'spend';
+  else if(followWhy&&previousContext)intent='why';
+  else if(isGoal)intent='goal';
+  else if(isSummary)intent='summary';
+  else if(isAdvice)intent='advice';
+  else if(isIncome)intent='income';
+  else if(isBalance)intent='balance';
+  else if(isDebt)intent='debt';
+  else if(isRecurring)intent='recurring';
+  else if(isUpcoming)intent='upcoming';
+  else if(isCompare)intent='compare';
+  else if(isTopMerchant)intent='topMerchant';
+  else if(isTop)intent='top';
+  else if(isWhy)intent='why';
+  else if(previousContext&&/^(e\s+)?(e quanto|e como|e qual|e quais|e onde)\b/.test(q))intent=previousContext.intent||'spend';
+
+  var range;
+  if(isCompare&&/mes passado|mes anterior/.test(q)){
+    var now=Clock.now();
+    range={start:this._iso(new Date(now.getFullYear(),now.getMonth(),1)),end:this._iso(now)};
+  }else{
+    range=this._questionRange(question);
+  }
+  var period=(isCompare&&/mes passado|mes anterior/.test(q))?this._assistantPeriodLabel('este mes'):this._assistantPeriodLabel(question);
   var selected=this._rangeRows(range.start,range.end,rows);
-  if(/assinatura|recorrente|se repete|pagamento fixo/.test(q)){
-    var recurringMatches=this._detectRecurring(rows);
-    if(!recurringMatches.length)return this._label('noRecurring');
-    return this._label('recurringAnswer',{item:recurringMatches[0].merchant,amount:fmtMoney(recurringMatches[0].amount),months:recurringMatches[0].months});
+  var filtered=this._assistantFilterRows(selected,topic);
+  var incomeRows=(Store.movements||[]).filter(function(m){
+    return m&&m.tipo==='receita'&&(m.status==='pago'||m.status==='recebido')&&m.data&&m.data>=range.start&&m.data<=range.end&&Number(m.valor)>0;
+  });
+  var incomeTotal=incomeRows.reduce(function(sum,m){return sum+(Number(m.valor)||0);},0);
+  var expenseTotal=this._sum(selected);
+  var topicTotal=this._sum(filtered);
+  var finish=function(answer){
+    self._lastContext={intent:intent,topic:topic,range:range,question:question};
+    return answer;
+  };
+  if(intent==='goal'){
+    return finish(this._assistantMessage('goal'));
   }
-  if(!selected.length)return this._label('noData');
-  if(/fora do padrao|fora do normal|anomal|estranho|incomum/.test(q)){
-    var anomalies=this._detectAnomalies(rows);
-    if(!anomalies.length)return this._label('noAnomalies');
-    var item=anomalies[0];
-    return this._label('anomalyInsight',{amount:fmtMoney(item.amount),item:this._nice(item.comparisonItem||item.subcategory||item.category),median:fmtMoney(item.median)});
+  if(intent==='balance'){
+    var motor=typeof Store.getMotorFinanceiro==='function'?Store.getMotorFinanceiro():null;
+    if(!motor)return finish(this._assistantMessage('noDetails'));
+    return finish(this._assistantMessage('balance',{amount:fmtMoney(Number(motor.disponivel)||0)}));
   }
-  if(/compar|aument|diminu|evolu|mais que|menos que|em relacao|versus/.test(q)){
-    var now=this._periodRows(0);
-    var before=this._periodRows(1);
-    var currentTotal=this._sum(now);
-    var previousTotal=this._sum(before);
-    if(previousTotal<=0)return this._label('noPrevious');
-    var delta=((currentTotal-previousTotal)/previousTotal)*100;
-    if(delta>=5)return this._label('compareUp',{percent:Math.round(delta),current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)});
-    if(delta<=-5)return this._label('compareDown',{percent:Math.round(Math.abs(delta)),current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)});
-    return this._label('compareSame',{current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)});
+  if(intent==='income'){
+    if(!incomeRows.length)return finish(this._assistantMessage('incomeEmpty',{period:period}));
+    return finish(this._assistantMessage('income',{period:period,amount:fmtMoney(incomeTotal)}));
   }
-  if(/estabelecimento|qual loja|em qual loja|onde compro|loja que|comercio/.test(q)){
-    var merchants=this._groups(selected,'local').filter(function(item){return item.key&&item.key!=='outros';});
-    if(merchants.length)return this._label('topMerchantAnswer',{item:merchants[0].key,amount:fmtMoney(merchants[0].total)});
+  if(intent==='debt'){
+    var loans=typeof Store.calcLoanPending==='function'?Store.calcLoanPending():null;
+    var debtMotor=typeof Store.getMotorFinanceiro==='function'?Store.getMotorFinanceiro():null;
+    var loanPay=Number(loans&&loans.aPagar)||0;
+    var loanReceive=Number(loans&&loans.aReceber)||0;
+    var otherCommitments=Number(debtMotor&&debtMotor.totalComprometido)||0;
+    if(loanPay<=0&&loanReceive<=0&&otherCommitments<=0)return finish(this._assistantMessage('noDebt'));
+    return finish(this._assistantMessage('debt',{
+      pay:fmtMoney(loanPay),
+      commitments:fmtMoney(otherCommitments),
+      receive:fmtMoney(loanReceive)
+    }));
   }
-  if(/onde|maior|mais gastei|principal categoria|categoria principal/.test(q)){
-    var top=this._groups(selected,'categoria')[0];
-    if(!top)return this._label('noData');
-    return this._label('topAnswer',{item:this._nice(top.key),amount:fmtMoney(top.total)});
+  if(intent==='summary'){
+    var summaryMotor=typeof Store.getMotorFinanceiro==='function'?Store.getMotorFinanceiro():{};
+    var summaryLoans=typeof Store.calcLoanPending==='function'?Store.calcLoanPending():{};
+    return finish(this._assistantMessage('summary',{
+      income:fmtMoney(incomeTotal),
+      expenses:fmtMoney(expenseTotal),
+      balance:fmtMoney(Number(summaryMotor.disponivel)||0),
+      pay:fmtMoney(Number(summaryLoans&&summaryLoans.aPagar)||0),
+      commitments:fmtMoney(Number(summaryMotor.totalComprometido)||0),
+      receive:fmtMoney(Number(summaryLoans&&summaryLoans.aReceber)||0)
+    }));
   }
-  var known=this._knownMerchantRows(question,selected);
-  if(known){
-    if(!known.length)return this._label('noTerm',{term:question});
-    return this._label('termAnswer',{amount:fmtMoney(this._sum(known)),term:known[0].local||question});
+  if(intent==='recurring'){
+    var recurring=this._detectRecurring(rows);
+    if(!recurring.length)return finish(this._assistantMessage('noRecurring'));
+    return finish(this._assistantMessage('recurring',{
+      topic:recurring[0].merchant,
+      amount:fmtMoney(recurring[0].amount),
+      months:recurring[0].months
+    }));
   }
-  var matches=this._matchedRows(question,selected);
-  if(matches){
-    var item=this._norm(question).replace(/\b(quanto|gastei|gasto|gastos|com|no|na|nos|nas|este|essa|esse|mes|mês|total|valor|foi|do|da|de|sobre|ultimos|ultimas|dias|semana|passada|passado)\b/g,' ').trim();
-    if(!matches.length)return this._label('noTerm',{term:item||question});
-    return this._label('termAnswer',{amount:fmtMoney(this._sum(matches)),term:item||question});
+  if(intent==='upcoming'){
+    var nowProjection=Clock.now();
+    var match=/proximo mes|próximo mês/.test(q);
+    var projectionDate=match?new Date(nowProjection.getFullYear(),nowProjection.getMonth()+1,1):nowProjection;
+    var projection=typeof Store.getMonthlyProjection==='function'?Store.getMonthlyProjection(projectionDate.getFullYear(),projectionDate.getMonth()+1):null;
+    if(!projection)return finish(this._assistantMessage('noDetails'));
+    return finish(this._assistantMessage('upcoming',{amount:fmtMoney(Number(projection.total)||0)}));
   }
-  if(/ultimos 3 meses|ultimos tres meses|ultimas 3 meses|trimestre/.test(q)||/ultimos 7 dias|ultima semana|ultimos sete dias|semana passada|esta semana/.test(q)){
-    return this._label('periodTotal',{amount:fmtMoney(this._sum(selected))});
+  if(intent==='compare'){
+    if(!topic&&/categoria|categorias|aument|cresceu|subiu/.test(q)){
+      var categoryChanges=this._categoryChanges(this._periodRows(0),this._periodRows(1));
+      if(categoryChanges.length){
+        var categoryChange=categoryChanges[0];
+        return finish(this._assistantMessage('compareUp',{
+          scope:this._nice(categoryChange.key),
+          percent:categoryChange.percent,
+          current:fmtMoney(categoryChange.current),
+          previous:fmtMoney(categoryChange.previous)
+        }));
+      }
+    }
+    var previousRange=this._assistantShiftRange(range,-1);
+    var previousRows=this._rangeRows(previousRange.start,previousRange.end,rows);
+    var currentScope=this._assistantFilterRows(selected,topic);
+    var previousScope=this._assistantFilterRows(previousRows,topic);
+    var currentTotal=this._sum(currentScope);
+    var previousTotal=this._sum(previousScope);
+    var scope=topic?topic.label:'no período consultado';
+    if(previousTotal<=0)return finish(this._assistantMessage('noPrevious'));
+    var change=((currentTotal-previousTotal)/previousTotal)*100;
+    if(change>=5)return finish(this._assistantMessage('compareUp',{scope:scope,percent:Math.round(change),current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)}));
+    if(change<=-5)return finish(this._assistantMessage('compareDown',{scope:scope,percent:Math.round(Math.abs(change)),current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)}));
+    return finish(this._assistantMessage('compareSame',{scope:scope,current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)}));
   }
-  if(/quanto|total|gastei|gasto|gastos|despesa|despesas|valor/.test(q)){
-    return this._label('totalAnswer',{amount:fmtMoney(this._sum(selected))});
+  if(intent==='topMerchant'){
+    var topMerchant=this._groups(filtered,'local').filter(function(item){return item.key&&item.key!=='outros';})[0];
+    if(!topMerchant)return finish(this._assistantMessage('noData',{period:period}));
+    return finish(this._assistantMessage('topMerchant',{topic:topMerchant.key,amount:fmtMoney(topMerchant.total)}));
   }
-  return this._label('help');
+  if(intent==='top'){
+    var topCategory=this._groups(filtered,'categoria')[0];
+    if(!topCategory)return finish(this._assistantMessage('noData',{period:period}));
+    return finish(this._assistantMessage('topCategory',{topic:this._nice(topCategory.key),amount:fmtMoney(topCategory.total),total:fmtMoney(expenseTotal)}));
+  }
+  if(intent==='advice'){
+    var categoryGroups=this._groups(filtered.length?filtered:selected,'categoria');
+    var topAdvice=categoryGroups[0];
+    if(!topAdvice)return finish(this._assistantMessage('noData',{period:period}));
+    var saving=topAdvice.total*0.10;
+    if(incomeTotal>0){
+      var percent=Math.round(expenseTotal/incomeTotal*100);
+      return finish(this._assistantMessage('adviceIncome',{
+        expenses:fmtMoney(expenseTotal),income:fmtMoney(incomeTotal),percent:percent,
+        topic:this._nice(topAdvice.key),amount:fmtMoney(topAdvice.total),saving:fmtMoney(saving)
+      }));
+    }
+    return finish(this._assistantMessage('adviceNoIncome',{
+      topic:this._nice(topAdvice.key),amount:fmtMoney(topAdvice.total),saving:fmtMoney(saving)
+    }));
+  }
+  if(intent==='why'){
+    var detailRows=filtered.length?filtered:selected;
+    var groupField=topic&&topic.type==='category'?'subcategoria':(topic?'local':'categoria');
+    if(groupField==='local'&&!detailRows.some(function(row){return !!row.local;}))groupField='descricao';
+    var details=this._groups(detailRows,groupField)[0];
+    if(!details)return finish(this._assistantMessage('noDetails'));
+    return finish(this._assistantMessage('why',{
+      topic:topic?topic.label:'seus gastos',
+      detail:this._nice(details.key),
+      amount:fmtMoney(details.total)
+    }));
+  }
+  if(isCompare&&/categoria|categorias/.test(q)){
+    var changes=this._categoryChanges(this._periodRows(0),this._periodRows(1));
+    if(changes.length){
+      return finish(this._assistantMessage('compareUp',{
+        scope:this._nice(changes[0].key),
+        percent:changes[0].percent,
+        current:fmtMoney(changes[0].current),
+        previous:fmtMoney(changes[0].previous)
+      }));
+    }
+  }
+  if(!selected.length)return finish(this._assistantMessage('noData',{period:period}));
+  if(topic){
+    if(!filtered.length)return finish(this._assistantMessage('noTopic',{topic:topic.label,period:period}));
+    return finish(this._assistantMessage('spendTopic',{period:period,amount:fmtMoney(topicTotal),topic:topic.label}));
+  }
+  if(/quanto|total|gastei|gasto|gastos|despesa|despesas|valor|paguei/.test(q)){
+    return finish(this._assistantMessage('spendAll',{period:period,amount:fmtMoney(expenseTotal)}));
+  }
+  return finish(this._assistantMessage('help'));
 };
+
+AlicerceIA.perguntar=function(){
+  this._resetUser();
+  var input=document.getElementById('alicerce-ai-question');
+  var question=input?input.value:this._question;
+  question=String(question||'').trim();
+  if(!question)return;
+  this._question=question;
+  var answer=this.responder(question);
+  this._answer=answer;
+  this._history.push({role:'user',text:question});
+  this._history.push({role:'assistant',text:answer});
+  if(this._history.length>10)this._history=this._history.slice(-10);
+  render();
+};
+
+AlicerceIA.perguntarDashboard=function(question){
+  this._resetUser();
+  this._question=String(question||'').trim();
+  if(!this._question)return;
+  this._answer=this.responder(this._question);
+  this._history.push({role:'user',text:this._question});
+  this._history.push({role:'assistant',text:this._answer});
+  if(this._history.length>10)this._history=this._history.slice(-10);
+  render();
+};
+
 
 
 function fmtVal(v){return fmtMoney(v)}
