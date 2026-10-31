@@ -985,3 +985,39 @@ test('formulário manual utiliza a taxonomia completa e subcategorias correspond
   expect(resultado.beautySubs).toContain('unhas');
   expect(resultado.beautySubs).toContain('cosmeticos');
 });
+
+
+test('usa um gasto manual confirmado como exemplo de aprendizado da própria conta', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function () {
+    Store.userId = 'e2e-aprendizado-manual';
+    Store.learning = {};
+    document.getElementById('app').innerHTML = renderGastoManual();
+    document.getElementById('gm-desc').value = 'Shampoo';
+    document.getElementById('gm-val').value = '52';
+    document.getElementById('gm-date').value = '2026-10-31';
+    document.getElementById('gm-cat').value = 'beleza';
+    updateSubcats('beleza');
+    document.getElementById('gm-sub').value = 'cosmeticos';
+    document.getElementById('gm-estab').value = 'Carrefour';
+    saveManualGasto();
+
+    return {
+      movement: Store.movements[0],
+      learned: Store.getLearned('Carrefour', 'Shampoo'),
+      learning: Store.learning
+    };
+  });
+
+  expect(resultado.movement).toMatchObject({
+    categoria: 'beleza',
+    subcategoria: 'cosmeticos',
+    descricao: 'Shampoo',
+    estabelecimento: 'Carrefour'
+  });
+  expect(resultado.learned).toMatchObject({
+    categoria: 'beleza',
+    subcategoria: 'cosmeticos',
+    scope: 'merchant_item'
+  });
+});
