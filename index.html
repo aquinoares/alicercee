@@ -4909,6 +4909,9 @@ const AlicerceIA = {
         noAnomalies:'Não encontrei valores fora do seu padrão com histórico suficiente para comparar. Isso não garante ausência de problemas; significa apenas que não há evidência estatística suficiente.',
         topMerchantAnswer:'O estabelecimento em que você mais gastou foi {item}, com {amount}.',
         periodTotal:'No período consultado, suas despesas somam {amount}.' ,
+        recurringInsight:'O pagamento de {item} parece se repetir: cerca de {amount} por mês, em {months} dos últimos 6 meses. Confira antes de considerar uma assinatura.',
+        recurringAnswer:'Encontrei um possível pagamento recorrente em {item}: cerca de {amount} por mês, observado em {months} dos últimos 6 meses.',
+        noRecurring:'Ainda não encontrei pagamentos mensais semelhantes com histórico suficiente para indicar recorrência.',
         help:'Posso consultar o total do mês, localizar gastos por categoria ou comparar com o mesmo período do mês passado. Experimente perguntar: “Quanto gastei com lanche?”',
         suggestions:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado']
       },
@@ -4937,6 +4940,9 @@ const AlicerceIA = {
         noAnomalies:'I did not find values outside your pattern with enough history to compare. This does not guarantee there are no issues; it means there is not enough statistical evidence.',
         topMerchantAnswer:'Your highest-spending merchant was {item}, at {amount}.',
         periodTotal:'Your recorded expenses for this period total {amount}.' ,
+        recurringInsight:'The payment to {item} appears to repeat: about {amount} per month in {months} of the last 6 months. Check it before treating it as a subscription.',
+        recurringAnswer:'I found a possible recurring payment to {item}: about {amount} per month, observed in {months} of the last 6 months.',
+        noRecurring:'I could not find similar monthly payments with enough history to suggest a recurring expense.',
         help:'I can check this month’s total, find spending by category, or compare it with the same period last month. Try: “How much did I spend on snacks?”',
         suggestions:['How much did I spend this month?','Where did I spend the most?','Compare with last month']
       },
@@ -4965,6 +4971,9 @@ const AlicerceIA = {
         noAnomalies:'No encontré valores fuera de tu patrón con historial suficiente para comparar. Esto no garantiza que no haya problemas; significa que no hay suficiente evidencia estadística.',
         topMerchantAnswer:'El establecimiento donde más gastaste fue {item}, con {amount}.',
         periodTotal:'Tus gastos registrados en este período suman {amount}.' ,
+        recurringInsight:'El pago a {item} parece repetirse: unos {amount} al mes, en {months} de los últimos 6 meses. Verifícalo antes de considerarlo una suscripción.',
+        recurringAnswer:'Encontré un posible pago recurrente a {item}: unos {amount} al mes, observado en {months} de los últimos 6 meses.',
+        noRecurring:'Aún no encontré pagos mensuales similares con historial suficiente para indicar recurrencia.',
         help:'Puedo consultar el total del mes, encontrar gastos por categoría o comparar con el mismo período del mes pasado. Prueba: “¿Cuánto gasté en comida?”',
         suggestions:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Comparar con el mes pasado']
       }
@@ -5236,12 +5245,58 @@ AlicerceIA._knownMerchantRows=function(question,rows){
   if(!match)return null;
   return (rows||[]).filter(function(row){return this._norm(row.local)===match;},this);
 };
+
+AlicerceIA._detectRecurring=function(rows){
+  var now=Clock.now();
+  var cutoff=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-180));
+  var eligible={
+    moradia:['aluguel','energia','agua','internet','telefone','condominio','iptu'],
+    lazer:['streaming'],
+    saude:['plano_saude']
+  };
+  var groups={};
+  (rows||this._rows()).forEach(function(row){
+    if(row.source!=='movement'||row.data<cutoff||!row.local)return;
+    var allowed=eligible[row.categoria]||[];
+    if(allowed.indexOf(row.subcategoria)<0)return;
+    var merchant='';
+    try{
+      merchant=typeof normalizeAlicerMerchantIdentity==='function'
+        ?normalizeAlicerMerchantIdentity(row.local):'';
+    }catch(e){}
+    merchant=merchant||this._norm(row.local);
+    if(!merchant||merchant.length<3)return;
+    if(!groups[merchant])groups[merchant]={name:row.local,months:{}};
+    var month=row.data.slice(0,7);
+    groups[merchant].months[month]=(groups[merchant].months[month]||0)+(Number(row.valor)||0);
+  },this);
+  var result=[];
+  Object.keys(groups).forEach(function(key){
+    var group=groups[key];
+    var months=Object.keys(group.months).sort();
+    if(months.length<3)return;
+    var values=months.map(function(month){return group.months[month];});
+    var median=this._median(values);
+    if(median<10)return;
+    var min=Math.min.apply(Math,values);
+    var max=Math.max.apply(Math,values);
+    if(min<median*0.75||max>median*1.25)return;
+    result.push({merchant:group.name,amount:median,months:months.length});
+  },this);
+  return result.sort(function(a,b){return b.months-a.months||b.amount-a.amount;});
+};
+
 AlicerceIA.insight=function(){
   this._resetUser();
   var current=this._periodRows(0);
   var previous=this._periodRows(1);
-  if(!current.length)return this._label('emptyInsight');
-  var anomalies=this._detectAnomalies(this._rows());
+  var allRows=this._rows();
+  var anomalies=this._detectAnomalies(allRows);
+  if(!current.length){
+    var recurringEmpty=this._detectRecurring(allRows);
+    if(recurringEmpty.length)return this._label('recurringInsight',{item:recurringEmpty[0].merchant,amount:fmtMoney(recurringEmpty[0].amount),months:recurringEmpty[0].months});
+    return this._label('emptyInsight');
+  }
   if(anomalies.length){
     var anomaly=anomalies[0];
     return this._label('anomalyInsight',{
@@ -5267,6 +5322,8 @@ AlicerceIA.insight=function(){
     if(percent>=20)return this._label('upInsight',{amount:fmtMoney(total),percent:Math.round(percent)});
     if(percent<=-20)return this._label('downInsight',{amount:fmtMoney(total),percent:Math.round(Math.abs(percent))});
   }
+  var recurring=this._detectRecurring(allRows);
+  if(recurring.length)return this._label('recurringInsight',{item:recurring[0].merchant,amount:fmtMoney(recurring[0].amount),months:recurring[0].months});
   var top=this._groups(current,'subcategoria')[0];
   if(top&&top.total>0)return this._label('topInsight',{item:this._nice(top.key),amount:fmtMoney(top.total),total:fmtMoney(total)});
   return this._label('totalInsight',{amount:fmtMoney(total)});
@@ -5277,6 +5334,11 @@ AlicerceIA.responder=function(question){
   var rows=this._rows();
   var range=this._questionRange(question);
   var selected=this._rangeRows(range.start,range.end,rows);
+  if(/assinatura|recorrente|se repete|pagamento fixo/.test(q)){
+    var recurringMatches=this._detectRecurring(rows);
+    if(!recurringMatches.length)return this._label('noRecurring');
+    return this._label('recurringAnswer',{item:recurringMatches[0].merchant,amount:fmtMoney(recurringMatches[0].amount),months:recurringMatches[0].months});
+  }
   if(!selected.length)return this._label('noData');
   if(/fora do padrao|fora do normal|anomal|estranho|incomum/.test(q)){
     var anomalies=this._detectAnomalies(rows);
