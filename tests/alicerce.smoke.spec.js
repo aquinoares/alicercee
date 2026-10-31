@@ -276,6 +276,135 @@ test('gera prévias dos PDFs de Gastos e Visão Financeira sem abrir janela exte
   expect(page.context().pages().length).toBe(popupInicial);
 });
 
+
+test('envia cadastro com sucesso usando autenticação simulada', async function ({ page }) {
+  await abrirAbertura(page);
+  await page.locator('#calGlassBtn').click();
+  await expect(page.locator('#loginLiving')).toBeVisible();
+
+  await page.locator('#login-email').fill('novo-usuario@exemplo.com');
+  await page.locator('#login-pass').fill('senha-ficticia-123');
+  await page.evaluate(function () {
+    window.history.replaceState({}, '', '/?ref=convite123');
+  });
+  await page.locator('#signupBtn').click();
+
+  await expect(page.locator('#alicerce-auth-feedback')).toContainText('Cadastro enviado.');
+  const chamada = await page.evaluate(function () { return window.__alicerceMockSignUp; });
+  expect(chamada).toEqual({
+    email: 'novo-usuario@exemplo.com',
+    passwordWasProvided: true,
+    referralCode: 'convite123'
+  });
+  const upserts = await page.evaluate(function () { return window.__alicerceMockUpserts; });
+  expect(upserts).toEqual([]);
+});
+
+test('solicita recuperação de senha e usa o endereço de retorno do app', async function ({ page }) {
+  await abrirAbertura(page);
+  await page.locator('#calGlassBtn').click();
+  await expect(page.locator('#loginLiving')).toBeVisible();
+
+  await page.locator('#login-email').fill('recuperar@exemplo.com');
+  await page.locator('#forgotBtn').click();
+
+  await expect(page.locator('#alicerce-auth-feedback')).toContainText('Se este e-mail estiver cadastrado');
+  const chamada = await page.evaluate(function () { return window.__alicerceMockPasswordReset; });
+  expect(chamada.email).toBe('recuperar@exemplo.com');
+  expect(chamada.redirectTo).toBe(new URL(page.url()).origin + '/');
+  const upserts = await page.evaluate(function () { return window.__alicerceMockUpserts; });
+  expect(upserts).toEqual([]);
+});
+
+test('salva um gasto manual e mantém o registro no armazenamento local após recarregar', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'gastoManual');
+  await page.evaluate(function () {
+    Store.userId = 'e2e-persistencia';
+    Store.movements = [];
+  });
+
+  await page.locator('#gm-desc').fill('Mercado de teste Alicerce');
+  await page.locator('#gm-val').fill('42.90');
+  await page.locator('#gm-date').fill('2026-10-31');
+  await page.locator('#gm-cat').selectOption('comida');
+  await page.locator('#gm-sub').selectOption('mercado');
+  await page.locator('#gm-estab').fill('Mercado fictício');
+  await page.locator('button[onclick="saveManualGasto()"]').click();
+
+  const antesDoReload = await page.evaluate(function () {
+    return {
+      movimentos: Store.movements,
+      armazenado: JSON.parse(localStorage.getItem('alicerce_e2e-persistencia_movements') || '[]'),
+      upserts: window.__alicerceMockUpserts
+    };
+  });
+  expect(antesDoReload.movimentos).toHaveLength(1);
+  expect(antesDoReload.movimentos[0]).toMatchObject({
+    userId: 'e2e-persistencia',
+    tipo: 'despesa',
+    categoria: 'comida',
+    subcategoria: 'mercado',
+    descricao: 'Mercado de teste Alicerce',
+    valor: 42.9
+  });
+  expect(antesDoReload.armazenado).toHaveLength(1);
+  expect(antesDoReload.upserts).toEqual([]);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const depoisDoReload = await page.evaluate(function () {
+    return JSON.parse(localStorage.getItem('alicerce_e2e-persistencia_movements') || '[]');
+  });
+  expect(depoisDoReload).toHaveLength(1);
+  expect(depoisDoReload[0]).toMatchObject({
+    userId: 'e2e-persistencia',
+    descricao: 'Mercado de teste Alicerce',
+    valor: 42.9
+  });
+});
+
+test('cadastra um cartão e mantém os dados no armazenamento local após recarregar', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'addCard');
+  await page.evaluate(function () {
+    Store.userId = 'e2e-persistencia';
+    Store.cards = [];
+  });
+
+  await page.locator('#add-card-nome').fill('Cartão fictício');
+  await page.locator('#add-card-fechamento').fill('20');
+  await page.locator('#add-card-vencimento').fill('27');
+  await page.locator('#add-card-limite').fill('2500');
+  await page.locator('button[onclick="saveNewCard()"]').click();
+
+  const antesDoReload = await page.evaluate(function () {
+    return {
+      cards: Store.cards,
+      armazenado: JSON.parse(localStorage.getItem('alicerce_e2e-persistencia_cards') || '[]'),
+      upserts: window.__alicerceMockUpserts
+    };
+  });
+  expect(antesDoReload.cards).toHaveLength(1);
+  expect(antesDoReload.cards[0]).toMatchObject({
+    userId: 'e2e-persistencia',
+    nome: 'Cartão fictício',
+    fechamento: 20,
+    vencimento: 27,
+    limite: 2500
+  });
+  expect(antesDoReload.armazenado).toHaveLength(1);
+  expect(antesDoReload.upserts).toEqual([]);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  const depoisDoReload = await page.evaluate(function () {
+    return JSON.parse(localStorage.getItem('alicerce_e2e-persistencia_cards') || '[]');
+  });
+  expect(depoisDoReload).toHaveLength(1);
+  expect(depoisDoReload[0]).toMatchObject({
+    userId: 'e2e-persistencia',
+    nome: 'Cartão fictício',
+    limite: 2500
+  });
+});
+
 test('registra baseline axe nas telas financeiras principais em celular', async function ({ page }, testInfo) {
   for (const screen of ['home', 'gastos', 'cartoes', 'config']) {
     await prepararTelaSemNuvem(page, screen);
