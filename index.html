@@ -6855,7 +6855,7 @@ function homeRenderComunicados() {
   const commitments=dedupLista(Store.commitments.filter(c=>c&&/^\d{4}-\d{2}-\d{2}$/.test(String(c.data||''))&&c.data>=_hojeCompromissos&&c.status!=='concluido').sort((a,b)=>String(a.data).localeCompare(String(b.data)))).slice(0,3);
   let html='<div class="content">';
   html+='<div class="mt-4"><p class="text-muted text-sm">'+greeting+'</p></div>';
-  if(smartCards.length>0){html+='<div class="dynamic-card-wrap mt-2"><div class="dynamic-card-track" id="dc-track">';
+  if(smartCards.length>0){html+='<div class="dynamic-card-wrap mt-2"><div class="dynamic-card-track" id="dc-track" tabindex="0" role="region" aria-label="'+esc(Store.lang==='en'?'Smart cards':Store.lang==='es'?'Tarjetas inteligentes':'Cartões inteligentes')+'">';
   smartCards.forEach(c=>{html+='<div class="dynamic-card"><div class="dc-title">'+esc(c.title)+'</div><div class="dc-text">'+esc(c.text)+'</div>'+(c.go&&c.lbl?'<button class="btn btn-secondary btn-sm mt-2" onclick="'+esc(c.go)+'">'+esc(c.lbl)+'</button>':'')+'</div>'});
   html+='</div>';
   if(smartCards.length>1)html+='<div class="dynamic-dots">'+smartCards.map((_,i)=>'<div class="dynamic-dot'+(i===0?' active':'')+'" onclick="scrollToDC('+i+')"></div>').join('')+'</div>';
@@ -9929,8 +9929,8 @@ function renderVisao(){
 /* CONFIG */
 function renderConfig(){
   let html='<div class="content"><h2 class="mt-4">'+t('config')+'</h2><div class="section-divider"></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('aparência')+'</label><select onchange="changeTheme(this.value)"><option value="azul"'+(Store.theme==='azul'?' selected':'')+'>'+t('temaAzul')+'</option><option value="claro"'+(Store.theme==='claro'?' selected':'')+'>'+t('temaClaro')+'</option><option value="marinho"'+(Store.theme==='marinho'?' selected':'')+'>'+t('temaMarinho')+'</option><option value="moderno"'+(Store.theme==='moderno'?' selected':'')+'>Moderno</option></select></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('idioma')+'</label><select onchange="changeLang(this.value)"><option value="pt"'+(Store.lang==='pt'?' selected':'')+'>Portugues</option><option value="en"'+(Store.lang==='en'?' selected':'')+'>English</option><option value="es"'+(Store.lang==='es'?' selected':'')+'>Espanol</option></select></div>';
+  html+='<div class="form-group"><label class="form-label" for="alicerce-config-theme">'+t('aparência')+'</label><select id="alicerce-config-theme" onchange="changeTheme(this.value)"><option value="azul"'+(Store.theme==='azul'?' selected':'')+'>'+t('temaAzul')+'</option><option value="claro"'+(Store.theme==='claro'?' selected':'')+'>'+t('temaClaro')+'</option><option value="marinho"'+(Store.theme==='marinho'?' selected':'')+'>'+t('temaMarinho')+'</option><option value="moderno"'+(Store.theme==='moderno'?' selected':'')+'>Moderno</option></select></div>';
+  html+='<div class="form-group"><label class="form-label" for="alicerce-config-lang">'+t('idioma')+'</label><select id="alicerce-config-lang" onchange="changeLang(this.value)"><option value="pt"'+(Store.lang==='pt'?' selected':'')+'>Portugues</option><option value="en"'+(Store.lang==='en'?' selected':'')+'>English</option><option value="es"'+(Store.lang==='es'?' selected':'')+'>Espanol</option></select></div>';
   html+='<div class="form-group"><label class="form-label"><input type="checkbox" '+(Store.settings.hideHealthDetails?'checked':'')+' onchange="toggleHideHealth(this.checked)"> '+t('ocultarSaude')+'</label></div>';
   html+='<div class="section-divider"></div>';
   html+='<div class="list-item"><div class="li-left">'+icon('whatsapp','ico-sm')+'<div class="li-info"><div class="li-name">'+t('whats')+'</div></div></div>'+icon('arrowRight','ico-sm')+'</div>';
