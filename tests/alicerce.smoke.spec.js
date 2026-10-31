@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const supabaseMock = readFileSync(new URL('./fixtures/supabase-mock.js', import.meta.url), 'utf8');
 const classificationBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-benchmark-ptbr.json', import.meta.url), 'utf8'));
+const bankDescriptionBenchmark = JSON.parse(readFileSync(new URL('./fixtures/bank-description-benchmark-ptbr.json', import.meta.url), 'utf8'));
 const supabaseCdn = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js';
 const supabaseProject = 'https://hwmpwvbvgiqotdzkmgwh.supabase.co';
 
@@ -894,6 +895,54 @@ test('classifica o produto antes da categoria ampla do supermercado', async func
   });
   expect(resultado.legacyForItem).toBeNull();
   expect(resultado.explicitCorrection).toMatchObject({ categoria: 'comida', subcategoria: 'mercado', source: 'learning' });
+});
+
+test('interpreta descrições bancárias ruidosas sem confundir IDs com valores ou inventar produtos', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function (cases) {
+    return cases.map(function (example) {
+      const actual = Interpreter.interpretLocal(example.text);
+      return {
+        id: example.id,
+        merchant: actual ? actual.merchant : null,
+        amount: actual ? actual.amount : null,
+        item: actual ? actual.item : null,
+        categoria: actual ? actual.categoria : null,
+        subcategoria: actual ? actual.subcategoria : null,
+        confidence: actual ? actual.confidence : null,
+        source: actual ? actual.source : null
+      };
+    });
+  }, bankDescriptionBenchmark);
+
+  const mismatches = [];
+  resultado.forEach(function (actual, index) {
+    const expected = bankDescriptionBenchmark[index];
+    ['merchant','amount','item','categoria','subcategoria','confidence'].forEach(function (field) {
+      if (actual[field] !== expected[field]) {
+        mismatches.push({
+          id: expected.id,
+          field: field,
+          expected: expected[field],
+          actual: actual[field]
+        });
+      }
+    });
+  });
+  const identified = resultado.filter(function (item) {
+    return item.categoria && item.subcategoria;
+  }).length;
+  console.log('[benchmark-bank-ptbr] ' + JSON.stringify({
+    total: resultado.length,
+    exact: resultado.length - mismatches.length,
+    mismatches: mismatches,
+    identified: identified,
+    unknownKeptUnclassified: resultado.filter(function (item) {
+      return item.categoria === null && item.subcategoria === null && item.confidence === 'low';
+    }).length
+  }));
+
+  expect(mismatches).toEqual([]);
 });
 
 test('mede o benchmark brasileiro curado por categoria e subcategoria', async function ({ page }) {
