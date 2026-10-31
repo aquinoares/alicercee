@@ -4782,6 +4782,289 @@ const detalhes={
   }
 };
 
+
+/* =============================================================
+   ALICERCE IA — analise financeira local por conta
+   Sem API externa: usa somente os lancamentos ja carregados no Store.
+   ============================================================= */
+const AlicerceIA = {
+  _userId:'',
+  _question:'',
+  _answer:'',
+  _resetUser:function(){
+    var uid=String(Store.userId||'');
+    if(uid!==this._userId){
+      this._userId=uid;
+      this._question='';
+      this._answer='';
+    }
+  },
+  _norm:function(value){
+    return String(value||'').toLowerCase().normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .replace(/[^a-z0-9]+/g,' ').trim();
+  },
+  _rows:function(){
+    var rows=[];
+    (Store.movements||[]).forEach(function(m){
+      if(!m||m.tipo!=='despesa'||!m.data||!/^\d{4}-\d{2}-\d{2}$/.test(String(m.data)))return;
+      var value=Number(m.valor)||0;
+      if(value<=0)return;
+      rows.push({
+        data:String(m.data),valor:value,
+        categoria:m.categoria||'outros',
+        subcategoria:m.subcategoria||'outros',
+        descricao:m.descricao||m.item||'',
+        local:m.estabelecimento||m.local||''
+      });
+    });
+    (Store.installments||[]).forEach(function(i){
+      if(!i||i.tipo!=='cartao'||!i.compraId||!i.data||!/^\d{4}-\d{2}-\d{2}$/.test(String(i.data)))return;
+      var value=Number(i.valor)||0;
+      if(value<=0)return;
+      rows.push({
+        data:String(i.data),valor:value,
+        categoria:i.categoria||'outros',
+        subcategoria:i.subcategoria||'outros',
+        descricao:i.descricao||'Compra no cartao',
+        local:i.local||''
+      });
+    });
+    return rows;
+  },
+  _period:function(offset){
+    var now=Clock.now();
+    var date=new Date(now.getFullYear(),now.getMonth()-offset,1);
+    var year=date.getFullYear();
+    var month=date.getMonth()+1;
+    var day=offset===0?now.getDate():Math.min(now.getDate(),new Date(year,month,0).getDate());
+    return {
+      key:year+'-'+String(month).padStart(2,'0'),
+      day:day
+    };
+  },
+  _periodRows:function(offset){
+    var period=this._period(offset);
+    return this._rows().filter(function(row){
+      return row.data.slice(0,7)===period.key&&Number(row.data.slice(8,10))<=period.day;
+    });
+  },
+  _sum:function(rows){
+    return (rows||[]).reduce(function(total,row){return total+(Number(row.valor)||0)},0);
+  },
+  _nice:function(value){
+    return String(value||'outros').replace(/_/g,' ').replace(/\b[a-z]/g,function(letter){return letter.toUpperCase()});
+  },
+  _groups:function(rows,field){
+    var groups={};
+    (rows||[]).forEach(function(row){
+      var key=String(row[field]||'outros');
+      groups[key]=(groups[key]||0)+(Number(row.valor)||0);
+    });
+    return Object.keys(groups).map(function(key){return {key:key,total:groups[key]}}).sort(function(a,b){return b.total-a.total});
+  },
+  insight:function(){
+    this._resetUser();
+    var current=this._periodRows(0);
+    var previous=this._periodRows(1);
+    if(!current.length)return this._label('emptyInsight');
+    var total=this._sum(current);
+    var top=this._groups(current,'subcategoria')[0];
+    var previousTotal=this._sum(previous);
+    if(previousTotal>0){
+      var change=((total-previousTotal)/previousTotal)*100;
+      if(change>=20)return this._label('upInsight',{amount:fmtMoney(total),percent:Math.round(change)});
+      if(change<=-20)return this._label('downInsight',{amount:fmtMoney(total),percent:Math.round(Math.abs(change))});
+    }
+    if(top&&top.total>0){
+      return this._label('topInsight',{item:this._nice(top.key),amount:fmtMoney(top.total),total:fmtMoney(total)});
+    }
+    return this._label('totalInsight',{amount:fmtMoney(total)});
+  },
+  _label:function(key,data){
+    var lang=Store.lang||'pt';
+    var copy={
+      pt:{
+        title:'Alicerce IA',
+        eyebrow:'ANÁLISE DA SUA CONTA',
+        intro:'Sua vida financeira, entendida com seus próprios dados.',
+        placeholder:'Pergunte sobre seus gastos...',
+        ask:'Perguntar',
+        emptyInsight:'Ainda não há despesas suficientes neste mês. Registre seus gastos para receber análises personalizadas.',
+        upInsight:'Atenção: até hoje, seus gastos somam {amount}, {percent}% acima do mesmo período do mês passado.',
+        downInsight:'Boa evolução: até hoje, seus gastos somam {amount}, {percent}% abaixo do mesmo período do mês passado.',
+        topInsight:'Seu maior grupo de gastos é {item}: {amount}. No total, você registrou {total} neste mês.',
+        totalInsight:'Até hoje, você registrou {amount} em despesas neste mês.',
+        totalAnswer:'Neste mês, suas despesas registradas somam {amount}.',
+        termAnswer:'Neste mês, encontrei {amount} em despesas relacionadas a {term}.',
+        noTerm:'Não encontrei despesas relacionadas a {term} neste mês.',
+        topAnswer:'Sua maior categoria neste mês é {item}, com {amount}.',
+        noData:'Ainda não há despesas registradas neste mês para comparar.',
+        noPrevious:'Ainda não há registros suficientes do mês passado para fazer uma comparação justa.',
+        compareUp:'Até hoje, você gastou {percent}% a mais que no mesmo período do mês passado ({current} contra {previous}).',
+        compareDown:'Até hoje, você gastou {percent}% a menos que no mesmo período do mês passado ({current} contra {previous}).',
+        compareSame:'Seus gastos estão praticamente no mesmo nível do mesmo período do mês passado: {current} contra {previous}.',
+        help:'Posso consultar o total do mês, localizar gastos por categoria ou comparar com o mesmo período do mês passado. Experimente perguntar: “Quanto gastei com lanche?”',
+        suggestions:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado']
+      },
+      en:{
+        title:'Alicerce AI',
+        eyebrow:'YOUR ACCOUNT ANALYSIS',
+        intro:'Your finances, understood through your own records.',
+        placeholder:'Ask about your spending...',
+        ask:'Ask',
+        emptyInsight:'There are not enough expenses this month yet. Record your spending to receive personalized insights.',
+        upInsight:'Heads up: spending so far is {amount}, {percent}% above the same period last month.',
+        downInsight:'Good progress: spending so far is {amount}, {percent}% below the same period last month.',
+        topInsight:'Your largest spending group is {item}: {amount}. You recorded {total} in total this month.',
+        totalInsight:'You have recorded {amount} in expenses so far this month.',
+        totalAnswer:'Your recorded expenses this month total {amount}.',
+        termAnswer:'This month, I found {amount} in expenses related to {term}.',
+        noTerm:'I could not find expenses related to {term} this month.',
+        topAnswer:'Your largest category this month is {item}, at {amount}.',
+        noData:'There are no expenses recorded this month to compare.',
+        noPrevious:'There are not enough records from last month for a fair comparison.',
+        compareUp:'So far, you spent {percent}% more than in the same period last month ({current} vs. {previous}).',
+        compareDown:'So far, you spent {percent}% less than in the same period last month ({current} vs. {previous}).',
+        compareSame:'Your spending is about the same as the same period last month: {current} vs. {previous}.',
+        help:'I can check this month’s total, find spending by category, or compare it with the same period last month. Try: “How much did I spend on snacks?”',
+        suggestions:['How much did I spend this month?','Where did I spend the most?','Compare with last month']
+      },
+      es:{
+        title:'Alicerce IA',
+        eyebrow:'ANÁLISIS DE TU CUENTA',
+        intro:'Tus finanzas, analizadas con tus propios registros.',
+        placeholder:'Pregunta sobre tus gastos...',
+        ask:'Preguntar',
+        emptyInsight:'Aún no hay suficientes gastos este mes. Registra tus gastos para recibir análisis personalizados.',
+        upInsight:'Atención: hasta hoy, tus gastos suman {amount}, un {percent}% más que en el mismo período del mes pasado.',
+        downInsight:'Buen avance: hasta hoy, tus gastos suman {amount}, un {percent}% menos que en el mismo período del mes pasado.',
+        topInsight:'Tu mayor grupo de gastos es {item}: {amount}. En total, registraste {total} este mes.',
+        totalInsight:'Hasta hoy, registraste {amount} en gastos este mes.',
+        totalAnswer:'Tus gastos registrados este mes suman {amount}.',
+        termAnswer:'Este mes, encontré {amount} en gastos relacionados con {term}.',
+        noTerm:'No encontré gastos relacionados con {term} este mes.',
+        topAnswer:'Tu mayor categoría este mes es {item}, con {amount}.',
+        noData:'Aún no hay gastos registrados este mes para comparar.',
+        noPrevious:'Aún no hay registros suficientes del mes pasado para comparar justamente.',
+        compareUp:'Hasta hoy, gastaste un {percent}% más que en el mismo período del mes pasado ({current} frente a {previous}).',
+        compareDown:'Hasta hoy, gastaste un {percent}% menos que en el mismo período del mes pasado ({current} frente a {previous}).',
+        compareSame:'Tus gastos están casi al mismo nivel que en el mismo período del mes pasado: {current} frente a {previous}.',
+        help:'Puedo consultar el total del mes, encontrar gastos por categoría o comparar con el mismo período del mes pasado. Prueba: “¿Cuánto gasté en comida?”',
+        suggestions:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Comparar con el mes pasado']
+      }
+    };
+    var text=(copy[lang]||copy.pt)[key]||copy.pt[key]||'';
+    Object.keys(data||{}).forEach(function(name){
+      text=text.replace(new RegExp('\\{'+name+'\\}','g'),String(data[name]));
+    });
+    return text;
+  },
+  _matchedRows:function(question,rows){
+    var q=this._norm(question);
+    var maps=[
+      {keys:['lanche','lanches'],terms:['lanchonete','fast food','lanche']},
+      {keys:['delivery','ifood','i food'],terms:['delivery','ifood','rappi']},
+      {keys:['mercado','supermercado'],terms:['mercado','feira']},
+      {keys:['gasolina','combustivel','combustível'],terms:['combustivel','gasolina','posto']},
+      {keys:['farmacia','farmácia','remedio','remédio'],terms:['farmacia','medicamentos','medicamento']},
+      {keys:['restaurante','restaurantes'],terms:['restaurante']},
+      {keys:['transporte','uber'],terms:['transporte','uber','99','taxi','onibus','metro']},
+      {keys:['beleza','unhas','cabelo'],terms:['beleza','unhas','cabelo','cosmeticos']}
+    ];
+    var terms=[];
+    maps.some(function(map){
+      var found=map.keys.some(function(key){return q.indexOf(key)>=0});
+      if(found){terms=map.terms;return true}
+      return false;
+    });
+    if(!terms.length){
+      Object.keys(ALICERCE_CATEGORIES||{}).some(function(category){
+        if(q.indexOf(this._norm(category))>=0){terms=[this._norm(category)];return true}
+        var subs=ALICERCE_CATEGORIES[category].subs||[];
+        return subs.some(function(sub){
+          if(q.indexOf(this._norm(sub))>=0){terms=[this._norm(sub)];return true}
+          return false;
+        },this);
+      },this);
+    }
+    if(!terms.length)return null;
+    return (rows||[]).filter(function(row){
+      var hay=this._norm([row.categoria,row.subcategoria,row.descricao,row.local].join(' '));
+      return terms.some(function(term){return hay.indexOf(this._norm(term))>=0},this);
+    },this);
+  },
+  responder:function(question){
+    this._resetUser();
+    var q=this._norm(question);
+    var current=this._periodRows(0);
+    var previous=this._periodRows(1);
+    if(!current.length)return this._label('noData');
+    if(/compar|aument|diminu|mes passado|mes anterior|evolu/.test(q)){
+      var currentTotal=this._sum(current);
+      var previousTotal=this._sum(previous);
+      if(previousTotal<=0)return this._label('noPrevious');
+      var delta=((currentTotal-previousTotal)/previousTotal)*100;
+      if(delta>=5)return this._label('compareUp',{percent:Math.round(delta),current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)});
+      if(delta<=-5)return this._label('compareDown',{percent:Math.round(Math.abs(delta)),current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)});
+      return this._label('compareSame',{current:fmtMoney(currentTotal),previous:fmtMoney(previousTotal)});
+    }
+    if(/onde|maior|mais gastei|principal categoria|categoria principal/.test(q)){
+      var top=this._groups(current,'categoria')[0];
+      if(!top)return this._label('noData');
+      return this._label('topAnswer',{item:this._nice(top.key),amount:fmtMoney(top.total)});
+    }
+    var matches=this._matchedRows(question,current);
+    if(matches){
+      var item=this._norm(question).replace(/\b(quanto|gastei|gasto|gastos|com|no|na|este|esse|mes|mês|total|valor|foi|do|da|de|sobre)\b/g,' ').trim();
+      if(!matches.length)return this._label('noTerm',{term:item||question});
+      return this._label('termAnswer',{amount:fmtMoney(this._sum(matches)),term:item||question});
+    }
+    if(/quanto|total|gastei|gasto|gastos|despesa|despesas|valor/.test(q)){
+      return this._label('totalAnswer',{amount:fmtMoney(this._sum(current))});
+    }
+    return this._label('help');
+  },
+  perguntar:function(){
+    this._resetUser();
+    var input=document.getElementById('alicerce-ai-question');
+    var question=input?input.value:this._question;
+    question=String(question||'').trim();
+    if(!question)return;
+    this._question=question;
+    this._answer=this.responder(question);
+    render();
+  },
+  perguntarSugestao:function(question){
+    this._question=question;
+    this.perguntar();
+  },
+  renderCard:function(){
+    this._resetUser();
+    var lang=Store.lang||'pt';
+    var labels={
+      pt:{title:'Alicerce IA',eyebrow:'ANÁLISE DA SUA CONTA',intro:'Sua vida financeira, entendida com seus próprios dados.',placeholder:'Pergunte sobre seus gastos...',ask:'Perguntar',suggestions:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado']},
+      en:{title:'Alicerce AI',eyebrow:'YOUR ACCOUNT ANALYSIS',intro:'Your finances, understood through your own records.',placeholder:'Ask about your spending...',ask:'Ask',suggestions:['How much did I spend this month?','Where did I spend the most?','Compare with last month']},
+      es:{title:'Alicerce IA',eyebrow:'ANÁLISIS DE TU CUENTA',intro:'Tus finanzas, analizadas con tus propios registros.',placeholder:'Pregunta sobre tus gastos...',ask:'Preguntar',suggestions:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Comparar con el mes pasado']}
+    };
+    var ui=labels[lang]||labels.pt;
+    var html='<style id="alicerce-ai-styles">.alicerce-ai-card{box-sizing:border-box;width:100%;margin:14px 0 18px;padding:16px;border:1px solid var(--line,rgba(128,128,128,.3));border-radius:18px;background:var(--card-bg,rgba(128,128,128,.08));color:var(--text-color,inherit);min-width:0}.alicerce-ai-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.alicerce-ai-name{font-size:15px;font-weight:850;letter-spacing:.1px}.alicerce-ai-eyebrow{font-size:9px;font-weight:800;letter-spacing:.8px;opacity:.65}.alicerce-ai-intro{font-size:11px;line-height:1.4;opacity:.7;margin:5px 0 12px}.alicerce-ai-insight{font-size:13px;line-height:1.55;font-weight:650;margin:0 0 14px;overflow-wrap:anywhere}.alicerce-ai-form{display:flex;gap:8px;align-items:stretch;min-width:0}.alicerce-ai-input{box-sizing:border-box;min-width:0;flex:1;width:100%;height:44px;padding:0 11px;border:1px solid var(--line,rgba(128,128,128,.4));border-radius:11px;background:var(--input-bg,transparent);color:var(--text-color,inherit);font:inherit;font-size:12px}.alicerce-ai-button{flex:0 0 auto;min-height:44px;padding:0 13px;border:0;border-radius:11px;background:var(--primary,var(--accent,#3567d6));color:#fff;font-size:12px;font-weight:800;cursor:pointer}.alicerce-ai-answer{margin-top:11px;padding:10px 12px;border-radius:11px;background:rgba(128,128,128,.1);font-size:12px;line-height:1.5;overflow-wrap:anywhere}.alicerce-ai-suggestions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.alicerce-ai-suggestion{min-height:32px;padding:6px 9px;border:1px solid var(--line,rgba(128,128,128,.3));border-radius:999px;background:transparent;color:inherit;font-size:10px;cursor:pointer}.alicerce-ai-input:focus-visible,.alicerce-ai-button:focus-visible,.alicerce-ai-suggestion:focus-visible{outline:2px solid var(--accent,#3567d6);outline-offset:2px}@media(max-width:360px){.alicerce-ai-card{padding:13px}.alicerce-ai-form{gap:6px}.alicerce-ai-button{padding:0 10px;font-size:11px}}</style>';
+    html+='<section class="alicerce-ai-card" id="alicerce-ai-card" aria-label="'+esc(ui.title)+'">';
+    html+='<div class="alicerce-ai-head"><div class="alicerce-ai-name">'+esc(ui.title)+'</div><div class="alicerce-ai-eyebrow">'+esc(ui.eyebrow)+'</div></div>';
+    html+='<p class="alicerce-ai-intro">'+esc(ui.intro)+'</p>';
+    html+='<p class="alicerce-ai-insight" id="alicerce-ai-insight">'+esc(this.insight())+'</p>';
+    html+='<div class="alicerce-ai-form"><input class="alicerce-ai-input" id="alicerce-ai-question" type="text" maxlength="180" autocomplete="off" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" value="'+esc(this._question)+'" onkeydown="if(event.key===\\'Enter\\'){AlicerçeIA.perguntar()}">';
+    html+='<button class="alicerce-ai-button" type="button" onclick="AlicerçeIA.perguntar()">'+esc(ui.ask)+'</button></div>';
+    if(this._answer)html+='<div class="alicerce-ai-answer" id="alicerce-ai-answer" role="status" aria-live="polite">'+esc(this._answer)+'</div>';
+    html+='<div class="alicerce-ai-suggestions">';
+    ui.suggestions.forEach(function(question,index){
+      html+='<button class="alicerce-ai-suggestion" type="button" onclick="AlicerçeIA.perguntarSugestao(\\''+esc(question).replace(/'/g,'&#39;')+'\\')">'+esc(question)+'</button>';
+    });
+    html+='</div></section>';
+    return html;
+  }
+};
+
 function fmtVal(v){return fmtMoney(v)}
 function fmtDate(d){return Store.fmtDate(d)}
 function today(){return Clock.today()}
@@ -6937,6 +7220,7 @@ function homeRenderComunicados() {
   html+='</div>';}
     // ============================================================
   // ============================================================
+  html+=AlicerçeIA.renderCard();
   html+=homeRenderComunicados();
   // 4 MINI CARDS DA HOME
   // FONTE CENTRAL: MOTOR FINANCEIRO
@@ -9985,6 +10269,7 @@ function renderVisao(){
   html+='<div class="visao-atualizado">Atualizado hoje, '+hora+'</div>';
   html+='</section>';
 
+  html+=AlicerçeIA.renderCard();
   html+='<div class="visao-section-title">Mês atual</div>';
   html+='<div class="visao-lista">';
 
