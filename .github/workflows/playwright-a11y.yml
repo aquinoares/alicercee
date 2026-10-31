@@ -1,0 +1,46 @@
+name: Alicerce — Playwright e acessibilidade
+
+on:
+  push:
+    branches:
+      - test/playwright-axe-baseline-20261031
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-tests:
+    name: Playwright + axe-core
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependências com versões fixadas
+        run: npm install --no-audit --no-fund
+
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Executar testes de interface e acessibilidade
+        run: npm run test:e2e
+
+      - name: Guardar capturas e relatórios
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alicerce-playwright-axe-\${{ github.run_number }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
