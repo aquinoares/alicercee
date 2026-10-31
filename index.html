@@ -4929,6 +4929,10 @@ function normalizeAlicerMerchantIdentity(value){
     var entry=ALICERCE_MERCHANT_ALIASES[i];
     for(var j=0;j<entry.aliases.length;j++){
       var alias=entry.aliases[j];
+      if(/^\d+$/.test(alias)){
+        if(n===alias)return entry.key;
+        continue;
+      }
       if(n===alias||n.indexOf(alias+' ')===0)return entry.key;
     }
   }
@@ -5217,7 +5221,7 @@ const Interpreter={
       if(normalizedMerchant==='99'&&amt!==null&&String(amt)==='99')return null;
       return normalizedMerchant.charAt(0).toUpperCase()+normalizedMerchant.slice(1);
     }
-    for(const key of Object.keys(this.merchantDict)){const k=this.norm(key);if(n.indexOf(k)<0)continue;const bd=/^\d+$/.test(k)?'[^0-9.,]':'[^a-z0-9]',re=k==='posto'?new RegExp('(^|'+bd+')'+POSTO_RE.source+'('+bd+'|$)'):new RegExp('(^|'+bd+')'+k.replace(/[^a-z0-9 ]/g,m=>'\\'+m)+'('+bd+'|$)');if(!re.test(n))continue;if(k==='99'&&amt!==null&&String(amt)==='99')continue;return key.charAt(0).toUpperCase()+key.slice(1)}
+    for(const key of Object.keys(this.merchantDict)){const k=this.norm(key);if(n.indexOf(k)<0)continue;if(k==='99'&&!/(^| )99 (?:app|pop|taxi)( |$)/i.test(n))continue;const bd=/^\d+$/.test(k)?'[^0-9.,]':'[^a-z0-9]',re=k==='posto'?new RegExp('(^|'+bd+')'+POSTO_RE.source+'('+bd+'|$)'):new RegExp('(^|'+bd+')'+k.replace(/[^a-z0-9 ]/g,m=>'\\'+m)+'('+bd+'|$)');if(!re.test(n))continue;return key.charAt(0).toUpperCase()+key.slice(1)}
     return null;
   },
   interpretLocal(text){
