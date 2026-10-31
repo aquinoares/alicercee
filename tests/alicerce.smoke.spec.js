@@ -945,6 +945,50 @@ test('interpreta descrições bancárias ruidosas sem confundir IDs com valores 
   expect(mismatches).toEqual([]);
 });
 
+test('calibra confiança pela evidência e não pelo nome da loja isoladamente', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function () {
+    Store.learning = {};
+    const merchantOnly = Interpreter.interpretLocal('PAG*CARREFOUR 00482 39,90');
+    const productEvidence = Interpreter.interpretLocal('Valor: 42 | Item: Shampoo | Local: Carrefour');
+    const unknown = Interpreter.interpretLocal('PAGAMENTO 99,90 COD 004827');
+    Store.learnCorrection('Carrefour', 'comida', 'mercado', 'Shampoo');
+    const learned = Interpreter.interpretLocal('Valor: 42 | Item: Shampoo | Local: Carrefour');
+    return {
+      merchantOnly: merchantOnly,
+      productEvidence: productEvidence,
+      unknown: unknown,
+      learned: learned
+    };
+  });
+
+  expect(resultado.merchantOnly).toMatchObject({
+    categoria: 'comida',
+    subcategoria: 'mercado',
+    confidence: 'medium',
+    source: 'dictionary'
+  });
+  expect(resultado.productEvidence).toMatchObject({
+    categoria: 'beleza',
+    subcategoria: 'cosmeticos',
+    confidence: 'high',
+    source: 'item'
+  });
+  expect(resultado.unknown).toMatchObject({
+    merchant: null,
+    categoria: null,
+    subcategoria: null,
+    confidence: 'low',
+    source: 'partial'
+  });
+  expect(resultado.learned).toMatchObject({
+    categoria: 'comida',
+    subcategoria: 'mercado',
+    confidence: 'high',
+    source: 'learning'
+  });
+});
+
 test('mede o benchmark brasileiro curado por categoria e subcategoria', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   const resultado = await page.evaluate(function (cases) {
