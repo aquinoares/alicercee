@@ -1289,7 +1289,182 @@ test('Visão Financeira apresenta pontos principais e permite abrir análises co
 
   await page.locator('#visao-ai-compare').click();
   await expect(page.locator('#visao-ai-answer')).toContainText('50%');
-  await expect(page.locator('#visao-ai-answer')).toContainText('R$');
+  await expect(page.locator('#visao-ai-answer')).toContainText('R
+});
+
+test('Alicerce IA respeita o motor financeiro e exclui pendencias, transferencias e cartao emprestado', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var today = Clock.today();
+    Store.loans = [{ id: 'loan-emprestado', tipo: 'emprestei', fromCard: true }];
+    Store.movements = [
+      { id: 'realizado', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', valor: 75, data: today, status: 'pago' },
+      { id: 'pendente', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', valor: 999, data: today, status: 'pendente' },
+      { id: 'transferencia', tipo: 'transferencia', direction: 'saida', valor: 500, data: today, status: 'pago' },
+      { id: 'cartao-emprestado', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', valor: 400, data: today, status: 'pago', loanId: 'loan-emprestado' }
+    ];
+    Store.installments = [
+      { id: 'parcela-propria', tipo: 'cartao', compraId: 'compra-propria', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compra pessoal', valor: 20, data: today, status: 'pendente' },
+      { id: 'parcela-emprestada', tipo: 'cartao', compraId: 'compra-emprestada', categoria: 'comida', subcategoria: 'mercado', valor: 300, data: today, status: 'pendente', loanId: 'loan-emprestado' }
+    ];
+    return {
+      rows: AlicerceIA._rows(),
+      total: AlicerceIA._sum(AlicerceIA._rows())
+    };
+  });
+  expect(result.total).toBe(95);
+  expect(result.rows).toHaveLength(2);
+  expect(result.rows.map(function (row) { return row.source; }).sort()).toEqual(['card', 'movement']);
+});
+
+test('Alicerce IA identifica um gasto muito acima da mediana pessoal quando existe historico suficiente', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [];
+    [20, 22, 18, 20, 21].forEach(function (amount, index) {
+      var date = new Date(now.getFullYear(), now.getMonth() - (index + 1), 10);
+      Store.movements.push({
+        id: 'historico-' + index, tipo: 'despesa', status: 'pago',
+        categoria: 'comida', subcategoria: 'lanchonete',
+        valor: amount, data: format(date), descricao: 'Lanche'
+      });
+    });
+    Store.movements.push({
+      id: 'fora-padrao', tipo: 'despesa', status: 'pago',
+      categoria: 'comida', subcategoria: 'lanchonete',
+      valor: 150, data: Clock.today(), descricao: 'Lanche especial'
+    });
+    return {
+      anomalies: AlicerceIA._detectAnomalies(AlicerceIA._rows()),
+      insight: AlicerceIA.insight()
+    };
+  });
+  expect(result.anomalies).toHaveLength(1);
+  expect(result.anomalies[0]).toMatchObject({ amount: 150, median: 20, category: 'comida' });
+  expect(result.insight).toContain('R$ 150,00');
+  expect(result.insight).toContain('R$ 20,00');
+});
+
+test('Alicerce IA nao chama um gasto de anormal sem cinco registros anteriores comparaveis', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [20, 22, 18, 1000].map(function (amount, index) {
+      var date = index === 3 ? now : new Date(now.getFullYear(), now.getMonth() - (index + 1), 10);
+      return {
+        id: 'historico-curto-' + index, tipo: 'despesa', status: 'pago',
+        categoria: 'comida', subcategoria: 'lanchonete',
+        valor: amount, data: format(date)
+      };
+    });
+    return AlicerceIA._detectAnomalies(AlicerceIA._rows());
+  });
+  expect(result).toEqual([]);
+});
+
+test('Alicerce IA entende periodos, estabelecimentos e aumentos por categoria', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    var previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 5);
+    var currentDate = Clock.today();
+    var previousMonthDate = format(previousMonth);
+    var yesterdayDate = format(yesterday);
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [
+      { id: 'last-month', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compra antiga', estabelecimento: 'Mercado Bom', valor: 100, data: previousMonthDate },
+      { id: 'yesterday', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'padaria', descricao: 'Pao', estabelecimento: 'Padaria Central', valor: 15, data: yesterdayDate },
+      { id: 'today-a', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Feira', estabelecimento: 'Mercado Bom', valor: 90, data: currentDate },
+      { id: 'today-b', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Mercado', estabelecimento: 'Mercado Bom', valor: 90, data: currentDate }
+    ];
+    return {
+      lastMonth: AlicerceIA.responder('Quanto gastei no mês passado?'),
+      yesterday: AlicerceIA.responder('Quanto gastei ontem?'),
+      merchant: AlicerceIA.responder('Qual estabelecimento levou mais dinheiro?'),
+      categoryRise: AlicerceIA.insight()
+    };
+  });
+  expect(result.lastMonth).toContain('R$ 100,00');
+  expect(result.yesterday).toContain('R$ 15,00');
+  expect(result.merchant).toContain('Mercado Bom');
+  expect(result.categoryRise).toContain('aumentaram 95%');
+});
+
+
+test('Alicerce IA identifica pagamentos possivelmente recorrentes sem modelo ou API externa', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [89.90, 89.90, 94.90].map(function (amount, index) {
+      var date = new Date(now.getFullYear(), now.getMonth() - (2 - index), Math.min(10, now.getDate()));
+      return {
+        id: 'internet-recorrente-' + index, tipo: 'despesa', status: 'pago',
+        categoria: 'moradia', subcategoria: 'internet',
+        estabelecimento: 'NET FIBRA', descricao: 'Internet residencial',
+        valor: amount, data: format(date)
+      };
+    });
+    return {
+      recurring: AlicerceIA._detectRecurring(AlicerceIA._rows()),
+      insight: AlicerceIA.insight(),
+      answer: AlicerceIA.responder('Quais pagamentos parecem recorrentes?')
+    };
+  });
+  expect(result.recurring).toHaveLength(1);
+  expect(result.recurring[0].merchant).toBe('NET FIBRA');
+  expect(result.recurring[0].months).toBe(3);
+  expect(result.recurring[0].amount).toBeCloseTo(89.90, 2);
+  expect(result.insight).toContain('NET FIBRA');
+  expect(result.answer).toContain('NET FIBRA');
+});
+
+test('Alicerce IA nao confunde compras variaveis com assinaturas confirmadas', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [30, 90, 170].map(function (amount, index) {
+      var date = new Date(now.getFullYear(), now.getMonth() - (2 - index), Math.min(10, now.getDate()));
+      return {
+        id: 'internet-variavel-' + index, tipo: 'despesa', status: 'pago',
+        categoria: 'moradia', subcategoria: 'internet',
+        estabelecimento: 'NET FIBRA', valor: amount, data: format(date)
+      };
+    });
+    return AlicerceIA._detectRecurring(AlicerceIA._rows());
+  });
+  expect(result).toEqual([]);
+});
+);
+
+  await page.locator('#visao-ai-merchant-0').click();
+  await expect(page.locator('#visao-ai-answer')).toContainText('Mercado Bom');
+  await expect(page.locator('#visao-ai-answer')).toContainText('150,00');
 });
 
 test('Alicerce IA respeita o motor financeiro e exclui pendencias, transferencias e cartao emprestado', async function ({ page }) {
