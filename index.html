@@ -5214,7 +5214,8 @@ AlicerceIA._detectAnomalies=function(rows){
       median:median,
       ratio:row.valor/median,
       merchant:row.local||row.descricao||'',
-      comparisonScope:comparisonScope
+      comparisonScope:comparisonScope,
+      comparisonItem:comparisonScope==='subcategoria'?row.subcategoria:row.categoria
     });
   },this);
   return anomalies.sort(function(a,b){return b.ratio-a.ratio;});
@@ -5301,7 +5302,7 @@ AlicerceIA.insight=function(){
     var anomaly=anomalies[0];
     return this._label('anomalyInsight',{
       amount:fmtMoney(anomaly.amount),
-      item:this._nice(anomaly.subcategory||anomaly.category),
+      item:this._nice(anomaly.comparisonItem||anomaly.subcategory||anomaly.category),
       median:fmtMoney(anomaly.median)
     });
   }
@@ -5344,7 +5345,7 @@ AlicerceIA.responder=function(question){
     var anomalies=this._detectAnomalies(rows);
     if(!anomalies.length)return this._label('noAnomalies');
     var item=anomalies[0];
-    return this._label('anomalyInsight',{amount:fmtMoney(item.amount),item:this._nice(item.subcategory||item.category),median:fmtMoney(item.median)});
+    return this._label('anomalyInsight',{amount:fmtMoney(item.amount),item:this._nice(item.comparisonItem||item.subcategory||item.category),median:fmtMoney(item.median)});
   }
   if(/compar|aument|diminu|evolu|mais que|menos que|em relacao|versus/.test(q)){
     var now=this._periodRows(0);
