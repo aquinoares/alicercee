@@ -1257,13 +1257,11 @@ test('Alicerce IA responde perguntas sobre gastos por subcategoria e respeita a 
   await expect(page.locator('#alicerce-ai-insight')).not.toContainText('48,50');
 });
 
-test('Alicerce IA também aparece na Visão Financeira e compara períodos equivalentes', async function ({ page }) {
+test('Visão Financeira apresenta pontos principais e permite abrir análises com um toque', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'visao');
   const resultado = await page.evaluate(function () {
     var agora = Clock.now();
-    var anoAtual = agora.getFullYear();
-    var mesAtual = agora.getMonth();
-    var mesAnterior = new Date(anoAtual, mesAtual - 1, 1);
+    var mesAnterior = new Date(agora.getFullYear(), agora.getMonth() - 1, 1);
     var diaAnterior = Math.min(agora.getDate(), new Date(mesAnterior.getFullYear(), mesAnterior.getMonth() + 1, 0).getDate());
     var dia = String(diaAnterior).padStart(2, '0');
     var dataAnterior = mesAnterior.getFullYear() + '-' +
@@ -1272,21 +1270,27 @@ test('Alicerce IA também aparece na Visão Financeira e compara períodos equiv
     Store.userId = 'ia-conta-comparacao';
     Store.settings = Object.assign({}, Store.settings, { alicerceLegalAcceptance: { termsVersion: '2026-10-20-v1', privacyVersion: '2026-10-20-v1', acceptedAt: '2026-10-31T12:00:00.000Z' } });
     Store.movements = [
-      { id: 'ia-prev', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', valor: 100, data: dataAnterior, status: 'pago' },
-      { id: 'ia-now', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', valor: 150, data: dataAtual, status: 'pago' }
+      { id: 'ia-prev', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', estabelecimento: 'Mercado Bom', valor: 100, data: dataAnterior, status: 'pago' },
+      { id: 'ia-now', tipo: 'despesa', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras', estabelecimento: 'Mercado Bom', valor: 150, data: dataAtual, status: 'pago' }
     ];
     Store.installments = [];
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
-    return { insight: AlicerceIA.insight(), month: dataAtual.slice(0, 7) };
+    return { monthInsight: AlicerceIA.insight(), total: AlicerceIA._sum(AlicerceIA._periodRows(0)) };
   });
 
-  await expect(page.locator('#alicerce-ai-card')).toBeVisible();
-  expect(resultado.insight).toContain('50%');
-  await page.locator('#alicerce-ai-question').fill('Compare com o mês passado');
-  await page.locator('.alicerce-ai-button').click();
-  await expect(page.locator('#alicerce-ai-answer')).toContainText('50%');
-});
+  await expect(page.locator('#alicerce-ai-dashboard')).toBeVisible();
+  await expect(page.locator('#visao-ai-total')).toContainText('150,00');
+  await expect(page.locator('#visao-ai-compare')).toContainText('50%');
+  await expect(page.locator('#visao-ai-biggest')).toContainText('Comida');
+  await expect(page.locator('#alicerce-ai-card')).toHaveCount(0);
+  await expect(page.locator('#alicerce-ai-question')).toHaveCount(0);
+  await expect(page.locator('details.visao-details')).not.toHaveAttribute('open', '');
+  expect(resultado.monthInsight).toContain('50%');
 
+  await page.locator('#visao-ai-compare').click();
+  await expect(page.locator('#visao-ai-answer')).toContainText('50%');
+  await expect(page.locator('#visao-ai-answer')).toContainText('R$');
+});
 
 test('Alicerce IA respeita o motor financeiro e exclui pendencias, transferencias e cartao emprestado', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
