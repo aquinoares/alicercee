@@ -5128,10 +5128,12 @@ const AlicerceIA = {
     html+='<button class="alicerce-ai-button" type="button" onclick="AlicerceIA.perguntar()">'+esc(ui.ask)+'</button></div>';
     if(this._history&&this._history.length){
       html+='<div class="alicerce-ai-history" id="alicerce-ai-history" aria-live="polite">';
-      this._history.slice(-8).forEach(function(item){
+      var visibleHistory=this._history.slice(-8);
+      visibleHistory.forEach(function(item,index){
         var role=item.role==='user'?'user':'assistant';
         var who=item.role==='user'?(Store.lang==='en'?'You':(Store.lang==='es'?'Tú':'Você')):'Alicerce';
-        html+='<div class="alicerce-ai-message '+role+'"><span>'+esc(who)+'</span><p>'+esc(item.text)+'</p></div>';
+        var answerId=role==='assistant'&&index===visibleHistory.length-1?' id="alicerce-ai-answer"':'';
+        html+='<div class="alicerce-ai-message '+role+'"'+answerId+'><span>'+esc(who)+'</span><p>'+esc(item.text)+'</p></div>';
       });
       html+='</div>';
     }else if(this._answer)html+='<div class="alicerce-ai-answer" id="alicerce-ai-answer" role="status" aria-live="polite">'+esc(this._answer)+'</div>';
