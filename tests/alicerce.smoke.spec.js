@@ -1464,3 +1464,63 @@ test('Alicerce IA nao confunde compras variaveis com assinaturas confirmadas', a
   });
   expect(result).toEqual([]);
 });
+
+
+test('Alicerce IA interpreta categorias, mantém contexto e cruza dados do motor financeiro', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    function monthDate(offset) {
+      var first = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      var lastDay = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+      return format(new Date(first.getFullYear(), first.getMonth(), Math.min(now.getDate(), lastDay)));
+    }
+    Store.userId = 'e2e-alicerce-ai-context';
+    Store.lang = 'pt';
+    Store.loans = [];
+    Store.cards = [];
+    Store.installments = [];
+    Store.commitments = [];
+    Store.financing = [];
+    Store.consortium = [];
+    Store.insurance = [];
+    Store.movements = [
+      { id: 'ai-lunch-1', tipo: 'despesa', status: 'pago', data: monthDate(0), valor: 50, categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete de teste' },
+      { id: 'ai-lunch-2', tipo: 'despesa', status: 'pago', data: monthDate(0), valor: 30, categoria: 'comida', subcategoria: 'fast_food', descricao: 'Hambúrguer', estabelecimento: 'Fast Food de teste' },
+      { id: 'ai-home', tipo: 'despesa', status: 'pago', data: monthDate(0), valor: 1200, categoria: 'moradia', subcategoria: 'aluguel', descricao: 'Aluguel' },
+      { id: 'ai-transport', tipo: 'despesa', status: 'pago', data: monthDate(0), valor: 200, categoria: 'transporte', subcategoria: 'combustivel', descricao: 'Combustível' },
+      { id: 'ai-old-lunch', tipo: 'despesa', status: 'pago', data: monthDate(-1), valor: 20, categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche anterior' },
+      { id: 'ai-income', tipo: 'receita', status: 'recebido', data: monthDate(0), valor: 3000, categoria: 'salario', descricao: 'Salário' }
+    ];
+    AlicerceIA._resetUser();
+    var lunch = AlicerceIA.responder('Quanto gastei com lanche este mês?');
+    var followUp = AlicerceIA.responder('E no mês passado?');
+    var income = AlicerceIA.responder('Qual foi minha renda este mês?');
+    var balance = AlicerceIA.responder('Quanto tenho disponível?');
+    var advice = AlicerceIA.responder('Como posso economizar?');
+    AlicerceIA._history = [{ role: 'user', text: 'mensagem privada de teste' }];
+    Store.userId = 'e2e-alicerce-ai-other-user';
+    AlicerceIA._resetUser();
+    return {
+      lunch: lunch,
+      followUp: followUp,
+      income: income,
+      balance: balance,
+      advice: advice,
+      historyAfterAccountChange: AlicerceIA._history.length,
+      contextAfterAccountChange: AlicerceIA._lastContext
+    };
+  });
+
+  expect(result.lunch).toContain('R$ 80,00');
+  expect(result.followUp).toContain('R$ 20,00');
+  expect(result.income).toContain('R$ 3.000,00');
+  expect(result.balance).toContain('R$ 1.500,00');
+  expect(result.advice).toContain('Moradia');
+  expect(result.advice).toContain('R$ 120,00');
+  expect(result.historyAfterAccountChange).toBe(0);
+  expect(result.contextAfterAccountChange).toBe(null);
+});
