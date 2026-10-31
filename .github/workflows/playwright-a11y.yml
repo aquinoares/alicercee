@@ -40,6 +40,7 @@ jobs:
         with:
           name: alicerce-playwright-axe
           path: |
+            package-lock.json
             playwright-report/
             test-results/
           if-no-files-found: ignore
