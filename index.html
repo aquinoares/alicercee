@@ -4896,7 +4896,7 @@ const ALICERCE_MERCHANT_ALIASES = [
   {key:'ifood',aliases:['ifood','i food']},
   {key:'rappi',aliases:['rappi']},
   {key:'uber',aliases:['uber do brasil','uber trip','uber']},
-  {key:'99',aliases:['99 pop','99 taxi','99 app','99']},
+  {key:'99',aliases:['99 app','99app','99 pop','99pop','99 taxi','99taxi','99']},
   {key:'raia',aliases:['droga raia']},
   {key:'neoenergia',aliases:['neoenergia pernambuco','neoenergia cosern','neoenergia','celpe']},
   {key:'compesa',aliases:['compesa']}
@@ -4907,7 +4907,7 @@ function normalizeAlicerMerchantIdentity(value){
   if(!n)return '';
 
   n=n
-    .replace(/^(?:(?:compra|pagamento|pagto|transacao|pix|debito|credito|cartao|visa|mastercard|elo|maestro|mp|pagseguro|stone|cielo|rede)\s+)+/,'')
+    .replace(/^(?:(?:compra|comp|pagamento|pagto|pgto|pag|pg|transacao|trans|pix|debito|deb|credito|cred|cartao|visa|mastercard|elo|maestro|mp|ec|pagseguro|stone|cielo|rede)\s+)+/,'')
     .replace(/\b(?:compra|pagamento|pagto|transacao|pix|debito|credito|cartao|visa|mastercard|elo|maestro|aprovado|aprovada)\b/g,' ')
     .replace(/\b(?:loja|lj|filial|unidade|pdv|pos|terminal|term|nsu|aut|doc|ref)\s*#?\s*\d+\b/g,' ')
     .replace(/\b\d{5,}\b/g,' ')
@@ -5043,31 +5043,42 @@ const Interpreter={
     {p:/(porto seguro|bradesco seguro|sul america|mapfre|liberty|allianz)/i,c:'transporte',s:'seguro'}
   ],
   norm(t){return normalizeAlicerClassificationText(t)},
-  semValor(t){const m=String(t||'').match(/R?\$?\s*(\d{1,6}(?:[.,]\d{1,2})?)\s*(?:reais?|reals?|R\$|BRL)?/i);return this.norm(m&&m[1]?String(t).replace(m[1],' '):t)},
+  semValor(t){
+    var raw=String(t||'');
+    raw=raw.replace(/\b(?:valor|total|vlr|amount)\s*[:=]?\s*(?:r\$\s*)?(?:\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:[,.]\d{1,2})?)/ig,' ');
+    raw=raw.replace(/(?:r\$\s*|brl\s*)(?:\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:[,.]\d{1,2})?)/ig,' ');
+    raw=raw.replace(/(?:^|\s)(\d{1,3}(?:\.\d{3})*,\d{1,2}|\d+,\d{1,2}|\d+\.\d{2})(?=\s*$)/,' ');
+    return this.norm(raw);
+  },
   extractAmount(text){
-    const patterns=[
-      /R?\$?\s*(\d{1,3}(?:\.\d{3})+(?:,\d{1,2})?)\s*(?:reais?|reals?|R\$|BRL)?/i,
-      /R?\$?\s*(\d{1,6}(?:,\d{1,2})?)\s*(?:reais?|reals?|R\$|BRL)?/i
+    var raw=String(text||'');
+    var parseMoney=function(value){
+      var val=String(value||'').trim();
+      if(!val)return null;
+      if(/^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(val))val=val.replace(/\./g,'').replace(',','.');
+      else if(/^\d+,\d{1,2}$/.test(val))val=val.replace(',','.');
+      else if(/^\d{1,3}(?:,\d{3})+\.\d{1,2}$/.test(val))val=val.replace(/,/g,'');
+      var num=Number(val);
+      return isFinite(num)&&num>0?num:null;
+    };
+    var patterns=[
+      /(?:r\$\s*|brl\s*)(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:[,.]\d{1,2})?)/ig,
+      /\b(?:valor|total|vlr|amount)\s*[:=]?\s*(?:r\$\s*)?(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?|\d+(?:[,.]\d{1,2})?)/ig,
+      /(?:^|[^a-z0-9])(\d{1,3}(?:\.\d{3})+,\d{1,2}|\d+,\d{1,2}|\d+\.\d{2})(?=$|[^a-z0-9])/ig
     ];
-
-    for(const p of patterns){
-      const m=String(text||'').match(p);
-      if(m){
-        let val=m[1];
-
-        if(/\./.test(val)&&/,/.test(val)){
-          val=val.replace(/\./g,'').replace(',','.');
-        }else if(/^\d{1,3}\.\d{3}$/.test(val)){
-          val=val.replace('.','');
-        }else{
-          val=val.replace(',','.');
-        }
-
-        const num=parseFloat(val);
-        if(!isNaN(num)&&num>0)return num;
+    for(var p=0;p<patterns.length;p++){
+      var re=patterns[p],match,last=null;
+      while((match=re.exec(raw))!==null)last=match[1];
+      if(last){
+        var parsed=parseMoney(last);
+        if(parsed!==null)return parsed;
       }
     }
-
+    var plain=raw.match(/(?:^|[^a-z0-9])(\d{1,4})(?=$|[^a-z0-9])/ig)||[];
+    if(plain.length===1){
+      var single=plain[0].replace(/^[^0-9]+/,'').replace(/[^0-9]+$/,'');
+      return parseMoney(single);
+    }
     return null;
   },
   extractDate(text){
