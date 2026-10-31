@@ -5182,7 +5182,14 @@ AlicerceIA._detectAnomalies=function(rows){
   });
   var anomalies=[];
   current.forEach(function(row){
-    var prior=history.filter(function(item){return item.categoria===row.categoria;});
+    var sameCategory=history.filter(function(item){return item.categoria===row.categoria;});
+    var sameSubcategory=sameCategory.filter(function(item){return item.subcategoria===row.subcategoria;});
+    var comparisonScope='categoria';
+    var prior=sameCategory;
+    if(sameSubcategory.length>=5){
+      prior=sameSubcategory;
+      comparisonScope='subcategoria';
+    }
     if(prior.length<5)return;
     var amounts=prior.map(function(item){return Number(item.valor)||0;});
     var median=this._median(amounts);
@@ -5197,7 +5204,8 @@ AlicerceIA._detectAnomalies=function(rows){
       subcategory:row.subcategoria,
       median:median,
       ratio:row.valor/median,
-      merchant:row.local||row.descricao||''
+      merchant:row.local||row.descricao||'',
+      comparisonScope:comparisonScope
     });
   },this);
   return anomalies.sort(function(a,b){return b.ratio-a.ratio;});
