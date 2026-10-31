@@ -869,10 +869,13 @@ test('classifica o produto antes da categoria ampla do supermercado', async func
     };
     const shampoo = Interpreter.interpretLocal('Valor: 42 | Item: Shampoo | Local: Carrefour');
     const detergente = Interpreter.interpretLocal('Valor: 18 | Item: Detergente | Local: Carrefour');
+    Store.learnCorrection('Carrefour', 'comida', 'mercado', 'Shampoo');
+    const explicitCorrection = Interpreter.interpretLocal('Valor: 42 | Item: Shampoo | Local: Carrefour');
     return {
       shampoo: shampoo,
       detergente: detergente,
-      legacyForItem: Store.getLearned('Carrefour', 'Shampoo')
+      legacyForItem: Store.getLearned('Carrefour', 'Shampoo'),
+      explicitCorrection: explicitCorrection
     };
   });
 
@@ -887,7 +890,8 @@ test('classifica o produto antes da categoria ampla do supermercado', async func
     subcategoria: 'produtos_limpeza',
     source: 'item'
   });
-  expect(resultado.legacyForItem).toBeNull();
+  expect(resultado.legacyForItem).toMatchObject({ categoria: 'comida', subcategoria: 'mercado' });
+  expect(resultado.explicitCorrection).toMatchObject({ categoria: 'comida', subcategoria: 'mercado', source: 'learning' });
 });
 
 test('reconhece lanches e estabelecimentos de fast food com subcategorias válidas', async function ({ page }) {
