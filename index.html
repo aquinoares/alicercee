@@ -5696,7 +5696,7 @@ AlicerceIA.iniciarMicrofone=async function(mode){
         if(status)status.textContent='O reconhecimento local não iniciou. Autorize o modo online para continuar.';
         return;
       }
-      if(availability==='downloadable'){
+      if(availability==='downloadable'||availability==='downloading'){
         if(status)status.textContent='Preparando o pacote de idioma '+language+' no aparelho...';
         var installed=await Recognition.install({langs:[language],processLocally:true});
         if(requestId!==this._recognitionRequestId)return;
