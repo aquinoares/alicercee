@@ -1833,6 +1833,14 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
   }).toBe(1);
   await expect(speakButton).toContainText('Ouvir resposta');
   await expect(speakButton).toHaveAttribute('aria-pressed', 'false');
+
+  await speakButton.click();
+  await expect(speakButton).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.alicerce-assistant-back').click();
+  await expect(page.locator('#alicerce-assistant-page')).toHaveCount(0);
+  await expect.poll(function () {
+    return page.evaluate(function () { return window.__alicerceSpeechTest.cancelled; });
+  }).toBe(2);
 });
 
 test('Alicia não usa voz remota quando não existe voz local instalada', async function ({ page }) {
