@@ -4,6 +4,13 @@
 
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Alicerce</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
+<meta name="theme-color" content="#0B0B0D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Alicerce">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <style>
 /* ===========================================================
    THEME SYSTEM — PRETO + LARANJA (padrão) — fintech premium
@@ -2369,7 +2376,7 @@ body:has(.visao-financeira){background:#080A11;color:#E9ECF1}
 .alicerce-login-flow,.alicerce-login-flow *{font-family:'Inter',sans-serif;box-sizing:border-box}
 .alicerce-login-flow{position:fixed;inset:0;z-index:2147483000;width:100vw;height:100vh;height:100dvh;display:flex;align-items:center;justify-content:center;padding:0;background:#0B0B0D;color:#fff;overflow:hidden;isolation:isolate}
 .alicerce-login-flow .fluxo-container{position:relative;width:390px;max-width:100vw;height:800px;max-height:100vh;max-height:100dvh;border-radius:36px;overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#000;box-shadow:0 32px 80px rgba(0,0,0,.6)}
-.alicerce-login-flow .living-video-wrap{position:absolute;inset:0;z-index:0;overflow:hidden;background:#0B0B0D}
+.alicerce-login-flow .living-video-wrap{position:absolute;inset:0;z-index:0;overflow:hidden;background:#0B0B0D;pointer-events:none}
 .alicerce-login-flow .living-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;transition:opacity 800ms cubic-bezier(.4,0,.2,1);filter:none!important;transform:none}
 .alicerce-login-flow .living-dim{position:absolute;inset:0;background:rgba(11,11,13,.15);pointer-events:none}
 .alicerce-login-flow .living-gradient{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.35),rgba(0,0,0,.05),rgba(0,0,0,.75));pointer-events:none}
@@ -2526,6 +2533,31 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 .cc2-page.cc2-redesign .cc2-redesign-details .cc2-parc-button.late .cc2-parc-bubble{
   background:var(--tint-negative)!important;border-color:var(--negative)!important;color:var(--negative)!important
 }
+</style>
+
+<style id="alicerce-pwa-install-styles">
+.al-install-overlay{position:fixed;inset:0;z-index:2147483001;display:flex;align-items:flex-end;justify-content:center;padding:16px 12px calc(14px + env(safe-area-inset-bottom));background:rgba(0,0,0,.68)}
+.al-install-overlay[hidden]{display:none!important}
+.al-install-dialog{width:100%;max-width:420px;max-height:min(88vh,680px);overflow:auto;background:var(--surface,#151518);color:var(--text,#F5F5F5);border:1px solid var(--line,#2A2A31);border-radius:22px;padding:22px;box-shadow:0 18px 60px rgba(0,0,0,.42);animation:alInstallIn .22s ease-out}
+.al-install-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.al-install-kicker{font-size:10px;font-weight:800;letter-spacing:1.2px;color:var(--accent,#FF6500);text-transform:uppercase;margin-bottom:5px}
+.al-install-title{font-size:20px;font-weight:800;line-height:1.25;color:var(--text,#F5F5F5)}
+.al-install-close{width:40px;height:40px;flex:0 0 40px;border:1px solid var(--line,#2A2A31);border-radius:12px;color:var(--text,#F5F5F5);font-size:22px;line-height:1}
+.al-install-copy{font-size:13px;line-height:1.55;color:var(--text2,#9C9CA6);margin:10px 0 14px}
+.al-install-steps{list-style:none;display:grid;gap:9px;margin:0 0 18px;padding:0}
+.al-install-steps li{display:flex;align-items:flex-start;gap:10px;padding:11px;border:1px solid var(--line,#2A2A31);border-radius:13px;background:var(--surface2,#1D1D21);font-size:13px;line-height:1.45;color:var(--text,#F5F5F5)}
+.al-install-step-number{display:flex;align-items:center;justify-content:center;width:23px;height:23px;flex:0 0 23px;border-radius:50%;background:var(--tint-accent,rgba(255,101,0,.15));color:var(--accent,#FF6500);font-weight:800;font-size:12px}
+.al-install-actions{display:flex;gap:9px}
+.al-install-actions button{min-height:46px;flex:1;padding:11px 13px;border-radius:13px;font:inherit;font-size:13px;font-weight:750;cursor:pointer}
+.al-install-primary{border:1px solid var(--accent,#FF6500);background:var(--accent,#FF6500);color:var(--on-accent,#0B0B0D)}
+.al-install-later{border:1px solid var(--line,#2A2A31);background:transparent;color:var(--text,#F5F5F5)}
+.al-install-actions button:focus-visible,.al-install-close:focus-visible{outline:2px solid var(--accent-light,var(--accent,#FF6500));outline-offset:3px}
+#menu-panel .al-install-menu-item{display:flex;align-items:center;width:calc(100% - 20px);min-height:52px;margin:8px 10px;padding:14px 14px;border:1px solid var(--accent)!important;border-radius:12px;background:var(--surface)!important;text-align:left;color:var(--accent)!important;font:inherit;font-weight:800;box-sizing:border-box}
+#menu-panel .al-install-menu-item:hover{background:var(--surface);color:var(--accent)}
+.al-install-menu-icon{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 22px}
+.al-install-menu-icon svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@keyframes alInstallIn{from{transform:translateY(14px);opacity:.5}to{transform:translateY(0);opacity:1}}
+@media(prefers-reduced-motion:reduce){.al-install-dialog{animation:none}}
 </style>
 </head>
 <body data-theme="azul">
@@ -6340,6 +6372,7 @@ function renderMenu(){
         +'<span class="tf-me-chev">'+icon('chevronDown')+'</span></div></div>';
       return '<div class="menu-item'+(Store.screen===i.id?' active':'')+'" onclick="go(\''+i.id+'\');toggleMenu()">'+icon(i.icon)+'<span>'+i.label+'</span></div>';
     }).join('');
+    if(window.AlicercePWA&&typeof window.AlicercePWA.syncMenu==='function')window.AlicercePWA.syncMenu();
   }catch(e){}
 }
 function toggleMenu(){
@@ -14565,6 +14598,109 @@ try{
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
+})();
+</script>
+
+<script id="alicerce-pwa-install">
+(function(){
+  'use strict';
+  var DISMISS_KEY='alicerce_pwa_install_snooze_until_v1',SNOOZE_DAYS=30;
+  var deferredPrompt=null,overlay=null,dialog=null,isOpen=false,scheduled=false,attemptStarted=false,previousFocus=null;
+  var COPY={
+    pt:{kicker:'ALICERCE NO SEU CELULAR',title:'Tenha a Alicerce na tela inicial',androidText:'Adicione um atalho para abrir sua vida financeira como um aplicativo, sem precisar procurar o endereço no navegador.',androidNative:'O navegador pode instalar a Alicerce diretamente no seu celular.',androidSteps:['Abra o menu do navegador (⋮).','Toque em “Instalar app” ou “Adicionar à tela inicial”.'],iosText:'Adicione a Alicerce à tela inicial do iPhone para abrir como um aplicativo.',iosSteps:['Abra este endereço no Safari.','Toque no botão Compartilhar.','Escolha “Adicionar à Tela de Início” e depois toque em “Adicionar”.'],primaryInstall:'Instalar agora',primaryDone:'Entendi',later:'Agora não',menu:'Adicionar à tela inicial',close:'Fechar instruções',desktopText:'Para adicionar a Alicerce ao celular, abra este mesmo endereço no navegador do telefone e escolha “Adicionar à tela inicial” no menu do navegador.'},
+    en:{kicker:'ALICERCE ON YOUR PHONE',title:'Add Alicerce to your home screen',androidText:'Add a shortcut to open your finances like an app, without searching for the website in your browser.',androidNative:'Your browser can install Alicerce directly on your phone.',androidSteps:['Open your browser menu (⋮).','Choose “Install app” or “Add to Home screen”.'],iosText:'Add Alicerce to your iPhone home screen and open it like an app.',iosSteps:['Open this address in Safari.','Tap the Share button.','Choose “Add to Home Screen”, then tap “Add”.'],primaryInstall:'Install now',primaryDone:'Got it',later:'Not now',menu:'Add to Home Screen',close:'Close instructions',desktopText:'To add Alicerce to your phone, open this same address in your phone browser and choose “Add to Home Screen” in the browser menu.'},
+    es:{kicker:'ALICERCE EN TU CELULAR',title:'Agrega Alicerce a la pantalla de inicio',androidText:'Agrega un acceso directo para abrir tus finanzas como una aplicación, sin buscar la dirección en el navegador.',androidNative:'El navegador puede instalar Alicerce directamente en tu celular.',androidSteps:['Abre el menú del navegador (⋮).','Toca “Instalar aplicación” o “Añadir a pantalla de inicio”.'],iosText:'Agrega Alicerce a la pantalla de inicio del iPhone para abrirla como una aplicación.',iosSteps:['Abre esta dirección en Safari.','Toca el botón Compartir.','Elige “Agregar a pantalla de inicio” y después toca “Agregar”.'],primaryInstall:'Instalar ahora',primaryDone:'Entendido',later:'Ahora no',menu:'Agregar a pantalla de inicio',close:'Cerrar instrucciones',desktopText:'Para agregar Alicerce al celular, abre esta misma dirección en el navegador del teléfono y elige “Agregar a pantalla de inicio” en el menú del navegador.'}
+  };
+  function language(){try{var l=(typeof Store!=='undefined'&&Store&&Store.lang)?String(Store.lang).toLowerCase():'pt';return l.indexOf('en')===0?'en':(l.indexOf('es')===0?'es':'pt')}catch(e){return 'pt'}}
+  function copy(){return COPY[language()]||COPY.pt}
+  function ua(){return String(navigator.userAgent||'')}
+  function isIOS(){return /iphone|ipad|ipod/i.test(ua())||(navigator.platform==='MacIntel'&&Number(navigator.maxTouchPoints||0)>1)}
+  function isAndroid(){return /android/i.test(ua())}
+  function isMobile(){return isIOS()||isAndroid()}
+  function isStandalone(){try{return !!(navigator.standalone===true||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches))}catch(e){return navigator.standalone===true}}
+  function accountReady(){try{if(typeof Store==='undefined'||!Store||!Store.userId)return false;var s=String(Store.screen||'');if(s==='login'||s==='recovery'||s==='recuperar')return false;var welcome=document.getElementById('livingSplash');if(welcome&&!welcome.classList.contains('hidden'))return false;return true}catch(e){return false}}
+  function wasDismissed(){try{return Number(localStorage.getItem(DISMISS_KEY)||0)>Date.now()}catch(e){return false}}
+  function snooze(){try{localStorage.setItem(DISMISS_KEY,String(Date.now()+SNOOZE_DAYS*24*60*60*1000))}catch(e){}}
+  function node(tag,cls,value){var el=document.createElement(tag);if(cls)el.className=cls;if(typeof value==='string')el.textContent=value;return el}
+  function mount(){
+    if(overlay)return;
+    overlay=node('div','al-install-overlay');overlay.id='al-install-onboarding';overlay.hidden=true;overlay.setAttribute('aria-hidden','true');
+    dialog=node('section','al-install-dialog');dialog.setAttribute('role','dialog');dialog.setAttribute('aria-modal','true');dialog.setAttribute('aria-labelledby','al-install-title');overlay.appendChild(dialog);
+    overlay.addEventListener('click',function(e){if(e.target===overlay)close(true)});
+    document.addEventListener('keydown',function(e){if(isOpen&&e.key==='Escape')close(true)});
+    document.body.appendChild(overlay);
+  }
+  function renderDialog(){
+    var c=copy();while(dialog.firstChild)dialog.removeChild(dialog.firstChild);
+    var head=node('div','al-install-head'),tw=node('div','');
+    tw.appendChild(node('div','al-install-kicker',c.kicker));
+    var title=node('h2','al-install-title',c.title);title.id='al-install-title';tw.appendChild(title);head.appendChild(tw);
+    var x=node('button','al-install-close','×');x.type='button';x.setAttribute('aria-label',c.close);x.addEventListener('click',function(){close(true)});head.appendChild(x);dialog.appendChild(head);
+    var steps=[],intro='';
+    if(isIOS()){intro=c.iosText;steps=c.iosSteps}else if(isAndroid()&&deferredPrompt){intro=c.androidNative}else if(isAndroid()){intro=c.androidText;steps=c.androidSteps}else{intro=c.desktopText}
+    dialog.appendChild(node('p','al-install-copy',intro));
+    if(steps.length){var list=node('ol','al-install-steps');steps.forEach(function(s,i){var li=node('li','');li.appendChild(node('span','al-install-step-number',String(i+1)));li.appendChild(node('span','',s));list.appendChild(li)});dialog.appendChild(list)}
+    var actions=node('div','al-install-actions'),later=node('button','al-install-later',c.later);
+    later.type='button';later.addEventListener('click',function(){close(true)});
+    var primary=node('button','al-install-primary',(isAndroid()&&deferredPrompt)?c.primaryInstall:c.primaryDone);
+    primary.id='al-install-primary';primary.type='button';primary.addEventListener('click',function(){if(isAndroid()&&deferredPrompt)install();else close(true)});
+    actions.appendChild(later);actions.appendChild(primary);dialog.appendChild(actions);
+  }
+  function show(force){
+    if(isStandalone())return false;
+    if(!force&&(!accountReady()||wasDismissed()))return false;
+    mount();renderDialog();previousFocus=document.activeElement;overlay.hidden=false;overlay.setAttribute('aria-hidden','false');isOpen=true;
+    window.setTimeout(function(){var b=document.getElementById('al-install-primary');if(b&&isOpen)b.focus()},0);return true;
+  }
+  function close(remember){
+    if(!overlay||!isOpen)return;overlay.hidden=true;overlay.setAttribute('aria-hidden','true');isOpen=false;
+    if(remember)snooze();if(previousFocus&&typeof previousFocus.focus==='function'){try{previousFocus.focus()}catch(e){}}
+  }
+  async function install(){
+    if(!deferredPrompt)return;
+    var e=deferredPrompt;deferredPrompt=null;
+    try{await e.prompt();var choice=await e.userChoice;if(choice&&choice.outcome==='accepted')close(false);else close(true)}
+    catch(err){deferredPrompt=null;if(isOpen)renderDialog();if(window.console&&console.warn)console.warn('[Alicerce PWA] Não foi possível abrir a instalação:',err)}
+  }
+  function check(){
+    if(!isMobile()||isStandalone()||!accountReady()||wasDismissed())return false;
+    if(isOpen||attemptStarted||scheduled)return false;
+    scheduled=true;window.setTimeout(function(){scheduled=false;if(!isOpen&&!attemptStarted&&accountReady()&&!wasDismissed())attemptStarted=show(false)},1300);return true;
+  }
+  function menuEntry(){
+    if(isStandalone())return;
+    var menu=document.getElementById('menu-panel');if(!menu)return;
+    var existing=menu.querySelector('.al-install-menu-item');
+    var existingDivider=menu.querySelector('.al-install-menu-divider');
+    if(existing&&existingDivider){
+      var anchor=menu.firstElementChild;
+      if(anchor&&anchor.nextElementSibling!==existingDivider)menu.insertBefore(existingDivider,anchor.nextElementSibling);
+      if(existingDivider.nextElementSibling!==existing)menu.insertBefore(existing,existingDivider.nextElementSibling);
+      return;
+    }
+    var div=node('div','menu-divider al-install-menu-divider');
+    var button=node('button','menu-item al-install-menu-item');button.type='button';
+    var ic=node('span','al-install-menu-icon');
+    ic.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M12 7v8m-3-3 3 3 3-3M8 18h8"></path></svg>';
+    button.appendChild(ic);button.appendChild(node('span','',copy().menu));button.setAttribute('aria-label',copy().menu);
+    button.addEventListener('click',function(){if(menu.classList.contains('open')&&typeof window.toggleMenu==='function')window.toggleMenu();show(true)});
+    var first=menu.firstElementChild;
+    menu.insertBefore(div,first?first.nextSibling:null);
+    menu.insertBefore(button,div.nextSibling);
+  }
+  window.addEventListener('beforeinstallprompt',function(e){if(!isMobile())return;e.preventDefault();deferredPrompt=e;if(isOpen)renderDialog()});
+  window.addEventListener('appinstalled',function(){
+    deferredPrompt=null;close(false);try{localStorage.removeItem(DISMISS_KEY)}catch(e){}
+    var m=document.getElementById('menu-panel');if(m){var b=m.querySelector('.al-install-menu-item'),d=m.querySelector('.al-install-menu-divider');if(b)b.remove();if(d)d.remove()}
+  });
+  function start(){
+    mount();menuEntry();
+    var m=document.getElementById('menu-panel');if(m&&window.MutationObserver){var mo=new MutationObserver(function(){menuEntry()});mo.observe(m,{childList:true})}
+    var app=document.getElementById('app');if(app&&window.MutationObserver){var ao=new MutationObserver(function(){check()});ao.observe(app,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})}
+    window.addEventListener('focus',check);document.addEventListener('visibilitychange',function(){if(!document.hidden)check()});window.setTimeout(check,1800);
+  }
+  window.AlicercePWA={check:check,open:function(){return show(true)},isInstalled:isStandalone,syncMenu:menuEntry};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
 </body></html>
