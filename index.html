@@ -5266,6 +5266,97 @@ AlicerceIA.enviarMensagem=function(question){
   },0);
 };
 
+
+AlicerceIA._ocrScriptPromise=null;
+AlicerceIA._photoBusy=false;
+AlicerceIA._loadPhotoOcr=function(){
+  if(window.Tesseract&&typeof window.Tesseract.createWorker==='function')return Promise.resolve(window.Tesseract);
+  if(this._ocrScriptPromise)return this._ocrScriptPromise;
+  this._ocrScriptPromise=new Promise(function(resolve,reject){
+    var script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js';
+    script.async=true;
+    script.onload=function(){
+      if(window.Tesseract&&typeof window.Tesseract.createWorker==='function')resolve(window.Tesseract);
+      else reject(new Error('Leitor de imagem indisponível.'));
+    };
+    script.onerror=function(){reject(new Error('Não foi possível carregar o leitor de imagem. Verifique a conexão e tente novamente.'));};
+    document.head.appendChild(script);
+  }).catch(function(error){
+    AlicerceIA._ocrScriptPromise=null;
+    throw error;
+  });
+  return this._ocrScriptPromise;
+};
+AlicerceIA.processarFoto=async function(input){
+  this._resetUser();
+  if(this._photoBusy)return;
+  var file=input&&input.files&&input.files.length?input.files[0]:null;
+  if(!file)return;
+  var ownerId=String(Store.userId||'');
+  var status=document.getElementById('alicerce-assistant-status');
+  var camera=document.getElementById('alicerce-assistant-camera');
+  var worker=null;
+  var extracted='';
+  var allowed=['image/jpeg','image/png','image/webp','image/bmp'];
+  if(allowed.indexOf(String(file.type||'').toLowerCase())<0){
+    if(status)status.textContent='Formato não compatível. Use uma foto JPG, PNG ou WebP.';
+    input.value='';
+    return;
+  }
+  if(file.size>12*1024*1024){
+    if(status)status.textContent='A foto precisa ter até 12 MB. Tente uma imagem menor.';
+    input.value='';
+    return;
+  }
+  this._photoBusy=true;
+  if(camera)camera.disabled=true;
+  if(status)status.textContent='Preparando a leitura local da foto...';
+  try{
+    var ocr=await this._loadPhotoOcr();
+    worker=await ocr.createWorker('por',1,{
+      logger:function(info){
+        if(!status)return;
+        if(info&&info.status==='recognizing text'){
+          var percent=Math.max(0,Math.min(100,Math.round((Number(info.progress)||0)*100)));
+          status.textContent='Alicia está lendo a foto... '+percent+'%';
+        }
+      }
+    });
+    var result=await worker.recognize(file);
+    extracted=String(result&&result.data&&result.data.text||'').replace(/\r/g,'').trim();
+  }catch(error){
+    if(status)status.textContent=String(error&&error.message||'Não foi possível ler a foto. Tente outra imagem.');
+    return;
+  }finally{
+    if(worker){
+      try{await worker.terminate()}catch(e){}
+      worker=null;
+    }
+    input.value='';
+    file=null;
+    this._photoBusy=false;
+    if(camera)camera.disabled=false;
+  }
+  if(String(Store.userId||'')!==ownerId){
+    if(status)status.textContent='A conta mudou durante a leitura. O resultado foi descartado.';
+    return;
+  }
+  if(!extracted){
+    if(status)status.textContent='Não consegui identificar texto suficiente. Tente fotografar com mais luz e foco.';
+    return;
+  }
+  var messageInput=document.getElementById('alicerce-assistant-input');
+  var maxChars=5000;
+  var text=extracted.slice(0,maxChars);
+  if(extracted.length>maxChars)text+='\n\n[Texto parcial: a leitura excedeu o limite de 5.000 caracteres.]';
+  if(messageInput){
+    messageInput.value=text;
+    messageInput.focus();
+  }
+  if(status)status.textContent='Texto extraído no aparelho. Revise e toque em enviar. O Alicerce não envia nem armazena a foto.';
+};
+
 function renderAssistente(){
   AlicerceIA._resetUser();
   var lang=Store.lang||'pt';
