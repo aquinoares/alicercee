@@ -1939,7 +1939,15 @@ test('Alicia prepara uma despesa pelo chat e só grava após a confirmação fin
     Store.cards = [];
     Store.movements = [];
     Store.installments = [];
-    Store.settings = { lang: 'pt', theme: 'azul' };
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
     AlicerceIA._resetUser();
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
   });
@@ -1992,7 +2000,15 @@ test('Alicia não registra automaticamente compras parceladas ou no cartão pelo
     Store.lang = 'pt';
     Store.cards = [];
     Store.movements = [];
-    Store.settings = { lang: 'pt', theme: 'azul' };
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
     AlicerceIA._resetUser();
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
   });
