@@ -5316,15 +5316,12 @@ AlicerceIA.enviarMensagem=function(question){
 };
 
 
-/* A Alicia usa uma única identidade vocal neural: Dora, português brasileiro. */
+/* A Alicia usa uma única voz remota fixa em português brasileiro. */
 AlicerceIA._speechButton=null;
 AlicerceIA._speechUtterance=null;
-AlicerceIA._ttsVoiceId='pf_dora';
-AlicerceIA._ttsInstance=null;
-AlicerceIA._ttsInitPromise=null;
-AlicerceIA._ttsLibraryPromise=null;
-AlicerceIA._ttsAudioContext=null;
-AlicerceIA._ttsAudioSource=null;
+AlicerceIA._ttsVoiceId='pt-BR-FranciscaNeural';
+AlicerceIA._ttsAudio=null;
+AlicerceIA._ttsObjectUrl='';
 AlicerceIA._ttsRequestId=0;
 AlicerceIA._ttsBusy=false;
 AlicerceIA._pendingPrivacyAction='';
@@ -5334,8 +5331,8 @@ AlicerceIA._privacyCopy={
   pt:{
     dictation:'Você também pode falar pelo microfone do teclado. O Alicerce recebe somente o texto, não a gravação.',
     photo:'Privacidade: as fotos são lidas no próprio aparelho e não são enviadas nem armazenadas pelo Alicerce. O texto identificado aparece para você revisar antes do envio.',
-    voice:'Na primeira utilização, o navegador baixa o modelo da voz fixa Dora (aprox. 295 MB). A fala é gerada no próprio aparelho; o texto da conversa não é enviado. A biblioteca MediaPipe pode enviar métricas técnicas de uso ao Google.',
-    continue:'Continuar',cancel:'Cancelar',listenNow:'Baixar e ouvir'
+    voice:'Ao tocar em ouvir, somente o texto desta resposta será enviado por uma conexão protegida ao serviço de voz online que utiliza a tecnologia do Microsoft Edge. A resposta pode conter valores financeiros. Não enviamos o histórico inteiro nem gravações. O áudio é reproduzido e descartado no aparelho.',
+    continue:'Continuar',cancel:'Cancelar',listenNow:'Enviar texto e ouvir'
   },
   en:{
     dictation:'You can also speak using your keyboard microphone. Alicerce receives only the text, not an audio recording.',
@@ -5385,7 +5382,7 @@ AlicerceIA.pedirAudio=function(index,button){
     if(languageStatus)languageStatus.textContent=this._mensagemVozSomentePt();
     return;
   }
-  if(this._speechButton===button&&(this._ttsBusy||this._ttsAudioSource)){
+  if(this._speechButton===button&&(this._ttsBusy||this._ttsAudio)){
     this.pararAudio();
     return;
   }
@@ -5423,97 +5420,18 @@ AlicerceIA._setSpeechButtonState=function(button,playing){
   button.setAttribute('aria-label',nextLabel);
   button.setAttribute('aria-pressed',playing?'true':'false');
 };
-/* A biblioteca MediaPipe e o modelo são carregados sob demanda, só no primeiro toque. */
-AlicerceIA._loadTtsLibrary=function(){
-  var cached=window.__alicerceMediaPipeAudio;
-  if(cached&&cached.FilesetResolver&&cached.TextToSpeech)return Promise.resolve(cached);
-  if(this._ttsLibraryPromise)return this._ttsLibraryPromise;
-  var nativeAudio=window.Audio;
-  this._ttsLibraryPromise=new Promise(function(resolve,reject){
-    var script=document.createElement('script');
-    script.src='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.0/audio_bundle.js';
-    script.async=true;
-    script.crossOrigin='anonymous';
-    var restoreNativeAudio=function(){
-      try{window.Audio=nativeAudio}catch(e){}
-    };
-    script.onload=function(){
-      var audioApi=window.Audio;
-      restoreNativeAudio();
-      if(!audioApi||!audioApi.FilesetResolver||!audioApi.TextToSpeech){
-        AlicerceIA._ttsLibraryPromise=null;
-        reject(new Error('A biblioteca MediaPipe não disponibilizou a API de voz.'));
-        return;
-      }
-      window.__alicerceMediaPipeAudio=audioApi;
-      resolve(audioApi);
-    };
-    script.onerror=function(){
-      restoreNativeAudio();
-      AlicerceIA._ttsLibraryPromise=null;
-      reject(new Error('Não foi possível carregar a biblioteca MediaPipe.'));
-    };
-    document.head.appendChild(script);
-  });
-  return this._ttsLibraryPromise;
-};
-AlicerceIA._createTtsRuntime=async function(status){
-  if(!window.isSecureContext)throw new Error('A voz fixa exige uma conexão segura.');
-  var wasmUrl='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.0/wasm';
-  var modelUrl='https://huggingface.co/litert-community/Kokoro-82M/resolve/main/kokoro_int8_gpu_fp16.litertlm';
-  if(status)status.textContent='Carregando o mecanismo de voz da Alicia...';
-  var mediaPipe=await this._loadTtsLibrary();
-  if(!mediaPipe||!mediaPipe.FilesetResolver||!mediaPipe.TextToSpeech)throw new Error('O mecanismo de voz não está disponível.');
-  var wasmFileset=await mediaPipe.FilesetResolver.forAudioTasks(wasmUrl);
-  if(status)status.textContent='Baixando o modelo Dora (aprox. 295 MB) na primeira utilização...';
-  var tts=await mediaPipe.TextToSpeech.createFromOptions(wasmFileset,{
-    baseOptions:{
-      modelAssetPath:modelUrl,
-      delegate:'GPU'
-    },
-    defaultVoiceId:'pf_dora',
-    speakingRate:1.0
-  });
-  var voices=await tts.listVoices();
-  var foundDora=false;
-  (voices||[]).forEach(function(voice){
-    if(voice&&voice.voiceId==='pf_dora')foundDora=true;
-  });
-  if(!foundDora){
-    try{tts.close()}catch(e){}
-    throw new Error('A voz fixa Dora não foi encontrada no modelo.');
-  }
-  return tts;
-};
-AlicerceIA._loadNeuralVoice=async function(status){
-  if(this._ttsInstance)return this._ttsInstance;
-  if(!this._ttsInitPromise){
-    this._ttsInitPromise=this._createTtsRuntime(status).then(function(tts){
-      if(!tts||typeof tts.synthesize!=='function')throw new Error('O modelo de voz não foi inicializado corretamente.');
-      AlicerceIA._ttsInstance=tts;
-      return tts;
-    });
-  }
-  try{
-    return await this._ttsInitPromise;
-  }catch(error){
-    this._ttsInitPromise=null;
-    throw error;
-  }
-};
 AlicerceIA.pararAudio=function(){
   this._ttsRequestId+=1;
   this._ttsBusy=false;
-  var wasActive=!!(this._ttsBusy||this._ttsAudioSource);
-  var tts=this._ttsInstance;
-  if(wasActive&&tts&&typeof tts.cancel==='function'){
-    try{tts.cancel()}catch(e){}
+  var audio=this._ttsAudio;
+  this._ttsAudio=null;
+  if(audio){
+    try{audio.onended=null;audio.onerror=null;audio.pause();}catch(e){}
+    try{audio.removeAttribute('src');audio.load();}catch(e){}
   }
-  var source=this._ttsAudioSource;
-  this._ttsAudioSource=null;
-  if(source){
-    try{source.stop(0)}catch(e){}
-    try{source.disconnect()}catch(e){}
+  if(this._ttsObjectUrl){
+    try{URL.revokeObjectURL(this._ttsObjectUrl);}catch(e){}
+    this._ttsObjectUrl='';
   }
   this._setSpeechButtonState(this._speechButton,false);
   this._speechButton=null;
@@ -5548,9 +5466,9 @@ AlicerceIA.ouvirMensagem=async function(index,button){
     if(status)status.textContent=this._mensagemVozSomentePt();
     return;
   }
-  var AudioContextCtor=window.AudioContext||window.webkitAudioContext;
-  if(!AudioContextCtor){
-    if(status)status.textContent=button.getAttribute('data-label-unavailable')||'A leitura em voz não está disponível neste navegador.';
+  var client=window.alicerceSupabase;
+  if(!client||!client.functions||typeof client.functions.invoke!=='function'){
+    if(status)status.textContent=button.getAttribute('data-label-error')||'A voz remota ainda não está configurada. O texto continua disponível.';
     return;
   }
   this.pararAudio();
@@ -5559,36 +5477,46 @@ AlicerceIA.ouvirMensagem=async function(index,button){
   this._speechButton=button;
   this._setSpeechButtonState(button,true);
   try{
-    if(!this._ttsAudioContext)this._ttsAudioContext=new AudioContextCtor();
-    if(this._ttsAudioContext.state==='suspended')await this._ttsAudioContext.resume();
+    if(status)status.textContent='Alicia está gerando o áudio...';
+    var sessionResult=await client.auth.getSession();
+    var session=sessionResult&&sessionResult.data&&sessionResult.data.session;
+    if(!session||!session.access_token)throw new Error('Entre na sua conta para ouvir a Alicia.');
     if(requestId!==this._ttsRequestId)return;
-    var tts=await this._loadNeuralVoice(status);
+    var response=await client.functions.invoke('alicia-tts',{
+      body:{text:text},
+      timeout:45000
+    });
     if(requestId!==this._ttsRequestId)return;
-    if(status)status.textContent='Alicia está preparando a fala...';
-    var result=await tts.synthesize(text,{voiceId:this._ttsVoiceId});
-    if(requestId!==this._ttsRequestId)return;
-    var samples=result&&result.samples;
-    if(!samples||!samples.length)throw new Error('O modelo não gerou áudio.');
-    var sampleRate=Number(result.sampleRateHz)||24000;
-    var audioBuffer=this._ttsAudioContext.createBuffer(1,samples.length,sampleRate);
-    audioBuffer.getChannelData(0).set(samples);
-    var source=this._ttsAudioContext.createBufferSource();
-    source.buffer=audioBuffer;
-    source.connect(this._ttsAudioContext.destination);
-    source.onended=function(){
+    if(response&&response.error)throw response.error;
+    var audioData=response&&response.data;
+    if(!(audioData instanceof Blob))throw new Error('O serviço não retornou um áudio válido.');
+    var audioBlob=new Blob([audioData],{type:'audio/mpeg'});
+    if(!audioBlob.size)throw new Error('O serviço retornou um áudio vazio.');
+    var objectUrl=URL.createObjectURL(audioBlob);
+    this._ttsObjectUrl=objectUrl;
+    var audio=new Audio(objectUrl);
+    audio.preload='auto';
+    this._ttsAudio=audio;
+    audio.onended=function(){
       if(AlicerceIA._ttsRequestId!==requestId)return;
       AlicerceIA.pararAudio();
       var endedStatus=document.getElementById('alicerce-assistant-status');
       if(endedStatus)endedStatus.textContent='';
     };
-    this._ttsAudioSource=source;
-    source.start(0);
+    audio.onerror=function(){
+      if(AlicerceIA._ttsRequestId!==requestId)return;
+      AlicerceIA.pararAudio();
+      var failedStatus=document.getElementById('alicerce-assistant-status');
+      if(failedStatus)failedStatus.textContent='Não foi possível reproduzir o áudio. O texto continua disponível.';
+    };
+    await audio.play();
+    if(requestId!==this._ttsRequestId)return;
     this._ttsBusy=false;
     if(status)status.textContent='';
   }catch(error){
     if(requestId!==this._ttsRequestId)return;
     this.pararAudio();
-    var failed=button.getAttribute('data-label-error')||'Não foi possível carregar a voz fixa da Alicia. O texto continua disponível.';
+    var failed=button.getAttribute('data-label-error')||'Não foi possível gerar a voz da Alicia. O texto continua disponível.';
     if(status)status.textContent=failed;
   }
 };
