@@ -1993,6 +1993,70 @@ test('Alicia prepara uma despesa pelo chat e só grava após a confirmação fin
   expect(saved.paymentMethod).toBe('pix');
 });
 
+test('Alicia pergunta a finalidade e usa o contexto para classificar materiais antes de salvar', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-chat-purpose-test';
+    Store.lang = 'pt';
+    Store.cards = [];
+    Store.movements = [];
+    Store.installments = [];
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  const input = page.locator('#alicerce-assistant-input');
+  const send = page.locator('#alicerce-assistant-send');
+
+  async function verifyPurpose(purpose, category, subcategory) {
+    await input.fill('Comprei material por oitenta reais');
+    await send.click();
+    await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('qual era a finalidade');
+    expect(await page.evaluate(function () {
+      return AlicerceIA._pendingExpenseDraft && AlicerceIA._pendingExpenseDraft.awaiting;
+    })).toBe('purpose');
+
+    await input.fill('para ' + purpose);
+    await send.click();
+    await expect(page.locator('#btn-save-gasto-doubt')).toBeVisible();
+
+    const draft = await page.evaluate(function () {
+      return {
+        movements: Store.movements.length,
+        amount: Store.screenData && Store.screenData.amountInput,
+        item: Store.screenData && Store.screenData.itemInput,
+        purpose: Store.screenData && Store.screenData.purpose,
+        category: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.categoria,
+        subcategory: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.subcategoria
+      };
+    });
+
+    expect(draft.movements).toBe(0);
+    expect(draft.amount).toBe(80);
+    expect(draft.item).toBe('material');
+    expect(draft.purpose).toBe(purpose);
+    expect(draft.category).toBe(category);
+    expect(draft.subcategory).toBe(subcategory);
+    await expect(page.locator('.gasto-review')).toContainText('Finalidade informada: ' + purpose);
+
+    await page.evaluate(function () { go('assistente'); });
+    await expect(input).toBeVisible();
+  }
+
+  await verifyPurpose('obra', 'moradia', 'manutencao');
+  await verifyPurpose('escola', 'educacao', 'material_escolar');
+  await verifyPurpose('trabalho', 'trabalho', 'equipamentos');
+});
+
 test('Alicia não registra automaticamente compras parceladas ou no cartão pelo chat', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'assistente');
   await page.evaluate(function () {
@@ -2101,8 +2165,7 @@ test('Alicia exibe avisos de privacidade somente quando a pessoa aciona ditado, 
   await expect(notice).toBeHidden();
 
   await page.locator('#alicerce-assistant-input').focus();
-  await expect(notice).toContainText('Você também pode falar pelo microfone do teclado');
-  await expect(notice).toContainText('Alicerce recebe somente o texto');
+  await expect(notice).toContainText('Você também pode usar o microfone do teclado para ditar no campo de mensagem.');
 
   await page.locator('#alicerce-assistant-camera').click();
   await expect(notice).toContainText('as fotos são lidas no próprio aparelho');
