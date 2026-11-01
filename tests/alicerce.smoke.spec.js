@@ -2034,7 +2034,9 @@ test('Alicia exibe avisos de privacidade somente quando a pessoa aciona ditado, 
   await expect(notice).toBeHidden();
 
   await page.locator('.alicerce-assistant-speak').click();
-  await expect(notice).toContainText('A leitura em voz usa uma voz disponível no dispositivo');
+  await expect(notice).toContainText('modelo da voz fixa Dora');
+  await expect(notice).toContainText('295 MB');
+  await expect(notice).toContainText('métricas técnicas de uso ao Google');
   await page.locator('.alicerce-assistant-privacy-cancel').click();
   await expect(notice).toBeHidden();
 });
