@@ -5274,7 +5274,7 @@ AlicerceIA._speechUtterance=null;
 AlicerceIA.pararAudio=function(){
   var synth=null;
   try{synth=window.speechSynthesis}catch(e){}
-  if(synth&&typeof synth.cancel==='function'){
+  if(synth&&typeof synth.cancel==='function'&&(this._speechButton||synth.speaking||synth.pending)){
     try{synth.cancel()}catch(e){}
   }
   var button=this._speechButton;
