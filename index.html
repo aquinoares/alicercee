@@ -5189,7 +5189,7 @@ AlicerceIA.saudacao=function(){
     greeting=hour>=5&&hour<12?'Bom dia':hour>=12&&hour<18?'Boa tarde':'Boa noite';
   }
   try{
-    if(Store.userEmail)name=String(contaNome(Store.userEmail)||'').split(/\\s+/)[0];
+    if(Store.userEmail)name=String(contaNome(Store.userEmail)||'').split(/\s+/)[0];
   }catch(e){}
   if(name&&name.toLowerCase()!=='minha'&&name.toLowerCase()!=='my'&&name.toLowerCase()!=='mi'){
     return greeting+', '+name;
