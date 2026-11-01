@@ -5196,6 +5196,8 @@ AlicerceIA.saudacao=function(){
   return greeting+'!';
 };
 
+AlicerceIA.mensagemAbertura=function(){var lang=Store.lang||'pt';var greeting=String(this.saudacao()||'').replace(/[.!?]+$/,'');var dayGreeting=greeting.split(',')[0]||greeting;var name='';try{name=String(Store.settings&&Store.settings.displayName||'').trim().split(/\\s+/)[0]}catch(e){}if(lang==='en')return 'Hello'+(name?', '+name:'')+'! '+dayGreeting+'. How are you today? How can I help you?';if(lang==='es')return '¡Hola'+(name?', '+name:'')+'! '+dayGreeting+'. ¿Cómo estás hoy? ¿En qué puedo ayudarte?';return 'Olá'+(name?', '+name:'')+'! '+dayGreeting+'. Tudo bem com você? Como posso te ajudar hoje?';};
+
 AlicerceIA.renderCard=function(){
   this._resetUser();
   var lang=Store.lang||'pt';
