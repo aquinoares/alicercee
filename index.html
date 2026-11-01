@@ -11178,7 +11178,18 @@ function renderConta(){
   h+='<div class="acct-id"><div class="acct-name" id="conta-name">'+esc(contaNome(email))+'</div>';
   h+='<div class="acct-email text-sm" id="conta-email">'+esc(email)+'</div></div>';
   h+='<span class="acct-selo'+(vip?' selo-vip':'')+'">'+(vip?esc(t('vip')):esc(t('gratuito')))+'</span></div>';
-
+  var nomeLang=Store.lang||'pt';
+  var nomeCopy={
+    pt:{title:'Como devemos te chamar?',placeholder:'Seu nome',hint:'Esse nome aparece na saudação da Alicia.',save:'Salvar nome'},
+    en:{title:'What should we call you?',placeholder:'Your name',hint:'This name appears in Alicia’s greeting.',save:'Save name'},
+    es:{title:'¿Cómo debemos llamarte?',placeholder:'Tu nombre',hint:'Este nombre aparece en el saludo de Alicia.',save:'Guardar nombre'}
+  };
+  var nomeUi=nomeCopy[nomeLang]||nomeCopy.pt;
+  var savedName=String(Store.settings&&Store.settings.displayName||'');
+  h+='<section class="acct-name-editor" aria-label="'+esc(nomeUi.title)+'" style="margin:14px 0 20px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--surface)">';
+  h+='<label class="form-label" for="conta-display-name">'+esc(nomeUi.title)+'</label>';
+  h+='<div style="display:flex;align-items:center;gap:8px;min-width:0"><input id="conta-display-name" type="text" maxlength="40" autocomplete="name" autocapitalize="words" value="'+esc(savedName)+'" placeholder="'+esc(nomeUi.placeholder)+'" style="box-sizing:border-box;min-width:0;flex:1;height:44px;padding:0 12px;border:1px solid var(--field-border);border-radius:11px;background:var(--surface2);color:var(--text);font:inherit;font-size:13px"><button type="button" class="btn btn-primary" id="conta-display-name-save" onclick="contaSalvarNome()">'+esc(nomeUi.save)+'</button></div>';
+  h+='<p style="margin:7px 0 0;color:var(--text2);font-size:10px;line-height:1.4">'+esc(nomeUi.hint)+'</p></section>';
   h+='<div class="section-title">'+t('meuPlano')+'</div>';
   h+='<p class="text-sm text-muted" style="margin:-6px 0 10px">'+t('seuPlano')+'</p>';
 
@@ -11246,10 +11257,33 @@ function renderConta(){
 /* ===== CONTA PREMIUM (constantes, e-mail, plano) ===== */
 let _planoPeriodo='anual'; /* padrao: Anual */
 function contaEmailAtual(){try{if(Store.userEmail)return String(Store.userEmail)}catch(e){}return t('usuarioEmail')}
-function contaBase(email){return String(email||'').split('@')[0]||''}
-function contaPartes(email){return contaBase(email).split(/[._-]+/).filter(Boolean)}
-function contaNome(email){const p=contaPartes(email);return p.length?p.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1)}).join(' '):t('minhaConta')}
-function contaIniciais(email){const p=contaPartes(email);const base=contaBase(email);let ini=p.length>1?p[0].charAt(0)+p[1].charAt(0):base.slice(0,2);ini=(ini||'A').toUpperCase();return ini}
+function contaNome(email){
+  var name=String(Store.settings&&Store.settings.displayName||'').trim();
+  return name||t('minhaConta');
+}
+function contaIniciais(email){
+  var name=String(Store.settings&&Store.settings.displayName||'').trim();
+  var partes=name.split(/\\s+/).filter(Boolean);
+  if(!name)return 'AL';
+  return (partes.length>1?partes[0].charAt(0)+partes[1].charAt(0):partes[0].slice(0,2)).toUpperCase();
+}
+function contaSalvarNome(){
+  var input=document.getElementById('conta-display-name');
+  var name=String(input&&input.value||'').replace(/\\s+/g,' ').trim();
+  if(name&&name.length<2){
+    showToast(Store.lang==='en'?'Enter at least 2 characters.':Store.lang==='es'?'Escribe al menos 2 caracteres.':'Digite pelo menos 2 caracteres.');
+    return;
+  }
+  if(name.length>40){
+    showToast(Store.lang==='en'?'The name can contain up to 40 characters.':Store.lang==='es'?'El nombre puede tener hasta 40 caracteres.':'O nome pode ter até 40 caracteres.');
+    return;
+  }
+  Store.settings=Store.settings||{};
+  Store.settings.displayName=name;
+  Store.save();
+  render();
+  showToast(Store.lang==='en'?'Name saved.':Store.lang==='es'?'Nombre guardado.':'Nome salvo.');
+}
 function contaAtualizarEmailDOM(email){try{const em=document.getElementById('conta-email');if(em)em.textContent=email;const nm=document.getElementById('conta-name');if(nm)nm.textContent=contaNome(email);const av=document.getElementById('conta-avatar');if(av)av.textContent=contaIniciais(email)}catch(e){}}
 function contaSincronizarEmail(){try{if(Store.userEmail){contaAtualizarEmailDOM(Store.userEmail);return}if(!window.alicerceSupabase||!window.alicerceSupabase.auth)return;window.alicerceSupabase.auth.getSession().then(function(r){const s=r&&r.data?r.data.session:null;if(s&&s.user&&s.user.email){Store.userEmail=s.user.email;contaAtualizarEmailDOM(s.user.email)}}).catch(function(){})}catch(e){}}
 function planoPrecoHTML(periodo){
