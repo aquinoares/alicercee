@@ -1368,7 +1368,9 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('.alicerce-assistant-heading')).toContainText('Alicia · sua assistente financeira');
   await expect(page.locator('.alicerce-assistant-back')).toContainText('Início');
   await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/alicia-assistente.webp');
-  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Oi! Sou Alicia.');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Tudo bem com você?');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Como posso te ajudar hoje?');
+  await expect(page.locator('.alicerce-assistant-speak')).toBeVisible();
   await expect(page.locator('.alicerce-assistant-chat-panel')).toBeVisible();
   await expect(page.locator('#alicerce-assistant-camera')).toBeVisible();
   await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
@@ -1800,7 +1802,7 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
     AlicerceIA._resetUser();
     AlicerceIA._messages.push({
       role: 'assistant',
-      text: 'Você gastou R$ 300,00 com alimentação.'
+      text: 'Você gastou R$ 300,00 com alimentação e sua variação foi de 25%.'
     });
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
   });
@@ -1820,10 +1822,10 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
   const spoken = await page.evaluate(function () {
     return window.__alicerceSpeechTest.spoken[0];
   });
-  expect(spoken.text).toBe('Você gastou R$ 300,00 com alimentação.');
+  expect(spoken.text).toBe('Você gastou 300 reais com alimentação e sua variação foi de 25 por cento.');
   expect(spoken.lang).toBe('pt-BR');
   expect(spoken.voice).toBe('Luciana local');
-  expect(spoken.rate).toBe(0.96);
+  expect(spoken.rate).toBe(0.92);
   await expect(speakButton).toContainText('Parar');
   await expect(speakButton).toHaveAttribute('aria-pressed', 'true');
 
@@ -1841,6 +1843,24 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
   await expect.poll(function () {
     return page.evaluate(function () { return window.__alicerceSpeechTest.cancelled; });
   }).toBe(2);
+});
+
+
+test('Alicia prepara valores financeiros para fala sem mudar o texto exibido', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const prepared = await page.evaluate(function () {
+    Store.lang = 'pt';
+    return {
+      thousands: AlicerceIA.prepararFala('Você gastou R$ 3.000,00.'),
+      cents: AlicerceIA.prepararFala('Foram R$ 48,50 no mercado.'),
+      percent: AlicerceIA.prepararFala('Aumento de 25%.'),
+      source: 'Você gastou R$ 3.000,00.'
+    };
+  });
+  expect(prepared.thousands).toBe('Você gastou 3.000 reais.');
+  expect(prepared.cents).toBe('Foram 48 reais e 50 centavos no mercado.');
+  expect(prepared.percent).toBe('Aumento de 25 por cento.');
+  expect(prepared.source).toBe('Você gastou R$ 3.000,00.');
 });
 
 test('Alicia não usa voz remota quando não existe voz local instalada', async function ({ page }) {
