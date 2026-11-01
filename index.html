@@ -11263,13 +11263,13 @@ function contaNome(email){
 }
 function contaIniciais(email){
   var name=String(Store.settings&&Store.settings.displayName||'').trim();
-  var partes=name.split(/\\s+/).filter(Boolean);
+  var partes=name.split(/\s+/).filter(Boolean);
   if(!name)return 'AL';
   return (partes.length>1?partes[0].charAt(0)+partes[1].charAt(0):partes[0].slice(0,2)).toUpperCase();
 }
 function contaSalvarNome(){
   var input=document.getElementById('conta-display-name');
-  var name=String(input&&input.value||'').replace(/\\s+/g,' ').trim();
+  var name=String(input&&input.value||'').replace(/\s+/g,' ').trim();
   if(name&&name.length<2){
     showToast(Store.lang==='en'?'Enter at least 2 characters.':Store.lang==='es'?'Escribe al menos 2 caracteres.':'Digite pelo menos 2 caracteres.');
     return;
