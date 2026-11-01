@@ -1368,6 +1368,8 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('.alicerce-assistant-heading')).toContainText('Sua assistente financeira');
   await expect(page.locator('.alicerce-assistant-back')).toContainText('Início');
   await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/alicia-assistente.webp');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('object-fit', 'contain');
+  await expect(page.locator('.alicerce-assistant-avatar')).toHaveCSS('border-radius', '16px');
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('Oi, Maria! Tudo bem com você?');
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('Estou aqui para ajudar a entender seu dinheiro.');
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('O que vamos olhar hoje?');
@@ -1828,7 +1830,8 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
   expect(spoken.text).toBe('Você gastou 300 reais com alimentação e sua variação foi de 25 por cento.');
   expect(spoken.lang).toBe('pt-BR');
   expect(spoken.voice).toBe('Luciana local');
-  expect(spoken.rate).toBe(0.92);
+  expect(spoken.rate).toBe(1.04);
+  expect(spoken.pitch).toBe(1.12);
   await expect(speakButton).toContainText('Parar');
   await expect(speakButton).toHaveAttribute('aria-pressed', 'true');
 
