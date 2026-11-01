@@ -5577,7 +5577,7 @@ AlicerceIA.iniciarMicrofone=async function(){
   var Recognition=window.SpeechRecognition;
   var language=Store.lang==='en'?'en-US':Store.lang==='es'?'es-ES':'pt-BR';
   if(!Recognition||typeof Recognition.available!=='function'||typeof Recognition.install!=='function'){
-    if(status)status.textContent='Este navegador não oferece transcrição local. Use o Chrome ou Edge atualizado com suporte a reconhecimento no próprio aparelho.';
+    if(status)status.textContent='A transcrição local do Alicerce não está disponível neste aparelho. Para ditar agora, toque no campo de mensagem e use o microfone do teclado; o tratamento do áudio depende das configurações do seu teclado e aparelho.';
     return;
   }
   if(!Recognition.prototype||!('processLocally' in Recognition.prototype)){
