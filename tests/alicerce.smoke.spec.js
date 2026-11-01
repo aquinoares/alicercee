@@ -1307,6 +1307,45 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
 });
 
+
+test('Assistente mantém o assunto quando a pessoa pergunta por outro período', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'ia-contexto-teste';
+    Store.userEmail = 'maria.silva@example.com';
+    Store.lang = 'pt';
+    Store.settings = Object.assign({}, Store.settings, { alicerceLegalAcceptance: { termsVersion: '2026-10-20-v1', privacyVersion: '2026-10-20-v1', acceptedAt: '2026-10-31T12:00:00.000Z' } });
+    Store.loans = [];
+    Store.installments = [];
+    var now = Clock.now();
+    var day = now.getDay() || 7;
+    var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
+    var previousMonday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - 7);
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.movements = [
+      { id: 'bar-esta-semana-1', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'bar', descricao: 'Bebidas', estabelecimento: 'Bar Central', valor: 300, data: format(monday) },
+      { id: 'bar-esta-semana-2', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'bar', descricao: 'Bebidas', estabelecimento: 'Bar Central', valor: 200, data: Clock.today() },
+      { id: 'bar-semana-passada', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'bar', descricao: 'Bebidas', estabelecimento: 'Bar Central', valor: 200, data: format(previousMonday) },
+      { id: 'mercado-semana-passada', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras para casa', estabelecimento: 'Mercado do Bairro', valor: 100, data: format(previousMonday) }
+    ];
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await page.locator('#alicerce-ai-open-assistant').click();
+  await page.locator('#alicerce-assistant-input').fill('Quanto gastei com bar esta semana?');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('R$ 500,00');
+
+  await page.locator('#alicerce-assistant-input').fill('E na semana passada?');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('R$ 200,00');
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('No período consultado');
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).not.toContainText('R$ 300,00');
+  await expect(page.locator('.alicerce-assistant-message.user').last()).toContainText('E na semana passada?');
+});
+
 test('Visão Financeira apresenta pontos principais e permite abrir análises com um toque', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'visao');
   const resultado = await page.evaluate(function () {
