@@ -5328,13 +5328,19 @@ AlicerceIA._parseExpenseCommand=function(value){
 
   var amountMatch=raw.match(/R\$\s*([\d.]+(?:,[0-9]{1,2})?)|([\d.]+(?:,[0-9]{1,2})?)\s*reais?\b/i);
   var amountWordMatch=null;
+  var bareWordMatch=null;
   var bareAmountMatch=null;
   if(!amountMatch){
     var wordToken='zero|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|catorze|quatorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|duzentas|trezentos|trezentas|quatrocentos|quatrocentas|quinhentos|quinhentas|seiscentos|seiscentas|setecentos|setecentas|oitocentos|oitocentas|novecentos|novecentas|mil|milhao|milhoes';
     var wordSequence='(?:'+wordToken+')(?:\\s+(?:e\\s+)?(?:'+wordToken+'))*';
     var normalizedRaw=raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     amountWordMatch=normalizedRaw.match(new RegExp('\\b('+wordSequence+')\\s+reais?\\b(?:\\s+e\\s+('+wordSequence+')\\s+centavos?\\b)?','i'));
-    if(!amountWordMatch)bareAmountMatch=raw.match(/\b(?:por|custou|valor(?:\s+de)?)\s+R?\$?\s*([\d.]+(?:,[0-9]{1,2})?)\b/i);
+    if(!amountWordMatch){
+      var wordTokenRaw=wordToken.replace('tres','tr[eê]s').replace('milhao','milh[aã]o').replace('milhoes','milh[oõ]es');
+      var wordSequenceRaw='(?:'+wordTokenRaw+')(?:\\s+(?:e\\s+)?(?:'+wordTokenRaw+'))*';
+      bareWordMatch=raw.match(new RegExp('\\b(?:por|custou|valor(?:\\s+de)?)\\s+('+wordSequenceRaw+')\\b','i'));
+    }
+    if(!amountWordMatch&&!bareWordMatch)bareAmountMatch=raw.match(/\b(?:por|custou|valor(?:\s+de)?)\s+R?\$?\s*([\d.]+(?:,[0-9]{1,2})?)\b/i);
   }
   var amount=null;
   var amountRaw='';
@@ -5349,6 +5355,10 @@ AlicerceIA._parseExpenseCommand=function(value){
     var centAmount=amountWordMatch[2]?this._parsePtNumberWords(amountWordMatch[2]):0;
     if(wholeAmount!==null&&centAmount!==null&&centAmount<=99)amount=wholeAmount+(centAmount/100);
     amountRaw=raw.slice(amountWordMatch.index,amountWordMatch.index+amountWordMatch[0].length);
+  }else if(bareWordMatch){
+    var bareWordsAmount=this._parsePtNumberWords(bareWordMatch[1]);
+    if(bareWordsAmount!==null)amount=bareWordsAmount;
+    amountRaw=bareWordMatch[0];
   }else if(bareAmountMatch){
     var bareText=String(bareAmountMatch[1]||'').replace(/\.$/,'');
     amount=bareText.indexOf(',')!==-1?Number(bareText.replace(/\./g,'').replace(',','.')):Number(bareText.replace(/\./g,''));
@@ -5412,7 +5422,9 @@ AlicerceIA.enviarMensagem=async function(question){
       else if(!/reais?|centavos?|R\$/i.test(amountReply)&&this._parsePtNumberWords(amountReply)!==null)amountReply+=' reais';
       followText='Comprei '+(draft.item||'item')+' por '+amountReply;
     }else if(draft.awaiting==='item'&&!hasOwnIntent){
-      followText='Comprei '+message+(draft.amount!==null&&draft.amount!==undefined?' por R$ '+Number(draft.amount).toFixed(2).replace('.',','):'');
+      var itemReplyCommand=this._parseExpenseCommand('Comprei '+message);
+      var replyHasAmount=!!(itemReplyCommand&&itemReplyCommand.amount!==null&&itemReplyCommand.amount!==undefined);
+      followText='Comprei '+message+(!replyHasAmount&&draft.amount!==null&&draft.amount!==undefined?' por R$ '+Number(draft.amount).toFixed(2).replace('.',','):'');
     }
     var followCommand=this._parseExpenseCommand(followText);
     if(followCommand&&followCommand.unsupported){
