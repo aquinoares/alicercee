@@ -1931,6 +1931,88 @@ test('Alicia oferece voz somente em português brasileiro', async function ({ pa
   await expect(page.locator('#alicerce-assistant-privacy')).toBeHidden();
   expect(await page.evaluate(function () { return window.__alicerceRemoteLanguageCalls; })).toBe(0);
 });
+test('Alicia prepara uma despesa pelo chat e só grava após a confirmação financeira existente', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-chat-expense-test';
+    Store.lang = 'pt';
+    Store.cards = [];
+    Store.movements = [];
+    Store.installments = [];
+    Store.settings = { lang: 'pt', theme: 'azul' };
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await page.locator('#alicerce-assistant-input').fill('Comprei um lanche por R$ 45,90 na padaria no Pix');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#btn-save-gasto-doubt')).toBeVisible();
+
+  const draft = await page.evaluate(function () {
+    return {
+      movements: Store.movements.length,
+      amount: Store.screenData && Store.screenData.amountInput,
+      item: Store.screenData && Store.screenData.itemInput,
+      local: Store.screenData && Store.screenData.localInput,
+      paymentMethod: Store.screenData && Store.screenData.paymentMethod,
+      category: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.categoria,
+      subcategory: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.subcategoria
+    };
+  });
+  expect(draft.movements).toBe(0);
+  expect(draft.amount).toBe(45.9);
+  expect(draft.item).toBe('lanche');
+  expect(draft.local).toBe('padaria');
+  expect(draft.paymentMethod).toBe('pix');
+  expect(draft.category).toBe('comida');
+  expect(draft.subcategory).toBe('lanchonete');
+
+  await page.locator('#btn-save-gasto-doubt').click();
+  await expect(page.locator('#btn-save-gasto-doubt')).toHaveCount(0);
+  const saved = await page.evaluate(function () {
+    return {
+      count: Store.movements.length,
+      value: Store.movements[0] && Store.movements[0].valor,
+      category: Store.movements[0] && Store.movements[0].categoria,
+      subcategory: Store.movements[0] && Store.movements[0].subcategoria,
+      paymentMethod: Store.movements[0] && Store.movements[0].paymentMethod
+    };
+  });
+  expect(saved.count).toBe(1);
+  expect(saved.value).toBe(45.9);
+  expect(saved.category).toBe('comida');
+  expect(saved.subcategory).toBe('lanchonete');
+  expect(saved.paymentMethod).toBe('pix');
+});
+
+test('Alicia não registra automaticamente compras parceladas ou no cartão pelo chat', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-chat-card-guard';
+    Store.lang = 'pt';
+    Store.cards = [];
+    Store.movements = [];
+    Store.settings = { lang: 'pt', theme: 'azul' };
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await page.locator('#alicerce-assistant-input').fill('Comprei um celular por R$ 1.500,00 no cartão em 10 parcelas');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
+  await expect(page.locator('.alicerce-assistant-message.assistant')).toContainText('ainda não registro parcelamentos diretamente pelo chat');
+  const result = await page.evaluate(function () {
+    return {
+      movements: Store.movements.length,
+      installments: Store.installments.length,
+      screen: Store.screen
+    };
+  });
+  expect(result.movements).toBe(0);
+  expect(result.installments).toBe(0);
+  expect(result.screen).toBe('assistente');
+});
+
 test('Alicia limita a conversa a duas interações, permite limpar e leva aos relatórios da Visão financeira', async function ({ page }) {
   await page.setViewportSize({ width: 375, height: 812 });
   await prepararTelaSemNuvem(page, 'assistente');
