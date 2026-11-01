@@ -1369,8 +1369,8 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('.alicerce-assistant-back')).toContainText('Início');
   await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/alicia-assistente.webp');
   await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('object-fit', 'contain');
-  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('width', '56px');
-  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('height', '56px');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('width', '54px');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('height', '54px');
   await expect(page.locator('.alicerce-assistant-avatar')).toHaveCSS('border-width', '2px');
   await expect(page.locator('.alicerce-assistant-avatar')).toHaveCSS('border-radius', '13px');
   await expect(page.locator('.alicerce-assistant-heading')).toHaveCSS('border-width', '1px');
