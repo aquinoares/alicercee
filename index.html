@@ -5302,8 +5302,8 @@ AlicerceIA.prepararFala=function(value){
     if(centText.length===1)centText+='0';
     var centValue=parseInt(centText,10)||0;
     if(centValue===0)return whole+(numeric===1?' real':' reais');
-    if(numeric===0)return String(centValue)+' centavos';
-    return whole+(numeric===1?' real':' reais')+' e '+String(centValue)+' centavos';
+    if(numeric===0)return String(centValue)+(centValue===1?' centavo':' centavos');
+    return whole+(numeric===1?' real':' reais')+' e '+String(centValue)+(centValue===1?' centavo':' centavos');
   });
   text=text.replace(/(-?\d+(?:,\d+)?)\s*%/g,'$1 por cento');
   return text;
