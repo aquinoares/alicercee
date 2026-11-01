@@ -5369,6 +5369,12 @@ AlicerceIA._parseExpenseCommand=function(value){
   var details=raw;
   if(amountRaw)details=details.replace(amountRaw,' ');
   details=details.replace(/\b(quero|preciso|adicionar|adiciona|comprar|comprei|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|uma|um|uns|umas|despesa|gasto|valor|de|por|foi|custou|reais?)\b/gi,' ');
+  var purpose='';
+  var purposeMatch=details.match(/\b(?:para|pra)\s+(.+)$/i);
+  if(purposeMatch){
+    purpose=String(purposeMatch[1]||'').replace(/\s+/g,' ').trim();
+    details=details.slice(0,purposeMatch.index);
+  }
   var paymentMethod='';
   if(/\bpix\b/i.test(details))paymentMethod='pix';
   else if(/\b(dinheiro|especie)\b/i.test(this._norm(details)))paymentMethod='dinheiro';
@@ -5385,15 +5391,28 @@ AlicerceIA._parseExpenseCommand=function(value){
   var missingField='';
   if(!item)missingField='item';
   else if(amount===null)missingField='amount';
-  return{amount:amount,item:item,local:local,paymentMethod:paymentMethod,date:today(),needsClarification:missingField};
+  return{amount:amount,item:item,local:local,paymentMethod:paymentMethod,purpose:purpose,date:today(),needsClarification:missingField};
 };
 
-AlicerceIA._expenseClarificationMessage=function(field){
+AlicerceIA._expenseClarificationMessage=function(field,item){
   var lang=Store.lang||'pt';
+  var itemLabel=String(item||'essa compra').trim();
   var copy={
-    pt:{item:'O que você comprou ou qual serviço pagou?',amount:'Qual foi o valor? Pode informar em reais, por exemplo: vinte e cinco reais e cinquenta centavos.'},
-    en:{item:'What did you buy or which service did you pay for?',amount:'How much was it? You can say an amount, for example: twenty-five reais and fifty centavos.'},
-    es:{item:'¿Qué compraste o qué servicio pagaste?',amount:'¿Cuál fue el importe? Puedes indicar el valor en reales.'}
+    pt:{
+      item:'O que você comprou ou qual serviço pagou?',
+      amount:'Qual foi o valor? Pode informar em reais, por exemplo: vinte e cinco reais e cinquenta centavos.',
+      purpose:'Para eu classificar '+itemLabel+' corretamente, me conta: qual era a finalidade dessa compra? Por exemplo, era para casa, estudo, trabalho ou outra necessidade?'
+    },
+    en:{
+      item:'What did you buy or which service did you pay for?',
+      amount:'How much was it? You can say an amount, for example: twenty-five reais and fifty centavos.',
+      purpose:'To classify '+itemLabel+' correctly, what was this purchase for? For example, home, study, work or another need?'
+    },
+    es:{
+      item:'¿Qué compraste o qué servicio pagaste?',
+      amount:'¿Cuál fue el importe? Puedes indicar el valor en reales.',
+      purpose:'Para clasificar '+itemLabel+' correctamente, ¿para qué fue esta compra? Por ejemplo, hogar, estudios, trabajo u otra necesidad?'
+    }
   };
   var labels=copy[lang]||copy.pt;
   return labels[field]||labels.amount;
@@ -5432,6 +5451,9 @@ AlicerceIA.enviarMensagem=async function(question){
       var itemReplyCommand=this._parseExpenseCommand('Comprei '+message);
       var replyHasAmount=!!(itemReplyCommand&&itemReplyCommand.amount!==null&&itemReplyCommand.amount!==undefined);
       followText='Comprei '+message+(!replyHasAmount&&draft.amount!==null&&draft.amount!==undefined?' por R$ '+Number(draft.amount).toFixed(2).replace('.',','):'');
+    }else if(draft.awaiting==='purpose'&&!hasOwnIntent){
+      var purposeReply=message.replace(/^\s*(?:é\s+)?(?:para|pra)\s+/i,'').trim();
+      followText='Comprei '+(draft.item||'item')+' por R$ '+Number(draft.amount||0).toFixed(2).replace('.',',')+(draft.local?' em '+draft.local:'')+' para '+purposeReply;
     }
     var followCommand=this._parseExpenseCommand(followText);
     if(followCommand&&followCommand.unsupported){
@@ -5442,6 +5464,7 @@ AlicerceIA.enviarMensagem=async function(question){
       if(followCommand.item&&followCommand.item!=='item')draft.item=followCommand.item;
       if(followCommand.local)draft.local=followCommand.local;
       if(followCommand.paymentMethod)draft.paymentMethod=followCommand.paymentMethod;
+      if(followCommand.purpose)draft.purpose=followCommand.purpose;
       draft.date=draft.date||followCommand.date||today();
       draft.awaiting=!draft.item?'item':draft.amount===null||draft.amount===undefined?'amount':'';
       if(draft.awaiting){
@@ -5449,7 +5472,7 @@ AlicerceIA.enviarMensagem=async function(question){
         expenseCommand={needsClarification:draft.awaiting,amount:draft.amount,item:draft.item,local:draft.local,paymentMethod:draft.paymentMethod,date:draft.date};
       }else{
         this._pendingExpenseDraft=null;
-        expenseCommand={amount:draft.amount,item:draft.item,local:draft.local||'',paymentMethod:draft.paymentMethod||'',date:draft.date};
+        expenseCommand={amount:draft.amount,item:draft.item,local:draft.local||'',paymentMethod:draft.paymentMethod||'',purpose:draft.purpose||'',date:draft.date};
       }
     }else{
       expenseCommand={needsClarification:draft.awaiting,amount:draft.amount,item:draft.item,local:draft.local,paymentMethod:draft.paymentMethod,date:draft.date};
@@ -5457,7 +5480,7 @@ AlicerceIA.enviarMensagem=async function(question){
   }else{
     expenseCommand=this._parseExpenseCommand(message);
     if(expenseCommand&&expenseCommand.needsClarification){
-      this._pendingExpenseDraft={amount:expenseCommand.amount,item:expenseCommand.item,local:expenseCommand.local||'',paymentMethod:expenseCommand.paymentMethod||'',date:expenseCommand.date||today(),awaiting:expenseCommand.needsClarification};
+      this._pendingExpenseDraft={amount:expenseCommand.amount,item:expenseCommand.item,local:expenseCommand.local||'',paymentMethod:expenseCommand.paymentMethod||'',purpose:expenseCommand.purpose||'',date:expenseCommand.date||today(),awaiting:expenseCommand.needsClarification};
     }
   }
   if(expenseCommand){
@@ -5476,12 +5499,32 @@ AlicerceIA.enviarMensagem=async function(question){
       actionAnswer='Entre na sua conta antes de registrar uma despesa. Assim o lançamento fica vinculado ao seu cadastro.';
     }else{
       try{
-        var interpreterText='Valor: '+expenseCommand.amount+' | Item: '+expenseCommand.item+' | Local: '+expenseCommand.local;
+        var interpreterText='Valor: '+expenseCommand.amount+' | Item: '+expenseCommand.item+' | Local: '+expenseCommand.local+(expenseCommand.purpose?' | Contexto: '+expenseCommand.purpose:'');
         var interpretation=await Interpreter.interpret(interpreterText);
         if(!interpretation||typeof interpretation!=='object')interpretation={};
         interpretation.amount=expenseCommand.amount;
+        interpretation.purpose=expenseCommand.purpose||'';
         if(!interpretation.item)interpretation.item=expenseCommand.item;
         if(!interpretation.merchant)interpretation.merchant=expenseCommand.local;
+        var classificationValid=!!(interpretation.categoria&&interpretation.subcategoria&&alicerClassificationPairIsValid(interpretation.categoria,interpretation.subcategoria));
+        if((!classificationValid||interpretation.confidence==='low')&&!expenseCommand.purpose){
+          this._pendingExpenseDraft={
+            amount:expenseCommand.amount,
+            item:expenseCommand.item,
+            local:expenseCommand.local||'',
+            paymentMethod:expenseCommand.paymentMethod||'',
+            purpose:'',
+            date:expenseCommand.date||today(),
+            awaiting:'purpose'
+          };
+          actionAnswer=this._expenseClarificationMessage('purpose',expenseCommand.item);
+          this._messages.push({role:'assistant',text:actionAnswer});
+          while(this._messages.length>4)this._messages.splice(0,2);
+          this._question=message;
+          this._answer=actionAnswer;
+          render();
+          return;
+        }
         Store.screenData={
           interpretation:interpretation,
           amountInput:expenseCommand.amount,
@@ -6856,9 +6899,13 @@ const Interpreter={
   },
   inferItemCategory(item,text){
     const product=this.norm(item||'');
-    const n=product||this.norm(text||'');
+    const context=this.norm(text||'');
+    const n=(product+' '+context).trim();
     if(!n)return null;
     const rules=[
+      {p:/\b(material escolar|material de escola|caderno|lapis|caneta|estojo|mochila escolar|uniforme escolar)\b/i,c:'educacao',s:'material_escolar'},
+      {p:/\b(material de construcao|obra|reforma|cimento|tijolo|argamassa|areia|brita|telha|rejunte|piso|tinta para parede)\b/i,c:'moradia',s:'manutencao'},
+      {p:/\b(material de trabalho|material de escritorio|equipamento de trabalho|ferramenta|ferramentas|uso profissional|para o trabalho)\b/i,c:'trabalho',s:'equipamentos'},
       {p:/\b(tenis|sapato|sandalia|chinelo|bota|calcado|calcados)\b/i,c:'vestuario',s:'calcados'},
       {p:/\b(camiseta|camisa|blusa|calca|bermuda|short|vestido|saia|roupa|roupas|jaqueta|casaco)\b/i,c:'vestuario',s:'roupas'},
       {p:/\b(carteira|cinto|oculos de sol|relogio|relogios|brinco|brincos|colar|pulseira|anel)\b/i,c:'vestuario',s:'acessorios'},
