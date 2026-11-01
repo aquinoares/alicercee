@@ -5291,11 +5291,30 @@ AlicerceIA.pararAudio=function(){
   this._speechButton=null;
   this._speechUtterance=null;
 };
+AlicerceIA._speechPersona={tone:'calma, acolhedora, carinhosa e educada',rate:0.92,pitch:1.04};
+AlicerceIA.prepararFala=function(value){
+  var text=String(value||'');
+  if((Store.lang||'pt')!=='pt')return text;
+  text=text.replace(/R\$\s*([\d.]+)(?:,(\d{1,2}))?/gi,function(match,whole,cents){
+    var numeric=Number(String(whole).replace(/\./g,''));
+    if(!isFinite(numeric))return match;
+    var centText=String(cents||'00');
+    if(centText.length===1)centText+='0';
+    var centValue=parseInt(centText,10)||0;
+    if(centValue===0)return whole+(numeric===1?' real':' reais');
+    if(numeric===0)return String(centValue)+' centavos';
+    return whole+(numeric===1?' real':' reais')+' e '+String(centValue)+' centavos';
+  });
+  text=text.replace(/(-?\d+(?:,\d+)?)\s*%/g,'$1 por cento');
+  return text;
+};
+
 AlicerceIA.ouvirMensagem=function(index,button){
   this._resetUser();
   var messages=Array.isArray(this._messages)?this._messages:[];
   var item=messages[index];
-  var text=String(item&&item.role==='assistant'?item.text||'':'').trim();
+  var text=String(index===-1?this.mensagemAbertura():(item&&item.role==='assistant'?item.text||'':'')).trim();
+  text=this.prepararFala(text);
   if(!text||!button)return;
   var synth=null;
   try{synth=window.speechSynthesis}catch(e){}
@@ -5347,8 +5366,8 @@ AlicerceIA.ouvirMensagem=function(index,button){
     utterance=new window.SpeechSynthesisUtterance(text);
     utterance.lang=String(voice.lang||expected);
     utterance.voice=voice;
-    utterance.rate=0.96;
-    utterance.pitch=1.02;
+    utterance.rate=this._speechPersona.rate;
+    utterance.pitch=this._speechPersona.pitch;
     utterance.volume=1;
     this._speechButton=button;
     this._speechUtterance=utterance;
