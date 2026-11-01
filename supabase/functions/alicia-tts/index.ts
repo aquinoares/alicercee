@@ -108,7 +108,7 @@ Deno.serve(async (req: Request) => {
         "X-Alicia-User": userData.user.id,
       },
       body: JSON.stringify({ input: text }),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(120000),
     });
 
     if (!upstream.ok || !upstream.body) {
