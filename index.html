@@ -5257,7 +5257,7 @@ function renderAssistente(){
     es:{subtitle:'Asistente Alicerce',welcome:'¿Qué te gustaría entender hoy?',placeholder:'Escribe tu mensaje...',send:'Enviar',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?'],privacy:'Esta conversación permanece solo en la memoria de esta sesión y se limpia al cambiar de cuenta.',dictation:'En el móvil, usa el micrófono del teclado para dictar. Alicerce recibe solo texto.',back:'Inicio'}
   };
   var ui=copy[lang]||copy.pt;
-  var greeting=this&&this.saudacao?this.saudacao():AlicerceIA.saudacao();
+  var greeting=AlicerceIA.saudacao();
   var messages=Array.isArray(AlicerceIA._messages)?AlicerceIA._messages:[];
   var html='<style id="alicerce-assistant-screen-styles">';
   html+='.alicerce-assistant-page{padding-bottom:120px}';
@@ -5290,7 +5290,7 @@ function renderAssistente(){
   html+='@media(max-width:360px){.alicerce-assistant-message{max-width:94%}.alicerce-assistant-page{padding-left:12px;padding-right:12px}.alicerce-assistant-heading{gap:8px;padding:9px 10px}.alicerce-assistant-avatar{width:54px;height:58px;flex-basis:54px}.alicerce-assistant-heading h2{font-size:15px}}';
   html+='</style>';
   html+='<div class="content alicerce-assistant-page" id="alicerce-assistant-page">';
-  html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\\'home\\')">'+icon('back','ico-xs')+esc(ui.back)+'</button></div>';
+  html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back','ico-xs')+esc(ui.back)+'</button></div>';
   html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/assistente-alicerce.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>'+esc(greeting)+'</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
@@ -5316,7 +5316,7 @@ function renderAssistente(){
     html+='</div>';
   }
   html+='<form class="alicerce-assistant-composer" onsubmit="AlicerceIA.enviarMensagem();return false;">';
-  html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="500" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onkeydown="if(event.key===\\'Enter\\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
+  html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="500" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
   html+='<button class="alicerce-assistant-send" id="alicerce-assistant-send" type="submit" aria-label="'+esc(ui.send)+'">'+icon('arrowRight')+'</button>';
   html+='</form>';
   html+='<p class="alicerce-assistant-note">'+esc(ui.dictation)+'</p>';
