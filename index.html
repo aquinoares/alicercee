@@ -5267,7 +5267,7 @@ function renderAssistente(){
   html+='@media(max-width:360px){.alicerce-assistant-message{max-width:94%}.alicerce-assistant-page{padding-left:12px;padding-right:12px}}';
   html+='</style>';
   html+='<div class="content alicerce-assistant-page" id="alicerce-assistant-page">';
-  html+='<button type="button" class="alicerce-assistant-back" onclick="go(\\'home\\')">'+icon('chevronDown')+esc(ui.back)+'</button>';
+  html+='<button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back')+esc(ui.back)+'</button>';
   html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar">'+icon('message')+'</span><div><h2>'+esc(ui.title)+'</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
@@ -5289,8 +5289,8 @@ function renderAssistente(){
     html+='</div>';
   }
   html+='<form class="alicerce-assistant-composer" onsubmit="AlicerceIA.enviarMensagem();return false;">';
-  html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="500" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onkeydown="if(event.key===\\'Enter\\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
-  html+='<button class="alicerce-assistant-send" id="alicerce-assistant-send" type="submit" aria-label="'+esc(ui.send)+'">'+icon('chevronDown')+'</button>';
+  html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="500" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
+  html+='<button class="alicerce-assistant-send" id="alicerce-assistant-send" type="submit" aria-label="'+esc(ui.send)+'">'+icon('arrowRight')+'</button>';
   html+='</form>';
   html+='<p class="alicerce-assistant-note">'+esc(ui.dictation)+'</p>';
   html+='<p class="alicerce-assistant-note">'+esc(ui.privacy)+'</p>';
