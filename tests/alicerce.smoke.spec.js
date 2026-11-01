@@ -1785,6 +1785,7 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
             text: utterance.text,
             lang: utterance.lang,
             rate: utterance.rate,
+            pitch: utterance.pitch,
             voice: utterance.voice && utterance.voice.name
           });
         },
