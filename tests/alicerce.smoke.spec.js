@@ -1764,49 +1764,49 @@ test('não oferece instalação novamente quando a Alicerce já está instalada'
   await expect(page.locator('#menu-panel .al-install-menu-item')).toHaveCount(0);
 });
 
-test('Alicia só fala após toque e usa uma voz local do idioma configurado', async function ({ page }) {
+test('Alicia usa sempre a voz neural fixa Dora em português brasileiro', async function ({ page }) {
   await page.addInitScript(function () {
-    window.__alicerceSpeechTest = { spoken: [], cancelled: 0 };
-    window.SpeechSynthesisUtterance = function (text) {
-      this.text = text;
-      this.lang = '';
-      this.rate = 1;
-      this.pitch = 1;
-      this.volume = 1;
-      this.voice = null;
+    window.__alicerceSpeechTest = { synthesized: [], cancelled: 0, started: 0, stopped: 0 };
+    window.AudioContext = function () {
+      this.state = 'running';
+      this.destination = {};
+      this.resume = async function () {};
+      this.createBuffer = function (channels, length, sampleRate) {
+        var channel = new Float32Array(length);
+        return { getChannelData: function () { return channel; } };
+      };
+      this.createBufferSource = function () {
+        return {
+          connect: function () {},
+          disconnect: function () {},
+          start: function () { window.__alicerceSpeechTest.started += 1; },
+          stop: function () { window.__alicerceSpeechTest.stopped += 1; }
+        };
+      };
     };
-    Object.defineProperty(window, 'speechSynthesis', {
-      configurable: true,
-      value: {
-        speaking: false,
-        pending: false,
-        getVoices: function () {
-          return [{ name: 'Luciana local', lang: 'pt-BR', localService: true, voiceURI: 'local:luciana' }];
-        },
-        speak: function (utterance) {
-          this.speaking = true;
-          window.__alicerceSpeechTest.spoken.push({
-            text: utterance.text,
-            lang: utterance.lang,
-            rate: utterance.rate,
-            pitch: utterance.pitch,
-            voice: utterance.voice && utterance.voice.name
-          });
-        },
-        cancel: function () {
-          window.__alicerceSpeechTest.cancelled += 1;
-          this.speaking = false;
-          this.pending = false;
-        }
-      }
-    });
   });
 
   await prepararTelaSemNuvem(page, 'assistente');
   await page.evaluate(function () {
-    Store.userId = 'tts-local-pt-test';
+    Store.userId = 'tts-dora-pt-test';
     Store.lang = 'pt';
     Store.settings = { lang: 'pt', theme: 'azul' };
+    AlicerceIA._createTtsRuntime = async function () {
+      return {
+        listVoices: async function () {
+          return [{ voiceId: 'pf_dora', locale: 'pt-BR' }];
+        },
+        synthesize: async function (text, options) {
+          window.__alicerceSpeechTest.synthesized.push({
+            text: text,
+            voiceId: options && options.voiceId
+          });
+          return { samples: new Float32Array([0.1, 0.2, 0.3, 0.4]), sampleRateHz: 24000 };
+        },
+        cancel: function () { window.__alicerceSpeechTest.cancelled += 1; },
+        close: function () {}
+      };
+    };
     AlicerceIA._resetUser();
     AlicerceIA._messages.push({
       role: 'assistant',
@@ -1818,27 +1818,27 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
   const speakButton = page.locator('.alicerce-assistant-speak');
   await expect(speakButton).toBeVisible();
   const beforeTap = await page.evaluate(function () {
-    return window.__alicerceSpeechTest.spoken.length;
+    return window.__alicerceSpeechTest.synthesized.length;
   });
   expect(beforeTap).toBe(0);
 
   await speakButton.click();
-  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('A leitura em voz usa uma voz disponível no dispositivo');
+  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('295 MB');
   await page.locator('.alicerce-assistant-privacy-confirm').click();
   await expect.poll(function () {
-    return page.evaluate(function () { return window.__alicerceSpeechTest.spoken.length; });
+    return page.evaluate(function () { return window.__alicerceSpeechTest.synthesized.length; });
   }).toBe(1);
 
   const spoken = await page.evaluate(function () {
-    return window.__alicerceSpeechTest.spoken[0];
+    return window.__alicerceSpeechTest.synthesized[0];
   });
   expect(spoken.text).toBe('Você gastou 300 reais com alimentação e sua variação foi de 25 por cento.');
-  expect(spoken.lang).toBe('pt-BR');
-  expect(spoken.voice).toBe('Luciana local');
-  expect(spoken.rate).toBe(1.04);
-  expect(spoken.pitch).toBe(1.12);
+  expect(spoken.voiceId).toBe('pf_dora');
   await expect(speakButton).toContainText('Parar');
   await expect(speakButton).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(function () {
+    return page.evaluate(function () { return window.__alicerceSpeechTest.started; });
+  }).toBe(1);
 
   await speakButton.click();
   await expect.poll(function () {
@@ -1850,6 +1850,9 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
   await speakButton.click();
   await expect(page.locator('.alicerce-assistant-privacy-confirm')).toBeVisible();
   await page.locator('.alicerce-assistant-privacy-confirm').click();
+  await expect.poll(function () {
+    return page.evaluate(function () { return window.__alicerceSpeechTest.synthesized.length; });
+  }).toBe(2);
   await expect(speakButton).toHaveAttribute('aria-pressed', 'true');
   await page.locator('.alicerce-assistant-back').click();
   await expect(page.locator('#alicerce-assistant-page')).toHaveCount(0);
@@ -1857,8 +1860,6 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
     return page.evaluate(function () { return window.__alicerceSpeechTest.cancelled; });
   }).toBe(2);
 });
-
-
 test('Alicia prepara valores financeiros para fala sem mudar o texto exibido', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'assistente');
   const prepared = await page.evaluate(function () {
@@ -1876,9 +1877,9 @@ test('Alicia prepara valores financeiros para fala sem mudar o texto exibido', a
   expect(prepared.source).toBe('Você gastou R$ 3.000,00.');
 });
 
-test('Alicia não usa voz remota quando não existe voz local instalada', async function ({ page }) {
+test('Alicia não troca a voz Dora por uma voz do aparelho quando o motor fixo falha', async function ({ page }) {
   await page.addInitScript(function () {
-    window.__alicerceSpeechTest = { spoken: 0 };
+    window.__alicerceSpeechTest = { nativeSpoken: 0 };
     window.SpeechSynthesisUtterance = function (text) { this.text = text; };
     Object.defineProperty(window, 'speechSynthesis', {
       configurable: true,
@@ -1886,24 +1887,27 @@ test('Alicia não usa voz remota quando não existe voz local instalada', async 
         speaking: false,
         pending: false,
         getVoices: function () {
-          return [{ name: 'Voz online', lang: 'pt-BR', localService: false }];
+          return [{ name: 'Voz diferente do aparelho', lang: 'pt-BR', localService: true }];
         },
-        speak: function () {
-          window.__alicerceSpeechTest.spoken += 1;
-        },
-        cancel: function () {
-          this.speaking = false;
-          this.pending = false;
-        }
+        speak: function () { window.__alicerceSpeechTest.nativeSpoken += 1; },
+        cancel: function () { this.speaking = false; this.pending = false; }
       }
     });
+    window.AudioContext = function () {
+      this.state = 'running';
+      this.destination = {};
+      this.resume = async function () {};
+    };
   });
 
   await prepararTelaSemNuvem(page, 'assistente');
   await page.evaluate(function () {
-    Store.userId = 'tts-remote-block-test';
+    Store.userId = 'tts-dora-failure-test';
     Store.lang = 'pt';
     Store.settings = { lang: 'pt', theme: 'azul' };
+    AlicerceIA._createTtsRuntime = async function () {
+      throw new Error('Falha simulada ao carregar o modelo Dora.');
+    };
     AlicerceIA._resetUser();
     AlicerceIA._messages.push({
       role: 'assistant',
@@ -1913,15 +1917,41 @@ test('Alicia não usa voz remota quando não existe voz local instalada', async 
   });
 
   await page.locator('.alicerce-assistant-speak').click();
-  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('A leitura em voz usa uma voz disponível no dispositivo');
+  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('295 MB');
   await page.locator('.alicerce-assistant-privacy-confirm').click();
-  await expect(page.locator('#alicerce-assistant-status')).toContainText('Não encontrei uma voz local');
+  await expect(page.locator('#alicerce-assistant-status')).toContainText('Não foi possível carregar a voz fixa Dora');
   const result = await page.evaluate(function () {
-    return window.__alicerceSpeechTest.spoken;
+    return {
+      nativeSpoken: window.__alicerceSpeechTest.nativeSpoken,
+      textStillVisible: document.querySelector('.alicerce-assistant-message.assistant').textContent.indexOf('75,00')>=0,
+      pressed: document.querySelector('.alicerce-assistant-speak').getAttribute('aria-pressed')
+    };
   });
-  expect(result).toBe(0);
+  expect(result.nativeSpoken).toBe(0);
+  expect(result.textStillVisible).toBe(true);
+  expect(result.pressed).toBe('false');
 });
 
+test('Alicia oferece áudio somente em português brasileiro', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.lang = 'en';
+    Store.settings = { lang: 'en', theme: 'azul' };
+    AlicerceIA._createTtsRuntime = async function () {
+      throw new Error('O runtime não deveria ser carregado em outro idioma.');
+    };
+    AlicerceIA._resetUser();
+    AlicerceIA._messages.push({ role: 'assistant', text: 'Your spending increased this month.' });
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+  await page.locator('.alicerce-assistant-speak').click();
+  await expect(page.locator('#alicerce-assistant-status')).toContainText('only in Brazilian Portuguese');
+  await expect(page.locator('#alicerce-assistant-privacy')).toBeHidden();
+  const initialized = await page.evaluate(function () {
+    return AlicerceIA._ttsInstance===null&&AlicerceIA._ttsInitPromise===null;
+  });
+  expect(initialized).toBe(true);
+});
 test('Alicia limita a conversa a duas interações, permite limpar e leva aos relatórios da Visão financeira', async function ({ page }) {
   await page.setViewportSize({ width: 375, height: 812 });
   await prepararTelaSemNuvem(page, 'assistente');
