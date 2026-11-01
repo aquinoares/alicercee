@@ -1226,35 +1226,230 @@ test('usa um gasto manual confirmado como exemplo de aprendizado da própria con
 });
 
 
-test('Alicerce IA responde perguntas sobre gastos por subcategoria e respeita a conta ativa', async function ({ page }) {
+
+test('Alicia usa o nome informado no perfil e não transforma o e-mail em nome', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'conta');
+  const initial = await page.evaluate(function () {
+    Store.userId = 'perfil-alicia-teste';
+    Store.userEmail = 'lo08973623@example.com';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul' };
+    var now = new Date();
+    var morning = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0, 0);
+    Clock.setOffset(morning.getTime() - Date.now());
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+    return AlicerceIA.saudacao();
+  });
+  expect(initial).toBe('Bom dia!');
+  await expect(page.locator('#conta-display-name')).toBeVisible();
+  await page.locator('#conta-display-name').fill('Ana Costa');
+  await page.locator('#conta-display-name-save').click();
+  await expect(page.locator('#conta-name')).toHaveText('Ana Costa');
+  const greeting = await page.evaluate(function () {
+    return {
+      greeting: AlicerceIA.saudacao(),
+      saved: Store.settings.displayName
+    };
+  });
+  expect(greeting.greeting).toBe('Bom dia, Ana');
+  expect(greeting.saved).toBe('Ana Costa');
+});
+
+test('Alicia lê a foto localmente, preenche o texto para revisão e descarta a referência ao arquivo', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   await page.evaluate(function () {
+    Store.userId = 'ocr-alicia-teste';
+    Store.userEmail = 'lo08973623@example.com';
+    Store.settings = Object.assign({}, Store.settings, {
+      displayName: 'Ana Costa',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    });
+    Store.movements = [];
+    Store.installments = [];
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+    window.__aliciaOcrTest = { filename: '', terminated: false };
+    window.Tesseract = {
+      createWorker: async function () {
+        return {
+          recognize: async function (file) {
+            window.__aliciaOcrTest.filename = file.name;
+            return { data: { text: 'MERCADO CENTRAL\nLEITE 2 UNIDADES\nTOTAL R$ 18,90' } };
+          },
+          terminate: async function () {
+            window.__aliciaOcrTest.terminated = true;
+          }
+        };
+      }
+    };
+  });
+
+  await page.locator('#alicerce-ai-open-assistant').click();
+  await expect(page.locator('#alicerce-assistant-camera')).toBeVisible();
+  await page.locator('#alicerce-assistant-photo').setInputFiles({
+    name: 'nota.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from('imagem temporária de teste')
+  });
+  await expect(page.locator('#alicerce-assistant-status')).toContainText('Texto extraído no aparelho');
+  await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/MERCADO CENTRAL/);
+  await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/R\$ 18,90/);
+  const state = await page.evaluate(function () {
+    var fileInput = document.getElementById('alicerce-assistant-photo');
+    return {
+      fileValue: fileInput.value,
+      fileCount: fileInput.files ? fileInput.files.length : -1,
+      movements: Store.movements.length,
+      filename: window.__aliciaOcrTest.filename,
+      terminated: window.__aliciaOcrTest.terminated
+    };
+  });
+  expect(state.fileValue).toBe('');
+  expect(state.fileCount).toBe(0);
+  expect(state.movements).toBe(0);
+  expect(state.filename).toBe('nota.jpg');
+  expect(state.terminated).toBe(true);
+});
+
+test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, conversa organizada e isolamento por conta', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const greetingChecks = await page.evaluate(function () {
     Store.userId = 'ia-conta-teste-a';
-    Store.settings = Object.assign({}, Store.settings, { alicerceLegalAcceptance: { termsVersion: '2026-10-20-v1', privacyVersion: '2026-10-20-v1', acceptedAt: '2026-10-31T12:00:00.000Z' } });
+    Store.userEmail = 'maria.silva@example.com';
     Store.lang = 'pt';
+    Store.settings = Object.assign({}, Store.settings, {
+      displayName: 'Maria Silva',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    });
+    function greetingAt(hour) {
+      var now = new Date();
+      var target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0, 0);
+      Clock.setOffset(target.getTime() - Date.now());
+      return AlicerceIA.saudacao();
+    }
+    var result = {
+      morning: greetingAt(9),
+      afternoon: greetingAt(14),
+      night: greetingAt(20)
+    };
+    greetingAt(9);
+    Store.loans = [];
     Store.movements = [
       { id: 'ia-1', tipo: 'despesa', categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 48.50, data: Clock.today(), status: 'pago' },
       { id: 'ia-2', tipo: 'despesa', categoria: 'moradia', subcategoria: 'energia', descricao: 'Conta de luz', estabelecimento: 'Neoenergia', valor: 20, data: Clock.today(), status: 'pago' }
     ];
     Store.installments = [];
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+    return result;
   });
 
-  await expect(page.locator('#alicerce-ai-card')).toBeVisible();
-  await expect(page.locator('#alicerce-ai-insight')).toContainText(/lanchonete/i);
-  await page.locator('#alicerce-ai-question').fill('Quanto gastei com lanche este mês?');
-  await page.locator('.alicerce-ai-button').click();
-  await expect(page.locator('#alicerce-ai-answer')).toContainText('48,50');
+  expect(greetingChecks.morning).toBe('Bom dia, Maria');
+  expect(greetingChecks.afternoon).toBe('Boa tarde, Maria');
+  expect(greetingChecks.night).toBe('Boa noite, Maria');
 
-  await page.evaluate(function () {
+  await expect(page.locator('#alicerce-ai-card')).toBeVisible();
+  await expect(page.locator('#alicerce-ai-open-assistant')).toBeVisible();
+  await expect(page.locator('#alicerce-ai-card')).toContainText('Bom dia, Maria');
+  await expect(page.locator('#alicerce-ai-card')).not.toContainText(/Tire dúvidas|Um olhar sobre sua conta|SEU ASSISTENTE FINANCEIRO/i);
+  const launcherHeight = await page.locator('#alicerce-ai-card').evaluate(function (el) { return el.getBoundingClientRect().height; });
+  expect(launcherHeight).toBeLessThan(80);
+  await expect(page.locator('#alicerce-assistant-page')).toHaveCount(0);
+
+  await page.locator('#alicerce-ai-open-assistant').click();
+  await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
+  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Alicia');
+  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Sua assistente financeira');
+  await expect(page.locator('.alicerce-assistant-back')).toContainText('Início');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/alicia-assistente.webp');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('object-fit', 'contain');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('width', '54px');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('height', '54px');
+  await expect(page.locator('.alicerce-assistant-avatar')).toHaveCSS('border-width', '2px');
+  await expect(page.locator('.alicerce-assistant-avatar')).toHaveCSS('border-radius', '13px');
+  await expect(page.locator('.alicerce-assistant-heading')).toHaveCSS('border-width', '1px');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Oi, Maria! Tudo bem com você?');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Estou aqui para ajudar a entender seu dinheiro.');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('O que vamos olhar hoje?');
+  await expect(page.locator('.alicerce-assistant-speak')).toBeVisible();
+  await expect(page.locator('.alicerce-assistant-chat-panel')).toBeVisible();
+  await expect(page.locator('#alicerce-assistant-camera')).toBeVisible();
+  await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
+
+  await page.locator('#alicerce-assistant-input').fill('Quanto gastei com lanche este mês?');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('48,50');
+  await expect(page.locator('.alicerce-assistant-message.user')).toContainText('Quanto gastei com lanche este mês?');
+  await expect(page.locator('.alicerce-assistant-message.assistant')).toContainText('48,50');
+  await expect(page.locator('.alicerce-assistant-message-avatar')).toHaveCount(1);
+
+  const stateAfterSwitch = await page.evaluate(function () {
     Store.userId = 'ia-conta-teste-b';
+    Store.userEmail = 'joao.silva@example.com';
+    Store.settings = Object.assign({}, Store.settings, { displayName: 'Joao Silva' });
     Store.movements = [];
     Store.installments = [];
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+    return {
+      messages: AlicerceIA._messages,
+      question: AlicerceIA._question,
+      answer: AlicerceIA._answer,
+      greeting: AlicerceIA.saudacao()
+    };
   });
-  await expect(page.locator('#alicerce-ai-answer')).toHaveCount(0);
-  await expect(page.locator('#alicerce-ai-question')).toHaveValue('');
-  await expect(page.locator('#alicerce-ai-insight')).not.toContainText('48,50');
+
+  expect(stateAfterSwitch.messages).toEqual([]);
+  expect(stateAfterSwitch.question).toBe('');
+  expect(stateAfterSwitch.answer).toBe('');
+  expect(stateAfterSwitch.greeting).toBe('Bom dia, Joao');
+  await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
+  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Alicia');
+  await expect(page.locator('#alicerce-assistant-messages')).not.toContainText('48,50');
+  await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
+});
+
+test('Assistente mantém o assunto quando a pessoa pergunta por outro período', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'ia-contexto-teste';
+    Store.userEmail = 'maria.silva@example.com';
+    Store.lang = 'pt';
+    Store.settings = Object.assign({}, Store.settings, { alicerceLegalAcceptance: { termsVersion: '2026-10-20-v1', privacyVersion: '2026-10-20-v1', acceptedAt: '2026-10-31T12:00:00.000Z' } });
+    Store.loans = [];
+    Store.installments = [];
+    var now = Clock.now();
+    var day = now.getDay() || 7;
+    var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - day + 1);
+    var previousMonday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - 7);
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.movements = [
+      { id: 'bar-esta-semana-1', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'bar', descricao: 'Bebidas', estabelecimento: 'Bar Central', valor: 300, data: format(monday) },
+      { id: 'bar-esta-semana-2', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'bar', descricao: 'Bebidas', estabelecimento: 'Bar Central', valor: 200, data: Clock.today() },
+      { id: 'bar-semana-passada', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'bar', descricao: 'Bebidas', estabelecimento: 'Bar Central', valor: 200, data: format(previousMonday) },
+      { id: 'mercado-semana-passada', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compras para casa', estabelecimento: 'Mercado do Bairro', valor: 100, data: format(previousMonday) }
+    ];
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await page.locator('#alicerce-ai-open-assistant').click();
+  await page.locator('#alicerce-assistant-input').fill('Quanto gastei com bar esta semana?');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('R$ 500,00');
+
+  await page.locator('#alicerce-assistant-input').fill('E na semana passada?');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('R$ 200,00');
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('No período consultado');
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).not.toContainText('R$ 300,00');
+  await expect(page.locator('.alicerce-assistant-message.user').last()).toContainText('E na semana passada?');
 });
 
 test('Visão Financeira apresenta pontos principais e permite abrir análises com um toque', async function ({ page }) {
@@ -1568,3 +1763,324 @@ test('não oferece instalação novamente quando a Alicerce já está instalada'
   await expect(page.locator('#al-install-onboarding')).toBeHidden();
   await expect(page.locator('#menu-panel .al-install-menu-item')).toHaveCount(0);
 });
+
+test('Alicia usa sempre a voz neural fixa Dora em português brasileiro', async function ({ page }) {
+  await page.addInitScript(function () {
+    window.__alicerceSpeechTest = { synthesized: [], cancelled: 0, started: 0, stopped: 0 };
+    window.AudioContext = function () {
+      this.state = 'running';
+      this.destination = {};
+      this.resume = async function () {};
+      this.createBuffer = function (channels, length, sampleRate) {
+        var channel = new Float32Array(length);
+        return { getChannelData: function () { return channel; } };
+      };
+      this.createBufferSource = function () {
+        return {
+          connect: function () {},
+          disconnect: function () {},
+          start: function () { window.__alicerceSpeechTest.started += 1; },
+          stop: function () { window.__alicerceSpeechTest.stopped += 1; }
+        };
+      };
+    };
+  });
+
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'tts-dora-pt-test';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul' };
+    AlicerceIA._createTtsRuntime = async function () {
+      return {
+        listVoices: async function () {
+          return [{ voiceId: 'pf_dora', locale: 'pt-BR' }];
+        },
+        synthesize: async function (text, options) {
+          window.__alicerceSpeechTest.synthesized.push({
+            text: text,
+            voiceId: options && options.voiceId
+          });
+          return { samples: new Float32Array([0.1, 0.2, 0.3, 0.4]), sampleRateHz: 24000 };
+        },
+        cancel: function () { window.__alicerceSpeechTest.cancelled += 1; },
+        close: function () {}
+      };
+    };
+    AlicerceIA._resetUser();
+    AlicerceIA._messages.push({
+      role: 'assistant',
+      text: 'Você gastou R$ 300,00 com alimentação e sua variação foi de 25%.'
+    });
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  const speakButton = page.locator('.alicerce-assistant-speak');
+  await expect(speakButton).toBeVisible();
+  const beforeTap = await page.evaluate(function () {
+    return window.__alicerceSpeechTest.synthesized.length;
+  });
+  expect(beforeTap).toBe(0);
+
+  await speakButton.click();
+  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('295 MB');
+  await page.locator('.alicerce-assistant-privacy-confirm').click();
+  await expect.poll(function () {
+    return page.evaluate(function () { return window.__alicerceSpeechTest.synthesized.length; });
+  }).toBe(1);
+
+  const spoken = await page.evaluate(function () {
+    return window.__alicerceSpeechTest.synthesized[0];
+  });
+  expect(spoken.text).toBe('Você gastou 300 reais com alimentação e sua variação foi de 25 por cento.');
+  expect(spoken.voiceId).toBe('pf_dora');
+  await expect(speakButton).toContainText('Parar');
+  await expect(speakButton).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(function () {
+    return page.evaluate(function () { return window.__alicerceSpeechTest.started; });
+  }).toBe(1);
+
+  await speakButton.click();
+  await expect.poll(function () {
+    return page.evaluate(function () { return window.__alicerceSpeechTest.cancelled; });
+  }).toBe(1);
+  await expect(speakButton).toContainText('Ouvir resposta');
+  await expect(speakButton).toHaveAttribute('aria-pressed', 'false');
+
+  await speakButton.click();
+  await expect(page.locator('.alicerce-assistant-privacy-confirm')).toBeVisible();
+  await page.locator('.alicerce-assistant-privacy-confirm').click();
+  await expect.poll(function () {
+    return page.evaluate(function () { return window.__alicerceSpeechTest.synthesized.length; });
+  }).toBe(2);
+  await expect(speakButton).toHaveAttribute('aria-pressed', 'true');
+  await page.locator('.alicerce-assistant-back').click();
+  await expect(page.locator('#alicerce-assistant-page')).toHaveCount(0);
+  await expect.poll(function () {
+    return page.evaluate(function () { return window.__alicerceSpeechTest.cancelled; });
+  }).toBe(2);
+});
+test('Alicia carrega a biblioteca de voz uma vez e preserva o Audio nativo do navegador', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    window.__alicerceTtsLibraryTest = {
+      nativeAudio: window.Audio,
+      insertions: 0
+    };
+    var nativeAppendChild = document.head.appendChild;
+    document.head.appendChild = function (node) {
+      if (node && String(node.src || '').indexOf('audio_bundle.js') >= 0) {
+        window.__alicerceTtsLibraryTest.insertions += 1;
+        window.Audio = {
+          FilesetResolver: { forAudioTasks: function () { return Promise.resolve({}); } },
+          TextToSpeech: {}
+        };
+        window.setTimeout(function () {
+          if (typeof node.onload === 'function') node.onload();
+        }, 0);
+        return node;
+      }
+      return nativeAppendChild.call(this, node);
+    };
+  });
+
+  const result = await page.evaluate(async function () {
+    var first = await AlicerceIA._loadTtsLibrary();
+    var second = await AlicerceIA._loadTtsLibrary();
+    return {
+      hasFilesetResolver: !!first.FilesetResolver,
+      hasTextToSpeech: !!first.TextToSpeech,
+      sameInstance: first === second,
+      nativeAudioRestored: window.Audio === window.__alicerceTtsLibraryTest.nativeAudio,
+      scriptInsertions: window.__alicerceTtsLibraryTest.insertions
+    };
+  });
+
+  expect(result.hasFilesetResolver).toBe(true);
+  expect(result.hasTextToSpeech).toBe(true);
+  expect(result.sameInstance).toBe(true);
+  expect(result.nativeAudioRestored).toBe(true);
+  expect(result.scriptInsertions).toBe(1);
+});
+
+test('Alicia prepara valores financeiros para fala sem mudar o texto exibido', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const prepared = await page.evaluate(function () {
+    Store.lang = 'pt';
+    return {
+      thousands: AlicerceIA.prepararFala('Você gastou R$ 3.000,00.'),
+      cents: AlicerceIA.prepararFala('Foram R$ 48,50 no mercado.'),
+      percent: AlicerceIA.prepararFala('Aumento de 25%.'),
+      source: 'Você gastou R$ 3.000,00.'
+    };
+  });
+  expect(prepared.thousands).toBe('Você gastou 3.000 reais.');
+  expect(prepared.cents).toBe('Foram 48 reais e 50 centavos no mercado.');
+  expect(prepared.percent).toBe('Aumento de 25 por cento.');
+  expect(prepared.source).toBe('Você gastou R$ 3.000,00.');
+});
+
+test('Alicia não troca a voz Dora por uma voz do aparelho quando o motor fixo falha', async function ({ page }) {
+  await page.addInitScript(function () {
+    window.__alicerceSpeechTest = { nativeSpoken: 0 };
+    window.SpeechSynthesisUtterance = function (text) { this.text = text; };
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        speaking: false,
+        pending: false,
+        getVoices: function () {
+          return [{ name: 'Voz diferente do aparelho', lang: 'pt-BR', localService: true }];
+        },
+        speak: function () { window.__alicerceSpeechTest.nativeSpoken += 1; },
+        cancel: function () { this.speaking = false; this.pending = false; }
+      }
+    });
+    window.AudioContext = function () {
+      this.state = 'running';
+      this.destination = {};
+      this.resume = async function () {};
+    };
+  });
+
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'tts-dora-failure-test';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul' };
+    AlicerceIA._createTtsRuntime = async function () {
+      throw new Error('Falha simulada ao carregar o modelo Dora.');
+    };
+    AlicerceIA._resetUser();
+    AlicerceIA._messages.push({
+      role: 'assistant',
+      text: 'Você gastou R$ 75,00 com transporte.'
+    });
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await page.locator('.alicerce-assistant-speak').click();
+  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('295 MB');
+  await page.locator('.alicerce-assistant-privacy-confirm').click();
+  await expect(page.locator('#alicerce-assistant-status')).toContainText('Não foi possível carregar a voz fixa Dora');
+  const result = await page.evaluate(function () {
+    return {
+      nativeSpoken: window.__alicerceSpeechTest.nativeSpoken,
+      textStillVisible: document.querySelector('.alicerce-assistant-message.assistant').textContent.indexOf('75,00')>=0,
+      pressed: document.querySelector('.alicerce-assistant-speak').getAttribute('aria-pressed')
+    };
+  });
+  expect(result.nativeSpoken).toBe(0);
+  expect(result.textStillVisible).toBe(true);
+  expect(result.pressed).toBe('false');
+});
+
+test('Alicia oferece áudio somente em português brasileiro', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.lang = 'en';
+    Store.settings = { lang: 'en', theme: 'azul' };
+    AlicerceIA._createTtsRuntime = async function () {
+      throw new Error('O runtime não deveria ser carregado em outro idioma.');
+    };
+    AlicerceIA._resetUser();
+    AlicerceIA._messages.push({ role: 'assistant', text: 'Your spending increased this month.' });
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+  await page.locator('.alicerce-assistant-speak').click();
+  await expect(page.locator('#alicerce-assistant-status')).toContainText('only in Brazilian Portuguese');
+  await expect(page.locator('#alicerce-assistant-privacy')).toBeHidden();
+  const initialized = await page.evaluate(function () {
+    return AlicerceIA._ttsInstance===null&&AlicerceIA._ttsInitPromise===null;
+  });
+  expect(initialized).toBe(true);
+});
+test('Alicia limita a conversa a duas interações, permite limpar e leva aos relatórios da Visão financeira', async function ({ page }) {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-historico-limite';
+    Store.lang = 'pt';
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      displayName: 'Ewerton',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
+    Store.movements = [];
+    Store.installments = [];
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await expect(page.locator('#alicerce-assistant-financial')).toBeVisible();
+  for (const question of ['Quanto gastei este mês?', 'Onde gastei mais?', 'Compare com o mês passado']) {
+    await page.locator('#alicerce-assistant-input').fill(question);
+    await page.locator('#alicerce-assistant-send').click();
+  }
+
+  const historyLength = await page.evaluate(function () { return AlicerceIA._messages.length; });
+  expect(historyLength).toBe(4);
+  await expect(page.locator('.alicerce-assistant-message.user')).toHaveCount(2);
+  await expect(page.locator('.alicerce-assistant-message.assistant')).toHaveCount(2);
+  await expect(page.locator('#alicerce-assistant-clear')).toBeVisible();
+
+  const mobileLayout = await page.evaluate(function () {
+    var page = document.getElementById('alicerce-assistant-page');
+    var input = document.getElementById('alicerce-assistant-input');
+    return {
+      width: page.clientWidth,
+      scrollWidth: page.scrollWidth,
+      inputFontSize: window.getComputedStyle(input).fontSize
+    };
+  });
+  expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.width);
+  expect(mobileLayout.inputFontSize).toBe('16px');
+
+  await page.locator('#alicerce-assistant-clear').click();
+  await expect(page.locator('#alicerce-assistant-clear')).toHaveCount(0);
+  const cleared = await page.evaluate(function () { return AlicerceIA._messages.length; });
+  expect(cleared).toBe(0);
+
+  await page.locator('#alicerce-assistant-input').fill('Quero um relatório em PDF');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Visão financeira');
+  await page.locator('#alicerce-assistant-financial').click();
+  await expect(page.locator('.visao-financeira')).toBeVisible();
+});
+
+test('Alicia exibe avisos de privacidade somente quando a pessoa aciona ditado, foto ou leitura em voz', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-privacy-notices';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul', displayName: 'Ewerton' };
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  const notice = page.locator('#alicerce-assistant-privacy');
+  await expect(notice).toBeHidden();
+
+  await page.locator('#alicerce-assistant-input').focus();
+  await expect(notice).toContainText('Você também pode falar pelo microfone do teclado');
+  await expect(notice).toContainText('Alicerce recebe somente o texto');
+
+  await page.locator('#alicerce-assistant-camera').click();
+  await expect(notice).toContainText('as fotos são lidas no próprio aparelho');
+  await expect(notice).toContainText('não são enviadas nem armazenadas');
+  await page.locator('.alicerce-assistant-privacy-cancel').click();
+  await expect(notice).toBeHidden();
+
+  await page.locator('.alicerce-assistant-speak').click();
+  await expect(notice).toContainText('modelo da voz fixa Dora');
+  await expect(notice).toContainText('295 MB');
+  await expect(notice).toContainText('métricas técnicas de uso ao Google');
+  await page.locator('.alicerce-assistant-privacy-cancel').click();
+  await expect(notice).toBeHidden();
+});
+
