@@ -5502,21 +5502,28 @@ AlicerceIA._recognitionRequestId=0;
 AlicerceIA._recognitionText='';
 AlicerceIA._recognitionError='';
 AlicerceIA._recognitionOwnerId='';
+AlicerceIA._pendingRecognitionMode='';
 AlicerceIA._privacyCopy={
   pt:{
-    dictation:'Para proteger sua privacidade, a transcrição será feita no próprio aparelho com o pacote de português do navegador. A gravação não é enviada ao Alicerce nem ao Render; somente o texto reconhecido será usado na conversa. Na primeira vez, o navegador pode baixar o pacote de idioma.',
+    dictation:'Você também pode usar o microfone do teclado para ditar no campo de mensagem.',
+    microphoneLocal:'Alicia tentará reconhecer sua fala no próprio aparelho. Se o navegador não tiver o pacote local de português, ela pedirá sua autorização separadamente antes de usar o serviço de reconhecimento online do navegador. A gravação não é enviada ao Alicerce nem ao Render.',
+    microphoneRemote:'Para ouvir você neste aparelho, o navegador usará seu serviço de reconhecimento de voz. Isso pode transmitir o áudio ao provedor do navegador para gerar o texto. O Alicerce não recebe nem armazena a gravação; recebe apenas o texto reconhecido. A política de retenção do provedor depende do navegador e das suas configurações.',
     photo:'Privacidade: as fotos são lidas no próprio aparelho e não são enviadas nem armazenadas pelo Alicerce. O texto identificado aparece para você revisar antes do envio.',
     voice:'Ao tocar em ouvir, somente o texto desta resposta será enviado por uma conexão protegida ao serviço de voz online que utiliza a tecnologia do Microsoft Edge. A resposta pode conter valores financeiros. Não enviamos o histórico inteiro nem gravações. O áudio é reproduzido e descartado no aparelho.',
     continue:'Continuar',cancel:'Cancelar',listenNow:'Enviar texto e ouvir'
   },
   en:{
-    dictation:'To protect your privacy, speech will be transcribed on this device using the browser English language pack. The recording is not sent to Alicerce or Render; only the recognized text enters the conversation. The browser may download the language pack the first time.',
+    dictation:'You can also use your keyboard microphone to dictate into the message field.',
+    microphoneLocal:'Alicia will first try to recognize your speech on this device. If the browser does not have a local English language pack, it will ask separately before using the browser’s online speech recognition service. The recording is not sent to Alicerce or Render.',
+    microphoneRemote:'To hear you on this device, the browser will use its speech recognition service. This may transmit audio to the browser provider to produce text. Alicerce does not receive or store the recording; it receives only the recognized text. Provider retention depends on the browser and your settings.',
     photo:'Privacy: photos are read on your device and are not uploaded or stored by Alicerce. You can review the recognized text before sending it.',
     voice:'Alicia’s fixed voice is available only in Brazilian Portuguese.',
     continue:'Continue',cancel:'Cancel',listenNow:'Listen now'
   },
   es:{
-    dictation:'Para proteger tu privacidad, el navegador transcribirá el audio en este dispositivo con el paquete de español. La grabación no se envía a Alicerce ni a Render; solo el texto reconocido entra en la conversación. La primera vez, el navegador puede descargar el paquete de idioma.',
+    dictation:'También puedes usar el micrófono del teclado para dictar en el campo de mensaje.',
+    microphoneLocal:'Alicia intentará reconocer tu voz en este dispositivo. Si el navegador no tiene el paquete local de español, pedirá tu autorización por separado antes de usar el servicio de reconocimiento en línea del navegador. La grabación no se envía a Alicerce ni a Render.',
+    microphoneRemote:'Para escucharte en este dispositivo, el navegador usará su servicio de reconocimiento de voz. Esto puede transmitir el audio al proveedor del navegador para generar el texto. Alicerce no recibe ni almacena la grabación; solo recibe el texto reconocido. La retención del proveedor depende del navegador y de tu configuración.',
     photo:'Privacidad: las fotos se leen en tu dispositivo y Alicerce no las envía ni las almacena. Puedes revisar el texto reconocido antes de enviarlo.',
     voice:'La voz fija de Alicia está disponible solamente en portugués brasileño.',
     continue:'Continuar',cancel:'Cancelar',listenNow:'Escuchar ahora'
@@ -5566,59 +5573,46 @@ AlicerceIA.toggleMicrofone=function(){
 };
 AlicerceIA.solicitarMicrofone=function(){
   if(this._recognition||this._recognitionStarting)return;
+  var Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var localCapable=!!(Recognition&&typeof Recognition.available==='function'&&typeof Recognition.install==='function'&&Recognition.prototype&&('processLocally' in Recognition.prototype));
+  if(!Recognition){
+    var status=document.getElementById('alicerce-assistant-status');
+    if(status)status.textContent='Este navegador não oferece reconhecimento de voz para o botão da Alicia. Use o microfone do teclado no campo de mensagem.';
+    return;
+  }
   this._pendingPrivacyAction='microphone';
+  this._pendingRecognitionMode=localCapable?'prefer-local':'browser';
   this._pendingSpeechIndex=-1;
   this._pendingSpeechButton=null;
-  this._mostrarAvisoPrivacidade(this._textoPrivacidade().dictation,this._textoPrivacidade().continue);
+  var copy=this._textoPrivacidade();
+  this._mostrarAvisoPrivacidade(localCapable?copy.microphoneLocal:copy.microphoneRemote,copy.continue);
 };
-AlicerceIA.iniciarMicrofone=async function(){
-  this._resetUser();
-  var status=document.getElementById('alicerce-assistant-status');
-  var Recognition=window.SpeechRecognition;
-  var language=Store.lang==='en'?'en-US':Store.lang==='es'?'es-ES':'pt-BR';
-  if(!Recognition||typeof Recognition.available!=='function'||typeof Recognition.install!=='function'){
-    if(status)status.textContent='A transcrição local do Alicerce não está disponível neste aparelho. Para ditar agora, toque no campo de mensagem e use o microfone do teclado; o tratamento do áudio depende das configurações do seu teclado e aparelho.';
-    return;
-  }
-  if(!Recognition.prototype||!('processLocally' in Recognition.prototype)){
-    if(status)status.textContent='O navegador não confirmou suporte à transcrição local. Nenhum áudio foi enviado.';
-    return;
-  }
-  this.pararAudio();
-  var requestId=++this._recognitionRequestId;
-  var ownerId=String(Store.userId||'');
-  this._recognitionStarting=true;
-  if(status)status.textContent='Verificando o pacote de idioma no aparelho...';
+AlicerceIA.solicitarMicrofoneRemoto=function(){
+  this._pendingPrivacyAction='microphone-remote';
+  this._pendingRecognitionMode='browser';
+  this._pendingSpeechIndex=-1;
+  this._pendingSpeechButton=null;
+  var copy=this._textoPrivacidade();
+  this._mostrarAvisoPrivacidade(copy.microphoneRemote,copy.continue);
+};
+AlicerceIA._iniciarSessaoReconhecimento=function(Recognition,language,ownerId,requestId,local){
+  var recognition;
   try{
-    var availability=await Recognition.available({langs:[language],processLocally:true});
-    if(requestId!==this._recognitionRequestId)return;
-    if(availability==='unavailable'){
-      this._recognitionStarting=false;
-      if(status)status.textContent='O pacote de reconhecimento '+language+' não está disponível neste aparelho. Nenhuma gravação foi enviada.';
-      return;
-    }
-    if(availability!=='available'){
-      if(status)status.textContent='Preparando o reconhecimento de voz '+language+' no aparelho. Isso pode exigir um download único.';
-      var installed=await Recognition.install({langs:[language],processLocally:true});
-      if(requestId!==this._recognitionRequestId)return;
-      this._recognitionStarting=false;
-      if(status)status.textContent=installed?'Idioma instalado no aparelho. Toque no microfone novamente para começar.':'Não foi possível instalar o pacote de idioma. Tente novamente mais tarde.';
-      return;
-    }
-    var recognition=new Recognition();
+    recognition=new Recognition();
     recognition.lang=language;
     recognition.continuous=true;
     recognition.interimResults=true;
     recognition.maxAlternatives=1;
-    recognition.processLocally=true;
+    if('processLocally' in recognition)recognition.processLocally=!!local;
     this._recognition=recognition;
     this._recognitionOwnerId=ownerId;
     this._recognitionText='';
     this._recognitionError='';
     this._recognitionStarting=false;
     var self=this;
+    var status=document.getElementById('alicerce-assistant-status');
     this._setMicButtonState(true);
-    if(status)status.textContent='Alicia está ouvindo. Fale e toque novamente no microfone para terminar.';
+    if(status)status.textContent=local?'Alicia está ouvindo no próprio aparelho. Fale e toque novamente no microfone para terminar.':'Alicia está ouvindo pelo reconhecimento do navegador. Fale e toque novamente no microfone para terminar.';
     recognition.onresult=function(event){
       if(self._recognition!==recognition)return;
       var finalParts=[];
@@ -5639,8 +5633,9 @@ AlicerceIA.iniciarMicrofone=async function(){
       var code=String(event&&event.error||'');
       if(code==='not-allowed'||code==='service-not-allowed')self._recognitionError='Permissão de microfone negada. Libere o microfone nas permissões do navegador.';
       else if(code==='no-speech')self._recognitionError='Não detectei fala. Toque no microfone e tente novamente.';
-      else if(code==='language-not-supported')self._recognitionError='O pacote de idioma não está disponível neste navegador.';
+      else if(code==='language-not-supported')self._recognitionError='O reconhecimento não está disponível para esse idioma neste navegador.';
       else if(code==='audio-capture')self._recognitionError='Não encontrei um microfone disponível neste aparelho.';
+      else if(code==='network')self._recognitionError='A conexão com o serviço de reconhecimento do navegador falhou. Verifique a internet e tente novamente.';
       else self._recognitionError='A transcrição foi interrompida. Tente novamente.';
     };
     recognition.onend=function(){
@@ -5668,13 +5663,63 @@ AlicerceIA.iniciarMicrofone=async function(){
       self.enviarMensagem(transcript);
     };
     recognition.start();
+    return true;
   }catch(error){
-    if(requestId!==this._recognitionRequestId)return;
+    if(this._recognition===recognition)this._recognition=null;
     this._recognitionStarting=false;
-    this._recognition=null;
     this._setMicButtonState(false);
-    if(status)status.textContent='Não foi possível iniciar o reconhecimento local. Verifique a permissão de microfone e tente novamente.';
+    return false;
   }
+};
+AlicerceIA.iniciarMicrofone=async function(mode){
+  this._resetUser();
+  var status=document.getElementById('alicerce-assistant-status');
+  var Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var language=Store.lang==='en'?'en-US':Store.lang==='es'?'es-ES':'pt-BR';
+  if(!Recognition){
+    if(status)status.textContent='Este navegador não oferece reconhecimento de voz. Use o microfone do teclado no campo de mensagem.';
+    return;
+  }
+  this.pararAudio();
+  var requestId=++this._recognitionRequestId;
+  var ownerId=String(Store.userId||'');
+  this._recognitionStarting=true;
+  if(mode!=='browser'&&typeof Recognition.available==='function'&&typeof Recognition.install==='function'&&Recognition.prototype&&('processLocally' in Recognition.prototype)){
+    if(status)status.textContent='Verificando o reconhecimento local no aparelho...';
+    try{
+      var availability=await Recognition.available({langs:[language],processLocally:true});
+      if(requestId!==this._recognitionRequestId)return;
+      if(availability==='available'){
+        if(this._iniciarSessaoReconhecimento(Recognition,language,ownerId,requestId,true))return;
+        this._recognitionStarting=false;
+        this.solicitarMicrofoneRemoto();
+        if(status)status.textContent='O reconhecimento local não iniciou. Autorize o modo online para continuar.';
+        return;
+      }
+      if(availability==='downloadable'){
+        if(status)status.textContent='Preparando o pacote de idioma '+language+' no aparelho...';
+        var installed=await Recognition.install({langs:[language],processLocally:true});
+        if(requestId!==this._recognitionRequestId)return;
+        this._recognitionStarting=false;
+        if(installed){
+          if(status)status.textContent='Idioma instalado no aparelho. Toque no microfone novamente para começar.';
+        }else{
+          this.solicitarMicrofoneRemoto();
+        }
+        return;
+      }
+      this._recognitionStarting=false;
+      this.solicitarMicrofoneRemoto();
+      return;
+    }catch(error){
+      if(requestId!==this._recognitionRequestId)return;
+      this._recognitionStarting=false;
+      this.solicitarMicrofoneRemoto();
+      if(status)status.textContent='O reconhecimento local não está disponível. Autorize o modo online para continuar.';
+      return;
+    }
+  }
+  this._iniciarSessaoReconhecimento(Recognition,language,ownerId,requestId,false);
 };
 AlicerceIA.pararReconhecimento=function(descartar){
   var recognition=this._recognition;
@@ -5733,6 +5778,7 @@ AlicerceIA.cancelarAvisoPrivacidade=function(){
   this._pendingPrivacyAction='';
   this._pendingSpeechIndex=-1;
   this._pendingSpeechButton=null;
+  this._pendingRecognitionMode='';
   var box=document.getElementById('alicerce-assistant-privacy');
   if(box){box.hidden=true;box.innerHTML='';}
 };
@@ -5740,12 +5786,15 @@ AlicerceIA.confirmarAvisoPrivacidade=function(){
   var action=this._pendingPrivacyAction;
   var index=this._pendingSpeechIndex;
   var button=this._pendingSpeechButton;
+  var recognitionMode=this._pendingRecognitionMode;
   this.cancelarAvisoPrivacidade();
   if(action==='camera'){
     var input=document.getElementById('alicerce-assistant-photo');
     if(input)input.click();
   }else if(action==='microphone'){
-    this.iniciarMicrofone();
+    this.iniciarMicrofone(recognitionMode);
+  }else if(action==='microphone-remote'){
+    this.iniciarMicrofone('browser');
   }else if(action==='speech'&&button&&button.isConnected){
     this.ouvirMensagem(index,button);
   }
