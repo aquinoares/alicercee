@@ -5552,7 +5552,8 @@ function renderAssistente(){
   html+='<section class="alicerce-assistant-chat-panel">';
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
-    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span>'+esc(ui.welcome)+'</div>';
+    var welcomeText=AlicerceIA.mensagemAbertura();
+    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(welcomeText)+'</span><button type="button" class="alicerce-assistant-speak" data-label-play="'+esc(ui.listen)+'" data-label-stop="'+esc(ui.stop)+'" data-label-unavailable="'+esc(ui.voiceUnavailable)+'" data-label-error="'+esc(ui.voiceError)+'" aria-label="'+esc(ui.listen)+'" aria-pressed="false" onclick="AlicerceIA.ouvirMensagem(-1,this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3z"></path><path d="M16 9a4 4 0 010 6"></path><path d="M19 5a10 10 0 010 14"></path></svg><span class="alicerce-assistant-speak-label">'+esc(ui.listen)+'</span></button></div>';
   }else{
     messages.forEach(function(item,index){
       if(!item||!item.text)return;
