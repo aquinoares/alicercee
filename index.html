@@ -5176,33 +5176,46 @@ const AlicerceIA = {
    A conversa permanece somente em memória e é limpa ao trocar a conta.
    Usa o responder local já existente; não cria API, tabela ou storage.
    ============================================================= */
+AlicerceIA.saudacao=function(){
+  var lang=Store.lang||'pt';
+  var hour=Clock.now().getHours();
+  var greeting='';
+  var name='';
+  if(lang==='en'){
+    greeting=hour>=5&&hour<12?'Good morning':hour>=12&&hour<18?'Good afternoon':'Good evening';
+  }else if(lang==='es'){
+    greeting=hour>=5&&hour<12?'Buenos días':hour>=12&&hour<18?'Buenas tardes':'Buenas noches';
+  }else{
+    greeting=hour>=5&&hour<12?'Bom dia':hour>=12&&hour<18?'Boa tarde':'Boa noite';
+  }
+  try{
+    if(Store.userEmail)name=String(contaNome(Store.userEmail)||'').split(/\\s+/)[0];
+  }catch(e){}
+  if(name&&name.toLowerCase()!=='minha'&&name.toLowerCase()!=='my'&&name.toLowerCase()!=='mi'){
+    return greeting+', '+name;
+  }
+  return greeting+'!';
+};
+
 AlicerceIA.renderCard=function(){
   this._resetUser();
   var lang=Store.lang||'pt';
-  var copy={
-    pt:{eyebrow:'SEU ASSISTENTE FINANCEIRO',title:'Converse com o Alicerce',intro:'Tire dúvidas e entenda melhor seus gastos com os dados da sua própria conta.',open:'Abrir assistente',insight:'Um olhar sobre sua conta'},
-    en:{eyebrow:'YOUR FINANCIAL ASSISTANT',title:'Talk to Alicerce',intro:'Ask questions and understand your spending using your own account data.',open:'Open assistant',insight:'A look at your account'},
-    es:{eyebrow:'TU ASISTENTE FINANCIERO',title:'Habla con Alicerce',intro:'Resuelve dudas y entiende tus gastos con los datos de tu propia cuenta.',open:'Abrir asistente',insight:'Una mirada a tu cuenta'}
-  };
-  var ui=copy[lang]||copy.pt;
+  var label=lang==='en'?'Chat':lang==='es'?'Conversar':'Conversar';
   var html='<style id="alicerce-ai-launcher-styles">';
-  html+='.alicerce-ai-launcher{box-sizing:border-box;width:100%;margin:14px 0 18px;padding:15px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--text);min-width:0}';
-  html+='.alicerce-ai-launcher-top{display:flex;align-items:center;gap:9px;margin-bottom:9px}';
-  html+='.alicerce-ai-launcher-icon{width:48px;height:48px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}';
+  html+='.alicerce-ai-launcher{box-sizing:border-box;width:100%;margin:10px 0 14px;padding:9px 12px;border:1px solid var(--line);border-radius:15px;background:var(--surface);color:var(--text);min-width:0}';
+  html+='.alicerce-ai-launcher-action{width:100%;min-height:48px;display:flex;align-items:center;gap:10px;border:0;padding:0;background:transparent;color:var(--text);text-align:left;cursor:pointer}';
+  html+='.alicerce-ai-launcher-icon{width:44px;height:46px;display:flex;align-items:center;justify-content:center;flex:0 0 44px}';
   html+='.alicerce-ai-launcher-icon img{width:100%;height:100%;object-fit:contain;display:block}';
-  html+='.alicerce-ai-launcher-kicker{font-size:9px;font-weight:800;letter-spacing:.8px;color:var(--text2)}';
-  html+='.alicerce-ai-launcher-title{font-size:15px;font-weight:800;line-height:1.3;margin-top:2px}';
-  html+='.alicerce-ai-launcher-intro{font-size:12px;line-height:1.45;color:var(--text2);margin:0 0 10px}';
-  html+='.alicerce-ai-launcher-insight{font-size:12px;line-height:1.5;padding:10px 11px;border-radius:11px;background:var(--surface2);margin-bottom:11px;overflow-wrap:anywhere}';
-  html+='.alicerce-ai-launcher-action{width:100%;min-height:43px;display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:11px;padding:10px 14px;background:var(--accent);color:var(--on-accent);font-size:12px;font-weight:800;cursor:pointer}';
-  html+='.alicerce-ai-launcher-action:focus-visible{outline:2px solid var(--accent);outline-offset:3px}';
+  html+='.alicerce-ai-launcher-title{flex:1;min-width:0;font-size:14px;font-weight:800;line-height:1.25;overflow-wrap:anywhere}';
+  html+='.alicerce-ai-launcher-cta{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;color:var(--accent);font-size:11px;font-weight:800;white-space:nowrap}';
+  html+='.alicerce-ai-launcher-action:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:10px}';
   html+='</style>';
   html+='<section class="alicerce-ai-launcher" id="alicerce-ai-card" aria-label="Assistente Alicerce">';
-  html+='<div class="alicerce-ai-launcher-top"><span class="alicerce-ai-launcher-icon"><img src="/assets/assistente-alicerce.webp" width="48" height="48" alt=""></span><div><div class="alicerce-ai-launcher-kicker">'+esc(ui.eyebrow)+'</div><div class="alicerce-ai-launcher-title">'+esc(ui.title)+'</div></div></div>';
-  html+='<p class="alicerce-ai-launcher-intro">'+esc(ui.intro)+'</p>';
-  html+='<div class="alicerce-ai-launcher-insight"><strong>'+esc(ui.insight)+':</strong> '+esc(this.insight())+'</div>';
-  html+='<button class="alicerce-ai-launcher-action" id="alicerce-ai-open-assistant" type="button" onclick="AlicerceIA.abrir()">'+icon('message')+esc(ui.open)+'</button>';
-  html+='</section>';
+  html+='<button class="alicerce-ai-launcher-action" id="alicerce-ai-open-assistant" type="button" onclick="AlicerceIA.abrir()">';
+  html+='<span class="alicerce-ai-launcher-icon"><img src="/assets/assistente-alicerce.webp" width="44" height="46" alt=""></span>';
+  html+='<span class="alicerce-ai-launcher-title">'+esc(this.saudacao())+'</span>';
+  html+='<span class="alicerce-ai-launcher-cta">'+esc(label)+icon('arrowRight','ico-xs')+'</span>';
+  html+='</button></section>';
   return html;
 };
 
@@ -5239,20 +5252,23 @@ function renderAssistente(){
   AlicerceIA._resetUser();
   var lang=Store.lang||'pt';
   var copy={
-    pt:{title:'Assistente Alicerce',subtitle:'Sua vida financeira, explicada com os dados da sua conta.',greeting:'Olá! Sou o Assistente Alicerce. Posso ajudar você a entender seus gastos, comparar períodos e identificar pontos que merecem atenção.',placeholder:'Digite sua mensagem...',send:'Enviar',suggestions:'Experimente perguntar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?'],privacy:'Esta conversa fica somente na memória desta sessão e é limpa quando você troca de conta.',dictation:'No celular, use o microfone do teclado para ditar. O Alicerce recebe somente o texto.',back:'Voltar ao início'},
-    en:{title:'Alicerce Assistant',subtitle:'Your finances, explained using your own account data.',greeting:'Hello! I am the Alicerce Assistant. I can help you understand your spending, compare periods and identify points that deserve attention.',placeholder:'Type your message...',send:'Send',suggestions:'Try asking',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?'],privacy:'This conversation stays only in this session memory and is cleared when you switch accounts.',dictation:'On your phone, use your keyboard microphone to dictate. Alicerce receives text only.',back:'Back to home'},
-    es:{title:'Asistente Alicerce',subtitle:'Tus finanzas, explicadas con los datos de tu cuenta.',greeting:'¡Hola! Soy el Asistente Alicerce. Puedo ayudarte a entender tus gastos, comparar períodos e identificar puntos importantes.',placeholder:'Escribe tu mensaje...',send:'Enviar',suggestions:'Prueba preguntar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?'],privacy:'Esta conversación permanece solo en la memoria de esta sesión y se limpia al cambiar de cuenta.',dictation:'En el móvil, usa el micrófono del teclado para dictar. Alicerce recibe solo el texto.',back:'Volver al inicio'}
+    pt:{subtitle:'Assistente Alicerce',welcome:'O que você gostaria de entender hoje?',placeholder:'Digite sua mensagem...',send:'Enviar',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?'],privacy:'Esta conversa fica somente na memória desta sessão e é limpa quando você troca de conta.',dictation:'No celular, use o microfone do teclado para ditar. O Alicerce recebe somente o texto.',back:'Início'},
+    en:{subtitle:'Alicerce Assistant',welcome:'What would you like to understand today?',placeholder:'Type your message...',send:'Send',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?'],privacy:'This conversation stays only in this session memory and is cleared when you switch accounts.',dictation:'On your phone, use your keyboard microphone to dictate. Alicerce receives text only.',back:'Home'},
+    es:{subtitle:'Asistente Alicerce',welcome:'¿Qué te gustaría entender hoy?',placeholder:'Escribe tu mensaje...',send:'Enviar',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?'],privacy:'Esta conversación permanece solo en la memoria de esta sesión y se limpia al cambiar de cuenta.',dictation:'En el móvil, usa el micrófono del teclado para dictar. Alicerce recibe solo texto.',back:'Inicio'}
   };
   var ui=copy[lang]||copy.pt;
+  var greeting=this&&this.saudacao?this.saudacao():AlicerceIA.saudacao();
   var messages=Array.isArray(AlicerceIA._messages)?AlicerceIA._messages:[];
   var html='<style id="alicerce-assistant-screen-styles">';
   html+='.alicerce-assistant-page{padding-bottom:120px}';
-  html+='.alicerce-assistant-heading{display:flex;align-items:center;gap:11px;margin:18px 0 14px}';
-  html+='.alicerce-assistant-avatar{width:58px;height:62px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}';
+  html+='.alicerce-assistant-topbar{display:flex;align-items:center;justify-content:flex-start;margin:12px 0 10px}';
+  html+='.alicerce-assistant-back{display:inline-flex;align-items:center;gap:6px;min-height:34px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text2);font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer}';
+  html+='.alicerce-assistant-heading{display:flex;align-items:center;gap:12px;margin:0 0 17px;padding:11px 13px;border:1px solid var(--line);border-radius:16px;background:var(--surface);min-width:0}';
+  html+='.alicerce-assistant-avatar{width:62px;height:66px;display:flex;align-items:center;justify-content:center;flex:0 0 62px}';
   html+='.alicerce-assistant-avatar img{width:100%;height:100%;object-fit:contain;display:block}';
-  html+='.alicerce-assistant-heading h2{font-size:18px;line-height:1.25;margin:0;color:var(--text)}';
-  html+='.alicerce-assistant-heading p{font-size:11px;line-height:1.4;color:var(--text2);margin:4px 0 0}';
-  html+='.alicerce-assistant-back{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:var(--text2);font-size:11px;padding:4px 0;margin:0 0 8px;cursor:pointer}';
+  html+='.alicerce-assistant-heading-copy{min-width:0;flex:1}';
+  html+='.alicerce-assistant-heading h2{font-size:16px;line-height:1.25;margin:0;color:var(--text);overflow-wrap:anywhere}';
+  html+='.alicerce-assistant-heading p{font-size:10px;line-height:1.35;color:var(--text2);margin:4px 0 0}';
   html+='.alicerce-assistant-messages{display:flex;flex-direction:column;gap:10px;min-width:0}';
   html+='.alicerce-assistant-line{display:flex;align-items:flex-end;gap:7px;width:100%;min-width:0}';
   html+='.alicerce-assistant-line.assistant{justify-content:flex-start}';
@@ -5271,14 +5287,14 @@ function renderAssistente(){
   html+='.alicerce-assistant-send{width:46px;height:46px;flex:0 0 46px;display:flex;align-items:center;justify-content:center;border:0;border-radius:14px;background:var(--accent);color:var(--on-accent);cursor:pointer}';
   html+='.alicerce-assistant-note{font-size:10px;line-height:1.45;color:var(--text2);margin:2px 0 8px}';
   html+='.alicerce-assistant-input:focus-visible,.alicerce-assistant-send:focus-visible,.alicerce-assistant-prompt:focus-visible,.alicerce-assistant-back:focus-visible{outline:2px solid var(--accent);outline-offset:3px}';
-  html+='@media(max-width:360px){.alicerce-assistant-message{max-width:94%}.alicerce-assistant-page{padding-left:12px;padding-right:12px}}';
+  html+='@media(max-width:360px){.alicerce-assistant-message{max-width:94%}.alicerce-assistant-page{padding-left:12px;padding-right:12px}.alicerce-assistant-heading{gap:8px;padding:9px 10px}.alicerce-assistant-avatar{width:54px;height:58px;flex-basis:54px}.alicerce-assistant-heading h2{font-size:15px}}';
   html+='</style>';
   html+='<div class="content alicerce-assistant-page" id="alicerce-assistant-page">';
-  html+='<button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back')+esc(ui.back)+'</button>';
-  html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/assistente-alicerce.webp" width="58" height="62" alt=""></span><div><h2>'+esc(ui.title)+'</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
+  html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\\'home\\')">'+icon('back','ico-xs')+esc(ui.back)+'</button></div>';
+  html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/assistente-alicerce.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>'+esc(greeting)+'</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
-    html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/assistente-alicerce.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICERCE</span>'+esc(ui.greeting)+'</div></div>';
+    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICERCE</span>'+esc(ui.welcome)+'</div>';
   }else{
     messages.forEach(function(item){
       if(!item||!item.text)return;
@@ -5300,7 +5316,7 @@ function renderAssistente(){
     html+='</div>';
   }
   html+='<form class="alicerce-assistant-composer" onsubmit="AlicerceIA.enviarMensagem();return false;">';
-  html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="500" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
+  html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="500" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onkeydown="if(event.key===\\'Enter\\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
   html+='<button class="alicerce-assistant-send" id="alicerce-assistant-send" type="submit" aria-label="'+esc(ui.send)+'">'+icon('arrowRight')+'</button>';
   html+='</form>';
   html+='<p class="alicerce-assistant-note">'+esc(ui.dictation)+'</p>';
