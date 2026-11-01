@@ -1277,7 +1277,7 @@ test('Alicia lê a foto localmente, preenche o texto para revisão e descarta a 
         return {
           recognize: async function (file) {
             window.__aliciaOcrTest.filename = file.name;
-            return { data: { text: 'MERCADO CENTRAL\\nLEITE 2 UNIDADES\\nTOTAL R$ 18,90' } };
+            return { data: { text: 'MERCADO CENTRAL\nLEITE 2 UNIDADES\nTOTAL R$ 18,90' } };
           },
           terminate: async function () {
             window.__aliciaOcrTest.terminated = true;
@@ -1296,7 +1296,7 @@ test('Alicia lê a foto localmente, preenche o texto para revisão e descarta a 
   });
   await expect(page.locator('#alicerce-assistant-status')).toContainText('Texto extraído no aparelho');
   await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/MERCADO CENTRAL/);
-  await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/R\\$ 18,90/);
+  await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/R\$ 18,90/);
   const state = await page.evaluate(function () {
     var fileInput = document.getElementById('alicerce-assistant-photo');
     return {
