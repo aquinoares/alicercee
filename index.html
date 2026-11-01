@@ -5316,9 +5316,16 @@ AlicerceIA.enviarMensagem=function(question){
 };
 
 
-/* A fala é feita somente com uma voz local que já esteja instalada no aparelho. */
+/* A Alicia usa uma única identidade vocal neural: Dora, português brasileiro. */
 AlicerceIA._speechButton=null;
 AlicerceIA._speechUtterance=null;
+AlicerceIA._ttsVoiceId='pf_dora';
+AlicerceIA._ttsInstance=null;
+AlicerceIA._ttsInitPromise=null;
+AlicerceIA._ttsAudioContext=null;
+AlicerceIA._ttsAudioSource=null;
+AlicerceIA._ttsRequestId=0;
+AlicerceIA._ttsBusy=false;
 AlicerceIA._pendingPrivacyAction='';
 AlicerceIA._pendingSpeechIndex=-1;
 AlicerceIA._pendingSpeechButton=null;
@@ -5326,19 +5333,19 @@ AlicerceIA._privacyCopy={
   pt:{
     dictation:'Você também pode falar pelo microfone do teclado. O Alicerce recebe somente o texto, não a gravação.',
     photo:'Privacidade: as fotos são lidas no próprio aparelho e não são enviadas nem armazenadas pelo Alicerce. O texto identificado aparece para você revisar antes do envio.',
-    voice:'A leitura em voz usa uma voz disponível no dispositivo. O Alicerce não envia o texto para um serviço externo de voz.',
-    continue:'Continuar',cancel:'Cancelar',listenNow:'Ouvir agora'
+    voice:'Na primeira utilização, o navegador baixa o modelo da voz fixa Dora (aprox. 295 MB). A fala é gerada no próprio aparelho; o texto da conversa não é enviado para um serviço externo de voz.',
+    continue:'Continuar',cancel:'Cancelar',listenNow:'Baixar e ouvir'
   },
   en:{
     dictation:'You can also speak using your keyboard microphone. Alicerce receives only the text, not an audio recording.',
     photo:'Privacy: photos are read on your device and are not uploaded or stored by Alicerce. You can review the recognized text before sending it.',
-    voice:'Spoken replies use a voice available on your device. Alicerce does not send the text to an external speech service.',
+    voice:'Alicia’s fixed voice is available only in Brazilian Portuguese.',
     continue:'Continue',cancel:'Cancel',listenNow:'Listen now'
   },
   es:{
     dictation:'También puedes hablar usando el micrófono del teclado. Alicerce recibe solo el texto, no una grabación de audio.',
     photo:'Privacidad: las fotos se leen en tu dispositivo y Alicerce no las envía ni las almacena. Puedes revisar el texto reconocido antes de enviarlo.',
-    voice:'La lectura usa una voz disponible en tu dispositivo. Alicerce no envía el texto a un servicio externo de voz.',
+    voice:'La voz fija de Alicia está disponible solamente en portugués brasileño.',
     continue:'Continuar',cancel:'Cancelar',listenNow:'Escuchar ahora'
   }
 };
@@ -5365,10 +5372,19 @@ AlicerceIA.solicitarFoto=function(){
   var labels=this._textoPrivacidade();
   this._mostrarAvisoPrivacidade(labels.photo,labels.continue);
 };
+AlicerceIA._mensagemVozSomentePt=function(){
+  var lang=Store.lang||'pt';
+  if(lang==='en')return 'Alicia’s fixed voice is available only in Brazilian Portuguese.';
+  if(lang==='es')return 'La voz fija de Alicia está disponible solamente en portugués brasileño.';
+  return 'A voz fixa da Alicia está disponível somente em português brasileiro.';
+};
 AlicerceIA.pedirAudio=function(index,button){
-  var synth=null;
-  try{synth=window.speechSynthesis}catch(e){}
-  if(this._speechButton===button&&synth&&(synth.speaking||synth.pending)){
+  if((Store.lang||'pt')!=='pt'){
+    var languageStatus=document.getElementById('alicerce-assistant-status');
+    if(languageStatus)languageStatus.textContent=this._mensagemVozSomentePt();
+    return;
+  }
+  if(this._speechButton===button&&(this._ttsBusy||this._ttsAudioSource)){
     this.pararAudio();
     return;
   }
@@ -5397,24 +5413,79 @@ AlicerceIA.confirmarAvisoPrivacidade=function(){
     this.ouvirMensagem(index,button);
   }
 };
+AlicerceIA._setSpeechButtonState=function(button,playing){
+  if(!button||!button.isConnected)return;
+  var label=button.querySelector('.alicerce-assistant-speak-label');
+  var playLabel=button.getAttribute('data-label-play')||'Ouvir resposta';
+  var nextLabel=playing?(button.getAttribute('data-label-stop')||'Parar'):playLabel;
+  if(label)label.textContent=nextLabel;
+  button.setAttribute('aria-label',nextLabel);
+  button.setAttribute('aria-pressed',playing?'true':'false');
+};
+/* O runtime e o arquivo do modelo são carregados sob demanda, só no primeiro toque. */
+AlicerceIA._createTtsRuntime=async function(status){
+  if(!window.isSecureContext)throw new Error('A voz fixa exige uma conexão segura.');
+  var moduleUrl='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.0/+esm';
+  var wasmUrl='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.0/wasm';
+  var modelUrl='https://huggingface.co/litert-community/Kokoro-82M/resolve/main/kokoro_int8_gpu_fp16.litertlm';
+  if(status)status.textContent='Carregando o mecanismo de voz da Alicia...';
+  var mediaPipe=await import(moduleUrl);
+  if(!mediaPipe||!mediaPipe.FilesetResolver||!mediaPipe.TextToSpeech)throw new Error('O mecanismo de voz não está disponível.');
+  var wasmFileset=await mediaPipe.FilesetResolver.forAudioTasks(wasmUrl);
+  if(status)status.textContent='Baixando o modelo Dora (aprox. 295 MB) na primeira utilização...';
+  var tts=await mediaPipe.TextToSpeech.createFromOptions(wasmFileset,{
+    baseOptions:{
+      modelAssetPath:modelUrl,
+      delegate:'GPU'
+    },
+    defaultVoiceId:'pf_dora',
+    speakingRate:1.0
+  });
+  var voices=await tts.listVoices();
+  var foundDora=false;
+  (voices||[]).forEach(function(voice){
+    if(voice&&voice.voiceId==='pf_dora')foundDora=true;
+  });
+  if(!foundDora){
+    try{tts.close()}catch(e){}
+    throw new Error('A voz fixa Dora não foi encontrada no modelo.');
+  }
+  return tts;
+};
+AlicerceIA._loadNeuralVoice=async function(status){
+  if(this._ttsInstance)return this._ttsInstance;
+  if(!this._ttsInitPromise){
+    this._ttsInitPromise=this._createTtsRuntime(status).then(function(tts){
+      if(!tts||typeof tts.synthesize!=='function')throw new Error('O modelo de voz não foi inicializado corretamente.');
+      AlicerceIA._ttsInstance=tts;
+      return tts;
+    });
+  }
+  try{
+    return await this._ttsInitPromise;
+  }catch(error){
+    this._ttsInitPromise=null;
+    throw error;
+  }
+};
 AlicerceIA.pararAudio=function(){
-  var synth=null;
-  try{synth=window.speechSynthesis}catch(e){}
-  if(synth&&typeof synth.cancel==='function'&&(this._speechButton||synth.speaking||synth.pending)){
-    try{synth.cancel()}catch(e){}
+  this._ttsRequestId+=1;
+  this._ttsBusy=false;
+  var tts=this._ttsInstance;
+  if(tts&&typeof tts.cancel==='function'){
+    try{tts.cancel()}catch(e){}
   }
-  var button=this._speechButton;
-  if(button&&button.isConnected){
-    var label=button.querySelector('.alicerce-assistant-speak-label');
-    var playLabel=button.getAttribute('data-label-play')||'Ouvir resposta';
-    if(label)label.textContent=playLabel;
-    button.setAttribute('aria-label',playLabel);
-    button.setAttribute('aria-pressed','false');
+  var source=this._ttsAudioSource;
+  this._ttsAudioSource=null;
+  if(source){
+    try{source.stop(0)}catch(e){}
+    try{source.disconnect()}catch(e){}
   }
+  this._setSpeechButtonState(this._speechButton,false);
   this._speechButton=null;
   this._speechUtterance=null;
 };
-AlicerceIA._speechPersona={tone:'calma, jovem, acolhedora, simpática e natural',rate:1.04,pitch:1.12};
+AlicerceIA._speechPersona={tone:'calma, jovem, acolhedora, simpática e natural',rate:1.0};
 AlicerceIA.prepararFala=function(value){
   var text=String(value||'');
   if((Store.lang||'pt')!=='pt')return text;
@@ -5431,99 +5502,59 @@ AlicerceIA.prepararFala=function(value){
   text=text.replace(/(-?\d+(?:,\d+)?)\s*%/g,'$1 por cento');
   return text;
 };
-
-AlicerceIA.ouvirMensagem=function(index,button){
+AlicerceIA.ouvirMensagem=async function(index,button){
   this._resetUser();
   var messages=Array.isArray(this._messages)?this._messages:[];
   var item=messages[index];
   var text=String(index===-1?this.mensagemAbertura():(item&&item.role==='assistant'?item.text||'':'')).trim();
   text=this.prepararFala(text);
   if(!text||!button)return;
-  var synth=null;
-  try{synth=window.speechSynthesis}catch(e){}
-  if(!synth||typeof synth.speak!=='function'||typeof window.SpeechSynthesisUtterance!=='function'){
-    var unsupportedStatus=document.getElementById('alicerce-assistant-status');
-    if(unsupportedStatus)unsupportedStatus.textContent=(Store.lang==='en'?'Speech is not available in this browser. The text remains available.':Store.lang==='es'?'La lectura en voz no está disponible en este navegador. El texto sigue disponible.':'A leitura em voz não está disponível neste navegador. O texto continua disponível.');
+  var status=document.getElementById('alicerce-assistant-status');
+  if((Store.lang||'pt')!=='pt'){
+    if(status)status.textContent=this._mensagemVozSomentePt();
     return;
   }
-  if(this._speechButton===button&&(synth.speaking||synth.pending)){
-    this.pararAudio();
+  var AudioContextCtor=window.AudioContext||window.webkitAudioContext;
+  if(!AudioContextCtor){
+    if(status)status.textContent=button.getAttribute('data-label-unavailable')||'A leitura em voz não está disponível neste navegador.';
     return;
   }
   this.pararAudio();
-  var status=document.getElementById('alicerce-assistant-status');
-  var lang=Store.lang||'pt';
-  var expected=lang==='en'?'en-US':lang==='es'?'es-ES':'pt-BR';
-  var prefix=expected.split('-')[0].toLowerCase();
-  var voices=[];
-  try{voices=typeof synth.getVoices==='function'?synth.getVoices():[]}catch(e){}
-  var localVoices=(voices||[]).filter(function(voice){
-    var voiceLang=String(voice&&voice.lang||'').replace(/_/g,'-').toLowerCase();
-    return !!voice&&voice.localService===true&&(voiceLang===prefix||voiceLang.indexOf(prefix+'-')===0);
-  });
-  if(!localVoices.length){
-    var unavailable=button.getAttribute('data-label-unavailable')||'Não encontrei uma voz local instalada. O texto continua disponível.';
-    if(status)status.textContent=unavailable;
-    return;
-  }
-  var preferredVoice=null;
-  localVoices.some(function(voice){
-    var identity=String(voice.name||'')+' '+String(voice.voiceURI||'');
-    if(/female|femin|woman|maria|luciana|francisca|camila|helena|isabela|isabel|samantha|joana|sofia/i.test(identity)){
-      preferredVoice=voice;
-      return true;
-    }
-    return false;
-  });
-  var exactVoice=null;
-  localVoices.some(function(voice){
-    if(String(voice.lang||'').replace(/_/g,'-').toLowerCase()===expected.toLowerCase()){
-      exactVoice=voice;
-      return true;
-    }
-    return false;
-  });
-  var voice=preferredVoice||exactVoice||localVoices[0];
-  var utterance=null;
+  var requestId=this._ttsRequestId;
+  this._ttsBusy=true;
+  this._speechButton=button;
+  this._setSpeechButtonState(button,true);
   try{
-    utterance=new window.SpeechSynthesisUtterance(text);
-    utterance.lang=String(voice.lang||expected);
-    utterance.voice=voice;
-    utterance.rate=this._speechPersona.rate;
-    utterance.pitch=this._speechPersona.pitch;
-    utterance.volume=1;
-    this._speechButton=button;
-    this._speechUtterance=utterance;
-    var stopLabel=button.getAttribute('data-label-stop')||'Parar';
-    var label=button.querySelector('.alicerce-assistant-speak-label');
-    if(label)label.textContent=stopLabel;
-    button.setAttribute('aria-label',stopLabel);
-    button.setAttribute('aria-pressed','true');
-    var finish=function(){
-      if(AlicerceIA._speechUtterance!==utterance)return;
-      var activeButton=AlicerceIA._speechButton;
-      if(activeButton&&activeButton.isConnected){
-        var activeLabel=activeButton.querySelector('.alicerce-assistant-speak-label');
-        var activePlayLabel=activeButton.getAttribute('data-label-play')||'Ouvir resposta';
-        if(activeLabel)activeLabel.textContent=activePlayLabel;
-        activeButton.setAttribute('aria-label',activePlayLabel);
-        activeButton.setAttribute('aria-pressed','false');
-      }
-      AlicerceIA._speechButton=null;
-      AlicerceIA._speechUtterance=null;
+    if(!this._ttsAudioContext)this._ttsAudioContext=new AudioContextCtor();
+    if(this._ttsAudioContext.state==='suspended')await this._ttsAudioContext.resume();
+    if(requestId!==this._ttsRequestId)return;
+    var tts=await this._loadNeuralVoice(status);
+    if(requestId!==this._ttsRequestId)return;
+    if(status)status.textContent='Alicia está preparando a fala...';
+    var result=await tts.synthesize(text,{voiceId:this._ttsVoiceId});
+    if(requestId!==this._ttsRequestId)return;
+    var samples=result&&result.samples;
+    if(!samples||!samples.length)throw new Error('O modelo não gerou áudio.');
+    var sampleRate=Number(result.sampleRateHz)||24000;
+    var audioBuffer=this._ttsAudioContext.createBuffer(1,samples.length,sampleRate);
+    audioBuffer.getChannelData(0).set(samples);
+    var source=this._ttsAudioContext.createBufferSource();
+    source.buffer=audioBuffer;
+    source.connect(this._ttsAudioContext.destination);
+    source.onended=function(){
+      if(AlicerceIA._ttsRequestId!==requestId)return;
+      AlicerceIA.pararAudio();
+      var endedStatus=document.getElementById('alicerce-assistant-status');
+      if(endedStatus)endedStatus.textContent='';
     };
-    utterance.onend=finish;
-    utterance.onerror=function(){
-      if(AlicerceIA._speechUtterance!==utterance)return;
-      finish();
-      var errorText=button.getAttribute('data-label-error')||'Não foi possível iniciar a voz do aparelho.';
-      if(status)status.textContent=errorText;
-    };
-    synth.speak(utterance);
+    this._ttsAudioSource=source;
+    source.start(0);
+    this._ttsBusy=false;
     if(status)status.textContent='';
   }catch(error){
+    if(requestId!==this._ttsRequestId)return;
     this.pararAudio();
-    var failed=button.getAttribute('data-label-error')||'Não foi possível iniciar a voz do aparelho.';
+    var failed=button.getAttribute('data-label-error')||'Não foi possível carregar a voz fixa da Alicia. O texto continua disponível.';
     if(status)status.textContent=failed;
   }
 };
