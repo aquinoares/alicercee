@@ -4872,6 +4872,7 @@ const AlicerceIA = {
   _resetUser:function(){
     var uid=String(Store.userId||'');
     if(uid!==this._userId){
+      if(typeof this.pararAudio==='function')this.pararAudio();
       this._userId=uid;
       this._question='';
       this._answer='';
@@ -5314,7 +5315,7 @@ AlicerceIA.ouvirMensagem=function(index,button){
   try{voices=typeof synth.getVoices==='function'?synth.getVoices():[]}catch(e){}
   var localVoices=(voices||[]).filter(function(voice){
     var voiceLang=String(voice&&voice.lang||'').replace(/_/g,'-').toLowerCase();
-    return !!voice&&voice.localService===true&&voiceLang.indexOf(prefix+'-')===0;
+    return !!voice&&voice.localService===true&&(voiceLang===prefix||voiceLang.indexOf(prefix+'-')===0);
   });
   if(!localVoices.length){
     var unavailable=button.getAttribute('data-label-unavailable')||'Não encontrei uma voz local instalada. O texto continua disponível.';
