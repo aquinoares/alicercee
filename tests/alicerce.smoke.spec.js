@@ -1464,3 +1464,86 @@ test('Alicerce IA nao confunde compras variaveis com assinaturas confirmadas', a
   });
   expect(result).toEqual([]);
 });
+
+
+test('publica manifesto PWA e ícones com tamanhos válidos', async function ({ page }) {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  const manifestLink = page.locator('link[rel="manifest"]');
+  await expect(manifestLink).toHaveAttribute('href', '/manifest.webmanifest');
+  const manifestResponse = await page.request.get(new URL('/manifest.webmanifest', page.url()).toString());
+  expect(manifestResponse.ok()).toBeTruthy();
+  expect(manifestResponse.headers()['content-type']).toContain('application/manifest+json');
+  const manifest = await manifestResponse.json();
+  expect(manifest.name).toBe('Alicerce');
+  expect(manifest.display).toBe('standalone');
+  expect(manifest.start_url).toBe('/');
+  expect(manifest.icons.map(function (icon) { return icon.sizes; })).toEqual(['192x192', '512x512']);
+  for (const icon of manifest.icons) {
+    const response = await page.request.get(new URL(icon.src, page.url()).toString());
+    expect(response.ok()).toBeTruthy();
+    expect(response.headers()['content-type']).toContain('image/png');
+    const png = await response.body();
+    expect(png.toString('hex', 0, 8)).toBe('89504e470d0a1a0a');
+    expect(png.readUInt32BE(16)).toBe(Number(icon.sizes.split('x')[0]));
+    expect(png.readUInt32BE(20)).toBe(Number(icon.sizes.split('x')[1]));
+  }
+});
+
+test('orienta primeiro acesso no iPhone e mantém a opção de instalação no menu', async function ({ page }) {
+  await page.addInitScript(function () {
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, get: function () { return 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'; } });
+    Object.defineProperty(navigator, 'platform', { configurable: true, get: function () { return 'iPhone'; } });
+  });
+  await abrirAbertura(page);
+  await page.evaluate(function () {
+    Store.userId = 'pwa-ios-test-user';
+    Store.screen = 'home';
+    document.getElementById('app').classList.remove('hidden');
+    window.AlicercePWA.check();
+  });
+  await expect(page.locator('#al-install-onboarding')).toBeVisible();
+  await expect(page.locator('#al-install-onboarding')).toContainText('Compartilhar');
+  await expect(page.locator('#al-install-onboarding')).toContainText('Adicionar à Tela de Início');
+  await page.evaluate(function () { renderMenu(); toggleMenu(); });
+  await expect(page.locator('#menu-panel .al-install-menu-item')).toBeVisible();
+  await expect(page.locator('#menu-panel .al-install-menu-item')).toContainText('Instalar Alicerce');
+});
+
+test('usa o aviso nativo de instalação quando o Android disponibiliza o evento', async function ({ page }) {
+  await page.addInitScript(function () {
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, get: function () { return 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'; } });
+  });
+  await abrirAbertura(page);
+  await page.evaluate(function () {
+    window.__alicercePwaPrompted = false;
+    var promptEvent = new Event('beforeinstallprompt', { cancelable: true });
+    promptEvent.prompt = function () { window.__alicercePwaPrompted = true; return Promise.resolve(); };
+    promptEvent.userChoice = Promise.resolve({ outcome: 'accepted' });
+    window.dispatchEvent(promptEvent);
+    Store.userId = 'pwa-android-test-user';
+    Store.screen = 'home';
+    document.getElementById('app').classList.remove('hidden');
+    window.AlicercePWA.check();
+  });
+  await expect(page.locator('#al-install-onboarding')).toBeVisible();
+  await expect(page.locator('#al-install-primary')).toHaveText('Instalar agora');
+  await page.locator('#al-install-primary').click();
+  await expect.poll(function () { return page.evaluate(function () { return window.__alicercePwaPrompted; }); }).toBe(true);
+});
+
+test('não oferece instalação novamente quando a Alicerce já está instalada', async function ({ page }) {
+  await page.addInitScript(function () {
+    Object.defineProperty(navigator, 'userAgent', { configurable: true, get: function () { return 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'; } });
+    Object.defineProperty(navigator, 'platform', { configurable: true, get: function () { return 'iPhone'; } });
+    Object.defineProperty(navigator, 'standalone', { configurable: true, get: function () { return true; } });
+  });
+  await abrirAbertura(page);
+  await page.evaluate(function () {
+    Store.userId = 'pwa-installed-test-user';
+    Store.screen = 'home';
+    document.getElementById('app').classList.remove('hidden');
+    window.AlicercePWA.check();
+  });
+  await expect(page.locator('#al-install-onboarding')).toBeHidden();
+  await expect(page.locator('#menu-panel .al-install-menu-item')).toHaveCount(0);
+});
