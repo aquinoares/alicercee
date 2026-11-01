@@ -1226,12 +1226,108 @@ test('usa um gasto manual confirmado como exemplo de aprendizado da própria con
 });
 
 
+
+test('Alicia usa o nome informado no perfil e não transforma o e-mail em nome', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'conta');
+  const initial = await page.evaluate(function () {
+    Store.userId = 'perfil-alicia-teste';
+    Store.userEmail = 'lo08973623@example.com';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul' };
+    var now = new Date();
+    var morning = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0, 0, 0);
+    Clock.setOffset(morning.getTime() - Date.now());
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+    return AlicerceIA.saudacao();
+  });
+  expect(initial).toBe('Bom dia!');
+  await expect(page.locator('#conta-display-name')).toBeVisible();
+  await page.locator('#conta-display-name').fill('Ana Costa');
+  await page.locator('#conta-display-name-save').click();
+  await expect(page.locator('#conta-name')).toHaveText('Ana Costa');
+  const greeting = await page.evaluate(function () {
+    return {
+      greeting: AlicerceIA.saudacao(),
+      saved: Store.settings.displayName
+    };
+  });
+  expect(greeting.greeting).toBe('Bom dia, Ana');
+  expect(greeting.saved).toBe('Ana Costa');
+});
+
+test('Alicia lê a foto localmente, preenche o texto para revisão e descarta a referência ao arquivo', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'ocr-alicia-teste';
+    Store.userEmail = 'lo08973623@example.com';
+    Store.settings = Object.assign({}, Store.settings, {
+      displayName: 'Ana Costa',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    });
+    Store.movements = [];
+    Store.installments = [];
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+    window.__aliciaOcrTest = { filename: '', terminated: false };
+    window.Tesseract = {
+      createWorker: async function () {
+        return {
+          recognize: async function (file) {
+            window.__aliciaOcrTest.filename = file.name;
+            return { data: { text: 'MERCADO CENTRAL\\nLEITE 2 UNIDADES\\nTOTAL R$ 18,90' } };
+          },
+          terminate: async function () {
+            window.__aliciaOcrTest.terminated = true;
+          }
+        };
+      }
+    };
+  });
+
+  await page.locator('#alicerce-ai-open-assistant').click();
+  await expect(page.locator('#alicerce-assistant-camera')).toBeVisible();
+  await page.locator('#alicerce-assistant-photo').setInputFiles({
+    name: 'nota.jpg',
+    mimeType: 'image/jpeg',
+    buffer: Buffer.from('imagem temporária de teste')
+  });
+  await expect(page.locator('#alicerce-assistant-status')).toContainText('Texto extraído no aparelho');
+  await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/MERCADO CENTRAL/);
+  await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/R\\$ 18,90/);
+  const state = await page.evaluate(function () {
+    var fileInput = document.getElementById('alicerce-assistant-photo');
+    return {
+      fileValue: fileInput.value,
+      fileCount: fileInput.files ? fileInput.files.length : -1,
+      movements: Store.movements.length,
+      filename: window.__aliciaOcrTest.filename,
+      terminated: window.__aliciaOcrTest.terminated
+    };
+  });
+  expect(state.fileValue).toBe('');
+  expect(state.fileCount).toBe(0);
+  expect(state.movements).toBe(0);
+  expect(state.filename).toBe('nota.jpg');
+  expect(state.terminated).toBe(true);
+});
+
 test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, conversa organizada e isolamento por conta', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   const greetingChecks = await page.evaluate(function () {
     Store.userId = 'ia-conta-teste-a';
     Store.userEmail = 'maria.silva@example.com';
     Store.lang = 'pt';
+    Store.settings = Object.assign({}, Store.settings, {
+      displayName: 'Maria Silva',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    });
     function greetingAt(hour) {
       var now = new Date();
       var target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hour, 0, 0, 0);
@@ -1244,7 +1340,6 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
       night: greetingAt(20)
     };
     greetingAt(9);
-    Store.settings = Object.assign({}, Store.settings, { alicerceLegalAcceptance: { termsVersion: '2026-10-20-v1', privacyVersion: '2026-10-20-v1', acceptedAt: '2026-10-31T12:00:00.000Z' } });
     Store.loans = [];
     Store.movements = [
       { id: 'ia-1', tipo: 'despesa', categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 48.50, data: Clock.today(), status: 'pago' },
@@ -1270,10 +1365,12 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await page.locator('#alicerce-ai-open-assistant').click();
   await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
   await expect(page.locator('.alicerce-assistant-heading')).toContainText('Bom dia, Maria');
-  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Assistente Alicerce');
+  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Alicia · sua assistente financeira');
   await expect(page.locator('.alicerce-assistant-back')).toContainText('Início');
-  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/assistente-alicerce.webp');
-  await expect(page.locator('#alicerce-assistant-messages')).toContainText('O que você gostaria de entender hoje?');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/alicia-assistente.webp');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Oi! Sou Alicia.');
+  await expect(page.locator('.alicerce-assistant-chat-panel')).toBeVisible();
+  await expect(page.locator('#alicerce-assistant-camera')).toBeVisible();
   await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
 
   await page.locator('#alicerce-assistant-input').fill('Quanto gastei com lanche este mês?');
@@ -1286,6 +1383,7 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   const stateAfterSwitch = await page.evaluate(function () {
     Store.userId = 'ia-conta-teste-b';
     Store.userEmail = 'joao.silva@example.com';
+    Store.settings = Object.assign({}, Store.settings, { displayName: 'Joao Silva' });
     Store.movements = [];
     Store.installments = [];
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
@@ -1306,7 +1404,6 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('#alicerce-assistant-messages')).not.toContainText('48,50');
   await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
 });
-
 
 test('Assistente mantém o assunto quando a pessoa pergunta por outro período', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
