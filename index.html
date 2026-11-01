@@ -5289,7 +5289,68 @@ AlicerceIA._resolveFollowUp=function(question){
   return base+' '+current.replace(/^e\s+/,'');
 };
 
-AlicerceIA.enviarMensagem=function(question){
+AlicerceIA._parseExpenseCommand=function(value){
+  var raw=String(value||'').trim();
+  var normalized=this._norm(raw);
+  var hasIntent=/\b(comprei|gastei|registra|registre|registrar|anota|anote|lanca|lancar)\b/.test(normalized);
+  if(!hasIntent)return null;
+
+  var amountMatch=raw.match(/R\$\s*([\d.]+(?:,[0-9]{1,2})?)|([\d.]+(?:,[0-9]{1,2})?)\s*reais?\b/i);
+  if(!amountMatch)return{error:'Para preparar esse gasto, informe o valor em reais. Exemplo: “Comprei um lanche por R$ 25,00 no Pix”.'};
+
+  var amountText=String(amountMatch[1]||amountMatch[2]||'').replace(/\.$/,'');
+  var amount=0;
+  if(amountText.indexOf(',')!==-1){
+    amount=Number(amountText.replace(/\./g,'').replace(',','.'));
+  }else if(/\.\d{1,2}$/.test(amountText)){
+    amount=Number(amountText);
+  }else{
+    amount=Number(amountText.replace(/\./g,''));
+  }
+  if(!(amount>0)||!isFinite(amount)||amount>10000000){
+    return{error:'Não consegui reconhecer um valor válido. Envie o valor em reais, por exemplo R$ 25,00.'};
+  }
+
+  if(/\b(parcelad[oa]s?|\d+\s+parcelas?)\b/.test(normalized)){
+    return{unsupported:'installments'};
+  }
+  if(/\b(cartao|credito|debito)\b/.test(normalized)){
+    return{unsupported:'card'};
+  }
+
+  var details=raw.replace(amountMatch[0],' ');
+  details=details.replace(/\b(comprei|gastei|registra|registre|registrar|anota|anote|lanca|lancar)\b/gi,' ');
+  details=details.replace(/\b(?:uma|um|despesa|gasto|compra|valor|de|por)\b/gi,' ');
+
+  var paymentMethod='';
+  if(/\bpix\b/i.test(details))paymentMethod='pix';
+  else if(/\b(dinheiro|especie)\b/i.test(this._norm(details)))paymentMethod='dinheiro';
+  details=details.replace(/\b(?:no|na|em|com)?\s*(?:pix|dinheiro|esp[eé]cie)\b/gi,' ');
+
+  var local='';
+  var locationMatch=details.match(/\b(?:no|na|nos|nas|em|pelo|pela)\s+(.+)$/i);
+  var item=details;
+  if(locationMatch){
+    local=String(locationMatch[1]||'').trim();
+    item=details.slice(0,locationMatch.index);
+  }
+  item=String(item||'').replace(/^\s*(?:um|uma|uns|umas|o|a)\s+/i,'');
+  item=item.replace(/\b(?:por|no|na|em|de)\s*$/i,'').replace(/\s+/g,' ').trim();
+  local=String(local||'').replace(/\s+/g,' ').trim();
+  if(!item&&local)item=local;
+  if(!local&&item)local=item;
+  if(!item)return{error:'O que você comprou? Exemplo: “Comprei um lanche por R$ 25,00 na padaria”.'};
+
+  return{
+    amount:amount,
+    item:item,
+    local:local,
+    paymentMethod:paymentMethod,
+    date:today()
+  };
+};
+
+AlicerceIA.enviarMensagem=async function(question){
   this._resetUser();
   this.pararAudio();
   var input=document.getElementById('alicerce-assistant-input');
@@ -5298,6 +5359,67 @@ AlicerceIA.enviarMensagem=function(question){
   if(!Array.isArray(this._messages))this._messages=[];
   var questionForEngine=this._resolveFollowUp(message);
   this._messages.push({role:'user',text:message});
+
+  var expenseCommand=this._parseExpenseCommand(message);
+  if(expenseCommand){
+    var actionAnswer='';
+    if(expenseCommand.error){
+      actionAnswer=expenseCommand.error;
+    }else if(expenseCommand.unsupported==='card'){
+      actionAnswer='Consigo preparar despesas simples por aqui. Para compras no cartão, abra Nova compra e selecione o cartão cadastrado; assim evito gravar uma compra sem vínculo com o cartão correto.';
+    }else if(expenseCommand.unsupported==='installments'){
+      actionAnswer='Para não errar suas faturas, ainda não registro parcelamentos diretamente pelo chat. Use Nova compra e informe o cartão e a quantidade de parcelas.';
+    }else if(!Store.userId){
+      actionAnswer='Entre na sua conta antes de registrar uma despesa. Assim o lançamento fica vinculado ao seu cadastro.';
+    }else{
+      try{
+        var interpreterText='Valor: '+expenseCommand.amount+' | Item: '+expenseCommand.item+' | Local: '+expenseCommand.local;
+        var interpretation=await Interpreter.interpret(interpreterText);
+        if(!interpretation||typeof interpretation!=='object')interpretation={};
+        interpretation.amount=expenseCommand.amount;
+        if(!interpretation.item)interpretation.item=expenseCommand.item;
+        if(!interpretation.merchant)interpretation.merchant=expenseCommand.local;
+        Store.screenData={
+          interpretation:interpretation,
+          amountInput:expenseCommand.amount,
+          itemInput:expenseCommand.item,
+          localInput:expenseCommand.local,
+          text:expenseCommand.item,
+          context:expenseCommand.local,
+          date:expenseCommand.date||today(),
+          paymentMethod:expenseCommand.paymentMethod||'',
+          cardId:'',
+          cardOwnerType:'meu',
+          cardOwner:'',
+          cardType:'',
+          installment:false,
+          installments:0,
+          novaCompraFlow:false,
+          gastoEdits:null,
+          aliciaOrigin:true
+        };
+        actionAnswer='Preparei o lançamento de '+fmtMoney(expenseCommand.amount)+'. Confira a descrição e a classificação; nada será salvo até você tocar em “Confirmar e salvar gasto”.';
+        this._messages.push({role:'assistant',text:actionAnswer});
+        while(this._messages.length>4)this._messages.splice(0,2);
+        this._question=message;
+        this._answer=actionAnswer;
+        render();
+        showToast('A Alicia preparou a despesa para conferência.');
+        go('addGastoDoubt',Store.screenData);
+        return;
+      }catch(error){
+        console.error('Alicia: falha ao preparar despesa:',error);
+        actionAnswer='Não consegui preparar esse lançamento com segurança. O gasto não foi salvo. Tente descrever o valor e o estabelecimento novamente.';
+      }
+    }
+    this._messages.push({role:'assistant',text:actionAnswer});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._question=message;
+    this._answer=actionAnswer;
+    render();
+    return;
+  }
+
   var answer='';
   try{
     answer=String(this.responder(questionForEngine)||'');
@@ -5314,6 +5436,7 @@ AlicerceIA.enviarMensagem=function(question){
     if(last&&last.scrollIntoView)last.scrollIntoView({block:'nearest'});
   },0);
 };
+
 
 
 /* A Alicia usa uma única voz remota fixa em português brasileiro. */
