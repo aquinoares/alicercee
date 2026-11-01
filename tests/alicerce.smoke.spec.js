@@ -1754,3 +1754,128 @@ test('não oferece instalação novamente quando a Alicerce já está instalada'
   await expect(page.locator('#al-install-onboarding')).toBeHidden();
   await expect(page.locator('#menu-panel .al-install-menu-item')).toHaveCount(0);
 });
+
+test('Alicia só fala após toque e usa uma voz local do idioma configurado', async function ({ page }) {
+  await page.addInitScript(function () {
+    window.__alicerceSpeechTest = { spoken: [], cancelled: 0 };
+    window.SpeechSynthesisUtterance = function (text) {
+      this.text = text;
+      this.lang = '';
+      this.rate = 1;
+      this.pitch = 1;
+      this.volume = 1;
+      this.voice = null;
+    };
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        speaking: false,
+        pending: false,
+        getVoices: function () {
+          return [{ name: 'Luciana local', lang: 'pt-BR', localService: true, voiceURI: 'local:luciana' }];
+        },
+        speak: function (utterance) {
+          this.speaking = true;
+          window.__alicerceSpeechTest.spoken.push({
+            text: utterance.text,
+            lang: utterance.lang,
+            rate: utterance.rate,
+            voice: utterance.voice && utterance.voice.name
+          });
+        },
+        cancel: function () {
+          window.__alicerceSpeechTest.cancelled += 1;
+          this.speaking = false;
+          this.pending = false;
+        }
+      }
+    });
+  });
+
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'tts-local-pt-test';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul' };
+    AlicerceIA._resetUser();
+    AlicerceIA._messages.push({
+      role: 'assistant',
+      text: 'Você gastou R$ 300,00 com alimentação.'
+    });
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  const speakButton = page.locator('.alicerce-assistant-speak');
+  await expect(speakButton).toBeVisible();
+  const beforeTap = await page.evaluate(function () {
+    return window.__alicerceSpeechTest.spoken.length;
+  });
+  expect(beforeTap).toBe(0);
+
+  await speakButton.click();
+  await expect.poll(function () {
+    return page.evaluate(function () { return window.__alicerceSpeechTest.spoken.length; });
+  }).toBe(1);
+
+  const spoken = await page.evaluate(function () {
+    return window.__alicerceSpeechTest.spoken[0];
+  });
+  expect(spoken.text).toBe('Você gastou R$ 300,00 com alimentação.');
+  expect(spoken.lang).toBe('pt-BR');
+  expect(spoken.voice).toBe('Luciana local');
+  expect(spoken.rate).toBe(0.96);
+  await expect(speakButton).toContainText('Parar');
+  await expect(speakButton).toHaveAttribute('aria-pressed', 'true');
+
+  await speakButton.click();
+  await expect.poll(function () {
+    return page.evaluate(function () { return window.__alicerceSpeechTest.cancelled; });
+  }).toBe(1);
+  await expect(speakButton).toContainText('Ouvir resposta');
+  await expect(speakButton).toHaveAttribute('aria-pressed', 'false');
+});
+
+test('Alicia não usa voz remota quando não existe voz local instalada', async function ({ page }) {
+  await page.addInitScript(function () {
+    window.__alicerceSpeechTest = { spoken: 0 };
+    window.SpeechSynthesisUtterance = function (text) { this.text = text; };
+    Object.defineProperty(window, 'speechSynthesis', {
+      configurable: true,
+      value: {
+        speaking: false,
+        pending: false,
+        getVoices: function () {
+          return [{ name: 'Voz online', lang: 'pt-BR', localService: false }];
+        },
+        speak: function () {
+          window.__alicerceSpeechTest.spoken += 1;
+        },
+        cancel: function () {
+          this.speaking = false;
+          this.pending = false;
+        }
+      }
+    });
+  });
+
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'tts-remote-block-test';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul' };
+    AlicerceIA._resetUser();
+    AlicerceIA._messages.push({
+      role: 'assistant',
+      text: 'Você gastou R$ 75,00 com transporte.'
+    });
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await page.locator('.alicerce-assistant-speak').click();
+  await expect(page.locator('#alicerce-assistant-status')).toContainText('Não encontrei uma voz local');
+  const result = await page.evaluate(function () {
+    return window.__alicerceSpeechTest.spoken;
+  });
+  expect(result).toBe(0);
+});
+
