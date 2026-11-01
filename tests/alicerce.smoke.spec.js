@@ -1368,6 +1368,7 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('.alicerce-assistant-heading')).toContainText('Alicia · sua assistente financeira');
   await expect(page.locator('.alicerce-assistant-back')).toContainText('Início');
   await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/alicia-assistente.webp');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Olá, Maria! Bom dia.');
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('Tudo bem com você?');
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('Como posso te ajudar hoje?');
   await expect(page.locator('.alicerce-assistant-speak')).toBeVisible();
