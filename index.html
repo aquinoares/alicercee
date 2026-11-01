@@ -5471,8 +5471,9 @@ AlicerceIA._loadNeuralVoice=async function(status){
 AlicerceIA.pararAudio=function(){
   this._ttsRequestId+=1;
   this._ttsBusy=false;
+  var wasActive=!!(this._ttsBusy||this._ttsAudioSource);
   var tts=this._ttsInstance;
-  if(tts&&typeof tts.cancel==='function'){
+  if(wasActive&&tts&&typeof tts.cancel==='function'){
     try{tts.cancel()}catch(e){}
   }
   var source=this._ttsAudioSource;
