@@ -4975,7 +4975,7 @@ const AlicerceIA = {
         topInsight:'Seu maior grupo de gastos é {item}: {amount}. No total, você registrou {total} neste mês.',
         totalInsight:'Até hoje, você registrou {amount} em despesas neste mês.',
         totalAnswer:'Neste mês, suas despesas registradas somam {amount}.',
-        termAnswer:'Neste mês, encontrei {amount} em despesas relacionadas a {term}.',
+        termAnswer:'No período consultado, encontrei {amount} em despesas relacionadas a {term}.',
         noTerm:'Não encontrei despesas relacionadas a {term} neste mês.',
         topAnswer:'Sua maior categoria neste mês é {item}, com {amount}.',
         noData:'Ainda não há despesas registradas neste mês para comparar.',
@@ -5006,7 +5006,7 @@ const AlicerceIA = {
         topInsight:'Your largest spending group is {item}: {amount}. You recorded {total} in total this month.',
         totalInsight:'You have recorded {amount} in expenses so far this month.',
         totalAnswer:'Your recorded expenses this month total {amount}.',
-        termAnswer:'This month, I found {amount} in expenses related to {term}.',
+        termAnswer:'In the selected period, I found {amount} in expenses related to {term}.',
         noTerm:'I could not find expenses related to {term} this month.',
         topAnswer:'Your largest category this month is {item}, at {amount}.',
         noData:'There are no expenses recorded this month to compare.',
@@ -5037,7 +5037,7 @@ const AlicerceIA = {
         topInsight:'Tu mayor grupo de gastos es {item}: {amount}. En total, registraste {total} este mes.',
         totalInsight:'Hasta hoy, registraste {amount} en gastos este mes.',
         totalAnswer:'Tus gastos registrados este mes suman {amount}.',
-        termAnswer:'Este mes, encontré {amount} en gastos relacionados con {term}.',
+        termAnswer:'En el período consultado, encontré {amount} en gastos relacionados con {term}.',
         noTerm:'No encontré gastos relacionados con {term} este mes.',
         topAnswer:'Tu mayor categoría este mes es {item}, con {amount}.',
         noData:'Aún no hay gastos registrados este mes para comparar.',
@@ -5224,16 +5224,36 @@ AlicerceIA.abrir=function(){
   go('assistente');
 };
 
+AlicerceIA._resolveFollowUp=function(question){
+  this._resetUser();
+  var current=this._norm(question);
+  var standalone=/^(?:e\\s+)?(?:(?:na|no|nesta|neste|nessa|nesse)\\s+)?(?:semana passada|esta semana|nessa semana|ultimos 7 dias|mes passado|mes anterior|hoje|ontem|ultimos 3 meses|trimestre)$/.test(current);
+  if(!standalone||!Array.isArray(this._messages)||!this._messages.length)return String(question||'').trim();
+  var previous='';
+  for(var i=this._messages.length-1;i>=0;i--){
+    var item=this._messages[i];
+    if(item&&item.role==='user'&&item.text){
+      previous=this._norm(item.text);
+      break;
+    }
+  }
+  if(!previous)return String(question||'').trim();
+  var base=previous.replace(/\\s+(?:nesta semana|nesse semana|nessa semana|esta semana|semana passada|ultimos 7 dias|mes passado|mes anterior|hoje|ontem|ultimos 3 meses|trimestre)$/,'').trim();
+  if(!base)return String(question||'').trim();
+  return base+' '+current.replace(/^e\\s+/,'');
+};
+
 AlicerceIA.enviarMensagem=function(question){
   this._resetUser();
   var input=document.getElementById('alicerce-assistant-input');
   var message=String(question!==undefined?question:(input?input.value:'')||'').trim();
   if(!message)return;
   if(!Array.isArray(this._messages))this._messages=[];
+  var questionForEngine=this._resolveFollowUp(message);
   this._messages.push({role:'user',text:message});
   var answer='';
   try{
-    answer=String(this.responder(message)||'');
+    answer=String(this.responder(questionForEngine)||'');
   }catch(error){
     answer=this._label('help');
   }
