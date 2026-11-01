@@ -1364,13 +1364,13 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
 
   await page.locator('#alicerce-ai-open-assistant').click();
   await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
-  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Bom dia, Maria');
-  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Alicia · sua assistente financeira');
+  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Alicia');
+  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Sua assistente financeira');
   await expect(page.locator('.alicerce-assistant-back')).toContainText('Início');
   await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/alicia-assistente.webp');
-  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Olá, Maria! Bom dia.');
-  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Tudo bem com você?');
-  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Como posso te ajudar hoje?');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Oi, Maria! Tudo bem com você?');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Estou aqui para ajudar a entender seu dinheiro.');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('O que vamos olhar hoje?');
   await expect(page.locator('.alicerce-assistant-speak')).toBeVisible();
   await expect(page.locator('.alicerce-assistant-chat-panel')).toBeVisible();
   await expect(page.locator('#alicerce-assistant-camera')).toBeVisible();
@@ -1403,7 +1403,7 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   expect(stateAfterSwitch.answer).toBe('');
   expect(stateAfterSwitch.greeting).toBe('Bom dia, Joao');
   await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
-  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Bom dia, Joao');
+  await expect(page.locator('.alicerce-assistant-heading')).toContainText('Alicia');
   await expect(page.locator('#alicerce-assistant-messages')).not.toContainText('48,50');
   await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
 });
@@ -1816,6 +1816,8 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
   expect(beforeTap).toBe(0);
 
   await speakButton.click();
+  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('A leitura em voz usa uma voz disponível no dispositivo');
+  await page.locator('.alicerce-assistant-privacy-confirm').click();
   await expect.poll(function () {
     return page.evaluate(function () { return window.__alicerceSpeechTest.spoken.length; });
   }).toBe(1);
@@ -1838,6 +1840,8 @@ test('Alicia só fala após toque e usa uma voz local do idioma configurado', as
   await expect(speakButton).toHaveAttribute('aria-pressed', 'false');
 
   await speakButton.click();
+  await expect(page.locator('.alicerce-assistant-privacy-confirm')).toBeVisible();
+  await page.locator('.alicerce-assistant-privacy-confirm').click();
   await expect(speakButton).toHaveAttribute('aria-pressed', 'true');
   await page.locator('.alicerce-assistant-back').click();
   await expect(page.locator('#alicerce-assistant-page')).toHaveCount(0);
@@ -1901,10 +1905,90 @@ test('Alicia não usa voz remota quando não existe voz local instalada', async 
   });
 
   await page.locator('.alicerce-assistant-speak').click();
+  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('A leitura em voz usa uma voz disponível no dispositivo');
+  await page.locator('.alicerce-assistant-privacy-confirm').click();
   await expect(page.locator('#alicerce-assistant-status')).toContainText('Não encontrei uma voz local');
   const result = await page.evaluate(function () {
     return window.__alicerceSpeechTest.spoken;
   });
   expect(result).toBe(0);
+});
+
+test('Alicia limita a conversa a duas interações, permite limpar e leva aos relatórios da Visão financeira', async function ({ page }) {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-historico-limite';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul', displayName: 'Ewerton' };
+    Store.movements = [];
+    Store.installments = [];
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await expect(page.locator('#alicerce-assistant-financial')).toBeVisible();
+  for (const question of ['Quanto gastei este mês?', 'Onde gastei mais?', 'Compare com o mês passado']) {
+    await page.locator('#alicerce-assistant-input').fill(question);
+    await page.locator('#alicerce-assistant-send').click();
+  }
+
+  const historyLength = await page.evaluate(function () { return AlicerceIA._messages.length; });
+  expect(historyLength).toBe(4);
+  await expect(page.locator('.alicerce-assistant-message.user')).toHaveCount(2);
+  await expect(page.locator('.alicerce-assistant-message.assistant')).toHaveCount(2);
+  await expect(page.locator('#alicerce-assistant-clear')).toBeVisible();
+
+  const mobileLayout = await page.evaluate(function () {
+    var page = document.getElementById('alicerce-assistant-page');
+    var input = document.getElementById('alicerce-assistant-input');
+    return {
+      width: page.clientWidth,
+      scrollWidth: page.scrollWidth,
+      inputFontSize: window.getComputedStyle(input).fontSize
+    };
+  });
+  expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.width);
+  expect(mobileLayout.inputFontSize).toBe('16px');
+
+  await page.locator('#alicerce-assistant-clear').click();
+  await expect(page.locator('#alicerce-assistant-clear')).toHaveCount(0);
+  const cleared = await page.evaluate(function () { return AlicerceIA._messages.length; });
+  expect(cleared).toBe(0);
+
+  await page.locator('#alicerce-assistant-input').fill('Quero um relatório em PDF');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Visão financeira');
+  await page.locator('#alicerce-assistant-financial').click();
+  await expect(page.locator('.visao-financeira')).toBeVisible();
+});
+
+test('Alicia exibe avisos de privacidade somente quando a pessoa aciona ditado, foto ou leitura em voz', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-privacy-notices';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul', displayName: 'Ewerton' };
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  const notice = page.locator('#alicerce-assistant-privacy');
+  await expect(notice).toBeHidden();
+
+  await page.locator('#alicerce-assistant-input').focus();
+  await expect(notice).toContainText('Você também pode falar pelo microfone do teclado');
+  await expect(notice).toContainText('Alicerce recebe somente o texto');
+
+  await page.locator('#alicerce-assistant-camera').click();
+  await expect(notice).toContainText('as fotos são lidas no próprio aparelho');
+  await expect(notice).toContainText('não são enviadas nem armazenadas');
+  await page.locator('.alicerce-assistant-privacy-cancel').click();
+  await expect(notice).toBeHidden();
+
+  await page.locator('.alicerce-assistant-speak').click();
+  await expect(notice).toContainText('A leitura em voz usa uma voz disponível no dispositivo');
+  await page.locator('.alicerce-assistant-privacy-cancel').click();
+  await expect(notice).toBeHidden();
 });
 
