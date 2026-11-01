@@ -5577,7 +5577,9 @@ AlicerceIA.solicitarMicrofone=function(){
   var localCapable=!!(Recognition&&typeof Recognition.available==='function'&&typeof Recognition.install==='function'&&Recognition.prototype&&('processLocally' in Recognition.prototype));
   if(!Recognition){
     var status=document.getElementById('alicerce-assistant-status');
-    if(status)status.textContent='Este navegador não oferece reconhecimento de voz para o botão da Alicia. Use o microfone do teclado no campo de mensagem.';
+    if(status)status.textContent='Este navegador não oferece reconhecimento de voz para o botão da Alicia. O campo de mensagem será aberto para você usar o microfone do teclado.';
+    var fallbackInput=document.getElementById('alicerce-assistant-input');
+    if(fallbackInput)fallbackInput.focus();
     return;
   }
   this._pendingPrivacyAction='microphone';
