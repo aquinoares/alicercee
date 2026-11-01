@@ -5296,9 +5296,10 @@ AlicerceIA._parseExpenseCommand=function(value){
   if(questionIntent)return null;
 
   var amountMatch=raw.match(/R\$\s*([\d.]+(?:,[0-9]{1,2})?)|([\d.]+(?:,[0-9]{1,2})?)\s*reais?\b/i);
-  var explicitCreationIntent=/\b(comprei|registra|registre|registrar|anota|anote|lanca|lancar)\b/.test(normalized);
+  var registrationIntent=/\b(registra|registre|registrar|anota|anote|lanca|lancar)\b/.test(normalized);
+  var purchaseIntent=/\bcomprei\b/.test(normalized)&&!!amountMatch;
   var pastSpendIntent=/\bgastei\b/.test(normalized)&&!!amountMatch;
-  if(!explicitCreationIntent&&!pastSpendIntent)return null;
+  if(!registrationIntent&&!purchaseIntent&&!pastSpendIntent)return null;
   if(!amountMatch)return{error:'Para preparar esse gasto, informe o valor em reais. Exemplo: “Comprei um lanche por R$ 25,00 no Pix”.'};
 
   var amountText=String(amountMatch[1]||amountMatch[2]||'').replace(/\.$/,'');
