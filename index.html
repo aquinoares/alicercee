@@ -5611,7 +5611,7 @@ AlicerceIA.ouvirMensagem=async function(index,button){
     if(requestId!==this._ttsRequestId)return;
     var response=await client.functions.invoke('alicia-tts',{
       body:{text:text},
-      timeout:45000
+      timeout:120000
     });
     if(requestId!==this._ttsRequestId)return;
     if(response&&response.error)throw response.error;
