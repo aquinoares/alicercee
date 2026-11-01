@@ -4869,6 +4869,7 @@ const AlicerceIA = {
   _question:'',
   _answer:'',
   _messages:[],
+  _pendingExpenseDraft:null,
   _welcomeTypingStarted:false,
   _resetUser:function(){
     var uid=String(Store.userId||'');
@@ -4879,6 +4880,7 @@ const AlicerceIA = {
       this._question='';
       this._answer='';
       this._messages=[];
+      this._pendingExpenseDraft=null;
       this._welcomeTypingStarted=false;
       this._pendingPrivacyAction='';
       this._pendingSpeechIndex=-1;
@@ -5261,6 +5263,7 @@ AlicerceIA.abrir=function(){
 AlicerceIA.limparConversa=function(){
   this.pararAudio();
   this._messages=[];
+  this._pendingExpenseDraft=null;
   this._question='';
   this._answer='';
   this._welcomeTypingStarted=false;
@@ -5318,81 +5321,72 @@ AlicerceIA._parseExpenseCommand=function(value){
   var normalized=this._norm(raw);
   var questionIntent=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque)\b/.test(normalized)||/\?\s*$/.test(raw);
   if(questionIntent)return null;
+  var expenseIntent=/\b(comprei|comprar|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|adiciona|adicionar)\b/.test(normalized);
+  if(!expenseIntent)return null;
+  if(/\b(parcelad[oa]s?|\d+\s+parcelas?)\b/.test(normalized))return{unsupported:'installments'};
+  if(/\b(cartao|credito|debito)\b/.test(normalized))return{unsupported:'card'};
 
   var amountMatch=raw.match(/R\$\s*([\d.]+(?:,[0-9]{1,2})?)|([\d.]+(?:,[0-9]{1,2})?)\s*reais?\b/i);
   var amountWordMatch=null;
+  var bareAmountMatch=null;
   if(!amountMatch){
     var wordToken='zero|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|catorze|quatorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|duzentas|trezentos|trezentas|quatrocentos|quatrocentas|quinhentos|quinhentas|seiscentos|seiscentas|setecentos|setecentas|oitocentos|oitocentas|novecentos|novecentas|mil|milhao|milhoes';
     var wordSequence='(?:'+wordToken+')(?:\\s+(?:e\\s+)?(?:'+wordToken+'))*';
     var normalizedRaw=raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
     amountWordMatch=normalizedRaw.match(new RegExp('\\b('+wordSequence+')\\s+reais?\\b(?:\\s+e\\s+('+wordSequence+')\\s+centavos?\\b)?','i'));
+    if(!amountWordMatch)bareAmountMatch=raw.match(/\b(?:por|custou|valor(?:\s+de)?)\s+R?\$?\s*([\d.]+(?:,[0-9]{1,2})?)\b/i);
   }
-  var hasAmount=!!amountMatch||!!amountWordMatch;
-  var registrationIntent=/\b(registra|registre|registrar|anota|anote|lanca|lancar)\b/.test(normalized);
-  var purchaseIntent=/\bcomprei\b/.test(normalized);
-  var pastSpendIntent=/\bgastei\b/.test(normalized);
-  if(!registrationIntent&&!purchaseIntent&&!pastSpendIntent)return null;
-  if(!hasAmount)return{error:'Para preparar esse gasto, informe o valor em reais. Exemplo: “Comprei um lanche por R$ 25,00 no Pix”.'};
-
-  var amount=0;
+  var amount=null;
   var amountRaw='';
   if(amountMatch){
     var amountText=String(amountMatch[1]||amountMatch[2]||'').replace(/\.$/,'');
-    if(amountText.indexOf(',')!==-1){
-      amount=Number(amountText.replace(/\./g,'').replace(',','.'));
-    }else if(/\.\d{1,2}$/.test(amountText)){
-      amount=Number(amountText);
-    }else{
-      amount=Number(amountText.replace(/\./g,''));
-    }
+    if(amountText.indexOf(',')!==-1)amount=Number(amountText.replace(/\./g,'').replace(',','.'));
+    else if(/\.\d{1,2}$/.test(amountText))amount=Number(amountText);
+    else amount=Number(amountText.replace(/\./g,''));
     amountRaw=amountMatch[0];
-  }else{
+  }else if(amountWordMatch){
     var wholeAmount=this._parsePtNumberWords(amountWordMatch[1]);
     var centAmount=amountWordMatch[2]?this._parsePtNumberWords(amountWordMatch[2]):0;
     if(wholeAmount!==null&&centAmount!==null&&centAmount<=99)amount=wholeAmount+(centAmount/100);
     amountRaw=raw.slice(amountWordMatch.index,amountWordMatch.index+amountWordMatch[0].length);
+  }else if(bareAmountMatch){
+    var bareText=String(bareAmountMatch[1]||'').replace(/\.$/,'');
+    amount=bareText.indexOf(',')!==-1?Number(bareText.replace(/\./g,'').replace(',','.')):Number(bareText.replace(/\./g,''));
+    amountRaw=bareAmountMatch[0];
   }
-  if(!(amount>0)||!isFinite(amount)||amount>10000000){
-    return{error:'Não consegui reconhecer um valor válido. Envie o valor em reais, por exemplo R$ 25,00.'};
-  }
+  if(amount!==null&&(!(amount>0)||!isFinite(amount)||amount>10000000))return{error:'Não consegui reconhecer um valor válido. Envie o valor em reais, por exemplo R$ 25,00.'};
 
-  if(/\b(parcelad[oa]s?|\d+\s+parcelas?)\b/.test(normalized)){
-    return{unsupported:'installments'};
-  }
-  if(/\b(cartao|credito|debito)\b/.test(normalized)){
-    return{unsupported:'card'};
-  }
-
-  var details=raw.replace(amountRaw,' ');
-  details=details.replace(/\b(comprei|gastei|registra|registre|registrar|anota|anote|lanca|lancar)\b/gi,' ');
-  details=details.replace(/\b(?:uma|um|despesa|gasto|compra|valor|de|por)\b/gi,' ');
-
+  var details=raw;
+  if(amountRaw)details=details.replace(amountRaw,' ');
+  details=details.replace(/\b(quero|preciso|adicionar|adiciona|comprar|comprei|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|uma|um|uns|umas|despesa|gasto|valor|de|por|foi|custou|reais?)\b/gi,' ');
   var paymentMethod='';
   if(/\bpix\b/i.test(details))paymentMethod='pix';
   else if(/\b(dinheiro|especie)\b/i.test(this._norm(details)))paymentMethod='dinheiro';
-  details=details.replace(/\b(?:no|na|em|com)?\s*(?:pix|dinheiro|esp[eé]cie)\b/gi,' ');
+  else if(/\btransferencia\b/i.test(this._norm(details)))paymentMethod='transferencia';
+  details=details.replace(/\b(?:no|na|em|com)?\s*(?:pix|dinheiro|esp[eé]cie|transfer[eê]ncia)\b/gi,' ');
 
   var local='';
   var locationMatch=details.match(/\b(?:no|na|nos|nas|em|pelo|pela)\s+(.+)$/i);
   var item=details;
-  if(locationMatch){
-    local=String(locationMatch[1]||'').trim();
-    item=details.slice(0,locationMatch.index);
-  }
-  item=String(item||'').replace(/^\s*(?:um|uma|uns|umas|o|a)\s+/i,'');
-  item=item.replace(/\b(?:por|no|na|em|de)\s*$/i,'').replace(/\s+/g,' ').trim();
+  if(locationMatch){local=String(locationMatch[1]||'').trim();item=details.slice(0,locationMatch.index);}
+  item=String(item||'').replace(/^\s*(?:um|uma|uns|umas|o|a|de|do|da)\s+/i,'');
+  item=item.replace(/\s+/g,' ').trim();
   local=String(local||'').replace(/\s+/g,' ').trim();
-  if(!item&&local)item=local;
-  if(!local&&item)local=item;
-  if(!item)return{error:'O que você comprou? Exemplo: “Comprei um lanche por R$ 25,00 na padaria”.'};
+  var missingField='';
+  if(!item)missingField='item';
+  else if(amount===null)missingField='amount';
+  return{amount:amount,item:item,local:local,paymentMethod:paymentMethod,date:today(),needsClarification:missingField};
+};
 
-  return{
-    amount:amount,
-    item:item,
-    local:local,
-    paymentMethod:paymentMethod,
-    date:today()
+AlicerceIA._expenseClarificationMessage=function(field){
+  var lang=Store.lang||'pt';
+  var copy={
+    pt:{item:'O que você comprou ou qual serviço pagou?',amount:'Qual foi o valor? Pode informar em reais, por exemplo: vinte e cinco reais e cinquenta centavos.'},
+    en:{item:'What did you buy or which service did you pay for?',amount:'How much was it? You can say an amount, for example: twenty-five reais and fifty centavos.'},
+    es:{item:'¿Qué compraste o qué servicio pagaste?',amount:'¿Cuál fue el importe? Puedes indicar el valor en reales.'}
   };
+  var labels=copy[lang]||copy.pt;
+  return labels[field]||labels.amount;
 };
 
 AlicerceIA.enviarMensagem=async function(question){
@@ -5406,10 +5400,52 @@ AlicerceIA.enviarMensagem=async function(question){
   var questionForEngine=this._resolveFollowUp(message);
   this._messages.push({role:'user',text:message});
 
-  var expenseCommand=this._parseExpenseCommand(message);
+  var expenseCommand=null;
+  if(this._pendingExpenseDraft){
+    var draft=this._pendingExpenseDraft;
+    var messageNorm=this._norm(message);
+    var hasOwnIntent=/\b(comprei|comprar|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|adiciona|adicionar)\b/.test(messageNorm);
+    var followText=message;
+    if(draft.awaiting==='amount'&&!hasOwnIntent){
+      var amountReply=message.trim();
+      if(/^\s*(?:R\$\s*)?[\d.]+(?:,[0-9]{1,2})?\s*$/.test(amountReply)&&!/reais?/i.test(amountReply)&&amountReply.indexOf('R$')<0)amountReply='R$ '+amountReply;
+      else if(!/reais?|centavos?|R\$/i.test(amountReply)&&this._parsePtNumberWords(amountReply)!==null)amountReply+=' reais';
+      followText='Comprei '+(draft.item||'item')+' por '+amountReply;
+    }else if(draft.awaiting==='item'&&!hasOwnIntent){
+      followText='Comprei '+message+(draft.amount!==null&&draft.amount!==undefined?' por R$ '+Number(draft.amount).toFixed(2).replace('.',','):'');
+    }
+    var followCommand=this._parseExpenseCommand(followText);
+    if(followCommand&&followCommand.unsupported){
+      expenseCommand=followCommand;
+      this._pendingExpenseDraft=null;
+    }else if(followCommand&&!followCommand.error){
+      if(followCommand.amount!==null&&followCommand.amount!==undefined)draft.amount=followCommand.amount;
+      if(followCommand.item&&followCommand.item!=='item')draft.item=followCommand.item;
+      if(followCommand.local)draft.local=followCommand.local;
+      if(followCommand.paymentMethod)draft.paymentMethod=followCommand.paymentMethod;
+      draft.date=draft.date||followCommand.date||today();
+      draft.awaiting=!draft.item?'item':draft.amount===null||draft.amount===undefined?'amount':'';
+      if(draft.awaiting){
+        this._pendingExpenseDraft=draft;
+        expenseCommand={needsClarification:draft.awaiting,amount:draft.amount,item:draft.item,local:draft.local,paymentMethod:draft.paymentMethod,date:draft.date};
+      }else{
+        this._pendingExpenseDraft=null;
+        expenseCommand={amount:draft.amount,item:draft.item,local:draft.local||'',paymentMethod:draft.paymentMethod||'',date:draft.date};
+      }
+    }else{
+      expenseCommand={needsClarification:draft.awaiting,amount:draft.amount,item:draft.item,local:draft.local,paymentMethod:draft.paymentMethod,date:draft.date};
+    }
+  }else{
+    expenseCommand=this._parseExpenseCommand(message);
+    if(expenseCommand&&expenseCommand.needsClarification){
+      this._pendingExpenseDraft={amount:expenseCommand.amount,item:expenseCommand.item,local:expenseCommand.local||'',paymentMethod:expenseCommand.paymentMethod||'',date:expenseCommand.date||today(),awaiting:expenseCommand.needsClarification};
+    }
+  }
   if(expenseCommand){
     var actionAnswer='';
-    if(expenseCommand.error){
+    if(expenseCommand.needsClarification){
+      actionAnswer=this._expenseClarificationMessage(expenseCommand.needsClarification);
+    }else if(expenseCommand.error){
       actionAnswer=expenseCommand.error;
     }else if(expenseCommand.unsupported==='card'){
       actionAnswer='Consigo preparar despesas simples por aqui. Para compras no cartão, abra Nova compra e selecione o cartão cadastrado; assim evito gravar uma compra sem vínculo com o cartão correto.';
