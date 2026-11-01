@@ -1920,7 +1920,16 @@ test('Alicia limita a conversa a duas interações, permite limpar e leva aos re
   await page.evaluate(function () {
     Store.userId = 'alicia-historico-limite';
     Store.lang = 'pt';
-    Store.settings = { lang: 'pt', theme: 'azul', displayName: 'Ewerton' };
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      displayName: 'Ewerton',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
     Store.movements = [];
     Store.installments = [];
     AlicerceIA._resetUser();
