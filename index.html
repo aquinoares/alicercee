@@ -2563,7 +2563,7 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 <body data-theme="azul">
 
 <div id="loading" class="loading-screen"><div class="logo-text">Alicerce</div><p class="text-muted mt-2">...</p></div>
-<div id="app" class="app hidden"><main class="al-login-screen"><video class="al-login-video" autoplay="" muted="" playsinline="" loop="" preload="auto" aria-hidden="true"><source src="videos/noite.mp4" type="video/mp4"></video><div class="al-login-overlay"></div><header class="al-login-brand"><span class="al-brand-mark">A</span><span>Alicer<span class="al-brand-accent">ce</span></span></header><section class="al-login-layout"><div class="al-login-story"><span class="al-login-eyebrow"><i></i> SUA VIDA FINANCEIRA, COM MAIS INTENÇÃO</span><h1>O futuro que você quer começa <em>nas escolhas de hoje.</em></h1><p>Organize seu dinheiro, acompanhe seus objetivos e construa uma relação mais tranquila com cada escolha financeira.</p><div class="al-login-points"><span><b>01</b> Entenda seu dinheiro</span><span><b>02</b> Planeje seus próximos passos</span><span><b>03</b> Avance no seu ritmo</span></div></div><div class="al-login-card"><div class="al-login-card-top"><span class="al-login-kicker">BEM-VINDO AO ALICERCE</span><span class="al-login-orb" aria-hidden="true">↗</span></div><h2>Entrar na sua conta</h2><p class="al-login-description">Digite seu e-mail e senha para continuar.</p><form class="al-login-form" onsubmit="event.preventDefault();doLogin()"><label for="login-email">Seu e-mail</label><div class="al-login-input"><span aria-hidden="true">✉</span><input id="login-email" type="email" autocomplete="email" placeholder="seu@email.com" required=""></div><div class="al-login-password-label"><label for="login-pass">Senha</label></div><div class="al-login-input"><span aria-hidden="true">⌑</span><input id="login-pass" type="password" autocomplete="current-password" placeholder="Sua senha" required=""><button type="button" class="al-login-eye" onclick="alternarVisibilidade('login-pass',this)" aria-label="Mostrar senha">◉</button></div><button type="submit" class="al-login-submit"><span>Entrar</span><span aria-hidden="true">→</span></button></form><div class="al-login-divider"><span>AINDA NÃO TEM CONTA?</span></div><button type="button" class="al-login-signup" onclick="doSignup()">Criar conta<span aria-hidden="true">↗</span></button><p class="al-login-privacy"><span aria-hidden="true">◈</span> Seus dados financeiros merecem cuidado.</p></div></section><footer class="al-login-footer"><span>ALICERCE © 2026</span><span>PEQUENAS ESCOLHAS. GRANDES CONSTRUÇÕES.</span></footer></main></div>
+<div id="app" class="app hidden"><main class="al-login-screen"><video class="al-login-video" autoplay="" muted="" playsinline="" loop="" preload="auto" aria-hidden="true"><source src="videos/noite.mp4" type="video/mp4"></video><div class="al-login-overlay"></div><header class="al-login-brand"><span class="al-brand-mark">A</span><span>Alicer<span class="al-brand-accent">ce</span></span></header><section class="al-login-layout"><div class="al-login-story"><span class="al-login-eyebrow"><i></i> SUA VIDA FINANCEIRA, COM MAIS INTENÇÃO</span><h1>O futuro que você quer começa <em>nas escolhas de hoje.</em></h1><p>Organize seu dinheiro, acompanhe seus objetivos e construa uma relação mais tranquila com cada escolha financeira.</p><div class="al-login-points"><span><b>01</b> Entenda seu dinheiro</span><span><b>02</b> Planeje seus próximos passos</span><span><b>03</b> Avance no seu ritmo</span></div></div><div class="al-login-card"><div class="al-login-card-top"><span class="al-login-kicker">BEM-VINDO AO ALICIA</span><span class="al-login-orb" aria-hidden="true">↗</span></div><h2>Entrar na sua conta</h2><p class="al-login-description">Digite seu e-mail e senha para continuar.</p><form class="al-login-form" onsubmit="event.preventDefault();doLogin()"><label for="login-email">Seu e-mail</label><div class="al-login-input"><span aria-hidden="true">✉</span><input id="login-email" type="email" autocomplete="email" placeholder="seu@email.com" required=""></div><div class="al-login-password-label"><label for="login-pass">Senha</label></div><div class="al-login-input"><span aria-hidden="true">⌑</span><input id="login-pass" type="password" autocomplete="current-password" placeholder="Sua senha" required=""><button type="button" class="al-login-eye" onclick="alternarVisibilidade('login-pass',this)" aria-label="Mostrar senha">◉</button></div><button type="submit" class="al-login-submit"><span>Entrar</span><span aria-hidden="true">→</span></button></form><div class="al-login-divider"><span>AINDA NÃO TEM CONTA?</span></div><button type="button" class="al-login-signup" onclick="doSignup()">Criar conta<span aria-hidden="true">↗</span></button><p class="al-login-privacy"><span aria-hidden="true">◈</span> Seus dados financeiros merecem cuidado.</p></div></section><footer class="al-login-footer"><span>ALICERCE © 2026</span><span>PEQUENAS ESCOLHAS. GRANDES CONSTRUÇÕES.</span></footer></main></div>
 <div id="menu-overlay" class="menu-overlay"></div>
 <div id="menu-panel" class="menu-panel"></div>
 <div id="toast" class="toast"></div>
@@ -5189,11 +5189,9 @@ AlicerceIA.saudacao=function(){
     greeting=hour>=5&&hour<12?'Bom dia':hour>=12&&hour<18?'Boa tarde':'Boa noite';
   }
   try{
-    if(Store.userEmail)name=String(contaNome(Store.userEmail)||'').split(/\s+/)[0];
+    name=String(Store.settings&&Store.settings.displayName||'').trim().split(/\s+/)[0];
   }catch(e){}
-  if(name&&name.toLowerCase()!=='minha'&&name.toLowerCase()!=='my'&&name.toLowerCase()!=='mi'){
-    return greeting+', '+name;
-  }
+  if(name)return greeting+', '+name;
   return greeting+'!';
 };
 
@@ -5204,15 +5202,15 @@ AlicerceIA.renderCard=function(){
   var html='<style id="alicerce-ai-launcher-styles">';
   html+='.alicerce-ai-launcher{box-sizing:border-box;width:100%;margin:10px 0 14px;padding:9px 12px;border:1px solid var(--line);border-radius:15px;background:var(--surface);color:var(--text);min-width:0}';
   html+='.alicerce-ai-launcher-action{width:100%;min-height:48px;display:flex;align-items:center;gap:10px;border:0;padding:0;background:transparent;color:var(--text);text-align:left;cursor:pointer}';
-  html+='.alicerce-ai-launcher-icon{width:44px;height:46px;display:flex;align-items:center;justify-content:center;flex:0 0 44px}';
-  html+='.alicerce-ai-launcher-icon img{width:100%;height:100%;object-fit:contain;display:block}';
+  html+='.alicerce-ai-launcher-icon{width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex:0 0 46px;border:2px solid #FF6500;border-radius:50%;overflow:hidden;background:#0B0B0D;padding:1px;box-sizing:border-box}';
+  html+='.alicerce-ai-launcher-icon img{width:100%;height:100%;object-fit:cover;object-position:center 35%;display:block;border-radius:50%}';
   html+='.alicerce-ai-launcher-title{flex:1;min-width:0;font-size:14px;font-weight:800;line-height:1.25;overflow-wrap:anywhere}';
   html+='.alicerce-ai-launcher-cta{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;color:var(--accent);font-size:11px;font-weight:800;white-space:nowrap}';
   html+='.alicerce-ai-launcher-action:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:10px}';
   html+='</style>';
   html+='<section class="alicerce-ai-launcher" id="alicerce-ai-card" aria-label="Assistente Alicerce">';
   html+='<button class="alicerce-ai-launcher-action" id="alicerce-ai-open-assistant" type="button" onclick="AlicerceIA.abrir()">';
-  html+='<span class="alicerce-ai-launcher-icon"><img src="/assets/assistente-alicerce.webp" width="44" height="46" alt=""></span>';
+  html+='<span class="alicerce-ai-launcher-icon"><img src="/assets/alicia-assistente.webp" width="44" height="46" alt=""></span>';
   html+='<span class="alicerce-ai-launcher-title">'+esc(this.saudacao())+'</span>';
   html+='<span class="alicerce-ai-launcher-cta">'+esc(label)+icon('arrowRight','ico-xs')+'</span>';
   html+='</button></section>';
@@ -5272,9 +5270,9 @@ function renderAssistente(){
   AlicerceIA._resetUser();
   var lang=Store.lang||'pt';
   var copy={
-    pt:{subtitle:'Assistente Alicerce',welcome:'O que você gostaria de entender hoje?',placeholder:'Digite sua mensagem...',send:'Enviar',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?'],privacy:'Esta conversa fica somente na memória desta sessão e é limpa quando você troca de conta.',dictation:'No celular, use o microfone do teclado para ditar. O Alicerce recebe somente o texto.',back:'Início'},
-    en:{subtitle:'Alicerce Assistant',welcome:'What would you like to understand today?',placeholder:'Type your message...',send:'Send',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?'],privacy:'This conversation stays only in this session memory and is cleared when you switch accounts.',dictation:'On your phone, use your keyboard microphone to dictate. Alicerce receives text only.',back:'Home'},
-    es:{subtitle:'Asistente Alicerce',welcome:'¿Qué te gustaría entender hoy?',placeholder:'Escribe tu mensaje...',send:'Enviar',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?'],privacy:'Esta conversación permanece solo en la memoria de esta sesión y se limpia al cambiar de cuenta.',dictation:'En el móvil, usa el micrófono del teclado para dictar. Alicerce recibe solo texto.',back:'Inicio'}
+    pt:{subtitle:'Alicia · sua assistente financeira',welcome:'Oi! Sou Alicia. Vamos entender seu dinheiro juntas?',placeholder:'Digite sua mensagem...',send:'Enviar',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?'],privacy:'Esta conversa fica somente na memória desta sessão e é limpa quando você troca de conta.',dictation:'No celular, use o microfone do teclado para ditar. O Alicerce recebe somente o texto.',back:'Início'},
+    en:{subtitle:'Alicia · your financial assistant',welcome:'Hi! I am Alicia. Let us understand your money together.',placeholder:'Type your message...',send:'Send',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?'],privacy:'This conversation stays only in this session memory and is cleared when you switch accounts.',dictation:'On your phone, use your keyboard microphone to dictate. Alicerce receives text only.',back:'Home'},
+    es:{subtitle:'Alicia · tu asistente financiera',welcome:'¡Hola! Soy Alicia. Vamos a entender tu dinero juntas.',placeholder:'Escribe tu mensaje...',send:'Enviar',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?'],privacy:'Esta conversación permanece solo en la memoria de esta sesión y se limpia al cambiar de cuenta.',dictation:'En el móvil, usa el micrófono del teclado para dictar. Alicerce recibe solo texto.',back:'Inicio'}
   };
   var ui=copy[lang]||copy.pt;
   var greeting=AlicerceIA.saudacao();
@@ -5311,16 +5309,16 @@ function renderAssistente(){
   html+='</style>';
   html+='<div class="content alicerce-assistant-page" id="alicerce-assistant-page">';
   html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back','ico-xs')+esc(ui.back)+'</button></div>';
-  html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/assistente-alicerce.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>'+esc(greeting)+'</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
+  html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/alicia-assistente.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>'+esc(greeting)+'</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
-    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICERCE</span>'+esc(ui.welcome)+'</div>';
+    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span>'+esc(ui.welcome)+'</div>';
   }else{
     messages.forEach(function(item){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/assistente-alicerce.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICERCE</span>'+esc(item.text)+'</div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span>'+esc(item.text)+'</div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }
