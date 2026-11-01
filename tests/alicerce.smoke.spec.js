@@ -1226,12 +1226,13 @@ test('usa um gasto manual confirmado como exemplo de aprendizado da própria con
 });
 
 
-test('Alicerce IA responde perguntas sobre gastos por subcategoria e respeita a conta ativa', async function ({ page }) {
+test('Assistente Alicerce abre uma conversa própria, responde com os dados da conta e limpa o histórico ao trocar de usuário', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   await page.evaluate(function () {
     Store.userId = 'ia-conta-teste-a';
     Store.settings = Object.assign({}, Store.settings, { alicerceLegalAcceptance: { termsVersion: '2026-10-20-v1', privacyVersion: '2026-10-20-v1', acceptedAt: '2026-10-31T12:00:00.000Z' } });
     Store.lang = 'pt';
+    Store.loans = [];
     Store.movements = [
       { id: 'ia-1', tipo: 'despesa', categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 48.50, data: Clock.today(), status: 'pago' },
       { id: 'ia-2', tipo: 'despesa', categoria: 'moradia', subcategoria: 'energia', descricao: 'Conta de luz', estabelecimento: 'Neoenergia', valor: 20, data: Clock.today(), status: 'pago' }
@@ -1241,20 +1242,39 @@ test('Alicerce IA responde perguntas sobre gastos por subcategoria e respeita a 
   });
 
   await expect(page.locator('#alicerce-ai-card')).toBeVisible();
-  await expect(page.locator('#alicerce-ai-insight')).toContainText(/lanchonete/i);
-  await page.locator('#alicerce-ai-question').fill('Quanto gastei com lanche este mês?');
-  await page.locator('.alicerce-ai-button').click();
-  await expect(page.locator('#alicerce-ai-answer')).toContainText('48,50');
+  await expect(page.locator('#alicerce-ai-open-assistant')).toBeVisible();
+  await expect(page.locator('#alicerce-ai-card')).toContainText(/Converse com o Alicerce/i);
+  await expect(page.locator('#alicerce-assistant-page')).toHaveCount(0);
 
-  await page.evaluate(function () {
+  await page.locator('#alicerce-ai-open-assistant').click();
+  await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Assistente Alicerce');
+  await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
+
+  await page.locator('#alicerce-assistant-input').fill('Quanto gastei com lanche este mês?');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('48,50');
+  await expect(page.locator('.alicerce-assistant-message.user')).toContainText('Quanto gastei com lanche este mês?');
+  await expect(page.locator('.alicerce-assistant-message.assistant')).toContainText('48,50');
+
+  const stateAfterSwitch = await page.evaluate(function () {
     Store.userId = 'ia-conta-teste-b';
     Store.movements = [];
     Store.installments = [];
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+    return {
+      messages: AlicerceIA._messages,
+      question: AlicerceIA._question,
+      answer: AlicerceIA._answer
+    };
   });
-  await expect(page.locator('#alicerce-ai-answer')).toHaveCount(0);
-  await expect(page.locator('#alicerce-ai-question')).toHaveValue('');
-  await expect(page.locator('#alicerce-ai-insight')).not.toContainText('48,50');
+
+  expect(stateAfterSwitch.messages).toEqual([]);
+  expect(stateAfterSwitch.question).toBe('');
+  expect(stateAfterSwitch.answer).toBe('');
+  await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
+  await expect(page.locator('#alicerce-assistant-messages')).not.toContainText('48,50');
+  await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
 });
 
 test('Visão Financeira apresenta pontos principais e permite abrir análises com um toque', async function ({ page }) {
