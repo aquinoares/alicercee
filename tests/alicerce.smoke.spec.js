@@ -1385,7 +1385,7 @@ test('Alicerce IA entende periodos, estabelecimentos e aumentos por categoria', 
       return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
     }
     var yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-    var previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 5);
+    var previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     var currentDate = Clock.today();
     var previousMonthDate = format(previousMonth);
     var yesterdayDate = format(yesterday);
@@ -1395,7 +1395,7 @@ test('Alicerce IA entende periodos, estabelecimentos e aumentos por categoria', 
       { id: 'last-month', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Compra antiga', estabelecimento: 'Mercado Bom', valor: 100, data: previousMonthDate },
       { id: 'yesterday', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'padaria', descricao: 'Pao', estabelecimento: 'Padaria Central', valor: 15, data: yesterdayDate },
       { id: 'today-a', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Feira', estabelecimento: 'Mercado Bom', valor: 90, data: currentDate },
-      { id: 'today-b', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Mercado', estabelecimento: 'Mercado Bom', valor: 90, data: currentDate }
+      { id: 'today-b', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', descricao: 'Mercado', estabelecimento: 'Mercado Bom', valor: 105, data: currentDate }
     ];
     return {
       lastMonth: AlicerceIA.responder('Quanto gastei no mês passado?'),
@@ -1516,6 +1516,16 @@ test('orienta primeiro acesso no iPhone e mantém a opção de instalação no m
       item.parentElement.children[2] === item;
   });
   expect(menuOrder).toBe(true);
+});
+
+test('exibe o atalho de instalação na prévia aberta pelo computador', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () { renderMenu(); toggleMenu(); });
+  await expect(page.locator('#menu-panel .al-install-menu-item')).toBeVisible();
+  await expect(page.locator('#menu-panel .al-install-menu-item')).toContainText('Adicionar à tela inicial');
+  await page.locator('#menu-panel .al-install-menu-item').click();
+  await expect(page.locator('#al-install-onboarding')).toBeVisible();
+  await expect(page.locator('#al-install-onboarding')).toContainText('navegador do telefone');
 });
 
 test('usa o aviso nativo de instalação quando o Android disponibiliza o evento', async function ({ page }) {
