@@ -1249,6 +1249,8 @@ test('Assistente Alicerce abre uma conversa própria, responde com os dados da c
   await page.locator('#alicerce-ai-open-assistant').click();
   await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('Assistente Alicerce');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/assistente-alicerce.webp');
+  await expect(page.locator('.alicerce-assistant-message-avatar')).toHaveCount(1);
   await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
 
   await page.locator('#alicerce-assistant-input').fill('Quanto gastei com lanche este mês?');
@@ -1256,6 +1258,7 @@ test('Assistente Alicerce abre uma conversa própria, responde com os dados da c
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('48,50');
   await expect(page.locator('.alicerce-assistant-message.user')).toContainText('Quanto gastei com lanche este mês?');
   await expect(page.locator('.alicerce-assistant-message.assistant')).toContainText('48,50');
+  await expect(page.locator('.alicerce-assistant-message-avatar')).toHaveCount(1);
 
   const stateAfterSwitch = await page.evaluate(function () {
     Store.userId = 'ia-conta-teste-b';
