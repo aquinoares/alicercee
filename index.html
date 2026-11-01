@@ -5507,7 +5507,8 @@ AlicerceIA.enviarMensagem=async function(question){
         if(!interpretation.item)interpretation.item=expenseCommand.item;
         if(!interpretation.merchant)interpretation.merchant=expenseCommand.local;
         var classificationValid=!!(interpretation.categoria&&interpretation.subcategoria&&alicerClassificationPairIsValid(interpretation.categoria,interpretation.subcategoria));
-        if((!classificationValid||interpretation.confidence==='low')&&!expenseCommand.purpose){
+        var needsPurposeContext=!classificationValid||interpretation.confidence==='low'||(interpretation.source==='dictionary'&&!expenseCommand.purpose);
+        if(needsPurposeContext&&!expenseCommand.purpose){
           this._pendingExpenseDraft={
             amount:expenseCommand.amount,
             item:expenseCommand.item,
@@ -5534,6 +5535,7 @@ AlicerceIA.enviarMensagem=async function(question){
           context:expenseCommand.local,
           date:expenseCommand.date||today(),
           paymentMethod:expenseCommand.paymentMethod||'',
+          purpose:expenseCommand.purpose||'',
           cardId:'',
           cardOwnerType:'meu',
           cardOwner:'',
@@ -12696,6 +12698,7 @@ function renderAddGastoDoubt(){
   const amountValue=edits.amount!==undefined?edits.amount:(interp.amount!==undefined&&interp.amount!==null?interp.amount:data.amountInput);
   const merchantValue=edits.merchant!==undefined?edits.merchant:(interp.merchant!==undefined&&interp.merchant!==null&&interp.merchant!==''?interp.merchant:data.localInput||'');
   const itemValue=edits.item!==undefined?edits.item:(interp.item!==undefined&&interp.item!==null&&interp.item!==''?interp.item:data.itemInput||'');
+  const purposeValue=String(data.purpose||interp.purpose||'').trim();
   const payment=data.paymentMethod||'';
   const card=(Store.cards||[]).find(function(c){return String(c.id)===String(data.cardId||'');});
   const cardName=card?(card.nome||'Cartão cadastrado'):'Nenhum cartão selecionado';
@@ -12733,6 +12736,7 @@ function renderAddGastoDoubt(){
   html+='<div class="gr-amount">'+(amountValue!==undefined&&amountValue!==null&&amountValue!==''?fmtMoney(Number(amountValue)||0):'Informe o valor')+'</div>';
   html+='<div style="font-size:17px;font-weight:750;overflow-wrap:anywhere">'+esc(itemValue||'Gasto sem descrição')+'</div>';
   html+='<div style="color:#b4b6bf;font-size:14px;margin-top:5px">'+esc(merchantValue||'Local não informado')+'</div>';
+  if(purposeValue)html+='<div style="font-size:12px;color:var(--text2);margin-top:7px">Finalidade informada: <strong style="color:var(--text)">'+esc(purposeValue)+'</strong></div>';
   html+='<div style="margin-top:10px"><span class="gr-chip">'+esc(dateLabel)+'</span><span class="gr-chip">'+esc(paymentName)+'</span></div>';
 
   html+='<div class="gr-panel"><div class="gr-muted">Resumo do pagamento</div>';
