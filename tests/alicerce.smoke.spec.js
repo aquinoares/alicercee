@@ -1401,10 +1401,11 @@ test('Alicerce IA entende periodos, estabelecimentos e aumentos por categoria', 
       lastMonth: AlicerceIA.responder('Quanto gastei no mês passado?'),
       yesterday: AlicerceIA.responder('Quanto gastei ontem?'),
       merchant: AlicerceIA.responder('Qual estabelecimento levou mais dinheiro?'),
-      categoryRise: AlicerceIA.insight()
+      categoryRise: AlicerceIA.insight(),
+      expectedLastMonth: previousMonthDate.slice(0, 7)===yesterdayDate.slice(0, 7)?'R$ 115,00':'R$ 100,00'
     };
   });
-  expect(result.lastMonth).toContain('R$ 100,00');
+  expect(result.lastMonth).toContain(result.expectedLastMonth);
   expect(result.yesterday).toContain('R$ 15,00');
   expect(result.merchant).toContain('Mercado Bom');
   expect(result.categoryRise).toContain('aumentaram 95%');
@@ -1498,6 +1499,8 @@ test('orienta primeiro acesso no iPhone e mantém a opção de instalação no m
   await page.evaluate(function () {
     Store.userId = 'pwa-ios-test-user';
     Store.screen = 'home';
+    var welcome = document.getElementById('livingSplash');
+    if (welcome) welcome.classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     window.AlicercePWA.check();
   });
@@ -1506,7 +1509,13 @@ test('orienta primeiro acesso no iPhone e mantém a opção de instalação no m
   await expect(page.locator('#al-install-onboarding')).toContainText('Adicionar à Tela de Início');
   await page.evaluate(function () { renderMenu(); toggleMenu(); });
   await expect(page.locator('#menu-panel .al-install-menu-item')).toBeVisible();
-  await expect(page.locator('#menu-panel .al-install-menu-item')).toContainText('Instalar Alicerce');
+  await expect(page.locator('#menu-panel .al-install-menu-item')).toContainText('Adicionar à tela inicial');
+  await expect(page.locator('#menu-panel .al-install-menu-divider')).toBeVisible();
+  const menuOrder = await page.locator('#menu-panel .al-install-menu-item').evaluate(function (item) {
+    return item.previousElementSibling && item.previousElementSibling.classList.contains('al-install-menu-divider') &&
+      item.parentElement.children[2] === item;
+  });
+  expect(menuOrder).toBe(true);
 });
 
 test('usa o aviso nativo de instalação quando o Android disponibiliza o evento', async function ({ page }) {
@@ -1522,6 +1531,8 @@ test('usa o aviso nativo de instalação quando o Android disponibiliza o evento
     window.dispatchEvent(promptEvent);
     Store.userId = 'pwa-android-test-user';
     Store.screen = 'home';
+    var welcome = document.getElementById('livingSplash');
+    if (welcome) welcome.classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     window.AlicercePWA.check();
   });

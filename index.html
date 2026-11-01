@@ -6372,6 +6372,7 @@ function renderMenu(){
         +'<span class="tf-me-chev">'+icon('chevronDown')+'</span></div></div>';
       return '<div class="menu-item'+(Store.screen===i.id?' active':'')+'" onclick="go(\''+i.id+'\');toggleMenu()">'+icon(i.icon)+'<span>'+i.label+'</span></div>';
     }).join('');
+    if(window.AlicercePWA&&typeof window.AlicercePWA.syncMenu==='function')window.AlicercePWA.syncMenu();
   }catch(e){}
 }
 function toggleMenu(){
@@ -14606,9 +14607,9 @@ try{
   var DISMISS_KEY='alicerce_pwa_install_snooze_until_v1',SNOOZE_DAYS=30;
   var deferredPrompt=null,overlay=null,dialog=null,isOpen=false,scheduled=false,attemptStarted=false,previousFocus=null;
   var COPY={
-    pt:{kicker:'ALICERCE NO SEU CELULAR',title:'Tenha a Alicerce na tela inicial',androidText:'Adicione um atalho para abrir sua vida financeira como um aplicativo, sem precisar procurar o endereço no navegador.',androidNative:'O navegador pode instalar a Alicerce diretamente no seu celular.',androidSteps:['Abra o menu do navegador (⋮).','Toque em “Instalar app” ou “Adicionar à tela inicial”.'],iosText:'Adicione a Alicerce à tela inicial do iPhone para abrir como um aplicativo.',iosSteps:['Abra este endereço no Safari.','Toque no botão Compartilhar.','Escolha “Adicionar à Tela de Início” e depois toque em “Adicionar”.'],primaryInstall:'Instalar agora',primaryDone:'Entendi',later:'Agora não',menu:'Instalar Alicerce',close:'Fechar instruções'},
-    en:{kicker:'ALICERCE ON YOUR PHONE',title:'Add Alicerce to your home screen',androidText:'Add a shortcut to open your finances like an app, without searching for the website in your browser.',androidNative:'Your browser can install Alicerce directly on your phone.',androidSteps:['Open your browser menu (⋮).','Choose “Install app” or “Add to Home screen”.'],iosText:'Add Alicerce to your iPhone home screen and open it like an app.',iosSteps:['Open this address in Safari.','Tap the Share button.','Choose “Add to Home Screen”, then tap “Add”.'],primaryInstall:'Install now',primaryDone:'Got it',later:'Not now',menu:'Install Alicerce',close:'Close instructions'},
-    es:{kicker:'ALICERCE EN TU CELULAR',title:'Agrega Alicerce a la pantalla de inicio',androidText:'Agrega un acceso directo para abrir tus finanzas como una aplicación, sin buscar la dirección en el navegador.',androidNative:'El navegador puede instalar Alicerce directamente en tu celular.',androidSteps:['Abre el menú del navegador (⋮).','Toca “Instalar aplicación” o “Añadir a pantalla de inicio”.'],iosText:'Agrega Alicerce a la pantalla de inicio del iPhone para abrirla como una aplicación.',iosSteps:['Abre esta dirección en Safari.','Toca el botón Compartir.','Elige “Agregar a pantalla de inicio” y después toca “Agregar”.'],primaryInstall:'Instalar ahora',primaryDone:'Entendido',later:'Ahora no',menu:'Instalar Alicerce',close:'Cerrar instrucciones'}
+    pt:{kicker:'ALICERCE NO SEU CELULAR',title:'Tenha a Alicerce na tela inicial',androidText:'Adicione um atalho para abrir sua vida financeira como um aplicativo, sem precisar procurar o endereço no navegador.',androidNative:'O navegador pode instalar a Alicerce diretamente no seu celular.',androidSteps:['Abra o menu do navegador (⋮).','Toque em “Instalar app” ou “Adicionar à tela inicial”.'],iosText:'Adicione a Alicerce à tela inicial do iPhone para abrir como um aplicativo.',iosSteps:['Abra este endereço no Safari.','Toque no botão Compartilhar.','Escolha “Adicionar à Tela de Início” e depois toque em “Adicionar”.'],primaryInstall:'Instalar agora',primaryDone:'Entendi',later:'Agora não',menu:'Adicionar à tela inicial',close:'Fechar instruções'},
+    en:{kicker:'ALICERCE ON YOUR PHONE',title:'Add Alicerce to your home screen',androidText:'Add a shortcut to open your finances like an app, without searching for the website in your browser.',androidNative:'Your browser can install Alicerce directly on your phone.',androidSteps:['Open your browser menu (⋮).','Choose “Install app” or “Add to Home screen”.'],iosText:'Add Alicerce to your iPhone home screen and open it like an app.',iosSteps:['Open this address in Safari.','Tap the Share button.','Choose “Add to Home Screen”, then tap “Add”.'],primaryInstall:'Install now',primaryDone:'Got it',later:'Not now',menu:'Add to Home Screen',close:'Close instructions'},
+    es:{kicker:'ALICERCE EN TU CELULAR',title:'Agrega Alicerce a la pantalla de inicio',androidText:'Agrega un acceso directo para abrir tus finanzas como una aplicación, sin buscar la dirección en el navegador.',androidNative:'El navegador puede instalar Alicerce directamente en tu celular.',androidSteps:['Abre el menú del navegador (⋮).','Toca “Instalar aplicación” o “Añadir a pantalla de inicio”.'],iosText:'Agrega Alicerce a la pantalla de inicio del iPhone para abrirla como una aplicación.',iosSteps:['Abre esta dirección en Safari.','Toca el botón Compartir.','Elige “Agregar a pantalla de inicio” y después toca “Agregar”.'],primaryInstall:'Instalar ahora',primaryDone:'Entendido',later:'Ahora no',menu:'Agregar a pantalla de inicio',close:'Cerrar instrucciones'}
   };
   function language(){try{var l=(typeof Store!=='undefined'&&Store&&Store.lang)?String(Store.lang).toLowerCase():'pt';return l.indexOf('en')===0?'en':(l.indexOf('es')===0?'es':'pt')}catch(e){return 'pt'}}
   function copy(){return COPY[language()]||COPY.pt}
@@ -14617,7 +14618,7 @@ try{
   function isAndroid(){return /android/i.test(ua())}
   function isMobile(){return isIOS()||isAndroid()}
   function isStandalone(){try{return !!(navigator.standalone===true||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches))}catch(e){return navigator.standalone===true}}
-  function accountReady(){try{if(typeof Store==='undefined'||!Store||!Store.userId)return false;var s=String(Store.screen||'');return s!=='login'&&s!=='recovery'&&s!=='recuperar'}catch(e){return false}}
+  function accountReady(){try{if(typeof Store==='undefined'||!Store||!Store.userId)return false;var s=String(Store.screen||'');if(s==='login'||s==='recovery'||s==='recuperar')return false;var welcome=document.getElementById('livingSplash');if(welcome&&!welcome.classList.contains('hidden'))return false;return true}catch(e){return false}}
   function wasDismissed(){try{return Number(localStorage.getItem(DISMISS_KEY)||0)>Date.now()}catch(e){return false}}
   function snooze(){try{localStorage.setItem(DISMISS_KEY,String(Date.now()+SNOOZE_DAYS*24*60*60*1000))}catch(e){}}
   function node(tag,cls,value){var el=document.createElement(tag);if(cls)el.className=cls;if(typeof value==='string')el.textContent=value;return el}
@@ -14668,13 +14669,24 @@ try{
   }
   function menuEntry(){
     if(!isMobile()||isStandalone())return;
-    var menu=document.getElementById('menu-panel');if(!menu||menu.querySelector('.al-install-menu-item'))return;
-    var div=node('div','menu-divider al-install-menu-divider'),button=node('button','menu-item al-install-menu-item');button.type='button';
+    var menu=document.getElementById('menu-panel');if(!menu)return;
+    var existing=menu.querySelector('.al-install-menu-item');
+    var existingDivider=menu.querySelector('.al-install-menu-divider');
+    if(existing&&existingDivider){
+      var anchor=menu.firstElementChild;
+      if(anchor&&anchor.nextElementSibling!==existingDivider)menu.insertBefore(existingDivider,anchor.nextElementSibling);
+      if(existingDivider.nextElementSibling!==existing)menu.insertBefore(existing,existingDivider.nextElementSibling);
+      return;
+    }
+    var div=node('div','menu-divider al-install-menu-divider');
+    var button=node('button','menu-item al-install-menu-item');button.type='button';
     var ic=node('span','al-install-menu-icon');
     ic.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"></rect><path d="M12 7v8m-3-3 3 3 3-3M8 18h8"></path></svg>';
     button.appendChild(ic);button.appendChild(node('span','',copy().menu));button.setAttribute('aria-label',copy().menu);
     button.addEventListener('click',function(){if(menu.classList.contains('open')&&typeof window.toggleMenu==='function')window.toggleMenu();show(true)});
-    menu.appendChild(div);menu.appendChild(button);
+    var first=menu.firstElementChild;
+    menu.insertBefore(div,first?first.nextSibling:null);
+    menu.insertBefore(button,div.nextSibling);
   }
   window.addEventListener('beforeinstallprompt',function(e){if(!isMobile())return;e.preventDefault();deferredPrompt=e;if(isOpen)renderDialog()});
   window.addEventListener('appinstalled',function(){
@@ -14687,7 +14699,7 @@ try{
     var app=document.getElementById('app');if(app&&window.MutationObserver){var ao=new MutationObserver(function(){check()});ao.observe(app,{childList:true,subtree:true,attributes:true,attributeFilter:['class']})}
     window.addEventListener('focus',check);document.addEventListener('visibilitychange',function(){if(!document.hidden)check()});window.setTimeout(check,1800);
   }
-  window.AlicercePWA={check:check,open:function(){return show(true)},isInstalled:isStandalone};
+  window.AlicercePWA={check:check,open:function(){return show(true)},isInstalled:isStandalone,syncMenu:menuEntry};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
