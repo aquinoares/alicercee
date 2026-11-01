@@ -5322,6 +5322,7 @@ AlicerceIA._speechUtterance=null;
 AlicerceIA._ttsVoiceId='pf_dora';
 AlicerceIA._ttsInstance=null;
 AlicerceIA._ttsInitPromise=null;
+AlicerceIA._ttsLibraryPromise=null;
 AlicerceIA._ttsAudioContext=null;
 AlicerceIA._ttsAudioSource=null;
 AlicerceIA._ttsRequestId=0;
@@ -5422,14 +5423,46 @@ AlicerceIA._setSpeechButtonState=function(button,playing){
   button.setAttribute('aria-label',nextLabel);
   button.setAttribute('aria-pressed',playing?'true':'false');
 };
-/* O runtime e o arquivo do modelo são carregados sob demanda, só no primeiro toque. */
+/* A biblioteca MediaPipe e o modelo são carregados sob demanda, só no primeiro toque. */
+AlicerceIA._loadTtsLibrary=function(){
+  var cached=window.__alicerceMediaPipeAudio;
+  if(cached&&cached.FilesetResolver&&cached.TextToSpeech)return Promise.resolve(cached);
+  if(this._ttsLibraryPromise)return this._ttsLibraryPromise;
+  var nativeAudio=window.Audio;
+  this._ttsLibraryPromise=new Promise(function(resolve,reject){
+    var script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.0/audio_bundle.js';
+    script.async=true;
+    script.crossOrigin='anonymous';
+    var restoreNativeAudio=function(){
+      try{window.Audio=nativeAudio}catch(e){}
+    };
+    script.onload=function(){
+      var audioApi=window.Audio;
+      restoreNativeAudio();
+      if(!audioApi||!audioApi.FilesetResolver||!audioApi.TextToSpeech){
+        AlicerceIA._ttsLibraryPromise=null;
+        reject(new Error('A biblioteca MediaPipe não disponibilizou a API de voz.'));
+        return;
+      }
+      window.__alicerceMediaPipeAudio=audioApi;
+      resolve(audioApi);
+    };
+    script.onerror=function(){
+      restoreNativeAudio();
+      AlicerceIA._ttsLibraryPromise=null;
+      reject(new Error('Não foi possível carregar a biblioteca MediaPipe.'));
+    };
+    document.head.appendChild(script);
+  });
+  return this._ttsLibraryPromise;
+};
 AlicerceIA._createTtsRuntime=async function(status){
   if(!window.isSecureContext)throw new Error('A voz fixa exige uma conexão segura.');
-  var moduleUrl='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.0/+esm';
   var wasmUrl='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.0/wasm';
   var modelUrl='https://huggingface.co/litert-community/Kokoro-82M/resolve/main/kokoro_int8_gpu_fp16.litertlm';
   if(status)status.textContent='Carregando o mecanismo de voz da Alicia...';
-  var mediaPipe=await import(moduleUrl);
+  var mediaPipe=await this._loadTtsLibrary();
   if(!mediaPipe||!mediaPipe.FilesetResolver||!mediaPipe.TextToSpeech)throw new Error('O mecanismo de voz não está disponível.');
   var wasmFileset=await mediaPipe.FilesetResolver.forAudioTasks(wasmUrl);
   if(status)status.textContent='Baixando o modelo Dora (aprox. 295 MB) na primeira utilização...';
