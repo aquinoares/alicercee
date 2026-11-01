@@ -1860,6 +1860,49 @@ test('Alicia usa sempre a voz neural fixa Dora em português brasileiro', async 
     return page.evaluate(function () { return window.__alicerceSpeechTest.cancelled; });
   }).toBe(2);
 });
+test('Alicia carrega a biblioteca de voz uma vez e preserva o Audio nativo do navegador', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    window.__alicerceTtsLibraryTest = {
+      nativeAudio: window.Audio,
+      insertions: 0
+    };
+    var nativeAppendChild = document.head.appendChild;
+    document.head.appendChild = function (node) {
+      if (node && String(node.src || '').indexOf('audio_bundle.js') >= 0) {
+        window.__alicerceTtsLibraryTest.insertions += 1;
+        window.Audio = {
+          FilesetResolver: { forAudioTasks: function () { return Promise.resolve({}); } },
+          TextToSpeech: {}
+        };
+        window.setTimeout(function () {
+          if (typeof node.onload === 'function') node.onload();
+        }, 0);
+        return node;
+      }
+      return nativeAppendChild.call(this, node);
+    };
+  });
+
+  const result = await page.evaluate(async function () {
+    var first = await AlicerceIA._loadTtsLibrary();
+    var second = await AlicerceIA._loadTtsLibrary();
+    return {
+      hasFilesetResolver: !!first.FilesetResolver,
+      hasTextToSpeech: !!first.TextToSpeech,
+      sameInstance: first === second,
+      nativeAudioRestored: window.Audio === window.__alicerceTtsLibraryTest.nativeAudio,
+      scriptInsertions: window.__alicerceTtsLibraryTest.insertions
+    };
+  });
+
+  expect(result.hasFilesetResolver).toBe(true);
+  expect(result.hasTextToSpeech).toBe(true);
+  expect(result.sameInstance).toBe(true);
+  expect(result.nativeAudioRestored).toBe(true);
+  expect(result.scriptInsertions).toBe(1);
+});
+
 test('Alicia prepara valores financeiros para fala sem mudar o texto exibido', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'assistente');
   const prepared = await page.evaluate(function () {
