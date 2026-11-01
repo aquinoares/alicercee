@@ -5599,7 +5599,7 @@ AlicerceIA.iniciarMicrofone=async function(){
     }
     if(availability!=='available'){
       if(status)status.textContent='Preparando o reconhecimento de voz '+language+' no aparelho. Isso pode exigir um download único.';
-      var installed=await Recognition.install({langs:[language]});
+      var installed=await Recognition.install({langs:[language],processLocally:true});
       if(requestId!==this._recognitionRequestId)return;
       this._recognitionStarting=false;
       if(status)status.textContent=installed?'Idioma instalado no aparelho. Toque no microfone novamente para começar.':'Não foi possível instalar o pacote de idioma. Tente novamente mais tarde.';
