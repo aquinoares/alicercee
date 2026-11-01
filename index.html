@@ -5227,7 +5227,7 @@ AlicerceIA.abrir=function(){
 AlicerceIA._resolveFollowUp=function(question){
   this._resetUser();
   var current=this._norm(question);
-  var standalone=/^(?:e\\s+)?(?:(?:na|no|nesta|neste|nessa|nesse)\\s+)?(?:semana passada|esta semana|nessa semana|ultimos 7 dias|mes passado|mes anterior|hoje|ontem|ultimos 3 meses|trimestre)$/.test(current);
+  var standalone=/^(?:e\s+)?(?:(?:na|no|nesta|neste|nessa|nesse)\s+)?(?:semana passada|esta semana|nessa semana|ultimos 7 dias|mes passado|mes anterior|hoje|ontem|ultimos 3 meses|trimestre)$/.test(current);
   if(!standalone||!Array.isArray(this._messages)||!this._messages.length)return String(question||'').trim();
   var previous='';
   for(var i=this._messages.length-1;i>=0;i--){
@@ -5238,9 +5238,9 @@ AlicerceIA._resolveFollowUp=function(question){
     }
   }
   if(!previous)return String(question||'').trim();
-  var base=previous.replace(/\\s+(?:nesta semana|nesse semana|nessa semana|esta semana|semana passada|ultimos 7 dias|mes passado|mes anterior|hoje|ontem|ultimos 3 meses|trimestre)$/,'').trim();
+  var base=previous.replace(/\s+(?:nesta semana|nesse semana|nessa semana|esta semana|semana passada|ultimos 7 dias|mes passado|mes anterior|hoje|ontem|ultimos 3 meses|trimestre)$/,'').trim();
   if(!base)return String(question||'').trim();
-  return base+' '+current.replace(/^e\\s+/,'');
+  return base+' '+current.replace(/^e\s+/,'');
 };
 
 AlicerceIA.enviarMensagem=function(question){
