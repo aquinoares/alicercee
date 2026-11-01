@@ -1369,11 +1369,11 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('.alicerce-assistant-back')).toContainText('Início');
   await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/alicia-assistente.webp');
   await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('object-fit', 'contain');
-  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('width', '148px');
-  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('height', '148px');
-  await expect(page.locator('.alicerce-assistant-avatar')).toHaveCSS('border-width', '0px');
-  await expect(page.locator('.alicerce-assistant-heading')).toHaveCSS('border-width', '0px');
-  await expect(page.locator('.alicerce-assistant-heading')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('width', '56px');
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('height', '56px');
+  await expect(page.locator('.alicerce-assistant-avatar')).toHaveCSS('border-width', '2px');
+  await expect(page.locator('.alicerce-assistant-avatar')).toHaveCSS('border-radius', '13px');
+  await expect(page.locator('.alicerce-assistant-heading')).toHaveCSS('border-width', '1px');
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('Oi, Maria! Tudo bem com você?');
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('Estou aqui para ajudar a entender seu dinheiro.');
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('O que vamos olhar hoje?');
