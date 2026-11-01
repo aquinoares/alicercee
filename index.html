@@ -5411,9 +5411,16 @@ AlicerceIA.enviarMensagem=async function(question){
   this._messages.push({role:'user',text:message});
 
   var expenseCommand=null;
-  if(this._pendingExpenseDraft){
+  var messageNorm=this._norm(message);
+  var pendingQuestion=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque)\b/.test(messageNorm)||/\?\s*$/.test(message);
+  var cancelPending=/^(?:cancela|cancelar|cancelar compra|desisti|desistir|deixa|deixa pra la|nao quero|esquece)$/i.test(messageNorm);
+  if(this._pendingExpenseDraft&&pendingQuestion){
+    expenseCommand=null;
+  }else if(this._pendingExpenseDraft&&cancelPending){
+    this._pendingExpenseDraft=null;
+    expenseCommand={cancelled:true};
+  }else if(this._pendingExpenseDraft){
     var draft=this._pendingExpenseDraft;
-    var messageNorm=this._norm(message);
     var hasOwnIntent=/\b(comprei|comprar|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|adiciona|adicionar)\b/.test(messageNorm);
     var followText=message;
     if(draft.awaiting==='amount'&&!hasOwnIntent){
@@ -5455,7 +5462,9 @@ AlicerceIA.enviarMensagem=async function(question){
   }
   if(expenseCommand){
     var actionAnswer='';
-    if(expenseCommand.needsClarification){
+    if(expenseCommand.cancelled){
+      actionAnswer=Store.lang==='en'?'Okay. I discarded the pending expense. Nothing was saved.':Store.lang==='es'?'De acuerdo. Descarté el gasto pendiente. No se guardó nada.':'Tudo bem. Descartei a compra pendente. Nada foi salvo.';
+    }else if(expenseCommand.needsClarification){
       actionAnswer=this._expenseClarificationMessage(expenseCommand.needsClarification);
     }else if(expenseCommand.error){
       actionAnswer=expenseCommand.error;
