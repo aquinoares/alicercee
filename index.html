@@ -11384,7 +11384,10 @@ function contaSalvarNome(){
   Store.settings=Store.settings||{};
   Store.settings.displayName=name;
   Store.save();
-  render();
+  var nameNode=document.getElementById('conta-name');
+  if(nameNode)nameNode.textContent=contaNome(Store.userEmail);
+  var avatarNode=document.getElementById('conta-avatar');
+  if(avatarNode)avatarNode.textContent=contaIniciais(Store.userEmail);
   showToast(Store.lang==='en'?'Name saved.':Store.lang==='es'?'Nombre guardado.':'Nome salvo.');
 }
 function contaAtualizarEmailDOM(email){try{const em=document.getElementById('conta-email');if(em)em.textContent=email;const nm=document.getElementById('conta-name');if(nm)nm.textContent=contaNome(email);const av=document.getElementById('conta-avatar');if(av)av.textContent=contaIniciais(email)}catch(e){}}
