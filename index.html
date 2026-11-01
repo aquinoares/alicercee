@@ -6904,8 +6904,8 @@ const Interpreter={
     if(!n)return null;
     const rules=[
       {p:/\b(material escolar|material de escola|caderno|lapis|caneta|estojo|mochila escolar|uniforme escolar)\b/i,c:'educacao',s:'material_escolar'},
-      {p:/\b(material de construcao|obra|reforma|cimento|tijolo|argamassa|areia|brita|telha|rejunte|piso|tinta para parede)\b/i,c:'moradia',s:'manutencao'},
-      {p:/\b(material de trabalho|material de escritorio|equipamento de trabalho|ferramenta|ferramentas|uso profissional|para o trabalho)\b/i,c:'trabalho',s:'equipamentos'},
+      {p:/\b(material(?:\s+de)?\s+construcao|obra|reforma|cimento|tijolo|argamassa|areia|brita|telha|rejunte|piso|tinta para parede)\b/i,c:'moradia',s:'manutencao'},
+      {p:/\b(material(?:\s+de)?\s+trabalho|material(?:\s+de)?\s+escritorio|equipamento de trabalho|ferramenta|ferramentas|uso profissional|contexto trabalho|contexto profissional|contexto empresa|contexto escritorio)\b/i,c:'trabalho',s:'equipamentos'},
       {p:/\b(tenis|sapato|sandalia|chinelo|bota|calcado|calcados)\b/i,c:'vestuario',s:'calcados'},
       {p:/\b(camiseta|camisa|blusa|calca|bermuda|short|vestido|saia|roupa|roupas|jaqueta|casaco)\b/i,c:'vestuario',s:'roupas'},
       {p:/\b(carteira|cinto|oculos de sol|relogio|relogios|brinco|brincos|colar|pulseira|anel)\b/i,c:'vestuario',s:'acessorios'},
