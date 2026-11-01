@@ -699,6 +699,7 @@ test('recarrega gastos e cartões do armazenamento cloud simulado sem depender d
       categoria: 'comida',
       subcategoria: 'mercado',
       descricao: 'Mercado sincronizado',
+      purpose: 'obra',
       valor: 145.7,
       data: '2026-10-31',
       status: 'pago'
@@ -743,6 +744,7 @@ test('recarrega gastos e cartões do armazenamento cloud simulado sem depender d
   expect(resultado.movimentos[0]).toMatchObject({
     id: 'cloud-gasto-1',
     descricao: 'Mercado sincronizado',
+    purpose: 'obra',
     valor: 145.7
   });
   expect(resultado.cartoes).toHaveLength(1);
@@ -2048,7 +2050,29 @@ test('Alicia pergunta a finalidade e usa o contexto para classificar materiais a
     expect(draft.subcategory).toBe(subcategory);
     await expect(page.locator('.gasto-review')).toContainText('Finalidade informada: ' + purpose);
 
-    await page.evaluate(function () { go('assistente'); });
+    await page.locator('#btn-save-gasto-doubt').click();
+    await expect(page.locator('#btn-save-gasto-doubt')).toHaveCount(0);
+    const saved = await page.evaluate(function () {
+      var movement = Store.movements[0] || null;
+      var stored = Repository.get(Store.userId, 'movements', []);
+      var analyticalRow = AlicerceIA._rows()[0] || null;
+      return {
+        movementCount: Store.movements.length,
+        purpose: movement && movement.purpose,
+        storedPurpose: stored[0] && stored[0].purpose,
+        analyticalPurpose: analyticalRow && analyticalRow.purpose
+      };
+    });
+    expect(saved.movementCount).toBe(1);
+    expect(saved.purpose).toBe(purpose);
+    expect(saved.storedPurpose).toBe(purpose);
+    expect(saved.analyticalPurpose).toBe(purpose);
+
+    await page.evaluate(function () {
+      Store.movements = [];
+      Repository.set(Store.userId, 'movements', []);
+      go('assistente');
+    });
     await expect(input).toBeVisible();
   }
 

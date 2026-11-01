@@ -4903,7 +4903,8 @@ const AlicerceIA = {
         categoria:m.categoria||'outros',
         subcategoria:m.subcategoria||'outros',
         descricao:m.descricao||m.item||'',
-        local:m.estabelecimento||m.local||''
+        local:m.estabelecimento||m.local||'',
+        purpose:m.purpose||''
       });
     });
     (Store.installments||[]).forEach(function(i){
@@ -4915,7 +4916,8 @@ const AlicerceIA = {
         categoria:i.categoria||'outros',
         subcategoria:i.subcategoria||'outros',
         descricao:i.descricao||'Compra no cartao',
-        local:i.local||''
+        local:i.local||'',
+        purpose:i.purpose||''
       });
     });
     return rows;
@@ -12676,6 +12678,8 @@ function confirmGastoInteligente(){
     descricao:interp.item||data.text||'',
     source:'app'
   };
+  const movementPurpose=String(data.purpose||interp.purpose||'').trim();
+  if(movementPurpose)movementPayload.purpose=movementPurpose;
   const mv=Store.addMovement(movementPayload);
   if(data.classificationCorrection&&interp.merchant){
     Store.learnCorrection(interp.merchant,interp.categoria,interp.subcategoria,interp.item);
