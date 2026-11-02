@@ -397,6 +397,7 @@ test('a criação de movimento registra apenas eventos genéricos após consenti
     Store.userId = 'analytics-user';
     Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
     Store.movements = [];
+    window.__alicerceMockSessionUserId = 'analytics-user';
     Store.addMovement({
       tipo: 'despesa',
       status: 'pago',
@@ -406,7 +407,6 @@ test('a criação de movimento registra apenas eventos genéricos após consenti
       valor: 234.56,
       data: '2026-11-02'
     });
-    window.__alicerceMockSessionUserId = 'analytics-user';
   });
   await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 2; });
   const result = await page.evaluate(function () { return window.__alicerceMockFunctionInvocations; });
