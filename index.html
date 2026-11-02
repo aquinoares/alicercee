@@ -4597,6 +4597,8 @@ const detalhes={
       parcelas:i.parcelas||1,
       responsavel:i.responsavel||'',
       hora:i.hora||i.time||'',
+      purpose:i.purpose||'',
+      analysis:normalizeAlicerMovementAnalysis(i.analysis),
       tipo:'cartao'
     })).filter(i=>i.valor>0);
   },
@@ -4615,7 +4617,7 @@ const detalhes={
       var analysis=normalizeAlicerMovementAnalysis(record&&record.analysis);
       var value=Number(record&&record.valor)||0;
       var date=String(record&&record.data||'');
-      if(value<=0||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return;
+      if(value<=0||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
       if(!alicerceIsConsumptionRecord({analysis:analysis}))return;
       rows.push({
         id:String(record.id||''),
@@ -4704,6 +4706,7 @@ const detalhes={
     });
 
     (this.getCardPurchasesByMonth(month,year)||[]).forEach(compra=>{
+      if(!alicerceIsConsumptionRecord(compra))return;
       const categoria=compra.categoria||'outros';
       const subcategoria=compra.subcategoria||'outros';
       const valor=Number(compra.valor)||0;
