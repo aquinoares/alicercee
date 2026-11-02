@@ -2687,3 +2687,31 @@ test('A confirmação de uma compra no cartão é aplicada a todas as parcelas d
     });
   });
 });
+
+
+test('A confirmação explícita de “Ainda não sei” não é sobrescrita pelas regras automáticas', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var row = {
+      id: 'unknown-confirmed',
+      data: Clock.today(),
+      valor: 39.90,
+      categoria: 'lazer',
+      subcategoria: 'streaming',
+      local: 'Netflix',
+      descricao: 'Assinatura',
+      expenseProfile: {
+        version: 1,
+        source: 'user_confirmed',
+        nature: 'undetermined',
+        confidence: { nature: 'low' }
+      }
+    };
+    return AlicerceIA._classifyExpenseDimensions(row, {});
+  });
+  expect(result).toMatchObject({
+    nature: 'undetermined',
+    confidence: { nature: 'low' },
+    evidence: { nature: 'user_confirmed' }
+  });
+});
