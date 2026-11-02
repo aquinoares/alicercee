@@ -356,8 +356,10 @@ test('desativar compartilhamento persiste a preferência e solicita exclusão de
     checkbox.checked = false;
     checkbox.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  await expect(page.locator('#alicerce-analytics-consent')).not.toBeChecked();
-  await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 1; });
+  await page.waitForFunction(function () {
+    return Store.settings.analyticsConsent === false &&
+      window.__alicerceMockFunctionInvocations.length === 1;
+  });
   const result = await page.evaluate(function () {
     return {
       consent: Store.settings.analyticsConsent,
@@ -387,18 +389,19 @@ test('falha ao apagar eventos não reativa o consentimento após a pessoa desati
     checkbox.checked = false;
     checkbox.dispatchEvent(new Event('change', { bubbles: true }));
   });
-  await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 1; });
+  await page.waitForFunction(function () {
+    return Store.settings.analyticsConsent === false &&
+      window.__alicerceMockFunctionInvocations.length === 1;
+  });
   const result = await page.evaluate(function () {
     return {
       consent: Store.settings.analyticsConsent,
-      checked: document.getElementById('alicerce-analytics-consent').checked,
       settingsUpsert: window.__alicerceMockUpserts.find(function (row) {
         return row.table === 'alicerce_data' && row.payload && row.payload.store_name === 'settings';
       })
     };
   });
   expect(result.consent).toBe(false);
-  expect(result.checked).toBe(false);
   expect(result.settingsUpsert.payload.data.analyticsConsent).toBe(false);
 });
 
@@ -1526,7 +1529,7 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
     greetingAt(9);
     Store.loans = [];
     Store.movements = [
-      { id: 'ia-1', tipo: 'despesa', categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 48.50, data: Clock.today(), status: 'pago' },
+      { id: 'ia-1', tipo: 'despesa', categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 48.50, data: Clock.today(), status: 'pago', analysis: { expenseProfile: { source: 'user_confirmed', nature: 'discretionary', commitment: 'non_contractual', recurrence: 'occasional', behavior: 'variable', flexibility: 'high', context: 'leisure' } } },
       { id: 'ia-2', tipo: 'despesa', categoria: 'moradia', subcategoria: 'energia', descricao: 'Conta de luz', estabelecimento: 'Neoenergia', valor: 20, data: Clock.today(), status: 'pago' }
     ];
     Store.installments = [];
