@@ -1572,7 +1572,8 @@ test('motor preserva metadados estruturados de compras e separa aporte de consum
     return {
       movement: movement,
       stored: Repository.get(Store.userId, 'movements', []),
-      rows: Store.getAnalysisEntries()
+      rows: Store.getAnalysisEntries(),
+      spending: Store.getSpendingAnalysis(Number(Clock.today().slice(5, 7)), Number(Clock.today().slice(0, 4)))
     };
   });
   expect(result.movement.analysis).toMatchObject({
@@ -1584,12 +1585,64 @@ test('motor preserva metadados estruturados de compras e separa aporte de consum
   });
   expect(result.stored[0].analysis.purchaseId).toBe('feira-001');
   expect(result.rows).toHaveLength(1);
+  expect(result.spending.financeiro).toBeUndefined();
   expect(result.rows[0]).toMatchObject({
     purpose: '',
     purchaseId: 'feira-001',
     items: [{ name: 'Tomate', total: 9 }],
     metrics: { unitPrice: 5.89, odometerKm: 120000 }
   });
+});
+
+test('motor oferece base estruturada para comparacoes de combustivel, manutencao e itens de nota', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [
+      {
+        id: 'abastecimento-1', tipo: 'despesa', status: 'pago', categoria: 'transporte',
+        subcategoria: 'combustivel', descricao: 'Gasolina', valor: 174, data: Clock.today(),
+        analysis: { origin: 'manual', metrics: { fuelLiters: 30, unitPrice: 5.8, odometerKm: 120000, vehicleId: 'carro-1', fullTank: true } }
+      },
+      {
+        id: 'abastecimento-2', tipo: 'despesa', status: 'pago', categoria: 'transporte',
+        subcategoria: 'combustivel', descricao: 'Gasolina', valor: 236, data: Clock.today(),
+        analysis: { origin: 'manual', metrics: { fuelLiters: 40, unitPrice: 5.9, odometerKm: 120500, vehicleId: 'carro-1', fullTank: true } }
+      },
+      {
+        id: 'manutencao-1', tipo: 'despesa', status: 'pago', categoria: 'transporte',
+        subcategoria: 'manutencao', descricao: 'Troca de oleo', valor: 280, data: Clock.today(),
+        analysis: { origin: 'manual', metrics: { vehicleId: 'carro-1', odometerKm: 120500, maintenanceType: 'troca de oleo' } }
+      },
+      {
+        id: 'nota-1', tipo: 'despesa', status: 'pago', categoria: 'comida',
+        subcategoria: 'mercado', descricao: 'Nota supermercado 1', valor: 26, data: Clock.today(),
+        analysis: { origin: 'receipt_ocr', items: [{ name: 'Arroz', quantity: 5, unit: 'kg', unitPrice: 5.2, total: 26 }] }
+      },
+      {
+        id: 'nota-2', tipo: 'despesa', status: 'pago', categoria: 'comida',
+        subcategoria: 'mercado', descricao: 'Nota supermercado 2', valor: 24, data: Clock.today(),
+        analysis: { origin: 'receipt_ocr', items: [{ name: 'Arroz', quantity: 4, unit: 'kg', unitPrice: 6, total: 24 }] }
+      }
+    ];
+    var rows = AlicerceIA._rows();
+    return {
+      vehicle: AlicerceIA._vehicleSummary(rows),
+      items: AlicerceIA._analyzePurchaseItems(rows),
+      fuelAnswer: AlicerceIA.responder('Qual meu preço médio por litro de combustível?'),
+      maintenanceAnswer: AlicerceIA.responder('Quanto gastei com manutenção?'),
+      itemAnswer: AlicerceIA.responder('Qual foi o preço do arroz?')
+    };
+  });
+  expect(result.vehicle.fuel).toMatchObject({ purchases: 2, total: 410, liters: 70 });
+  expect(result.vehicle.fuel.averagePricePerLiter).toBeCloseTo(410 / 70, 2);
+  expect(result.vehicle.maintenance).toMatchObject({ purchases: 1, total: 280 });
+  expect(result.items[0]).toMatchObject({ item: 'Arroz', unit: 'kg', quantity: 9, total: 50, purchases: 2 });
+  expect(result.items[0].averageUnitPrice).toBeCloseTo(5.6, 2);
+  expect(result.fuelAnswer).toContain('70,00 litros');
+  expect(result.maintenanceAnswer).toContain('R$ 280,00');
+  expect(result.itemAnswer).toContain('R$ 5,60');
 });
 
 test('Alicerce IA identifica um gasto muito acima da mediana pessoal quando existe historico suficiente', async function ({ page }) {
@@ -1767,7 +1820,7 @@ test('Alicerce IA identifica pagamentos possivelmente recorrentes sem modelo ou 
   expect(result.answer).toContain('NET FIBRA');
 });
 
-test('Alicerce IA nao confunde compras variaveis com assinaturas confirmadas', async function ({ page }) {
+test('Alicerce IA separa conta mensal variavel de assinatura com valor fixo', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   const result = await page.evaluate(function () {
     var now = Clock.now();
@@ -1784,9 +1837,18 @@ test('Alicerce IA nao confunde compras variaveis com assinaturas confirmadas', a
         estabelecimento: 'NET FIBRA', valor: amount, data: format(date)
       };
     });
-    return AlicerceIA._detectRecurring(AlicerceIA._rows());
+    return {
+      fixedRecurring: AlicerceIA._detectRecurring(AlicerceIA._rows()),
+      monthlyPatterns: AlicerceIA._detectMonthlyPatterns(AlicerceIA._rows()),
+      answer: AlicerceIA.responder('Quais despesas se repetem mensalmente?')
+    };
   });
-  expect(result).toEqual([]);
+  expect(result.fixedRecurring).toEqual([]);
+  expect(result.monthlyPatterns).toHaveLength(1);
+  expect(result.monthlyPatterns[0]).toMatchObject({ merchant: 'NET FIBRA', months: 3, minimum: 30, maximum: 170 });
+  expect(result.answer).toContain('3 dos últimos 6 meses');
+  expect(result.answer).toContain('R$ 30,00');
+  expect(result.answer).toContain('R$ 170,00');
 });
 
 
