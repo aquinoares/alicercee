@@ -1684,6 +1684,57 @@ test('Alicerce IA entende periodos, estabelecimentos e aumentos por categoria', 
 });
 
 
+test('Alicia reconhece compras frequentes de feira mesmo sem nota fiscal e com valores variáveis', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [30, 42, 38, 50].map(function (amount, index) {
+      var date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (index * 7));
+      return {
+        id: 'feira-semanal-' + index,
+        tipo: 'despesa',
+        status: 'pago',
+        categoria: 'comida',
+        subcategoria: 'feira',
+        descricao: 'Compra de frutas e verduras',
+        valor: amount,
+        data: format(date)
+      };
+    });
+    Store.movements.push({
+      id: 'restaurante-isolado',
+      tipo: 'despesa',
+      status: 'pago',
+      categoria: 'comida',
+      subcategoria: 'restaurante',
+      descricao: 'Almoço',
+      valor: 75,
+      data: Clock.today()
+    });
+    return {
+      patterns: AlicerceIA._detectFrequentPurchases(AlicerceIA._rows()),
+      answer: AlicerceIA.responder('Qual o padrão das compras de feira?')
+    };
+  });
+  expect(result.patterns).toHaveLength(1);
+  expect(result.patterns[0]).toMatchObject({
+    item: 'feira e hortifruti',
+    purchases: 4,
+    weeks: 4,
+    total: 160,
+    average: 40
+  });
+  expect(result.answer).toContain('4 compras');
+  expect(result.answer).toContain('4 semanas');
+  expect(result.answer).toContain('R$ 160,00');
+  expect(result.answer).toContain('R$ 40,00');
+});
+
 test('Alicerce IA identifica pagamentos possivelmente recorrentes sem modelo ou API externa', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   const result = await page.evaluate(function () {
