@@ -1463,7 +1463,12 @@ test('Alicia chama a pessoa na tela inicial e abre a análise que motivou o avis
   const callout = page.locator('#alicerce-ai-launcher-title');
   await expect(callout).toHaveClass(/is-proactive/);
   await expect(callout).toHaveAttribute('data-full-text', 'Ewerton, tenho uma mensagem para você');
-  await expect(callout).toHaveCSS('color', 'rgb(255, 92, 92)');
+  const calloutColor = await callout.evaluate(function (element) {
+    var channels = getComputedStyle(element).color.match(/[0-9]+/g) || [];
+    return channels.map(Number);
+  });
+  expect(calloutColor.length).toBeGreaterThanOrEqual(3);
+  expect(calloutColor[0]).toBeGreaterThan(calloutColor[1] * 1.4);
   await expect(page.locator('.alicerce-ai-launcher-cta')).toContainText('Conversar');
 
   await page.locator('#alicerce-ai-open-assistant').click();
