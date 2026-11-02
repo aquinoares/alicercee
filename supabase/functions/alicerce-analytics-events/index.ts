@@ -21,7 +21,7 @@ function allowedOrigins() {
     "http://127.0.0.1:4173",
     "http://localhost:4173"
   ];
-  return new Set(configured.length ? configured : defaults);
+  return new Set(defaults.concat(configured));
 }
 
 function responseHeaders(req: Request) {
