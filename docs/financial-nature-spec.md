@@ -19,6 +19,14 @@ Esta camada é analítica. Ela não muda categoria, subcategoria, saldo, caixa, 
 
 Cada dimensão tem confiança e evidência próprias. A camada não produz uma única confiança global que esconda incerteza.
 
+## Confirmação explícita pelo usuário
+
+A Visão Financeira oferece uma fila dos gastos do mês atual cuja natureza continua indeterminada. A pessoa pode abrir cada lançamento e confirmar natureza, contexto, flexibilidade e compromisso, ou manter a natureza como indeterminada. Um campo opcional registra uma frase curta de finalidade no campo já existente `purpose` do próprio registro.
+
+A confirmação é persistida em `analysis.expenseProfile` com `source: "user_confirmed"`, validada pela mesma allowlist de dimensões. Para compras no cartão, o perfil é aplicado a todas as parcelas não vinculadas a empréstimo que compartilham o mesmo `compraId`, pois representam a mesma compra. Nenhum valor, data, categoria, subcategoria, status ou saldo é alterado. Recorrência e estabilidade de valores continuam sendo calculadas a partir do histórico, sem serem preenchidas manualmente.
+
+A fila inicial considera somente o período atual e os itens cuja natureza está indeterminada. Ela não obriga a pessoa a classificar um gasto para continuar usando o app.
+
 ## Regras de segurança
 
 1. Reutilizar exclusivamente \`Store.getAnalysisEntries()\` como fonte para despesas pessoais analisáveis. Ela já respeita o motor central e exclui registros que não representam consumo.
