@@ -8,6 +8,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png">
 <meta name="theme-color" content="#0B0B0D">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Alicerce">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -3312,6 +3313,64 @@ const _salvouAgora={};function travarSalvar(chave,dados,botaoId){
 function chaveItem(x){return [x&&x.tipo||'',x&&x.descricao||'',x&&x.data||'',Number(x&&x.valor)||0,x&&x.cardId||'',x&&x.loanId||''].join('|')}function dedupLista(lista){const ids={},chaves=[],out=[];(lista||[]).forEach(function(x){if(!x)return;if(x.id){if(ids[x.id])return;ids[x.id]=1}const k=chaveItem(x);if(chaves.indexOf(k)>=0)return;chaves.push(k);out.push(x)});return out}
 
 /* =============================================================
+   METADADOS OPCIONAIS PARA ANALISE FINANCEIRA
+   Mantem compatibilidade com registros antigos em JSON.
+   ============================================================= */
+function normalizeAlicerMovementAnalysis(value){
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  var out={version:1};
+  var origins=['manual','assistant','receipt_ocr','statement_import','bank_import','system'];
+  var roles=['consumption','transfer','investment_contribution','investment_income','refund','adjustment'];
+  var origin=String(value.origin||'').trim().toLowerCase();
+  var role=String(value.financialRole||'').trim().toLowerCase();
+  if(origins.indexOf(origin)>=0)out.origin=origin;
+  if(roles.indexOf(role)>=0)out.financialRole=role;
+  var purchaseId=String(value.purchaseId||'').trim();
+  if(purchaseId)out.purchaseId=purchaseId.slice(0,120);
+  if(Array.isArray(value.items)){
+    out.items=value.items.slice(0,200).map(function(item){
+      if(!item||typeof item!=='object')return null;
+      var name=String(item.name||item.description||'').trim().slice(0,180);
+      if(!name)return null;
+      var clean={name:name};
+      var normalized=String(item.normalizedName||'').trim().slice(0,180);
+      if(normalized)clean.normalizedName=normalized;
+      var unit=String(item.unit||'').trim().slice(0,24);
+      if(unit)clean.unit=unit;
+      ['quantity','unitPrice','total'].forEach(function(field){
+        if(item[field]!==''&&item[field]!==null&&typeof item[field]!=='undefined'){
+          var number=Number(item[field]);
+          if(isFinite(number)&&number>=0)clean[field]=number;
+        }
+      });
+      var code=String(item.code||'').trim().slice(0,64);
+      if(code)clean.code=code;
+      return clean;
+    }).filter(function(item){return !!item});
+  }
+  if(value.metrics&&typeof value.metrics==='object'&&!Array.isArray(value.metrics)){
+    var metrics={};
+    ['fuelLiters','unitPrice','odometerKm'].forEach(function(field){
+      if(value.metrics[field]!==''&&value.metrics[field]!==null&&typeof value.metrics[field]!=='undefined'){
+        var number=Number(value.metrics[field]);
+        if(isFinite(number)&&number>=0)metrics[field]=number;
+      }
+    });
+    if(typeof value.metrics.fullTank==='boolean')metrics.fullTank=value.metrics.fullTank;
+    ['vehicleId','fuelType','maintenanceType','maintenanceDescription'].forEach(function(field){
+      var text=String(value.metrics[field]||'').trim();
+      if(text)metrics[field]=text.slice(0,120);
+    });
+    if(Object.keys(metrics).length)out.metrics=metrics;
+  }
+  return out;
+}
+function alicerceIsConsumptionRecord(record){
+  var role=record&&record.analysis&&record.analysis.financialRole;
+  return role!=='investment_contribution'&&role!=='investment_income'&&role!=='transfer'&&role!=='refund'&&role!=='adjustment';
+}
+
+/* =============================================================
    SECTION 8: STORE (Motor central)
    ============================================================= */
 const Store={
@@ -3434,13 +3493,17 @@ const Store={
   },
 
   addMovement(mv){
+    if(!mv||typeof mv!=='object'||Array.isArray(mv))return null;
+    var analysis=normalizeAlicerMovementAnalysis(mv.analysis);
+    if(analysis)mv.analysis=analysis;
+    else if(mv.analysis)delete mv.analysis;
     mv.id=mv.id||this._uid();mv.userId=this.userId;mv.createdAt=mv.createdAt||new Date().toISOString();
     this.movements.push(mv);this.save();return mv;
   },
   removeMovement(id){this.movements=this.movements.filter(m=>String(m.id)!==String(id));this.save()},
   addCard(c){c.id=c.id||this._uid();c.userId=this.userId;this.cards.push(c);this.save();return c},
   addLoan(l){l.id=l.id||this._uid();l.userId=this.userId;this.loans.push(l);this.save();return l},
-  addInstallment(i){if(!i||!travarSalvar('inst',i))return null;i.id=i.id||this._uid();this.installments.push(i);this.save();return i},
+  addInstallment(i){if(!i||!travarSalvar('inst',i))return null;var analysis=normalizeAlicerMovementAnalysis(i.analysis);if(analysis)i.analysis=analysis;else if(i.analysis)delete i.analysis;i.id=i.id||this._uid();this.installments.push(i);this.save();return i},
   addCommitment(c){if(!c||!travarSalvar('comp',c))return null;c.id=c.id||this._uid();c.userId=this.userId;this.commitments.push(c);this.save();return c},
   addDoctor(d){d.id=d.id||this._uid();d.userId=this.userId;this.doctors.push(d);this.save();return d},
   addMedication(m){m.id=m.id||this._uid();m.userId=this.userId;this.medications.push(m);this.save();return m},
@@ -4536,8 +4599,59 @@ const detalhes={
       parcelas:i.parcelas||1,
       responsavel:i.responsavel||'',
       hora:i.hora||i.time||'',
+      purpose:i.purpose||'',
+      analysis:normalizeAlicerMovementAnalysis(i.analysis),
+      items:(normalizeAlicerMovementAnalysis(i.analysis)||{}).items||[],
+      metrics:(normalizeAlicerMovementAnalysis(i.analysis)||{}).metrics||{},
       tipo:'cartao'
     })).filter(i=>i.valor>0);
+  },
+  /*
+   * PROJECAO CANONICA PARA ANALISES
+   * Le registros existentes sem alterar o caixa, categorias ou saldos.
+   * Movimentos antigos sem metadados continuam validos.
+   */
+  getAnalysisEntries(){
+    var rows=[];
+    var borrowedLoans={};
+    (this.loans||[]).forEach(function(loan){
+      if(loan&&loan.fromCard===true&&loan.tipo==='emprestei')borrowedLoans[String(loan.id)]=true;
+    });
+    var append=function(record,source){
+      var analysis=normalizeAlicerMovementAnalysis(record&&record.analysis);
+      var value=Number(record&&record.valor)||0;
+      var date=String(record&&record.data||'');
+      if(value<=0||!/^\d{4}-\d{2}-\d{2}$/.test(date))return;
+      if(!alicerceIsConsumptionRecord({analysis:analysis}))return;
+      rows.push({
+        id:String(record.id||''),
+        purchaseId:String((analysis&&analysis.purchaseId)||record.purchaseId||record.compraId||''),
+        data:date,
+        valor:value,
+        categoria:record.categoria||'outros',
+        subcategoria:record.subcategoria||'outros',
+        descricao:record.descricao||record.item||(source==='card'?'Compra no cartao':''),
+        local:record.estabelecimento||record.local||'',
+        purpose:String(record.purpose||''),
+        origin:(analysis&&analysis.origin)||record.origin||record.source||'legacy',
+        financialRole:(analysis&&analysis.financialRole)||'consumption',
+        items:analysis&&Array.isArray(analysis.items)?analysis.items:[],
+        metrics:analysis&&analysis.metrics?analysis.metrics:{},
+        analysis:analysis||null,
+        source:source
+      });
+    };
+    (this.movements||[]).forEach(function(m){
+      if(!m||m.tipo!=='despesa')return;
+      if(m.status&&m.status!=='pago'&&m.status!=='recebido')return;
+      if(m.loanId&&borrowedLoans[String(m.loanId)])return;
+      append(m,'movement');
+    });
+    (this.installments||[]).forEach(function(i){
+      if(!i||i.tipo!=='cartao'||!i.compraId||i.loanId||i.fromCard)return;
+      append(i,'card');
+    });
+    return rows;
   },
   getSpendingAnalysis(month,year){
     const cats={};
@@ -4574,6 +4688,7 @@ const detalhes={
         }
       }
 
+      if(!alicerceIsConsumptionRecord(m))return;
       const categoria=m.categoria||'outros';
       const subcategoria=m.subcategoria||'outros';
       const valor=money(m.valor);
@@ -4595,6 +4710,7 @@ const detalhes={
     });
 
     (this.getCardPurchasesByMonth(month,year)||[]).forEach(compra=>{
+      if(!alicerceIsConsumptionRecord(compra))return;
       const categoria=compra.categoria||'outros';
       const subcategoria=compra.subcategoria||'outros';
       const valor=Number(compra.valor)||0;
@@ -4869,15 +4985,18 @@ const AlicerceIA = {
   _question:'',
   _answer:'',
   _messages:[],
+  _pendingExpenseDraft:null,
   _welcomeTypingStarted:false,
   _resetUser:function(){
     var uid=String(Store.userId||'');
     if(uid!==this._userId){
+      if(typeof this.pararReconhecimento==='function')this.pararReconhecimento(true);
       if(typeof this.pararAudio==='function')this.pararAudio();
       this._userId=uid;
       this._question='';
       this._answer='';
       this._messages=[];
+      this._pendingExpenseDraft=null;
       this._welcomeTypingStarted=false;
       this._pendingPrivacyAction='';
       this._pendingSpeechIndex=-1;
@@ -4890,32 +5009,7 @@ const AlicerceIA = {
       .replace(/[^a-z0-9]+/g,' ').trim();
   },
   _rows:function(){
-    var rows=[];
-    (Store.movements||[]).forEach(function(m){
-      if(!m||m.tipo!=='despesa'||!m.data||!/^\d{4}-\d{2}-\d{2}$/.test(String(m.data)))return;
-      var value=Number(m.valor)||0;
-      if(value<=0)return;
-      rows.push({
-        data:String(m.data),valor:value,
-        categoria:m.categoria||'outros',
-        subcategoria:m.subcategoria||'outros',
-        descricao:m.descricao||m.item||'',
-        local:m.estabelecimento||m.local||''
-      });
-    });
-    (Store.installments||[]).forEach(function(i){
-      if(!i||i.tipo!=='cartao'||!i.compraId||!i.data||!/^\d{4}-\d{2}-\d{2}$/.test(String(i.data)))return;
-      var value=Number(i.valor)||0;
-      if(value<=0)return;
-      rows.push({
-        data:String(i.data),valor:value,
-        categoria:i.categoria||'outros',
-        subcategoria:i.subcategoria||'outros',
-        descricao:i.descricao||'Compra no cartao',
-        local:i.local||''
-      });
-    });
-    return rows;
+    return typeof Store.getAnalysisEntries==='function'?Store.getAnalysisEntries():[];
   },
   _period:function(offset){
     var now=Clock.now();
@@ -4997,6 +5091,16 @@ const AlicerceIA = {
         recurringInsight:'O pagamento de {item} parece se repetir: cerca de {amount} por mês, em {months} dos últimos 6 meses. Confira antes de considerar uma assinatura.',
         recurringAnswer:'Encontrei um possível pagamento recorrente em {item}: cerca de {amount} por mês, observado em {months} dos últimos 6 meses.',
         noRecurring:'Ainda não encontrei pagamentos mensais semelhantes com histórico suficiente para indicar recorrência.',
+        frequentPurchaseAnswer:'Nos últimos 84 dias, encontrei {purchases} compras de {item}, distribuídas em {weeks} semanas. O total registrado foi {total}, com média de {average} por semana em que houve compra. Isso sugere um hábito frequente, não uma despesa fixa.',
+        noFrequentPurchase:'Ainda não há registros suficientes de feira ou compras frequentes para identificar um padrão confiável.',
+        monthlyPatternAnswer:'Encontrei uma despesa que aparece em {months} dos últimos 6 meses: {item}. A média nos meses com registro foi {average}, com valores entre {minimum} e {maximum}. A repetição indica um padrão, mas não confirma uma assinatura nem um valor fixo.',
+        noFuelData:'Ainda não encontrei abastecimentos registrados com detalhes suficientes para analisar combustível.',
+        fuelWithoutLiters:'Encontrei {purchases} registros de combustível, totalizando {total}. Para comparar preço por litro ou consumo, também preciso dos litros abastecidos.',
+        fuelSummary:'Encontrei {purchases} abastecimentos, com {liters} litros registrados e média aproximada de {price} por litro. O total desses registros foi {total}.{efficiency}',
+        maintenanceSummary:'Encontrei {purchases} registros de manutenção do veículo, somando {total}. Essa análise considera apenas os lançamentos identificados como manutenção.',
+        noMaintenanceData:'Ainda não encontrei registros suficientes de manutenção do veículo para comparar.',
+        itemPriceSummary:'Nos itens registrados, {item} aparece em {purchases} compras. A quantidade acumulada foi {quantity} {unit}, com preço médio registrado de {unitPrice} por {unit}.',
+        noItemPriceData:'Ainda não encontrei notas com itens, quantidades e preços suficientes para comparar o preço desse produto.',
         help:'Posso consultar o total do mês, localizar gastos por categoria ou comparar com o mesmo período do mês passado. Experimente perguntar: “Quanto gastei com lanche?”',
         suggestions:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado']
       },
@@ -5028,6 +5132,16 @@ const AlicerceIA = {
         recurringInsight:'The payment to {item} appears to repeat: about {amount} per month in {months} of the last 6 months. Check it before treating it as a subscription.',
         recurringAnswer:'I found a possible recurring payment to {item}: about {amount} per month, observed in {months} of the last 6 months.',
         noRecurring:'I could not find similar monthly payments with enough history to suggest a recurring expense.',
+        frequentPurchaseAnswer:'In the last 84 days, I found {purchases} purchases of {item} across {weeks} weeks. The recorded total was {total}, averaging {average} per week with a purchase. This suggests a frequent habit, not a fixed bill.',
+        noFrequentPurchase:'There are not enough market or frequent-purchase records yet to identify a reliable pattern.',
+        monthlyPatternAnswer:'I found an expense that appears in {months} of the last 6 months: {item}. The average in months with a record was {average}, with values between {minimum} and {maximum}. This repetition suggests a pattern, but does not confirm a subscription or fixed amount.',
+        noFuelData:'I could not find enough fuel records with details for an analysis yet.',
+        fuelWithoutLiters:'I found {purchases} fuel records totaling {total}. To compare price per liter or fuel consumption, I also need the number of liters.',
+        fuelSummary:'I found {purchases} fill-ups, with {liters} recorded liters and an approximate average of {price} per liter. The total was {total}.{efficiency}',
+        maintenanceSummary:'I found {purchases} vehicle maintenance records totaling {total}. This analysis includes only entries identified as maintenance.',
+        noMaintenanceData:'There are not enough vehicle maintenance records to compare yet.',
+        itemPriceSummary:'In the recorded items, {item} appears in {purchases} purchases. The accumulated quantity was {quantity} {unit}, with a recorded average price of {unitPrice} per {unit}.',
+        noItemPriceData:'There are not enough receipts with item names, quantities, and prices to compare this product yet.',
         help:'I can check this month’s total, find spending by category, or compare it with the same period last month. Try: “How much did I spend on snacks?”',
         suggestions:['How much did I spend this month?','Where did I spend the most?','Compare with last month']
       },
@@ -5059,6 +5173,16 @@ const AlicerceIA = {
         recurringInsight:'El pago a {item} parece repetirse: unos {amount} al mes, en {months} de los últimos 6 meses. Verifícalo antes de considerarlo una suscripción.',
         recurringAnswer:'Encontré un posible pago recurrente a {item}: unos {amount} al mes, observado en {months} de los últimos 6 meses.',
         noRecurring:'Aún no encontré pagos mensuales similares con historial suficiente para indicar recurrencia.',
+        frequentPurchaseAnswer:'En los últimos 84 días encontré {purchases} compras de {item}, distribuidas en {weeks} semanas. El total registrado fue {total}, con un promedio de {average} por semana con compras. Esto sugiere un hábito frecuente, no una factura fija.',
+        noFrequentPurchase:'Aún no hay registros suficientes de feria o compras frecuentes para identificar un patrón confiable.',
+        monthlyPatternAnswer:'Encontré un gasto que aparece en {months} de los últimos 6 meses: {item}. El promedio en los meses registrados fue {average}, con valores entre {minimum} y {maximum}. La repetición indica un patrón, pero no confirma una suscripción ni un valor fijo.',
+        noFuelData:'Aún no encontré suficientes registros de combustible con detalles para analizarlos.',
+        fuelWithoutLiters:'Encontré {purchases} registros de combustible, por un total de {total}. Para comparar el precio por litro o el consumo, también necesito los litros abastecidos.',
+        fuelSummary:'Encontré {purchases} cargas, con {liters} litros registrados y un promedio aproximado de {price} por litro. El total fue {total}.{efficiency}',
+        maintenanceSummary:'Encontré {purchases} registros de mantenimiento del vehículo, por un total de {total}. El análisis considera solo los gastos identificados como mantenimiento.',
+        noMaintenanceData:'Aún no hay suficientes registros de mantenimiento del vehículo para comparar.',
+        itemPriceSummary:'En los artículos registrados, {item} aparece en {purchases} compras. La cantidad acumulada fue {quantity} {unit}, con un precio promedio registrado de {unitPrice} por {unit}.',
+        noItemPriceData:'Aún no hay suficientes recibos con productos, cantidades y precios para comparar este producto.',
         help:'Puedo consultar el total del mes, encontrar gastos por categoría o comparar con el mismo período del mes pasado. Prueba: “¿Cuánto gasté en comida?”',
         suggestions:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Comparar con el mes pasado']
       }
@@ -5260,6 +5384,7 @@ AlicerceIA.abrir=function(){
 AlicerceIA.limparConversa=function(){
   this.pararAudio();
   this._messages=[];
+  this._pendingExpenseDraft=null;
   this._question='';
   this._answer='';
   this._welcomeTypingStarted=false;
@@ -5289,15 +5414,281 @@ AlicerceIA._resolveFollowUp=function(question){
   return base+' '+current.replace(/^e\s+/,'');
 };
 
-AlicerceIA.enviarMensagem=function(question){
+AlicerceIA._parsePtNumberWords=function(value){
+  var tokens=this._norm(value).split(/\s+/);
+  var units={zero:0,um:1,uma:1,dois:2,duas:2,tres:3,quatro:4,cinco:5,seis:6,sete:7,oito:8,nove:9};
+  var teens={dez:10,onze:11,doze:12,treze:13,catorze:14,quatorze:14,quinze:15,dezesseis:16,dezessete:17,dezoito:18,dezenove:19};
+  var tens={vinte:20,trinta:30,quarenta:40,cinquenta:50,sessenta:60,setenta:70,oitenta:80,noventa:90};
+  var hundreds={cem:100,cento:100,duzentos:200,duzentas:200,trezentos:300,trezentas:300,quatrocentos:400,quatrocentas:400,quinhentos:500,quinhentas:500,seiscentos:600,seiscentas:600,setecentos:700,setecentas:700,oitocentos:800,oitocentas:800,novecentos:900,novecentas:900};
+  var total=0;
+  var current=0;
+  var found=false;
+  for(var i=0;i<tokens.length;i++){
+    var word=tokens[i];
+    if(!word||word==='e')continue;
+    if(Object.prototype.hasOwnProperty.call(units,word)){current+=units[word];found=true;}
+    else if(Object.prototype.hasOwnProperty.call(teens,word)){current+=teens[word];found=true;}
+    else if(Object.prototype.hasOwnProperty.call(tens,word)){current+=tens[word];found=true;}
+    else if(Object.prototype.hasOwnProperty.call(hundreds,word)){current+=hundreds[word];found=true;}
+    else if(word==='mil'){total+=(current||1)*1000;current=0;found=true;}
+    else if(word==='milhao'||word==='milhoes'){total+=(current||1)*1000000;current=0;found=true;}
+    else return null;
+    if(total+current>10000000)return null;
+  }
+  return found?total+current:null;
+};
+AlicerceIA._parseExpenseCommand=function(value){
+  var raw=String(value||'').trim();
+  var normalized=this._norm(raw);
+  var questionIntent=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque)\b/.test(normalized)||/\?\s*$/.test(raw);
+  if(questionIntent)return null;
+  var expenseIntent=/\b(comprei|comprar|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|adiciona|adicionar)\b/.test(normalized);
+  if(!expenseIntent)return null;
+  if(/\b(parcelad[oa]s?|\d+\s+parcelas?)\b/.test(normalized))return{unsupported:'installments'};
+  if(/\b(cartao|credito|debito)\b/.test(normalized))return{unsupported:'card'};
+
+  var amountMatch=raw.match(/R\$\s*([\d.]+(?:,[0-9]{1,2})?)|([\d.]+(?:,[0-9]{1,2})?)\s*reais?\b/i);
+  var amountWordMatch=null;
+  var bareWordMatch=null;
+  var bareAmountMatch=null;
+  if(!amountMatch){
+    var wordToken='zero|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|catorze|quatorze|quinze|dezesseis|dezessete|dezoito|dezenove|vinte|trinta|quarenta|cinquenta|sessenta|setenta|oitenta|noventa|cem|cento|duzentos|duzentas|trezentos|trezentas|quatrocentos|quatrocentas|quinhentos|quinhentas|seiscentos|seiscentas|setecentos|setecentas|oitocentos|oitocentas|novecentos|novecentas|mil|milhao|milhoes';
+    var wordSequence='(?:'+wordToken+')(?:\\s+(?:e\\s+)?(?:'+wordToken+'))*';
+    var normalizedRaw=raw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    amountWordMatch=normalizedRaw.match(new RegExp('\\b('+wordSequence+')\\s+reais?\\b(?:\\s+e\\s+('+wordSequence+')\\s+centavos?\\b)?','i'));
+    if(!amountWordMatch){
+      var wordTokenRaw=wordToken.replace('tres','tr[eê]s').replace('milhao','milh[aã]o').replace('milhoes','milh[oõ]es');
+      var wordSequenceRaw='(?:'+wordTokenRaw+')(?:\\s+(?:e\\s+)?(?:'+wordTokenRaw+'))*';
+      bareWordMatch=raw.match(new RegExp('\\b(?:por|custou|valor(?:\\s+de)?)\\s+('+wordSequenceRaw+')\\b','i'));
+    }
+    if(!amountWordMatch&&!bareWordMatch)bareAmountMatch=raw.match(/\b(?:por|custou|valor(?:\s+de)?)\s+R?\$?\s*([\d.]+(?:,[0-9]{1,2})?)\b/i);
+  }
+  var amount=null;
+  var amountRaw='';
+  if(amountMatch){
+    var amountText=String(amountMatch[1]||amountMatch[2]||'').replace(/\.$/,'');
+    if(amountText.indexOf(',')!==-1)amount=Number(amountText.replace(/\./g,'').replace(',','.'));
+    else if(/\.\d{1,2}$/.test(amountText))amount=Number(amountText);
+    else amount=Number(amountText.replace(/\./g,''));
+    amountRaw=amountMatch[0];
+  }else if(amountWordMatch){
+    var wholeAmount=this._parsePtNumberWords(amountWordMatch[1]);
+    var centAmount=amountWordMatch[2]?this._parsePtNumberWords(amountWordMatch[2]):0;
+    if(wholeAmount!==null&&centAmount!==null&&centAmount<=99)amount=wholeAmount+(centAmount/100);
+    amountRaw=raw.slice(amountWordMatch.index,amountWordMatch.index+amountWordMatch[0].length);
+  }else if(bareWordMatch){
+    var bareWordsAmount=this._parsePtNumberWords(bareWordMatch[1]);
+    if(bareWordsAmount!==null)amount=bareWordsAmount;
+    amountRaw=bareWordMatch[0];
+  }else if(bareAmountMatch){
+    var bareText=String(bareAmountMatch[1]||'').replace(/\.$/,'');
+    amount=bareText.indexOf(',')!==-1?Number(bareText.replace(/\./g,'').replace(',','.')):Number(bareText.replace(/\./g,''));
+    amountRaw=bareAmountMatch[0];
+  }
+  if(amount!==null&&(!(amount>0)||!isFinite(amount)||amount>10000000))return{error:'Não consegui reconhecer um valor válido. Envie o valor em reais, por exemplo R$ 25,00.'};
+
+  var details=raw;
+  if(amountRaw)details=details.replace(amountRaw,' ');
+  details=details.replace(/\b(quero|preciso|adicionar|adiciona|comprar|comprei|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|uma|um|uns|umas|despesa|gasto|valor|de|por|foi|custou|reais?)\b/gi,' ');
+  var purpose='';
+  var purposeMatch=details.match(/\b(?:para|pra)\s+(.+)$/i);
+  if(purposeMatch){
+    purpose=String(purposeMatch[1]||'').replace(/\s+/g,' ').trim();
+    details=details.slice(0,purposeMatch.index);
+  }
+  var paymentMethod='';
+  if(/\bpix\b/i.test(details))paymentMethod='pix';
+  else if(/\b(dinheiro|especie)\b/i.test(this._norm(details)))paymentMethod='dinheiro';
+  else if(/\btransferencia\b/i.test(this._norm(details)))paymentMethod='transferencia';
+  details=details.replace(/\b(?:no|na|em|com)?\s*(?:pix|dinheiro|esp[eé]cie|transfer[eê]ncia)\b/gi,' ');
+
+  var local='';
+  var locationMatch=details.match(/\b(?:no|na|nos|nas|em|pelo|pela)\s+(.+)$/i);
+  var item=details;
+  if(locationMatch){local=String(locationMatch[1]||'').trim();item=details.slice(0,locationMatch.index);}
+  item=String(item||'').replace(/^\s*(?:um|uma|uns|umas|o|a|de|do|da)\s+/i,'');
+  item=item.replace(/\s+/g,' ').trim();
+  local=String(local||'').replace(/\s+/g,' ').trim();
+  var missingField='';
+  if(!item)missingField='item';
+  else if(amount===null)missingField='amount';
+  return{amount:amount,item:item,local:local,paymentMethod:paymentMethod,purpose:purpose,date:today(),needsClarification:missingField};
+};
+
+AlicerceIA._expenseClarificationMessage=function(field,item){
+  var lang=Store.lang||'pt';
+  var itemLabel=String(item||'essa compra').trim();
+  var copy={
+    pt:{
+      item:'O que você comprou ou qual serviço pagou?',
+      amount:'Qual foi o valor? Pode informar em reais, por exemplo: vinte e cinco reais e cinquenta centavos.',
+      purpose:'Para eu classificar '+itemLabel+' corretamente, me conta: qual era a finalidade dessa compra? Por exemplo: era para uma obra ou reforma, estudo ou escola, trabalho ou outra necessidade?'
+    },
+    en:{
+      item:'What did you buy or which service did you pay for?',
+      amount:'How much was it? You can say an amount, for example: twenty-five reais and fifty centavos.',
+      purpose:'To classify '+itemLabel+' correctly, what was this purchase for? For example: a renovation, school or study, work or another need?'
+    },
+    es:{
+      item:'¿Qué compraste o qué servicio pagaste?',
+      amount:'¿Cuál fue el importe? Puedes indicar el valor en reales.',
+      purpose:'Para clasificar '+itemLabel+' correctamente, ¿para qué fue esta compra? Por ejemplo: una obra o reforma, estudios o escuela, trabajo u otra necesidad?'
+    }
+  };
+  var labels=copy[lang]||copy.pt;
+  return labels[field]||labels.amount;
+};
+
+AlicerceIA.enviarMensagem=async function(question){
   this._resetUser();
   this.pararAudio();
+  this.pararReconhecimento(true);
   var input=document.getElementById('alicerce-assistant-input');
   var message=String(question!==undefined?question:(input?input.value:'')||'').trim();
   if(!message)return;
   if(!Array.isArray(this._messages))this._messages=[];
   var questionForEngine=this._resolveFollowUp(message);
   this._messages.push({role:'user',text:message});
+
+  var expenseCommand=null;
+  var messageNorm=this._norm(message);
+  var pendingQuestion=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque)\b/.test(messageNorm)||/\?\s*$/.test(message);
+  var cancelPending=/^(?:cancela|cancelar|cancelar compra|desisti|desistir|deixa|deixa pra la|nao quero|esquece)$/i.test(messageNorm);
+  if(this._pendingExpenseDraft&&pendingQuestion){
+    expenseCommand=null;
+  }else if(this._pendingExpenseDraft&&cancelPending){
+    this._pendingExpenseDraft=null;
+    expenseCommand={cancelled:true};
+  }else if(this._pendingExpenseDraft){
+    var draft=this._pendingExpenseDraft;
+    var hasOwnIntent=/\b(comprei|comprar|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|adiciona|adicionar)\b/.test(messageNorm);
+    var followText=message;
+    if(draft.awaiting==='amount'&&!hasOwnIntent){
+      var amountReply=message.trim();
+      if(/^\s*(?:R\$\s*)?[\d.]+(?:,[0-9]{1,2})?\s*$/.test(amountReply)&&!/reais?/i.test(amountReply)&&amountReply.indexOf('R$')<0)amountReply='R$ '+amountReply;
+      else if(!/reais?|centavos?|R\$/i.test(amountReply)&&this._parsePtNumberWords(amountReply)!==null)amountReply+=' reais';
+      followText='Comprei '+(draft.item||'item')+' por '+amountReply;
+    }else if(draft.awaiting==='item'&&!hasOwnIntent){
+      var itemReplyCommand=this._parseExpenseCommand('Comprei '+message);
+      var replyHasAmount=!!(itemReplyCommand&&itemReplyCommand.amount!==null&&itemReplyCommand.amount!==undefined);
+      followText='Comprei '+message+(!replyHasAmount&&draft.amount!==null&&draft.amount!==undefined?' por R$ '+Number(draft.amount).toFixed(2).replace('.',','):'');
+    }else if(draft.awaiting==='purpose'&&!hasOwnIntent){
+      var purposeReply=message.replace(/^\s*(?:é\s+)?(?:para|pra)\s+/i,'').trim();
+      followText='Comprei '+(draft.item||'item')+' por R$ '+Number(draft.amount||0).toFixed(2).replace('.',',')+(draft.local?' em '+draft.local:'')+' para '+purposeReply;
+    }
+    var followCommand=this._parseExpenseCommand(followText);
+    if(followCommand&&followCommand.unsupported){
+      expenseCommand=followCommand;
+      this._pendingExpenseDraft=null;
+    }else if(followCommand&&!followCommand.error){
+      if(followCommand.amount!==null&&followCommand.amount!==undefined)draft.amount=followCommand.amount;
+      if(followCommand.item&&followCommand.item!=='item')draft.item=followCommand.item;
+      if(followCommand.local)draft.local=followCommand.local;
+      if(followCommand.paymentMethod)draft.paymentMethod=followCommand.paymentMethod;
+      if(followCommand.purpose)draft.purpose=followCommand.purpose;
+      draft.date=draft.date||followCommand.date||today();
+      draft.awaiting=!draft.item?'item':draft.amount===null||draft.amount===undefined?'amount':'';
+      if(draft.awaiting){
+        this._pendingExpenseDraft=draft;
+        expenseCommand={needsClarification:draft.awaiting,amount:draft.amount,item:draft.item,local:draft.local,paymentMethod:draft.paymentMethod,date:draft.date};
+      }else{
+        this._pendingExpenseDraft=null;
+        expenseCommand={amount:draft.amount,item:draft.item,local:draft.local||'',paymentMethod:draft.paymentMethod||'',purpose:draft.purpose||'',date:draft.date};
+      }
+    }else{
+      expenseCommand={needsClarification:draft.awaiting,amount:draft.amount,item:draft.item,local:draft.local,paymentMethod:draft.paymentMethod,date:draft.date};
+    }
+  }else{
+    expenseCommand=this._parseExpenseCommand(message);
+    if(expenseCommand&&expenseCommand.needsClarification){
+      this._pendingExpenseDraft={amount:expenseCommand.amount,item:expenseCommand.item,local:expenseCommand.local||'',paymentMethod:expenseCommand.paymentMethod||'',purpose:expenseCommand.purpose||'',date:expenseCommand.date||today(),awaiting:expenseCommand.needsClarification};
+    }
+  }
+  if(expenseCommand){
+    var actionAnswer='';
+    if(expenseCommand.cancelled){
+      actionAnswer=Store.lang==='en'?'Okay. I discarded the pending expense. Nothing was saved.':Store.lang==='es'?'De acuerdo. Descarté el gasto pendiente. No se guardó nada.':'Tudo bem. Descartei a compra pendente. Nada foi salvo.';
+    }else if(expenseCommand.needsClarification){
+      actionAnswer=this._expenseClarificationMessage(expenseCommand.needsClarification);
+    }else if(expenseCommand.error){
+      actionAnswer=expenseCommand.error;
+    }else if(expenseCommand.unsupported==='card'){
+      actionAnswer='Consigo preparar despesas simples por aqui. Para compras no cartão, abra Nova compra e selecione o cartão cadastrado; assim evito gravar uma compra sem vínculo com o cartão correto.';
+    }else if(expenseCommand.unsupported==='installments'){
+      actionAnswer='Para não errar suas faturas, ainda não registro parcelamentos diretamente pelo chat. Use Nova compra e informe o cartão e a quantidade de parcelas.';
+    }else if(!Store.userId){
+      actionAnswer='Entre na sua conta antes de registrar uma despesa. Assim o lançamento fica vinculado ao seu cadastro.';
+    }else{
+      try{
+        var interpreterText='Valor: '+expenseCommand.amount+' | Item: '+expenseCommand.item+' | Local: '+expenseCommand.local+(expenseCommand.purpose?' | Contexto: '+expenseCommand.purpose:'');
+        var interpretation=await Interpreter.interpret(interpreterText);
+        if(!interpretation||typeof interpretation!=='object')interpretation={};
+        interpretation.amount=expenseCommand.amount;
+        interpretation.purpose=expenseCommand.purpose||'';
+        if(!interpretation.item)interpretation.item=expenseCommand.item;
+        if(!interpretation.merchant)interpretation.merchant=expenseCommand.local;
+        var classificationValid=!!(interpretation.categoria&&interpretation.subcategoria&&alicerClassificationPairIsValid(interpretation.categoria,interpretation.subcategoria));
+        var needsPurposeContext=!classificationValid||interpretation.confidence==='low'||(interpretation.source==='dictionary'&&!expenseCommand.purpose);
+        if(needsPurposeContext&&!expenseCommand.purpose){
+          this._pendingExpenseDraft={
+            amount:expenseCommand.amount,
+            item:expenseCommand.item,
+            local:expenseCommand.local||'',
+            paymentMethod:expenseCommand.paymentMethod||'',
+            purpose:'',
+            date:expenseCommand.date||today(),
+            awaiting:'purpose'
+          };
+          actionAnswer=this._expenseClarificationMessage('purpose',expenseCommand.item);
+          this._messages.push({role:'assistant',text:actionAnswer});
+          while(this._messages.length>4)this._messages.splice(0,2);
+          this._question=message;
+          this._answer=actionAnswer;
+          render();
+          return;
+        }
+        Store.screenData={
+          interpretation:interpretation,
+          amountInput:expenseCommand.amount,
+          itemInput:expenseCommand.item,
+          localInput:expenseCommand.local,
+          text:expenseCommand.item,
+          context:expenseCommand.local,
+          date:expenseCommand.date||today(),
+          paymentMethod:expenseCommand.paymentMethod||'',
+          purpose:expenseCommand.purpose||'',
+          cardId:'',
+          cardOwnerType:'meu',
+          cardOwner:'',
+          cardType:'',
+          installment:false,
+          installments:0,
+          novaCompraFlow:false,
+          gastoEdits:null,
+          aliciaOrigin:true
+        };
+        actionAnswer='Preparei o lançamento de '+fmtMoney(expenseCommand.amount)+'. Confira a descrição e a classificação; nada será salvo até você tocar em “Confirmar e salvar gasto”.';
+        this._messages.push({role:'assistant',text:actionAnswer});
+        while(this._messages.length>4)this._messages.splice(0,2);
+        this._question=message;
+        this._answer=actionAnswer;
+        render();
+        showToast('A Alicia preparou a despesa para conferência.');
+        go('addGastoDoubt',Store.screenData);
+        return;
+      }catch(error){
+        console.error('Alicia: falha ao preparar despesa:',error);
+        actionAnswer='Não consegui preparar esse lançamento com segurança. O gasto não foi salvo. Tente descrever o valor e o estabelecimento novamente.';
+      }
+    }
+    this._messages.push({role:'assistant',text:actionAnswer});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._question=message;
+    this._answer=actionAnswer;
+    render();
+    return;
+  }
+
   var answer='';
   try{
     answer=String(this.responder(questionForEngine)||'');
@@ -5316,35 +5707,46 @@ AlicerceIA.enviarMensagem=function(question){
 };
 
 
-/* A Alicia usa uma única identidade vocal neural: Dora, português brasileiro. */
+
+/* A Alicia usa uma única voz remota fixa em português brasileiro. */
 AlicerceIA._speechButton=null;
 AlicerceIA._speechUtterance=null;
-AlicerceIA._ttsVoiceId='pf_dora';
-AlicerceIA._ttsInstance=null;
-AlicerceIA._ttsInitPromise=null;
-AlicerceIA._ttsLibraryPromise=null;
-AlicerceIA._ttsAudioContext=null;
-AlicerceIA._ttsAudioSource=null;
+AlicerceIA._ttsVoiceId='pt-BR-FranciscaNeural';
+AlicerceIA._ttsAudio=null;
+AlicerceIA._ttsObjectUrl='';
 AlicerceIA._ttsRequestId=0;
 AlicerceIA._ttsBusy=false;
 AlicerceIA._pendingPrivacyAction='';
 AlicerceIA._pendingSpeechIndex=-1;
 AlicerceIA._pendingSpeechButton=null;
+AlicerceIA._recognition=null;
+AlicerceIA._recognitionStarting=false;
+AlicerceIA._recognitionRequestId=0;
+AlicerceIA._recognitionText='';
+AlicerceIA._recognitionError='';
+AlicerceIA._recognitionOwnerId='';
+AlicerceIA._pendingRecognitionMode='';
 AlicerceIA._privacyCopy={
   pt:{
-    dictation:'Você também pode falar pelo microfone do teclado. O Alicerce recebe somente o texto, não a gravação.',
+    dictation:'Você também pode usar o microfone do teclado para ditar no campo de mensagem.',
+    microphoneLocal:'Alicia tentará reconhecer sua fala no próprio aparelho. Se o navegador não tiver o pacote local de português, ela pedirá sua autorização separadamente antes de usar o serviço de reconhecimento online do navegador. A gravação não é enviada ao Alicerce nem ao Render.',
+    microphoneRemote:'Para ouvir você neste aparelho, o navegador usará seu serviço de reconhecimento de voz. Isso pode transmitir o áudio ao provedor do navegador para gerar o texto. O Alicerce não recebe nem armazena a gravação; recebe apenas o texto reconhecido. A política de retenção do provedor depende do navegador e das suas configurações.',
     photo:'Privacidade: as fotos são lidas no próprio aparelho e não são enviadas nem armazenadas pelo Alicerce. O texto identificado aparece para você revisar antes do envio.',
-    voice:'Na primeira utilização, o navegador baixa o modelo da voz fixa Dora (aprox. 295 MB). A fala é gerada no próprio aparelho; o texto da conversa não é enviado. A biblioteca MediaPipe pode enviar métricas técnicas de uso ao Google.',
-    continue:'Continuar',cancel:'Cancelar',listenNow:'Baixar e ouvir'
+    voice:'Ao tocar em ouvir, somente o texto desta resposta será enviado por uma conexão protegida ao serviço de voz online que utiliza a tecnologia do Microsoft Edge. A resposta pode conter valores financeiros. Não enviamos o histórico inteiro nem gravações. O áudio é reproduzido e descartado no aparelho.',
+    continue:'Continuar',cancel:'Cancelar',listenNow:'Enviar texto e ouvir'
   },
   en:{
-    dictation:'You can also speak using your keyboard microphone. Alicerce receives only the text, not an audio recording.',
+    dictation:'You can also use your keyboard microphone to dictate into the message field.',
+    microphoneLocal:'Alicia will first try to recognize your speech on this device. If the browser does not have a local English language pack, it will ask separately before using the browser’s online speech recognition service. The recording is not sent to Alicerce or Render.',
+    microphoneRemote:'To hear you on this device, the browser will use its speech recognition service. This may transmit audio to the browser provider to produce text. Alicerce does not receive or store the recording; it receives only the recognized text. Provider retention depends on the browser and your settings.',
     photo:'Privacy: photos are read on your device and are not uploaded or stored by Alicerce. You can review the recognized text before sending it.',
     voice:'Alicia’s fixed voice is available only in Brazilian Portuguese.',
     continue:'Continue',cancel:'Cancel',listenNow:'Listen now'
   },
   es:{
-    dictation:'También puedes hablar usando el micrófono del teclado. Alicerce recibe solo el texto, no una grabación de audio.',
+    dictation:'También puedes usar el micrófono del teclado para dictar en el campo de mensaje.',
+    microphoneLocal:'Alicia intentará reconocer tu voz en este dispositivo. Si el navegador no tiene el paquete local de español, pedirá tu autorización por separado antes de usar el servicio de reconocimiento en línea del navegador. La grabación no se envía a Alicerce ni a Render.',
+    microphoneRemote:'Para escucharte en este dispositivo, el navegador usará su servicio de reconocimiento de voz. Esto puede transmitir el audio al proveedor del navegador para generar el texto. Alicerce no recibe ni almacena la grabación; solo recibe el texto reconocido. La retención del proveedor depende del navegador y de tu configuración.',
     photo:'Privacidad: las fotos se leen en tu dispositivo y Alicerce no las envía ni las almacena. Puedes revisar el texto reconocido antes de enviarlo.',
     voice:'La voz fija de Alicia está disponible solamente en portugués brasileño.',
     continue:'Continuar',cancel:'Cancelar',listenNow:'Escuchar ahora'
@@ -5373,6 +5775,208 @@ AlicerceIA.solicitarFoto=function(){
   var labels=this._textoPrivacidade();
   this._mostrarAvisoPrivacidade(labels.photo,labels.continue);
 };
+AlicerceIA._setMicButtonState=function(active){
+  var button=document.getElementById('alicerce-assistant-mic');
+  if(!button)return;
+  var labels={pt:{mic:'Falar com Alicia',stop:'Parar gravação'},en:{mic:'Speak to Alicia',stop:'Stop recording'},es:{mic:'Hablar con Alicia',stop:'Detener grabación'}};
+  var current=labels[Store.lang]||labels.pt;
+  var label=active?current.stop:current.mic;
+  button.classList.toggle('is-recording',!!active);
+  button.setAttribute('aria-pressed',active?'true':'false');
+  button.setAttribute('aria-label',label);
+  button.title=label;
+};
+AlicerceIA.toggleMicrofone=function(){
+  if(this._recognition){
+    this.pararReconhecimento(false);
+    return;
+  }
+  if(this._recognitionStarting)return;
+  this.solicitarMicrofone();
+};
+AlicerceIA.solicitarMicrofone=function(){
+  if(this._recognition||this._recognitionStarting)return;
+  var Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var localCapable=!!(Recognition&&typeof Recognition.available==='function'&&typeof Recognition.install==='function'&&Recognition.prototype&&('processLocally' in Recognition.prototype));
+  if(!Recognition){
+    var status=document.getElementById('alicerce-assistant-status');
+    if(status)status.textContent='Este navegador não oferece reconhecimento de voz para o botão da Alicia. O campo de mensagem será aberto para você usar o microfone do teclado.';
+    var fallbackInput=document.getElementById('alicerce-assistant-input');
+    if(fallbackInput)fallbackInput.focus();
+    return;
+  }
+  this._pendingPrivacyAction='microphone';
+  this._pendingRecognitionMode=localCapable?'prefer-local':'browser';
+  this._pendingSpeechIndex=-1;
+  this._pendingSpeechButton=null;
+  var copy=this._textoPrivacidade();
+  this._mostrarAvisoPrivacidade(localCapable?copy.microphoneLocal:copy.microphoneRemote,copy.continue);
+};
+AlicerceIA.solicitarMicrofoneRemoto=function(){
+  this._pendingPrivacyAction='microphone-remote';
+  this._pendingRecognitionMode='browser';
+  this._pendingSpeechIndex=-1;
+  this._pendingSpeechButton=null;
+  var copy=this._textoPrivacidade();
+  this._mostrarAvisoPrivacidade(copy.microphoneRemote,copy.continue);
+};
+AlicerceIA._iniciarSessaoReconhecimento=function(Recognition,language,ownerId,requestId,local){
+  var recognition;
+  try{
+    recognition=new Recognition();
+    recognition.lang=language;
+    recognition.continuous=true;
+    recognition.interimResults=true;
+    recognition.maxAlternatives=1;
+    if('processLocally' in recognition)recognition.processLocally=!!local;
+    this._recognition=recognition;
+    this._recognitionOwnerId=ownerId;
+    this._recognitionText='';
+    this._recognitionError='';
+    this._recognitionStarting=false;
+    var self=this;
+    var status=document.getElementById('alicerce-assistant-status');
+    this._setMicButtonState(true);
+    if(status)status.textContent=local?'Alicia está ouvindo no próprio aparelho. Fale e toque novamente no microfone para terminar.':'Alicia está ouvindo pelo reconhecimento do navegador. Fale e toque novamente no microfone para terminar.';
+    recognition.onresult=function(event){
+      if(self._recognition!==recognition)return;
+      var finalParts=[];
+      var interimParts=[];
+      for(var i=0;i<event.results.length;i++){
+        var result=event.results[i];
+        var transcript=result&&result[0]?String(result[0].transcript||'').trim():'';
+        if(!transcript)continue;
+        if(result.isFinal)finalParts.push(transcript);
+        else interimParts.push(transcript);
+      }
+      self._recognitionText=finalParts.join(' ').replace(/\s+/g,' ').trim();
+      var preview=(self._recognitionText+' '+interimParts.join(' ')).replace(/\s+/g,' ').trim();
+      if(status&&preview)status.textContent='Alicia ouviu: '+preview;
+    };
+    recognition.onerror=function(event){
+      if(self._recognition!==recognition)return;
+      var code=String(event&&event.error||'');
+      if(code==='not-allowed'||code==='service-not-allowed')self._recognitionError='Permissão de microfone negada. Libere o microfone nas permissões do navegador.';
+      else if(code==='no-speech')self._recognitionError='Não detectei fala. Toque no microfone e tente novamente.';
+      else if(code==='language-not-supported')self._recognitionError='O reconhecimento não está disponível para esse idioma neste navegador.';
+      else if(code==='audio-capture')self._recognitionError='Não encontrei um microfone disponível neste aparelho.';
+      else if(code==='network')self._recognitionError='A conexão com o serviço de reconhecimento do navegador falhou. Verifique a internet e tente novamente.';
+      else self._recognitionError='A transcrição foi interrompida. Tente novamente.';
+    };
+    recognition.onend=function(){
+      if(self._recognition!==recognition)return;
+      self._recognition=null;
+      self._recognitionStarting=false;
+      self._setMicButtonState(false);
+      var transcript=String(self._recognitionText||'').replace(/\s+/g,' ').trim().slice(0,5000);
+      var errorMessage=String(self._recognitionError||'');
+      self._recognitionText='';
+      self._recognitionError='';
+      if(String(Store.userId||'')!==ownerId){
+        if(status)status.textContent='A conta mudou durante a gravação. A transcrição foi descartada.';
+        return;
+      }
+      var micButton=document.getElementById('alicerce-assistant-mic');
+      if(!micButton||!micButton.isConnected)return;
+      if(!transcript){
+        if(status)status.textContent=errorMessage||'Não consegui reconhecer sua fala. Tente falar mais perto do microfone.';
+        return;
+      }
+      var input=document.getElementById('alicerce-assistant-input');
+      if(input)input.value=transcript;
+      if(status)status.textContent='Transcrição concluída. Alicia está analisando sua fala...';
+      self.enviarMensagem(transcript);
+    };
+    recognition.start();
+    return true;
+  }catch(error){
+    if(this._recognition===recognition)this._recognition=null;
+    this._recognitionStarting=false;
+    this._setMicButtonState(false);
+    return false;
+  }
+};
+AlicerceIA.iniciarMicrofone=async function(mode){
+  this._resetUser();
+  var status=document.getElementById('alicerce-assistant-status');
+  var Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+  var language=Store.lang==='en'?'en-US':Store.lang==='es'?'es-ES':'pt-BR';
+  if(!Recognition){
+    if(status)status.textContent='Este navegador não oferece reconhecimento de voz. Use o microfone do teclado no campo de mensagem.';
+    return;
+  }
+  this.pararAudio();
+  var requestId=++this._recognitionRequestId;
+  var ownerId=String(Store.userId||'');
+  this._recognitionStarting=true;
+  if(mode!=='browser'&&typeof Recognition.available==='function'&&typeof Recognition.install==='function'&&Recognition.prototype&&('processLocally' in Recognition.prototype)){
+    if(status)status.textContent='Verificando o reconhecimento local no aparelho...';
+    try{
+      var availability=await Recognition.available({langs:[language],processLocally:true});
+      if(requestId!==this._recognitionRequestId)return;
+      if(availability==='available'){
+        if(this._iniciarSessaoReconhecimento(Recognition,language,ownerId,requestId,true))return;
+        this._recognitionStarting=false;
+        this.solicitarMicrofoneRemoto();
+        if(status)status.textContent='O reconhecimento local não iniciou. Autorize o modo online para continuar.';
+        return;
+      }
+      if(availability==='downloadable'||availability==='downloading'){
+        if(status)status.textContent='Preparando o pacote de idioma '+language+' no aparelho...';
+        var installed=await Recognition.install({langs:[language],processLocally:true});
+        if(requestId!==this._recognitionRequestId)return;
+        this._recognitionStarting=false;
+        if(installed){
+          if(status)status.textContent='Idioma instalado no aparelho. Toque no microfone novamente para começar.';
+        }else{
+          this.solicitarMicrofoneRemoto();
+        }
+        return;
+      }
+      this._recognitionStarting=false;
+      this.solicitarMicrofoneRemoto();
+      return;
+    }catch(error){
+      if(requestId!==this._recognitionRequestId)return;
+      this._recognitionStarting=false;
+      this.solicitarMicrofoneRemoto();
+      if(status)status.textContent='O reconhecimento local não está disponível. Autorize o modo online para continuar.';
+      return;
+    }
+  }
+  this._iniciarSessaoReconhecimento(Recognition,language,ownerId,requestId,false);
+};
+AlicerceIA.pararReconhecimento=function(descartar){
+  var recognition=this._recognition;
+  if(this._recognitionStarting&&!recognition){
+    this._recognitionRequestId+=1;
+    this._recognitionStarting=false;
+    this._setMicButtonState(false);
+    return;
+  }
+  if(!recognition){
+    this._setMicButtonState(false);
+    return;
+  }
+  if(descartar){
+    this._recognitionRequestId+=1;
+    this._recognition=null;
+    this._recognitionText='';
+    this._recognitionError='';
+    this._recognitionStarting=false;
+    this._setMicButtonState(false);
+    try{recognition.abort()}catch(error){try{recognition.stop()}catch(ignore){}}
+    return;
+  }
+  this._setMicButtonState(false);
+  var status=document.getElementById('alicerce-assistant-status');
+  if(status)status.textContent='Finalizando a gravação...';
+  try{recognition.stop()}catch(error){
+    this._recognition=null;
+    this._recognitionStarting=false;
+    this._setMicButtonState(false);
+  }
+};
 AlicerceIA._mensagemVozSomentePt=function(){
   var lang=Store.lang||'pt';
   if(lang==='en')return 'Alicia’s fixed voice is available only in Brazilian Portuguese.';
@@ -5385,7 +5989,7 @@ AlicerceIA.pedirAudio=function(index,button){
     if(languageStatus)languageStatus.textContent=this._mensagemVozSomentePt();
     return;
   }
-  if(this._speechButton===button&&(this._ttsBusy||this._ttsAudioSource)){
+  if(this._speechButton===button&&(this._ttsBusy||this._ttsAudio)){
     this.pararAudio();
     return;
   }
@@ -5399,6 +6003,7 @@ AlicerceIA.cancelarAvisoPrivacidade=function(){
   this._pendingPrivacyAction='';
   this._pendingSpeechIndex=-1;
   this._pendingSpeechButton=null;
+  this._pendingRecognitionMode='';
   var box=document.getElementById('alicerce-assistant-privacy');
   if(box){box.hidden=true;box.innerHTML='';}
 };
@@ -5406,10 +6011,15 @@ AlicerceIA.confirmarAvisoPrivacidade=function(){
   var action=this._pendingPrivacyAction;
   var index=this._pendingSpeechIndex;
   var button=this._pendingSpeechButton;
+  var recognitionMode=this._pendingRecognitionMode;
   this.cancelarAvisoPrivacidade();
   if(action==='camera'){
     var input=document.getElementById('alicerce-assistant-photo');
     if(input)input.click();
+  }else if(action==='microphone'){
+    this.iniciarMicrofone(recognitionMode);
+  }else if(action==='microphone-remote'){
+    this.iniciarMicrofone('browser');
   }else if(action==='speech'&&button&&button.isConnected){
     this.ouvirMensagem(index,button);
   }
@@ -5423,97 +6033,18 @@ AlicerceIA._setSpeechButtonState=function(button,playing){
   button.setAttribute('aria-label',nextLabel);
   button.setAttribute('aria-pressed',playing?'true':'false');
 };
-/* A biblioteca MediaPipe e o modelo são carregados sob demanda, só no primeiro toque. */
-AlicerceIA._loadTtsLibrary=function(){
-  var cached=window.__alicerceMediaPipeAudio;
-  if(cached&&cached.FilesetResolver&&cached.TextToSpeech)return Promise.resolve(cached);
-  if(this._ttsLibraryPromise)return this._ttsLibraryPromise;
-  var nativeAudio=window.Audio;
-  this._ttsLibraryPromise=new Promise(function(resolve,reject){
-    var script=document.createElement('script');
-    script.src='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.0/audio_bundle.js';
-    script.async=true;
-    script.crossOrigin='anonymous';
-    var restoreNativeAudio=function(){
-      try{window.Audio=nativeAudio}catch(e){}
-    };
-    script.onload=function(){
-      var audioApi=window.Audio;
-      restoreNativeAudio();
-      if(!audioApi||!audioApi.FilesetResolver||!audioApi.TextToSpeech){
-        AlicerceIA._ttsLibraryPromise=null;
-        reject(new Error('A biblioteca MediaPipe não disponibilizou a API de voz.'));
-        return;
-      }
-      window.__alicerceMediaPipeAudio=audioApi;
-      resolve(audioApi);
-    };
-    script.onerror=function(){
-      restoreNativeAudio();
-      AlicerceIA._ttsLibraryPromise=null;
-      reject(new Error('Não foi possível carregar a biblioteca MediaPipe.'));
-    };
-    document.head.appendChild(script);
-  });
-  return this._ttsLibraryPromise;
-};
-AlicerceIA._createTtsRuntime=async function(status){
-  if(!window.isSecureContext)throw new Error('A voz fixa exige uma conexão segura.');
-  var wasmUrl='https://cdn.jsdelivr.net/npm/@mediapipe/tasks-audio@1.2.0/wasm';
-  var modelUrl='https://huggingface.co/litert-community/Kokoro-82M/resolve/main/kokoro_int8_gpu_fp16.litertlm';
-  if(status)status.textContent='Carregando o mecanismo de voz da Alicia...';
-  var mediaPipe=await this._loadTtsLibrary();
-  if(!mediaPipe||!mediaPipe.FilesetResolver||!mediaPipe.TextToSpeech)throw new Error('O mecanismo de voz não está disponível.');
-  var wasmFileset=await mediaPipe.FilesetResolver.forAudioTasks(wasmUrl);
-  if(status)status.textContent='Baixando o modelo Dora (aprox. 295 MB) na primeira utilização...';
-  var tts=await mediaPipe.TextToSpeech.createFromOptions(wasmFileset,{
-    baseOptions:{
-      modelAssetPath:modelUrl,
-      delegate:'GPU'
-    },
-    defaultVoiceId:'pf_dora',
-    speakingRate:1.0
-  });
-  var voices=await tts.listVoices();
-  var foundDora=false;
-  (voices||[]).forEach(function(voice){
-    if(voice&&voice.voiceId==='pf_dora')foundDora=true;
-  });
-  if(!foundDora){
-    try{tts.close()}catch(e){}
-    throw new Error('A voz fixa Dora não foi encontrada no modelo.');
-  }
-  return tts;
-};
-AlicerceIA._loadNeuralVoice=async function(status){
-  if(this._ttsInstance)return this._ttsInstance;
-  if(!this._ttsInitPromise){
-    this._ttsInitPromise=this._createTtsRuntime(status).then(function(tts){
-      if(!tts||typeof tts.synthesize!=='function')throw new Error('O modelo de voz não foi inicializado corretamente.');
-      AlicerceIA._ttsInstance=tts;
-      return tts;
-    });
-  }
-  try{
-    return await this._ttsInitPromise;
-  }catch(error){
-    this._ttsInitPromise=null;
-    throw error;
-  }
-};
 AlicerceIA.pararAudio=function(){
   this._ttsRequestId+=1;
   this._ttsBusy=false;
-  var wasActive=!!(this._ttsBusy||this._ttsAudioSource);
-  var tts=this._ttsInstance;
-  if(wasActive&&tts&&typeof tts.cancel==='function'){
-    try{tts.cancel()}catch(e){}
+  var audio=this._ttsAudio;
+  this._ttsAudio=null;
+  if(audio){
+    try{audio.onended=null;audio.onerror=null;audio.pause();}catch(e){}
+    try{audio.removeAttribute('src');audio.load();}catch(e){}
   }
-  var source=this._ttsAudioSource;
-  this._ttsAudioSource=null;
-  if(source){
-    try{source.stop(0)}catch(e){}
-    try{source.disconnect()}catch(e){}
+  if(this._ttsObjectUrl){
+    try{URL.revokeObjectURL(this._ttsObjectUrl);}catch(e){}
+    this._ttsObjectUrl='';
   }
   this._setSpeechButtonState(this._speechButton,false);
   this._speechButton=null;
@@ -5548,9 +6079,9 @@ AlicerceIA.ouvirMensagem=async function(index,button){
     if(status)status.textContent=this._mensagemVozSomentePt();
     return;
   }
-  var AudioContextCtor=window.AudioContext||window.webkitAudioContext;
-  if(!AudioContextCtor){
-    if(status)status.textContent=button.getAttribute('data-label-unavailable')||'A leitura em voz não está disponível neste navegador.';
+  var client=window.alicerceSupabase;
+  if(!client||!client.functions||typeof client.functions.invoke!=='function'){
+    if(status)status.textContent=button.getAttribute('data-label-error')||'A voz remota ainda não está configurada. O texto continua disponível.';
     return;
   }
   this.pararAudio();
@@ -5559,36 +6090,46 @@ AlicerceIA.ouvirMensagem=async function(index,button){
   this._speechButton=button;
   this._setSpeechButtonState(button,true);
   try{
-    if(!this._ttsAudioContext)this._ttsAudioContext=new AudioContextCtor();
-    if(this._ttsAudioContext.state==='suspended')await this._ttsAudioContext.resume();
+    if(status)status.textContent='Alicia está gerando o áudio...';
+    var sessionResult=await client.auth.getSession();
+    var session=sessionResult&&sessionResult.data&&sessionResult.data.session;
+    if(!session||!session.access_token)throw new Error('Entre na sua conta para ouvir a Alicia.');
     if(requestId!==this._ttsRequestId)return;
-    var tts=await this._loadNeuralVoice(status);
+    var response=await client.functions.invoke('alicia-tts',{
+      body:{text:text},
+      timeout:120000
+    });
     if(requestId!==this._ttsRequestId)return;
-    if(status)status.textContent='Alicia está preparando a fala...';
-    var result=await tts.synthesize(text,{voiceId:this._ttsVoiceId});
-    if(requestId!==this._ttsRequestId)return;
-    var samples=result&&result.samples;
-    if(!samples||!samples.length)throw new Error('O modelo não gerou áudio.');
-    var sampleRate=Number(result.sampleRateHz)||24000;
-    var audioBuffer=this._ttsAudioContext.createBuffer(1,samples.length,sampleRate);
-    audioBuffer.getChannelData(0).set(samples);
-    var source=this._ttsAudioContext.createBufferSource();
-    source.buffer=audioBuffer;
-    source.connect(this._ttsAudioContext.destination);
-    source.onended=function(){
+    if(response&&response.error)throw response.error;
+    var audioData=response&&response.data;
+    if(!(audioData instanceof Blob))throw new Error('O serviço não retornou um áudio válido.');
+    var audioBlob=new Blob([audioData],{type:'audio/mpeg'});
+    if(!audioBlob.size)throw new Error('O serviço retornou um áudio vazio.');
+    var objectUrl=URL.createObjectURL(audioBlob);
+    this._ttsObjectUrl=objectUrl;
+    var audio=new Audio(objectUrl);
+    audio.preload='auto';
+    this._ttsAudio=audio;
+    audio.onended=function(){
       if(AlicerceIA._ttsRequestId!==requestId)return;
       AlicerceIA.pararAudio();
       var endedStatus=document.getElementById('alicerce-assistant-status');
       if(endedStatus)endedStatus.textContent='';
     };
-    this._ttsAudioSource=source;
-    source.start(0);
+    audio.onerror=function(){
+      if(AlicerceIA._ttsRequestId!==requestId)return;
+      AlicerceIA.pararAudio();
+      var failedStatus=document.getElementById('alicerce-assistant-status');
+      if(failedStatus)failedStatus.textContent='Não foi possível reproduzir o áudio. O texto continua disponível.';
+    };
+    await audio.play();
+    if(requestId!==this._ttsRequestId)return;
     this._ttsBusy=false;
     if(status)status.textContent='';
   }catch(error){
     if(requestId!==this._ttsRequestId)return;
     this.pararAudio();
-    var failed=button.getAttribute('data-label-error')||'Não foi possível carregar a voz fixa da Alicia. O texto continua disponível.';
+    var failed=button.getAttribute('data-label-error')||'Não foi possível gerar a voz da Alicia. O texto continua disponível.';
     if(status)status.textContent=failed;
   }
 };
@@ -5687,9 +6228,9 @@ function renderAssistente(){
   AlicerceIA._resetUser();
   var lang=Store.lang||'pt';
   var copy={
-    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'Este navegador não oferece suporte à voz fixa Dora. O texto continua disponível.',voiceError:'Não foi possível carregar a voz fixa Dora. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
-    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
-    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
+    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Falar com Alicia',micStop:'Parar gravação',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
+    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Speak to Alicia',micStop:'Stop recording',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
+    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Hablar con Alicia',micStop:'Detener grabación',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
   };
   var ui=copy[lang]||copy.pt;
   var messages=Array.isArray(AlicerceIA._messages)?AlicerceIA._messages:[];
@@ -5732,17 +6273,18 @@ function renderAssistente(){
   html+='.alicerce-assistant-prompts{display:flex;flex-wrap:wrap;gap:7px;margin:13px 0 15px}';
   html+='.alicerce-assistant-prompt{max-width:100%;min-height:36px;padding:8px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--text);font-size:11px;text-align:left;cursor:pointer}';
   html+='.alicerce-assistant-composer{position:sticky;bottom:62px;z-index:5;display:flex;gap:7px;align-items:center;padding:10px 0 5px;background:var(--surface2);border-top:1px solid var(--line)}';
-  html+='.alicerce-assistant-camera,.alicerce-assistant-send{width:44px;height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:center;border:0;border-radius:14px;cursor:pointer}';
-  html+='.alicerce-assistant-camera{background:var(--surface);border:1px solid var(--line);color:var(--text2)}';
-  html+='.alicerce-assistant-camera:disabled,.alicerce-assistant-send:disabled{opacity:.45;cursor:wait}';
+  html+='.alicerce-assistant-camera,.alicerce-assistant-mic,.alicerce-assistant-send{width:44px;height:44px;flex:0 0 44px;display:flex;align-items:center;justify-content:center;border:0;border-radius:14px;cursor:pointer}';
+  html+='.alicerce-assistant-camera,.alicerce-assistant-mic{background:var(--surface);border:1px solid var(--line);color:var(--text2)}';
+  html+='.alicerce-assistant-mic.is-recording{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}';
+  html+='.alicerce-assistant-camera:disabled,.alicerce-assistant-mic:disabled,.alicerce-assistant-send:disabled{opacity:.45;cursor:wait}';
   html+='.alicerce-assistant-status{min-height:15px;font-size:10px;line-height:1.4;color:var(--text2);margin:4px 2px 0}';
   html+='.alicerce-assistant-note-row{display:flex;align-items:center;gap:6px}';
   html+='.alicerce-assistant-note-row .ico{width:13px;height:13px;flex:0 0 13px;color:var(--accent)}';
   html+='.alicerce-assistant-input{box-sizing:border-box;min-width:0;flex:1;width:100%;height:46px;padding:0 13px;border:1px solid var(--field-border);border-radius:14px;background:var(--surface);color:var(--text);font:inherit;font-size:16px}';
   html+='.alicerce-assistant-send{width:46px;height:46px;flex:0 0 46px;display:flex;align-items:center;justify-content:center;border:0;border-radius:14px;background:var(--accent);color:var(--on-accent);cursor:pointer}';
   html+='.alicerce-assistant-note{font-size:10px;line-height:1.45;color:var(--text2);margin:2px 0 8px}';
-  html+='.alicerce-assistant-input:focus-visible,.alicerce-assistant-send:focus-visible,.alicerce-assistant-camera:focus-visible,.alicerce-assistant-prompt:focus-visible,.alicerce-assistant-back:focus-visible,.alicerce-assistant-speak:focus-visible{outline:2px solid var(--accent);outline-offset:3px}';
-  html+='@media(max-width:360px){.alicerce-assistant-message{max-width:94%}.alicerce-assistant-page{padding-left:10px;padding-right:10px}.alicerce-assistant-heading{gap:9px;padding:8px 9px}.alicerce-assistant-avatar{width:54px;height:54px;flex-basis:54px}.alicerce-assistant-chat-panel{padding:10px 9px 7px;min-height:330px}.alicerce-assistant-composer{gap:5px}.alicerce-assistant-camera,.alicerce-assistant-send{width:40px;height:42px;flex-basis:40px}.alicerce-assistant-financial,.alicerce-assistant-clear{padding:6px 7px;font-size:9px}}';
+  html+='.alicerce-assistant-input:focus-visible,.alicerce-assistant-send:focus-visible,.alicerce-assistant-camera:focus-visible,.alicerce-assistant-mic:focus-visible,.alicerce-assistant-prompt:focus-visible,.alicerce-assistant-back:focus-visible,.alicerce-assistant-speak:focus-visible{outline:2px solid var(--accent);outline-offset:3px}';
+  html+='@media(max-width:360px){.alicerce-assistant-message{max-width:94%}.alicerce-assistant-page{padding-left:10px;padding-right:10px}.alicerce-assistant-heading{gap:9px;padding:8px 9px}.alicerce-assistant-avatar{width:54px;height:54px;flex-basis:54px}.alicerce-assistant-chat-panel{padding:10px 9px 7px;min-height:330px}.alicerce-assistant-composer{gap:5px}.alicerce-assistant-camera,.alicerce-assistant-mic,.alicerce-assistant-send{width:40px;height:42px;flex-basis:40px}.alicerce-assistant-financial,.alicerce-assistant-clear{padding:6px 7px;font-size:9px}}';
   html+='@supports (padding: max(0px)){.alicerce-assistant-page{padding-bottom:max(118px,calc(90px + env(safe-area-inset-bottom)))}.alicerce-assistant-composer{bottom:calc(62px + env(safe-area-inset-bottom))}}';
   html+='</style>';
   html+='<div class="content alicerce-assistant-page" id="alicerce-assistant-page">';
@@ -5778,6 +6320,7 @@ function renderAssistente(){
   html+='<form class="alicerce-assistant-composer" onsubmit="AlicerceIA.enviarMensagem();return false;">';
   html+='<input type="file" id="alicerce-assistant-photo" accept="image/jpeg,image/png,image/webp,image/bmp" capture="environment" style="display:none" onchange="AlicerceIA.processarFoto(this)">';
   html+='<button class="alicerce-assistant-camera" id="alicerce-assistant-camera" type="button" aria-label="'+esc(ui.camera)+'" title="'+esc(ui.camera)+'" onclick="AlicerceIA.solicitarFoto()">'+icon('camera')+'</button>';
+  html+='<button class="alicerce-assistant-mic" id="alicerce-assistant-mic" type="button" aria-label="'+esc(ui.mic)+'" title="'+esc(ui.mic)+'" aria-pressed="false" onclick="AlicerceIA.toggleMicrofone()"><svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"></path></svg></button>';
   html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="5000" inputmode="text" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onfocus="AlicerceIA.mostrarAvisoDitado()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
   html+='<button class="alicerce-assistant-send" id="alicerce-assistant-send" type="submit" aria-label="'+esc(ui.send)+'">'+icon('arrowRight')+'</button>';
   html+='</form>';
@@ -5793,42 +6336,6 @@ function renderAssistente(){
    ALICERCE IA — camada estatistica e interpretacao de perguntas
    Sem rede, sem APIs pagas, sem alterar o motor financeiro.
    ============================================================= */
-AlicerceIA._rows=function(){
-  var rows=[];
-  var validDate=function(value){return /^\d{4}-\d{2}-\d{2}$/.test(String(value||''));};
-  var borrowedLoans={};
-  (Store.loans||[]).forEach(function(loan){
-    if(loan&&loan.fromCard===true&&loan.tipo==='emprestei')borrowedLoans[String(loan.id)]=true;
-  });
-  (Store.movements||[]).forEach(function(m){
-    if(!m||m.tipo!=='despesa'||(m.status!=='pago'&&m.status!=='recebido')||!validDate(m.data))return;
-    if(m.loanId&&borrowedLoans[String(m.loanId)])return;
-    var value=Number(m.valor)||0;
-    if(value<=0)return;
-    rows.push({
-      data:String(m.data),valor:value,
-      categoria:m.categoria||'outros',
-      subcategoria:m.subcategoria||'outros',
-      descricao:m.descricao||m.item||'',
-      local:m.estabelecimento||m.local||'',
-      source:'movement'
-    });
-  });
-  (Store.installments||[]).forEach(function(i){
-    if(!i||i.tipo!=='cartao'||!i.compraId||i.loanId||i.fromCard||!validDate(i.data))return;
-    var value=Number(i.valor)||0;
-    if(value<=0)return;
-    rows.push({
-      data:String(i.data),valor:value,
-      categoria:i.categoria||'outros',
-      subcategoria:i.subcategoria||'outros',
-      descricao:i.descricao||'Compra no cartao',
-      local:i.local||'',
-      source:'card'
-    });
-  });
-  return rows;
-};
 AlicerceIA._iso=function(date){
   return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
 };
@@ -5984,6 +6491,208 @@ AlicerceIA._detectRecurring=function(rows){
   return result.sort(function(a,b){return b.months-a.months||b.amount-a.amount;});
 };
 
+AlicerceIA._detectMonthlyPatterns=function(rows){
+  var now=Clock.now();
+  var cutoff=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-180));
+  var eligible={
+    moradia:['aluguel','energia','agua','gas','internet','telefone','condominio','manutencao'],
+    lazer:['streaming'],
+    saude:['plano_saude'],
+    financeiro:['tarifas_bancarias','anuidade','juros'],
+    transporte:['seguro']
+  };
+  var groups={};
+  (rows||this._rows()).forEach(function(row){
+    if(!row||(row.source!=='movement'&&row.source!=='card')||row.data<cutoff)return;
+    var allowed=eligible[row.categoria]||[];
+    if(allowed.indexOf(row.subcategoria)<0)return;
+    var identity='';
+    if(row.local){
+      try{
+        identity=typeof normalizeAlicerMerchantIdentity==='function'
+          ?normalizeAlicerMerchantIdentity(row.local):'';
+      }catch(e){}
+    }
+    identity=identity||this._norm(row.descricao||'');
+    if(!identity||identity.length<4)return;
+    var key=String(row.categoria)+'|'+String(row.subcategoria)+'|'+identity;
+    if(!groups[key])groups[key]={name:row.local||row.descricao||this._nice(row.subcategoria),months:{}};
+    var month=row.data.slice(0,7);
+    groups[key].months[month]=(groups[key].months[month]||0)+(Number(row.valor)||0);
+  },this);
+  var result=[];
+  Object.keys(groups).forEach(function(key){
+    var group=groups[key];
+    var months=Object.keys(group.months).sort();
+    if(months.length<3)return;
+    var values=months.map(function(month){return group.months[month];});
+    var total=values.reduce(function(sum,value){return sum+value;},0);
+    var median=this._median(values);
+    if(median<10)return;
+    result.push({
+      merchant:group.name,
+      months:months.length,
+      average:total/months.length,
+      minimum:Math.min.apply(Math,values),
+      maximum:Math.max.apply(Math,values),
+      median:median,
+      stable:Math.min.apply(Math,values)>=median*0.75&&Math.max.apply(Math,values)<=median*1.25
+    });
+  },this);
+  return result.sort(function(a,b){return b.months-a.months||b.average-a.average;});
+};
+
+AlicerceIA._vehicleSummary=function(rows){
+  var fuel={purchases:0,total:0,liters:0,totalWithLiters:0};
+  var fullTankReadings={};
+  var maintenance={purchases:0,total:0};
+  (rows||this._rows()).forEach(function(row){
+    var metrics=row.metrics||{};
+    var category=this._norm(row.categoria);
+    var subcategory=this._norm(row.subcategoria);
+    var description=this._norm(row.descricao||'');
+    var liters=Number(metrics.fuelLiters)||0;
+    var unitPrice=Number(metrics.unitPrice)||0;
+    var isFuel=liters>0||subcategory==='combustivel'||/\b(gasolina|etanol|diesel|abastecimento)\b/.test(description);
+    if(isFuel){
+      fuel.purchases++;
+      fuel.total+=Number(row.valor)||0;
+      if(liters>0){
+        fuel.liters+=liters;
+        fuel.totalWithLiters+=unitPrice>0?unitPrice*liters:(Number(row.valor)||0);
+        var odometer=Number(metrics.odometerKm)||0;
+        if(metrics.fullTank===true&&odometer>0){
+          var vehicleKey=String(metrics.vehicleId||'sem-veiculo')+'|'+this._norm(metrics.fuelType||'combustivel');
+          if(!fullTankReadings[vehicleKey])fullTankReadings[vehicleKey]=[];
+          fullTankReadings[vehicleKey].push({odometer:odometer,liters:liters,data:row.data});
+        }
+      }
+    }
+    var isMaintenance=!!metrics.maintenanceType||
+      (category==='transporte'&&(/\b(manutencao|carro|moto)\b/.test(subcategory)||/\b(troca de oleo|revisao|mecanica|pneu|freio)\b/.test(description)));
+    if(isMaintenance){
+      maintenance.purchases++;
+      maintenance.total+=Number(row.valor)||0;
+    }
+  },this);
+  fuel.averagePricePerLiter=fuel.liters>0?fuel.totalWithLiters/fuel.liters:0;
+  var drivenKm=0;
+  var intervalLiters=0;
+  var fullTankIntervals=0;
+  Object.keys(fullTankReadings).forEach(function(vehicleKey){
+    var readings=fullTankReadings[vehicleKey].sort(function(a,b){return a.odometer-b.odometer;});
+    for(var index=1;index<readings.length;index++){
+      var distance=readings[index].odometer-readings[index-1].odometer;
+      if(distance<=0||readings[index].liters<=0)continue;
+      drivenKm+=distance;
+      intervalLiters+=readings[index].liters;
+      fullTankIntervals++;
+    }
+  });
+  fuel.averageKmPerLiter=intervalLiters>0?drivenKm/intervalLiters:0;
+  fuel.fullTankIntervals=fullTankIntervals;
+  return {fuel:fuel,maintenance:maintenance};
+};
+
+AlicerceIA._analyzePurchaseItems=function(rows){
+  var groups={};
+  (rows||this._rows()).forEach(function(row){
+    (Array.isArray(row.items)?row.items:[]).forEach(function(item){
+      if(!item)return;
+      var name=String(item.normalizedName||item.name||'').trim();
+      var unit=String(item.unit||'').trim().toLowerCase();
+      var key=this._norm(name)+'|'+unit;
+      if(!key||key==='|')return;
+      if(!groups[key])groups[key]={
+        item:String(item.name||name),unit:unit,quantity:0,total:0,purchases:0,
+        pricedQuantity:0,pricedTotal:0,unitPriceTotal:0,unitPriceCount:0
+      };
+      var group=groups[key];
+      var quantity=Number(item.quantity)||0;
+      var total=Number(item.total)||0;
+      var unitPrice=Number(item.unitPrice)||0;
+      if(quantity>0)group.quantity+=quantity;
+      if(total>0)group.total+=total;
+      if(quantity>0&&(total>0||unitPrice>0)){
+        group.pricedQuantity+=quantity;
+        group.pricedTotal+=total>0?total:unitPrice*quantity;
+      }else if(unitPrice>0){
+        group.unitPriceTotal+=unitPrice;
+        group.unitPriceCount++;
+      }
+      group.purchases++;
+    },this);
+  },this);
+  return Object.keys(groups).map(function(key){
+    var group=groups[key];
+    group.averageUnitPrice=group.pricedQuantity>0
+      ?group.pricedTotal/group.pricedQuantity
+      :(group.unitPriceCount?group.unitPriceTotal/group.unitPriceCount:0);
+    return group;
+  }).sort(function(a,b){return b.total-a.total;});
+};
+
+AlicerceIA._detectFrequentPurchases=function(rows){
+  var now=Clock.now();
+  var end=this._iso(now);
+  var start=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-83));
+  var groups={};
+  (rows||this._rows()).forEach(function(row){
+    if(!row||!row.data||row.data<start||row.data>end)return;
+    var category=this._norm(row.categoria);
+    var subcategory=this._norm(row.subcategoria);
+    var description=this._norm((row.descricao||'')+' '+(row.local||''));
+    var fairLike=/\b(feira|hortifruti|sacolao|frutas|verduras)\b/.test(subcategory+' '+description);
+    var knownFoodPurchase=category==='comida'&&['feira','mercado','padaria'].indexOf(subcategory)>=0;
+    if(!fairLike&&!knownFoodPurchase)return;
+    var bucket=fairLike?'feira':subcategory;
+    var merchant='';
+    if(!fairLike&&row.local){
+      try{
+        merchant=typeof normalizeAlicerMerchantIdentity==='function'
+          ?normalizeAlicerMerchantIdentity(row.local):'';
+      }catch(e){}
+      merchant=merchant||this._norm(row.local);
+    }
+    var key=fairLike?'comida|feira':('comida|'+bucket+(merchant?'|'+merchant:''));
+    if(!groups[key]){
+      groups[key]={
+        name:fairLike?'feira e hortifruti':(row.local||this._nice(bucket)),
+        category:row.categoria||'comida',
+        subcategory:row.subcategoria||bucket,
+        merchant:row.local||'',
+        rows:[],
+        weeks:{}
+      };
+    }
+    var parts=String(row.data).split('-').map(Number);
+    var weekDate=new Date(parts[0],parts[1]-1,parts[2]);
+    weekDate.setDate(weekDate.getDate()-((weekDate.getDay()+6)%7));
+    var weekKey=this._iso(weekDate);
+    groups[key].rows.push(row);
+    groups[key].weeks[weekKey]=(groups[key].weeks[weekKey]||0)+(Number(row.valor)||0);
+  },this);
+  var result=[];
+  Object.keys(groups).forEach(function(key){
+    var group=groups[key];
+    var weeks=Object.keys(group.weeks).sort();
+    if(weeks.length<3)return;
+    var total=this._sum(group.rows);
+    result.push({
+      item:group.name,
+      merchant:group.merchant,
+      category:group.category,
+      subcategory:group.subcategory,
+      purchases:group.rows.length,
+      weeks:weeks.length,
+      total:total,
+      average:total/weeks.length,
+      lastDate:group.rows.map(function(row){return row.data;}).sort().pop()
+    });
+  },this);
+  return result.sort(function(a,b){return b.weeks-a.weeks||b.total-a.total;});
+};
+
 AlicerceIA.insight=function(){
   this._resetUser();
   var current=this._periodRows(0);
@@ -6022,6 +6731,22 @@ AlicerceIA.insight=function(){
   }
   var recurring=this._detectRecurring(allRows);
   if(recurring.length)return this._label('recurringInsight',{item:recurring[0].merchant,amount:fmtMoney(recurring[0].amount),months:recurring[0].months});
+  var monthlyPatterns=this._detectMonthlyPatterns(allRows);
+  if(monthlyPatterns.length)return this._label('monthlyPatternAnswer',{
+    item:monthlyPatterns[0].merchant,
+    months:monthlyPatterns[0].months,
+    average:fmtMoney(monthlyPatterns[0].average),
+    minimum:fmtMoney(monthlyPatterns[0].minimum),
+    maximum:fmtMoney(monthlyPatterns[0].maximum)
+  });
+  var frequent=this._detectFrequentPurchases(allRows);
+  if(frequent.length)return this._label('frequentPurchaseAnswer',{
+    purchases:frequent[0].purchases,
+    item:frequent[0].item,
+    weeks:frequent[0].weeks,
+    total:fmtMoney(frequent[0].total),
+    average:fmtMoney(frequent[0].average)
+  });
   var top=this._groups(current,'subcategoria')[0];
   if(top&&top.total>0)return this._label('topInsight',{item:this._nice(top.key),amount:fmtMoney(top.total),total:fmtMoney(total)});
   return this._label('totalInsight',{amount:fmtMoney(total)});
@@ -6037,10 +6762,62 @@ AlicerceIA.responder=function(question){
   var rows=this._rows();
   var range=this._questionRange(question);
   var selected=this._rangeRows(range.start,range.end,rows);
-  if(/assinatura|recorrente|se repete|pagamento fixo/.test(q)){
+  if(/combustivel|abastecimento|preco por litro|litros abastecidos/.test(q)){
+    var vehicleData=this._vehicleSummary(rows).fuel;
+    if(!vehicleData.purchases)return this._label('noFuelData');
+    if(!vehicleData.liters)return this._label('fuelWithoutLiters',{purchases:vehicleData.purchases,total:fmtMoney(vehicleData.total)});
+    return this._label('fuelSummary',{
+      purchases:vehicleData.purchases,
+      liters:vehicleData.liters.toFixed(2).replace('.',','),
+      price:fmtMoney(vehicleData.averagePricePerLiter),
+      total:fmtMoney(vehicleData.total),
+      efficiency:vehicleData.averageKmPerLiter>0?' A média entre abastecimentos de tanque cheio foi '+vehicleData.averageKmPerLiter.toFixed(1).replace('.',',')+' km/l.':''
+    });
+  }
+  if(/manutencao|troca de oleo|revisao|oficina|mecanico/.test(q)){
+    var maintenanceData=this._vehicleSummary(rows).maintenance;
+    if(!maintenanceData.purchases)return this._label('noMaintenanceData');
+    return this._label('maintenanceSummary',{purchases:maintenanceData.purchases,total:fmtMoney(maintenanceData.total)});
+  }
+  var itemQuestion=q.match(/(?:preco|valor|quanto paguei|quanto custou) (?:do|da|de|por) ([a-z0-9 ]+)/);
+  if(itemQuestion){
+    var requestedItem=this._norm(itemQuestion[1]).replace(/\b(este mes|mes passado|no mercado|no supermercado)\b/g,'').trim();
+    var itemMatches=this._analyzePurchaseItems(rows).filter(function(item){
+      return this._norm(item.item).indexOf(requestedItem)>=0||requestedItem.indexOf(this._norm(item.item))>=0;
+    },this);
+    var itemData=itemMatches[0];
+    if(!itemData||!itemData.averageUnitPrice||!itemData.quantity)return this._label('noItemPriceData');
+    return this._label('itemPriceSummary',{
+      item:itemData.item,
+      purchases:itemData.purchases,
+      quantity:itemData.quantity.toFixed(2).replace('.',','),
+      unit:itemData.unit||'unidades',
+      unitPrice:fmtMoney(itemData.averageUnitPrice)
+    });
+  }
+  if(/feira|hortifruti|sacolao|frutas|verduras|compras? frequentes?|fim de semana/.test(q)){
+    var frequent=this._detectFrequentPurchases(rows);
+    if(!frequent.length)return this._label('noFrequentPurchase');
+    return this._label('frequentPurchaseAnswer',{
+      purchases:frequent[0].purchases,
+      item:frequent[0].item,
+      weeks:frequent[0].weeks,
+      total:fmtMoney(frequent[0].total),
+      average:fmtMoney(frequent[0].average)
+    });
+  }
+  if(/assinatura|recorrente|se repetem?|pagamento fixo|despesa mensal|contas mensais|mensalmente/.test(q)){
     var recurringMatches=this._detectRecurring(rows);
-    if(!recurringMatches.length)return this._label('noRecurring');
-    return this._label('recurringAnswer',{item:recurringMatches[0].merchant,amount:fmtMoney(recurringMatches[0].amount),months:recurringMatches[0].months});
+    if(recurringMatches.length)return this._label('recurringAnswer',{item:recurringMatches[0].merchant,amount:fmtMoney(recurringMatches[0].amount),months:recurringMatches[0].months});
+    var monthlyMatches=this._detectMonthlyPatterns(rows);
+    if(monthlyMatches.length)return this._label('monthlyPatternAnswer',{
+      item:monthlyMatches[0].merchant,
+      months:monthlyMatches[0].months,
+      average:fmtMoney(monthlyMatches[0].average),
+      minimum:fmtMoney(monthlyMatches[0].minimum),
+      maximum:fmtMoney(monthlyMatches[0].maximum)
+    });
+    return this._label('noRecurring');
   }
   if(!selected.length)return this._label('noData');
   if(/fora do padrao|fora do normal|anomal|estranho|incomum/.test(q)){
@@ -6479,7 +7256,9 @@ const Interpreter={
   },
   inferItemCategory(item,text){
     const product=this.norm(item||'');
-    const n=product||this.norm(text||'');
+    const context=this.norm(text||'');
+    const n=product||context;
+    const combined=(product+' '+context).trim();
     if(!n)return null;
     const rules=[
       {p:/\b(tenis|sapato|sandalia|chinelo|bota|calcado|calcados)\b/i,c:'vestuario',s:'calcados'},
@@ -6512,6 +7291,14 @@ const Interpreter={
     ];
     for(const rule of rules){
       if(rule.p.test(n)&&alicerClassificationPairIsValid(rule.c,rule.s))return{c:rule.c,s:rule.s};
+    }
+    const contextRules=[
+      {p:/\b(material escolar|material de escola|contexto escola|contexto escolar|contexto estudo|contexto estudos|contexto educacao|caderno|lapis|caneta|estojo|mochila escolar|uniforme escolar)\b/i,c:'educacao',s:'material_escolar'},
+      {p:/\b(material(?:\s+de)?\s+construcao|obra|reforma|cimento|tijolo|argamassa|areia|brita|telha|rejunte|piso|tinta para parede)\b/i,c:'moradia',s:'manutencao'},
+      {p:/\b(material(?:\s+de)?\s+trabalho|material(?:\s+de)?\s+escritorio|equipamento de trabalho|ferramenta|ferramentas|uso profissional|contexto trabalho|contexto profissional|contexto empresa|contexto escritorio)\b/i,c:'trabalho',s:'equipamentos'}
+    ];
+    for(const rule of contextRules){
+      if(rule.p.test(combined)&&alicerClassificationPairIsValid(rule.c,rule.s))return{c:rule.c,s:rule.s};
     }
     return null;
   },
@@ -6653,7 +7440,7 @@ function showToast(msg,undoCb){
   }catch(e){}
 }
 
-function go(screen,data){clearAllTimers();if(screen!=='assistente'&&typeof AlicerceIA!=='undefined'&&typeof AlicerceIA.pararAudio==='function')AlicerceIA.pararAudio();Store.screen=screen;Store.screenData=data||null;render()}
+function go(screen,data){clearAllTimers();if(screen!=='assistente'&&typeof AlicerceIA!=='undefined'&&typeof AlicerceIA.pararReconhecimento==='function')AlicerceIA.pararReconhecimento(true);if(screen!=='assistente'&&typeof AlicerceIA!=='undefined'&&typeof AlicerceIA.pararAudio==='function')AlicerceIA.pararAudio();Store.screen=screen;Store.screenData=data||null;render()}
 
 /* =============================================================
    SECTION 13: RENDER
@@ -12244,6 +13031,8 @@ function confirmGastoInteligente(){
     descricao:interp.item||data.text||'',
     source:'app'
   };
+  const movementPurpose=String(data.purpose||interp.purpose||'').trim();
+  if(movementPurpose)movementPayload.purpose=movementPurpose;
   const mv=Store.addMovement(movementPayload);
   if(data.classificationCorrection&&interp.merchant){
     Store.learnCorrection(interp.merchant,interp.categoria,interp.subcategoria,interp.item);
@@ -12272,6 +13061,7 @@ function renderAddGastoDoubt(){
   const amountValue=edits.amount!==undefined?edits.amount:(interp.amount!==undefined&&interp.amount!==null?interp.amount:data.amountInput);
   const merchantValue=edits.merchant!==undefined?edits.merchant:(interp.merchant!==undefined&&interp.merchant!==null&&interp.merchant!==''?interp.merchant:data.localInput||'');
   const itemValue=edits.item!==undefined?edits.item:(interp.item!==undefined&&interp.item!==null&&interp.item!==''?interp.item:data.itemInput||'');
+  const purposeValue=String(data.purpose||interp.purpose||'').trim();
   const payment=data.paymentMethod||'';
   const card=(Store.cards||[]).find(function(c){return String(c.id)===String(data.cardId||'');});
   const cardName=card?(card.nome||'Cartão cadastrado'):'Nenhum cartão selecionado';
@@ -12309,6 +13099,7 @@ function renderAddGastoDoubt(){
   html+='<div class="gr-amount">'+(amountValue!==undefined&&amountValue!==null&&amountValue!==''?fmtMoney(Number(amountValue)||0):'Informe o valor')+'</div>';
   html+='<div style="font-size:17px;font-weight:750;overflow-wrap:anywhere">'+esc(itemValue||'Gasto sem descrição')+'</div>';
   html+='<div style="color:#b4b6bf;font-size:14px;margin-top:5px">'+esc(merchantValue||'Local não informado')+'</div>';
+  if(purposeValue)html+='<div style="font-size:12px;color:var(--text2);margin-top:7px">Finalidade informada: <strong style="color:var(--text)">'+esc(purposeValue)+'</strong></div>';
   html+='<div style="margin-top:10px"><span class="gr-chip">'+esc(dateLabel)+'</span><span class="gr-chip">'+esc(paymentName)+'</span></div>';
 
   html+='<div class="gr-panel"><div class="gr-muted">Resumo do pagamento</div>';

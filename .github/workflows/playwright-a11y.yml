@@ -5,6 +5,7 @@ on:
     branches:
       - test/playwright-axe-baseline-20261031
       - feat/classificacao-inteligente-20261031
+      - feat/alicia-edge-tts-autonomia-20261101
   pull_request:
     branches: [main]
   workflow_dispatch:

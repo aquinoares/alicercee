@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: alicerce-alicia-tts
+    runtime: python
+    plan: free
+    region: ohio
+    rootDir: services/alicia-tts
+    buildCommand: pip install --disable-pip-version-check --no-cache-dir -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: ALICIA_TTS_API_KEY
+        generateValue: true
