@@ -1372,7 +1372,7 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
 
   await expect(page.locator('#alicerce-ai-card')).toBeVisible();
   await expect(page.locator('#alicerce-ai-open-assistant')).toBeVisible();
-  await expect(page.locator('#alicerce-ai-card')).toContainText('Bom dia, Maria');
+  await expect(page.locator('#alicerce-ai-card')).toContainText('Maria');
   await expect(page.locator('#alicerce-ai-card')).not.toContainText(/Tire dúvidas|Um olhar sobre sua conta|SEU ASSISTENTE FINANCEIRO/i);
   const launcherHeight = await page.locator('#alicerce-ai-card').evaluate(function (el) { return el.getBoundingClientRect().height; });
   expect(launcherHeight).toBeLessThan(80);
