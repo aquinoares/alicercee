@@ -2891,9 +2891,17 @@ test('Alicia respeita negações ao confirmar natureza e flexibilidade', async f
     var essential = AlicerceIA._financialReviewProfileFromReply(
       'Não é discricionário, é essencial.'
     );
+    var correctedContext = AlicerceIA._financialReviewProfileFromReply(
+      'Não era lazer, foi trabalho.'
+    );
+    var unknownWithContext = AlicerceIA._financialReviewProfileFromReply(
+      'Ainda não sei, mas era para o trabalho.'
+    );
     return {
       discretionary: discretionary.profile,
-      essential: essential.profile
+      essential: essential.profile,
+      correctedContext: correctedContext.profile,
+      unknownWithContext: unknownWithContext.profile
     };
   });
 
@@ -2905,5 +2913,14 @@ test('Alicia respeita negações ao confirmar natureza e flexibilidade', async f
   expect(result.essential).toMatchObject({
     nature: 'essential',
     confidence: { nature: 'high' }
+  });
+  expect(result.correctedContext).toMatchObject({
+    context: 'work',
+    confidence: { context: 'high' }
+  });
+  expect(result.unknownWithContext).toMatchObject({
+    nature: 'undetermined',
+    context: 'work',
+    confidence: { nature: 'low', context: 'high' }
   });
 });

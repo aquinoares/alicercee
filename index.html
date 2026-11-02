@@ -5648,15 +5648,20 @@ AlicerceIA._financialReviewProfileFromReply=function(message){
     {value:'convenience',pattern:/\b(conveniencia|praticidade|falta de tempo|comodidade|entrega rapida)\b/},
     {value:'other',pattern:/\b(outro motivo|outra finalidade|outros motivos)\b/}
   ];
+  var contextWords=['saude','medico','medica','hospital','tratamento','remedio','consulta','exame','dentista','terapia','trabalho','emprego','profissao','profissional','trabalhar','expediente','empresa','familia','filho','filha','pais','dependente','mae','pai','esposa','marido','casa','moradia','aluguel','obra','reforma','habitacao','energia','agua','gas','escola','estudo','estudar','faculdade','curso','educacao','material','lazer','passeio','cinema','bar','descanso','diversao','show','festa','hobby','viagem','ferias','conveniencia','praticidade','comodidade'];
   var context='';
   for(var i=0;i<contextDefinitions.length;i++){
     var match=normalized.match(contextDefinitions[i].pattern);
     if(!match)continue;
     var position=normalized.indexOf(match[0]);
-    var left=normalized.slice(Math.max(0,position-24),position);
+    var left=normalized.slice(Math.max(0,position-48),position);
     var noPrefix=left.lastIndexOf('nao');
     var butPrefix=left.lastIndexOf('mas');
-    if(noPrefix>=0&&noPrefix>butPrefix)continue;
+    var priorWords=left.slice(noPrefix>=0?noPrefix+3:0).trim().split(/\s+/);
+    var hasPriorContext=priorWords.some(function(word){return contextWords.indexOf(word)>=0;});
+    var lastToken=priorWords.length?priorWords[priorWords.length-1]:'';
+    var renewedClause=hasPriorContext&&['mas','foi','era','e','para','porem'].indexOf(lastToken)>=0;
+    if(noPrefix>=0&&noPrefix>butPrefix&&!renewedClause)continue;
     context=contextDefinitions[i].value;
     break;
   }
@@ -5688,7 +5693,7 @@ AlicerceIA._financialReviewProfileFromReply=function(message){
   }else if(hasAffirmedTerm(/\b(discricionario|discricionaria|superfluo|superflua|poderia cortar|poderia reduzir)\b/)&&!unknown){
     profile.nature='discretionary';
     confidence.nature='high';
-  }else if(unknown&&!context){
+  }else if(unknown){
     profile.nature='undetermined';
     confidence.nature='low';
   }
