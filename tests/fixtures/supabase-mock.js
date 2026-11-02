@@ -9,6 +9,7 @@
   window.__alicerceMockSessionUserId = null;
   window.__alicerceMockCloudRows = [];
   window.__alicerceMockUpsertError = null;
+  window.__alicerceMockFunctionInvocations = [];
 
   window.supabase = {
     createClient: function () {
@@ -144,6 +145,15 @@
             }
           };
           return query;
+        },
+        functions: {
+          invoke: async function (functionName, options) {
+            window.__alicerceMockFunctionInvocations.push({
+              name: String(functionName || ''),
+              options: options ? JSON.parse(JSON.stringify(options)) : null
+            });
+            return { data: { ok: true }, error: null };
+          }
         },
         rpc: async function () {
           return { data: null, error: { message: 'RPC disabled in UI tests' } };
