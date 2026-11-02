@@ -6,6 +6,8 @@ const supabaseMock = readFileSync(new URL('./fixtures/supabase-mock.js', import.
 const classificationBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-benchmark-ptbr.json', import.meta.url), 'utf8'));
 const classificationContextBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-context-40-ptbr.json', import.meta.url), 'utf8'));
 const bankDescriptionBenchmark = JSON.parse(readFileSync(new URL('./fixtures/bank-description-benchmark-ptbr.json', import.meta.url), 'utf8'));
+const analyticsMigration = readFileSync(new URL('../supabase/migrations/20261102231731_create_alicerce_product_events.sql', import.meta.url), 'utf8');
+const analyticsEdgeFunction = readFileSync(new URL('../supabase/functions/alicerce-analytics-events/index.ts', import.meta.url), 'utf8');
 const supabaseCdn = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js';
 const supabaseProject = 'https://hwmpwvbvgiqotdzkmgwh.supabase.co';
 
@@ -352,6 +354,7 @@ test('desativar compartilhamento persiste a preferência e solicita exclusão de
   await expect(page.locator('#alicerce-analytics-consent')).toBeChecked();
   await page.locator('#alicerce-analytics-consent').uncheck();
   await expect(page.locator('#alicerce-analytics-consent')).not.toBeChecked();
+  await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 1; });
   const result = await page.evaluate(function () {
     return {
       consent: Store.settings.analyticsConsent,
@@ -386,6 +389,48 @@ test('a configuração de analytics descreve o consentimento opcional em três i
   expect(translations.pt).toContain('Compartilhar eventos de uso');
   expect(translations.en).toContain('Share usage events');
   expect(translations.es).toContain('Compartir eventos de uso');
+});
+
+test('a criação de movimento registra apenas eventos genéricos após consentimento', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    Store.movements = [];
+    Store.addMovement({
+      tipo: 'despesa',
+      status: 'pago',
+      categoria: 'saude',
+      subcategoria: 'farmacia',
+      descricao: 'Medicamento de exemplo',
+      valor: 234.56,
+      data: '2026-11-02'
+    });
+    window.__alicerceMockSessionUserId = 'analytics-user';
+  });
+  await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 2; });
+  const result = await page.evaluate(function () { return window.__alicerceMockFunctionInvocations; });
+  expect(result.map(function (item) { return item.options.body.event_name; }).sort())
+    .toEqual(['financial_record_created', 'first_movement_created']);
+  for (const item of result) {
+    expect(Object.keys(item.options.body).sort()).toEqual(['action', 'event_id', 'event_name']);
+    expect(JSON.stringify(item)).not.toContain('234.56');
+    expect(JSON.stringify(item)).not.toContain('Medicamento de exemplo');
+    expect(JSON.stringify(item)).not.toContain('farmacia');
+  }
+});
+
+test('a Edge Function e a tabela limitam coleta, exigem consentimento e não expõem a tabela pela Data API', function () {
+  expect(analyticsEdgeFunction).toContain('auth.getUser(token)');
+  expect(analyticsEdgeFunction).toContain('settings.analyticsConsent !== true');
+  expect(analyticsEdgeFunction).toContain('Object.keys(body).sort().join(",") !== "action,event_id,event_name"');
+  expect(analyticsEdgeFunction).toContain('.delete()');
+  expect(analyticsEdgeFunction).toContain('ALLOWED_EVENTS');
+  expect(analyticsMigration).toContain('enable row level security');
+  expect(analyticsMigration).toContain('from public, anon, authenticated');
+  expect(analyticsMigration).toContain('to service_role');
+  expect(analyticsMigration).not.toContain('amount');
+  expect(analyticsMigration).not.toContain('description');
 });
 
 test('envia cadastro com sucesso usando autenticação simulada', async function ({ page }) {
