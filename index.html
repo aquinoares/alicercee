@@ -6802,7 +6802,7 @@ AlicerceIA.responder=function(question){
       average:fmtMoney(frequent[0].average)
     });
   }
-  if(/assinatura|recorrente|se repete|pagamento fixo|despesa mensal|contas mensais/.test(q)){
+  if(/assinatura|recorrente|se repetem?|pagamento fixo|despesa mensal|contas mensais|mensalmente/.test(q)){
     var recurringMatches=this._detectRecurring(rows);
     if(recurringMatches.length)return this._label('recurringAnswer',{item:recurringMatches[0].merchant,amount:fmtMoney(recurringMatches[0].amount),months:recurringMatches[0].months});
     var monthlyMatches=this._detectMonthlyPatterns(rows);
