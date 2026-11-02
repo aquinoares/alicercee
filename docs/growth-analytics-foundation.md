@@ -10,7 +10,7 @@ Preparar uma fonte própria e mínima de eventos para as agentes de crescimento.
 - `financial_record_created`: criação de um lançamento pelo fluxo existente.
 - `first_movement_created`: primeira movimentação registrada na conta, conforme a coleção de movimentos já carregada pelo aplicativo.
 
-O navegador envia somente `event_name` e um `event_id` aleatório. Não envia user_id, e-mail, telefone, valores, datas do lançamento, categorias, descrições, cartões ou conteúdo financeiro.
+O navegador envia somente `event_name` e um `event_id` aleatório. Não envia user_id, e-mail, telefone, valores, datas do lançamento, categorias, descrições, cartões ou conteúdo financeiro. Após validar o JWT, a Edge Function associa o evento ao user_id da sessão; essa associação é necessária para métricas agregadas, deduplicação e exclusão dos dados ao revogar o consentimento.
 
 ## Consentimento e exclusão
 
