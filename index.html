@@ -5092,7 +5092,7 @@ const AlicerceIA = {
         noRecurring:'Ainda não encontrei pagamentos mensais semelhantes com histórico suficiente para indicar recorrência.',
         frequentPurchaseAnswer:'Nos últimos 84 dias, encontrei {purchases} compras de {item}, distribuídas em {weeks} semanas. O total registrado foi {total}, com média de {average} por semana em que houve compra. Isso sugere um hábito frequente, não uma despesa fixa.',
         noFrequentPurchase:'Ainda não há registros suficientes de feira ou compras frequentes para identificar um padrão confiável.',
-        monthlyPatternAnswer:'Encontrei uma despesa que aparece em {months} dos últimos 6 meses: {item}. A média mensal foi {average}, com valores entre {minimum} e {maximum}. A repetição indica um padrão, mas não confirma uma assinatura nem um valor fixo.',
+        monthlyPatternAnswer:'Encontrei uma despesa que aparece em {months} dos últimos 6 meses: {item}. A média nos meses com registro foi {average}, com valores entre {minimum} e {maximum}. A repetição indica um padrão, mas não confirma uma assinatura nem um valor fixo.',
         noFuelData:'Ainda não encontrei abastecimentos registrados com detalhes suficientes para analisar combustível.',
         fuelWithoutLiters:'Encontrei {purchases} registros de combustível, totalizando {total}. Para comparar preço por litro ou consumo, também preciso dos litros abastecidos.',
         fuelSummary:'Encontrei {purchases} abastecimentos, com {liters} litros registrados e média aproximada de {price} por litro. O total desses registros foi {total}.{efficiency}',
@@ -5133,7 +5133,7 @@ const AlicerceIA = {
         noRecurring:'I could not find similar monthly payments with enough history to suggest a recurring expense.',
         frequentPurchaseAnswer:'In the last 84 days, I found {purchases} purchases of {item} across {weeks} weeks. The recorded total was {total}, averaging {average} per week with a purchase. This suggests a frequent habit, not a fixed bill.',
         noFrequentPurchase:'There are not enough market or frequent-purchase records yet to identify a reliable pattern.',
-        monthlyPatternAnswer:'I found an expense that appears in {months} of the last 6 months: {item}. The monthly average was {average}, with values between {minimum} and {maximum}. This repetition suggests a pattern, but does not confirm a subscription or fixed amount.',
+        monthlyPatternAnswer:'I found an expense that appears in {months} of the last 6 months: {item}. The average in months with a record was {average}, with values between {minimum} and {maximum}. This repetition suggests a pattern, but does not confirm a subscription or fixed amount.',
         noFuelData:'I could not find enough fuel records with details for an analysis yet.',
         fuelWithoutLiters:'I found {purchases} fuel records totaling {total}. To compare price per liter or fuel consumption, I also need the number of liters.',
         fuelSummary:'I found {purchases} fill-ups, with {liters} recorded liters and an approximate average of {price} per liter. The total was {total}.{efficiency}',
@@ -5174,7 +5174,7 @@ const AlicerceIA = {
         noRecurring:'Aún no encontré pagos mensuales similares con historial suficiente para indicar recurrencia.',
         frequentPurchaseAnswer:'En los últimos 84 días encontré {purchases} compras de {item}, distribuidas en {weeks} semanas. El total registrado fue {total}, con un promedio de {average} por semana con compras. Esto sugiere un hábito frecuente, no una factura fija.',
         noFrequentPurchase:'Aún no hay registros suficientes de feria o compras frecuentes para identificar un patrón confiable.',
-        monthlyPatternAnswer:'Encontré un gasto que aparece en {months} de los últimos 6 meses: {item}. El promedio mensual fue {average}, con valores entre {minimum} y {maximum}. La repetición indica un patrón, pero no confirma una suscripción ni un valor fijo.',
+        monthlyPatternAnswer:'Encontré un gasto que aparece en {months} de los últimos 6 meses: {item}. El promedio en los meses registrados fue {average}, con valores entre {minimum} y {maximum}. La repetición indica un patrón, pero no confirma una suscripción ni un valor fijo.',
         noFuelData:'Aún no encontré suficientes registros de combustible con detalles para analizarlos.',
         fuelWithoutLiters:'Encontré {purchases} registros de combustible, por un total de {total}. Para comparar el precio por litro o el consumo, también necesito los litros abastecidos.',
         fuelSummary:'Encontré {purchases} cargas, con {liters} litros registrados y un promedio aproximado de {price} por litro. El total fue {total}.{efficiency}',
@@ -6561,7 +6561,7 @@ AlicerceIA._vehicleSummary=function(rows){
         fuel.totalWithLiters+=unitPrice>0?unitPrice*liters:(Number(row.valor)||0);
         var odometer=Number(metrics.odometerKm)||0;
         if(metrics.fullTank===true&&odometer>0){
-          var vehicleKey=String(metrics.vehicleId||'sem-veiculo');
+          var vehicleKey=String(metrics.vehicleId||'sem-veiculo')+'|'+this._norm(metrics.fuelType||'combustivel');
           if(!fullTankReadings[vehicleKey])fullTankReadings[vehicleKey]=[];
           fullTankReadings[vehicleKey].push({odometer:odometer,liters:liters,data:row.data});
         }
