@@ -13309,11 +13309,15 @@ async function alicerceSetAnalyticsConsent(enabled){
       alicerceTrackAppOpen();
     }else{
       var client=window.alicerceSupabase;
-      var revoked=await client.functions.invoke('alicerce-analytics-events',{body:{action:'revoke'}});
-      if(revoked && revoked.error){
-        showToast(Store.lang==='en'?'Usage sharing is off, but previous events could not be deleted. Try again.':Store.lang==='es'?'El envío está desactivado, pero no se pudieron borrar los eventos anteriores. Inténtalo de nuevo.':'O compartilhamento foi desativado, mas não foi possível apagar os eventos anteriores. Tente novamente.');
-      }else{
-        showToast(Store.lang==='en'?'Usage sharing disabled and previous events deleted.':Store.lang==='es'?'El envío está desactivado y los eventos anteriores fueron borrados.':'Compartilhamento desativado e eventos anteriores apagados.');
+      try{
+        var revoked=await client.functions.invoke('alicerce-analytics-events',{body:{action:'revoke'}});
+        if(revoked && revoked.error){
+          showToast(Store.lang==='en'?'Usage sharing is off, but previous events could not be deleted. Try again.':Store.lang==='es'?'El envío está desactivado, pero no se pudieron borrar los eventos anteriores. Inténtalo de nuevo.':'O compartilhamento foi desativado, mas não foi possível apagar os eventos anteriores. Tente novamente.');
+        }else{
+          showToast(Store.lang==='en'?'Usage sharing disabled and previous events deleted.':Store.lang==='es'?'El envío está desactivado y los eventos anteriores fueron borrados.':'Compartilhamento desativado e eventos anteriores apagados.');
+        }
+      }catch(revokeError){
+        showToast(Store.lang==='en'?'Usage sharing is off, but deletion of previous events is pending. Retry by enabling and disabling again.':Store.lang==='es'?'El envío está desactivado, pero la eliminación de eventos anteriores está pendiente. Vuelve a intentarlo.':'O compartilhamento está desativado, mas a exclusão dos eventos anteriores está pendente. Tente novamente.');
       }
       window.__alicerceAnalyticsOpenedUser='';
     }
