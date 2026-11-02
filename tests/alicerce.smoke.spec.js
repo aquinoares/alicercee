@@ -1430,6 +1430,58 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
 });
 
+test('Alicia chama a pessoa na tela inicial e abre a análise que motivou o aviso', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'ia-home-proactive';
+    Store.userEmail = 'ewerton@example.com';
+    Store.lang = 'pt';
+    Store.settings = Object.assign({}, Store.settings, {
+      displayName: 'Ewerton Aquino',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    });
+    Store.loans = [];
+    Store.installments = [];
+    var now = Clock.now();
+    var previousDate = new Date(now.getFullYear(), now.getMonth() - 1, Math.min(now.getDate(), 28));
+    function format(date) {
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    Store.movements = [
+      { id: 'home-proactive-old-1', tipo: 'despesa', status: 'pago', categoria: 'moradia', subcategoria: 'aluguel', descricao: 'Aluguel', valor: 60, data: format(previousDate) },
+      { id: 'home-proactive-old-2', tipo: 'despesa', status: 'pago', categoria: 'moradia', subcategoria: 'aluguel', descricao: 'Aluguel', valor: 60, data: format(previousDate) },
+      { id: 'home-proactive-now-1', tipo: 'despesa', status: 'pago', categoria: 'moradia', subcategoria: 'aluguel', descricao: 'Aluguel', valor: 150, data: Clock.today() },
+      { id: 'home-proactive-now-2', tipo: 'despesa', status: 'pago', categoria: 'moradia', subcategoria: 'aluguel', descricao: 'Aluguel', valor: 100, data: Clock.today() }
+    ];
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  const callout = page.locator('#alicerce-ai-launcher-title');
+  await expect(callout).toHaveClass(/is-proactive/);
+  await expect(callout).toHaveAttribute('data-full-text', 'Ewerton, tenho uma mensagem pra você');
+  const calloutColor = await callout.evaluate(function (element) {
+    var channels = getComputedStyle(element).color.match(/[0-9]+/g) || [];
+    return channels.map(Number);
+  });
+  expect(calloutColor.length).toBeGreaterThanOrEqual(3);
+  expect(calloutColor[0]).toBeGreaterThan(calloutColor[1] * 1.4);
+  await expect(callout).toHaveText('Ewerton, tenho uma mensagem pra você', { timeout: 5000 });
+  await expect.poll(async function () { return callout.textContent(); }, { timeout: 5000 }).not.toBe('Ewerton, tenho uma mensagem pra você');
+  await expect(page.locator('.alicerce-ai-launcher-cta')).toContainText('Conversar');
+
+  await page.locator('#alicerce-ai-open-assistant').click();
+  await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Seus gastos com Moradia aumentaram');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('R$ 250,00');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('R$ 120,00');
+  const consumed = await page.evaluate(function () { return AlicerceIA._proactiveConsumed; });
+  expect(consumed).toBe(true);
+});
+
 test('Assistente mantém o assunto quando a pessoa pergunta por outro período', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   await page.evaluate(function () {
