@@ -5114,6 +5114,8 @@ const AlicerceIA = {
         recurringInsight:'O pagamento de {item} parece se repetir: cerca de {amount} por mês, em {months} dos últimos 6 meses. Confira antes de considerar uma assinatura.',
         recurringAnswer:'Encontrei um possível pagamento recorrente em {item}: cerca de {amount} por mês, observado em {months} dos últimos 6 meses.',
         noRecurring:'Ainda não encontrei pagamentos mensais semelhantes com histórico suficiente para indicar recorrência.',
+        frequentPurchaseAnswer:'Nos últimos 84 dias, encontrei {purchases} compras de {item}, distribuídas em {weeks} semanas. O total registrado foi {total}, com média de {average} por semana em que houve compra. Isso sugere um hábito frequente, não uma despesa fixa.',
+        noFrequentPurchase:'Ainda não há registros suficientes de feira ou compras frequentes para identificar um padrão confiável.',
         help:'Posso consultar o total do mês, localizar gastos por categoria ou comparar com o mesmo período do mês passado. Experimente perguntar: “Quanto gastei com lanche?”',
         suggestions:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado']
       },
@@ -5145,6 +5147,8 @@ const AlicerceIA = {
         recurringInsight:'The payment to {item} appears to repeat: about {amount} per month in {months} of the last 6 months. Check it before treating it as a subscription.',
         recurringAnswer:'I found a possible recurring payment to {item}: about {amount} per month, observed in {months} of the last 6 months.',
         noRecurring:'I could not find similar monthly payments with enough history to suggest a recurring expense.',
+        frequentPurchaseAnswer:'In the last 84 days, I found {purchases} purchases of {item} across {weeks} weeks. The recorded total was {total}, averaging {average} per week with a purchase. This suggests a frequent habit, not a fixed bill.',
+        noFrequentPurchase:'There are not enough market or frequent-purchase records yet to identify a reliable pattern.',
         help:'I can check this month’s total, find spending by category, or compare it with the same period last month. Try: “How much did I spend on snacks?”',
         suggestions:['How much did I spend this month?','Where did I spend the most?','Compare with last month']
       },
@@ -5176,6 +5180,8 @@ const AlicerceIA = {
         recurringInsight:'El pago a {item} parece repetirse: unos {amount} al mes, en {months} de los últimos 6 meses. Verifícalo antes de considerarlo una suscripción.',
         recurringAnswer:'Encontré un posible pago recurrente a {item}: unos {amount} al mes, observado en {months} de los últimos 6 meses.',
         noRecurring:'Aún no encontré pagos mensuales similares con historial suficiente para indicar recurrencia.',
+        frequentPurchaseAnswer:'En los últimos 84 días encontré {purchases} compras de {item}, distribuidas en {weeks} semanas. El total registrado fue {total}, con un promedio de {average} por semana con compras. Esto sugiere un hábito frecuente, no una factura fija.',
+        noFrequentPurchase:'Aún no hay registros suficientes de feria o compras frecuentes para identificar un patrón confiable.',
         help:'Puedo consultar el total del mes, encontrar gastos por categoría o comparar con el mismo período del mes pasado. Prueba: “¿Cuánto gasté en comida?”',
         suggestions:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Comparar con el mes pasado']
       }
@@ -6487,6 +6493,67 @@ AlicerceIA._detectRecurring=function(rows){
   return result.sort(function(a,b){return b.months-a.months||b.amount-a.amount;});
 };
 
+AlicerceIA._detectFrequentPurchases=function(rows){
+  var now=Clock.now();
+  var end=this._iso(now);
+  var start=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-83));
+  var groups={};
+  (rows||this._rows()).forEach(function(row){
+    if(!row||!row.data||row.data<start||row.data>end)return;
+    var category=this._norm(row.categoria);
+    var subcategory=this._norm(row.subcategoria);
+    var description=this._norm((row.descricao||'')+' '+(row.local||''));
+    var fairLike=/\b(feira|hortifruti|sacolao|frutas|verduras)\b/.test(subcategory+' '+description);
+    var knownFoodPurchase=category==='comida'&&['feira','mercado','padaria'].indexOf(subcategory)>=0;
+    if(!fairLike&&!knownFoodPurchase)return;
+    var bucket=fairLike?'feira':subcategory;
+    var merchant='';
+    if(!fairLike&&row.local){
+      try{
+        merchant=typeof normalizeAlicerMerchantIdentity==='function'
+          ?normalizeAlicerMerchantIdentity(row.local):'';
+      }catch(e){}
+      merchant=merchant||this._norm(row.local);
+    }
+    var key=fairLike?'comida|feira':('comida|'+bucket+(merchant?'|'+merchant:''));
+    if(!groups[key]){
+      groups[key]={
+        name:fairLike?'feira e hortifruti':(row.local||this._nice(bucket)),
+        category:row.categoria||'comida',
+        subcategory:row.subcategoria||bucket,
+        merchant:row.local||'',
+        rows:[],
+        weeks:{}
+      };
+    }
+    var parts=String(row.data).split('-').map(Number);
+    var weekDate=new Date(parts[0],parts[1]-1,parts[2]);
+    weekDate.setDate(weekDate.getDate()-((weekDate.getDay()+6)%7));
+    var weekKey=this._iso(weekDate);
+    groups[key].rows.push(row);
+    groups[key].weeks[weekKey]=(groups[key].weeks[weekKey]||0)+(Number(row.valor)||0);
+  },this);
+  var result=[];
+  Object.keys(groups).forEach(function(key){
+    var group=groups[key];
+    var weeks=Object.keys(group.weeks).sort();
+    if(weeks.length<3)return;
+    var total=this._sum(group.rows);
+    result.push({
+      item:group.name,
+      merchant:group.merchant,
+      category:group.category,
+      subcategory:group.subcategory,
+      purchases:group.rows.length,
+      weeks:weeks.length,
+      total:total,
+      average:total/weeks.length,
+      lastDate:group.rows.map(function(row){return row.data;}).sort().pop()
+    });
+  },this);
+  return result.sort(function(a,b){return b.weeks-a.weeks||b.total-a.total;});
+};
+
 AlicerceIA.insight=function(){
   this._resetUser();
   var current=this._periodRows(0);
@@ -6525,6 +6592,14 @@ AlicerceIA.insight=function(){
   }
   var recurring=this._detectRecurring(allRows);
   if(recurring.length)return this._label('recurringInsight',{item:recurring[0].merchant,amount:fmtMoney(recurring[0].amount),months:recurring[0].months});
+  var frequent=this._detectFrequentPurchases(allRows);
+  if(frequent.length)return this._label('frequentPurchaseAnswer',{
+    purchases:frequent[0].purchases,
+    item:frequent[0].item,
+    weeks:frequent[0].weeks,
+    total:fmtMoney(frequent[0].total),
+    average:fmtMoney(frequent[0].average)
+  });
   var top=this._groups(current,'subcategoria')[0];
   if(top&&top.total>0)return this._label('topInsight',{item:this._nice(top.key),amount:fmtMoney(top.total),total:fmtMoney(total)});
   return this._label('totalInsight',{amount:fmtMoney(total)});
@@ -6540,6 +6615,17 @@ AlicerceIA.responder=function(question){
   var rows=this._rows();
   var range=this._questionRange(question);
   var selected=this._rangeRows(range.start,range.end,rows);
+  if(/feira|hortifruti|sacolao|frutas|verduras|compras? frequentes?|fim de semana/.test(q)){
+    var frequent=this._detectFrequentPurchases(rows);
+    if(!frequent.length)return this._label('noFrequentPurchase');
+    return this._label('frequentPurchaseAnswer',{
+      purchases:frequent[0].purchases,
+      item:frequent[0].item,
+      weeks:frequent[0].weeks,
+      total:fmtMoney(frequent[0].total),
+      average:fmtMoney(frequent[0].average)
+    });
+  }
   if(/assinatura|recorrente|se repete|pagamento fixo/.test(q)){
     var recurringMatches=this._detectRecurring(rows);
     if(!recurringMatches.length)return this._label('noRecurring');
