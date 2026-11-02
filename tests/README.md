@@ -7,6 +7,7 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 - Inicialização sem sessão e transição da abertura para o login.
 - Retorno seguro para credenciais inválidas.
 - Cadastro com confirmação por e-mail, incluindo o código de indicação quando presente.
+- Consentimento opcional para eventos mínimos de uso, desligado por padrão, com validação de sessão, payload sem dados financeiros e solicitação de exclusão ao revogar.
 - Solicitação de recuperação de senha e endereço de retorno configurado pelo aplicativo.
 - Layout mobile em 320, 360 e 390 pixels e permissão de zoom do navegador.
 - Baseline axe na abertura e no login nos quatro temas (grafite, prata, marinho e moderno).
@@ -33,6 +34,10 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 - Testes de colisão para identificadores numéricos e calibração conservadora de confiança: loja isolada = média, produto ou correção individual = alta, descrição sem evidência = baixa.
 - Extração monetária que prioriza valores com moeda/rótulo e valores decimais finais, sem confundir NSU/IDs longos com o total da compra.
 - Baseline axe das telas Home, Gastos, Cartões e Configurações.
+
+## Fundação de eventos de uso
+
+O compartilhamento de eventos é opcional e vem desligado. Somente `app_opened`, `financial_record_created` e `first_movement_created` podem ser enviados. O navegador não envia valores, categorias, descrições, e-mail nem identificadores de usuário no payload. A Edge Function valida o JWT, consulta o consentimento salvo em `alicerce_data/settings` no servidor e deriva o `user_id` da sessão validada. Revogar o consentimento solicita a exclusão dos eventos anteriores daquela conta. A tabela analítica tem RLS ativo e não concede acesso direto a `anon` ou `authenticated`; somente a Edge Function usa `service_role`.
 
 ## Resultado automatizado atual
 
