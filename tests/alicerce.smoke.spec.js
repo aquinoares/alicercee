@@ -1640,11 +1640,11 @@ test('motor oferece base estruturada para comparacoes de combustivel, manutencao
   expect(result.vehicle.fuel.averageKmPerLiter).toBeCloseTo(12.5, 2);
   expect(result.vehicle.maintenance).toMatchObject({ purchases: 1, total: 280 });
   expect(result.items[0]).toMatchObject({ item: 'Arroz', unit: 'kg', quantity: 9, total: 50, purchases: 2 });
-  expect(result.items[0].averageUnitPrice).toBeCloseTo(5.6, 2);
+  expect(result.items[0].averageUnitPrice).toBeCloseTo(50 / 9, 2);
   expect(result.fuelAnswer).toContain('70,00 litros');
   expect(result.fuelAnswer).toContain('12,5 km/l');
   expect(result.maintenanceAnswer).toContain('R$ 280,00');
-  expect(result.itemAnswer).toContain('R$ 5,60');
+  expect(result.itemAnswer).toContain('R$ 5,56');
 });
 
 test('Alicerce IA identifica um gasto muito acima da mediana pessoal quando existe historico suficiente', async function ({ page }) {
