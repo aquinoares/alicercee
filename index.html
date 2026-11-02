@@ -12693,7 +12693,7 @@ function financialProfileCopy(){
 }
 function financialProfileSelect(id,label,value,options){
   var html='<div class="form-group"><label class="form-label" for="'+id+'">'+label+'</label>';
-  html+='<select id="'+id+'">';
+  html+='<select id="'+id+'" style="font-size:16px">';
   options.forEach(function(option){
     html+='<option value="'+esc(option.value)+'"'+(value===option.value?' selected':'')+'>'+esc(option.label)+'</option>';
   });
@@ -12791,7 +12791,7 @@ function renderFinancialProfileEdit(){
     {value:'non_contractual',label:copy.nonContractual}
   ]);
   html+='<div class="form-group"><label class="form-label" for="financial-profile-purpose">'+esc(copy.purpose)+'</label>';
-  html+='<input id="financial-profile-purpose" type="text" maxlength="180" autocomplete="off" placeholder="'+esc(copy.purposePlaceholder)+'" value="'+esc(row.purpose||'')+'">';
+  html+='<input id="financial-profile-purpose" type="text" maxlength="180" autocomplete="off" style="font-size:16px" placeholder="'+esc(copy.purposePlaceholder)+'" value="'+esc(row.purpose||'')+'">';
   html+='<p class="text-muted text-sm mt-2">'+esc(copy.purposeHint)+'</p></div>';
   html+='<p class="text-muted text-sm">'+esc(copy.automatic)+'</p>';
   html+='<button type="button" id="financial-profile-save" class="btn btn-primary btn-block" onclick="saveFinancialProfile()">'+esc(copy.save)+'</button>';
