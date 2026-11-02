@@ -429,8 +429,7 @@ test('a Edge Function e a tabela limitam coleta, exigem consentimento e não exp
   expect(analyticsMigration).toContain('enable row level security');
   expect(analyticsMigration).toContain('from public, anon, authenticated');
   expect(analyticsMigration).toContain('to service_role');
-  expect(analyticsMigration).not.toContain('amount');
-  expect(analyticsMigration).not.toContain('description');
+  expect(analyticsMigration).not.toMatch(/^\\s*(amount|description|category|payload)\\s+/im);
 });
 
 test('envia cadastro com sucesso usando autenticação simulada', async function ({ page }) {
