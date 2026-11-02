@@ -10,6 +10,7 @@
   window.__alicerceMockCloudRows = [];
   window.__alicerceMockUpsertError = null;
   window.__alicerceMockFunctionInvocations = [];
+  window.__alicerceMockFunctionThrow = false;
 
   window.supabase = {
     createClient: function () {
@@ -152,6 +153,7 @@
               name: String(functionName || ''),
               options: options ? JSON.parse(JSON.stringify(options)) : null
             });
+            if (window.__alicerceMockFunctionThrow) throw new Error('Simulated Edge Function failure');
             return { data: { ok: true }, error: null };
           }
         },
