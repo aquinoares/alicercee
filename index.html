@@ -6602,21 +6602,31 @@ AlicerceIA._analyzePurchaseItems=function(rows){
       var unit=String(item.unit||'').trim().toLowerCase();
       var key=this._norm(name)+'|'+unit;
       if(!key||key==='|')return;
-      if(!groups[key])groups[key]={item:String(item.name||name),unit:unit,quantity:0,total:0,purchases:0,unitPriceTotal:0,unitPriceCount:0};
+      if(!groups[key])groups[key]={
+        item:String(item.name||name),unit:unit,quantity:0,total:0,purchases:0,
+        pricedQuantity:0,pricedTotal:0,unitPriceTotal:0,unitPriceCount:0
+      };
       var group=groups[key];
       var quantity=Number(item.quantity)||0;
       var total=Number(item.total)||0;
       var unitPrice=Number(item.unitPrice)||0;
       if(quantity>0)group.quantity+=quantity;
       if(total>0)group.total+=total;
-      if(unitPrice>0){group.unitPriceTotal+=unitPrice;group.unitPriceCount++;}
-      else if(quantity>0&&total>0){group.unitPriceTotal+=total/quantity;group.unitPriceCount++;}
+      if(quantity>0&&(total>0||unitPrice>0)){
+        group.pricedQuantity+=quantity;
+        group.pricedTotal+=total>0?total:unitPrice*quantity;
+      }else if(unitPrice>0){
+        group.unitPriceTotal+=unitPrice;
+        group.unitPriceCount++;
+      }
       group.purchases++;
     },this);
   },this);
   return Object.keys(groups).map(function(key){
     var group=groups[key];
-    group.averageUnitPrice=group.unitPriceCount?group.unitPriceTotal/group.unitPriceCount:0;
+    group.averageUnitPrice=group.pricedQuantity>0
+      ?group.pricedTotal/group.pricedQuantity
+      :(group.unitPriceCount?group.unitPriceTotal/group.unitPriceCount:0);
     return group;
   }).sort(function(a,b){return b.total-a.total;});
 };
