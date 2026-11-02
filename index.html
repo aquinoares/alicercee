@@ -8672,6 +8672,8 @@ function renderScreen(){
       case 'emprestimos':return renderEmprestimos();
       case 'calendario':return renderCalendario();
       case 'visao':return renderVisao();
+      case 'financialProfileReview':return renderFinancialProfileReview();
+      case 'financialProfileEdit':return renderFinancialProfileEdit();
       case 'config':return renderConfig();
       case 'indicacoes':return renderIndicacoes();
       case 'conta':return renderConta();
@@ -12495,7 +12497,7 @@ AlicerceIA.renderDashboard=function(){
       context:'Uma parte relevante dos gastos ainda precisa de contexto. Alicia não vai transformar esses valores em recomendações de corte.',
       few:'Ainda há poucos lançamentos neste período para gerar um alerta de oportunidade confiável.',
       safe:'Os valores indeterminados ficam separados e não entram em sugestões de economia.',
-      details:'Entender minha realidade financeira'
+      details:'Entender minha realidade financeira',reviewItems:'Revisar gastos que precisam de contexto'
     },
     en:{
       title:'Your financial picture',essential:'Estimated essentials',discretionary:'Discretionary',undetermined:'Undetermined',share:'of expenses',
@@ -12504,7 +12506,7 @@ AlicerceIA.renderDashboard=function(){
       context:'A meaningful share of spending still needs context. Alicia will not turn these amounts into cut recommendations.',
       few:'There are too few records in this period for a reliable review signal.',
       safe:'Undetermined amounts stay separate and are excluded from savings suggestions.',
-      details:'Understand my financial picture'
+      details:'Understand my financial picture',reviewItems:'Review expenses that need context'
     },
     es:{
       title:'Tu realidad financiera',essential:'Esenciales estimados',discretionary:'Discrecionales',undetermined:'Sin determinar',share:'de los gastos',
@@ -12513,7 +12515,7 @@ AlicerceIA.renderDashboard=function(){
       context:'Una parte relevante de los gastos todavía necesita contexto. Alicia no convertirá esos importes en recomendaciones de recorte.',
       few:'Todavía hay pocos movimientos en este período para generar una señal fiable.',
       safe:'Los importes sin determinar permanecen separados y no entran en sugerencias de ahorro.',
-      details:'Entender mi realidad financiera'
+      details:'Entender mi realidad financiera',reviewItems:'Revisar gastos que necesitan contexto'
     }
   };
   var realityLabels=realityCopy[lang]||realityCopy.pt;
@@ -12579,6 +12581,9 @@ AlicerceIA.renderDashboard=function(){
       html+='<p class="visao-ai-muted">'+esc(realityLabels.safe)+'</p>';
     }
     html+='<button type="button" id="visao-ai-financial-reality-detail" '+actionAttr('Quanto custa manter minha vida?')+'>'+esc(realityLabels.details)+'</button>';
+    if(reality.counts.undetermined>0){
+      html+='<button type="button" class="btn btn-secondary btn-block" id="visao-ai-review-undetermined" onclick="go(\'financialProfileReview\')">'+esc(realityLabels.reviewItems)+' ('+reality.counts.undetermined+')</button>';
+    }
     html+='</section>';
     html+='<div class="visao-ai-actions">';
     html+='<button type="button" '+actionAttr('Compare com o mês passado')+'>'+esc(ui.compareAction)+'</button>';
@@ -12627,6 +12632,214 @@ function renderVisao(){
   return html;
 }
 
+function financialProfileCopy(){
+  var copies={
+    pt:{
+      back:'Voltar à Visão Financeira',title:'Gastos que precisam de contexto',
+      intro:'Alicia não vai adivinhar a finalidade de uma compra. Revise apenas o que você conhece; o que não souber pode continuar indeterminado.',
+      noItems:'Não há gastos indeterminados neste mês. Quando aparecer algum, ele poderá ser revisado aqui.',
+      itemHint:'Precisa de contexto',editTitle:'Ajudar Alicia a entender este gasto',
+      explanation:'Sua resposta fica vinculada a este lançamento. Ela não altera valor, data, categoria, subcategoria ou saldo.',
+      nature:'Natureza do gasto',essential:'Essencial — protege uma necessidade importante',
+      discretionary:'Discricionário — pode ser reduzido ou adiado sem risco concreto',
+      undetermined:'Ainda não sei',context:'Finalidade principal',commitment:'Existe contrato ou obrigação formal?',
+      contractual:'Sim, existe contrato ou obrigação formal',nonContractual:'Não existe contrato ou obrigação formal',
+      flexibility:'É possível adiar, reduzir ou substituir?',low:'Difícil',medium:'Em parte',high:'Sim, com facilidade',
+      purpose:'O que motivou esse gasto? (opcional)',purposePlaceholder:'Ex.: deslocamento para o trabalho ou consulta médica',
+      purposeHint:'Uma frase curta ajuda a manter o contexto junto ao lançamento.',
+      automatic:'A recorrência e a estabilidade dos valores continuam sendo avaliadas pelo histórico, separadamente.',
+      save:'Salvar confirmação',cancel:'Voltar sem salvar',saved:'Confirmação salva neste lançamento.',
+      missing:'Não foi possível localizar esse lançamento. Volte à Visão Financeira e tente novamente.',
+      item:'Lançamento'
+    },
+    en:{
+      back:'Back to Financial View',title:'Expenses that need context',
+      intro:'Alicia will not guess why a purchase was made. Confirm only what you know; unknown details can remain undetermined.',
+      noItems:'There are no undetermined expenses this month. New items that need context can be reviewed here.',
+      itemHint:'Needs context',editTitle:'Help Alicia understand this expense',
+      explanation:'Your answer is stored with this expense. It does not change the amount, date, category, subcategory, or balance.',
+      nature:'Expense nature',essential:'Essential — protects an important need',
+      discretionary:'Discretionary — can be reduced or delayed without concrete risk',
+      undetermined:'I am not sure',context:'Main purpose',commitment:'Is there a formal contract or obligation?',
+      contractual:'Yes, there is a contract or formal obligation',nonContractual:'No contract or formal obligation',
+      flexibility:'Can it be delayed, reduced, or replaced?',low:'Difficult',medium:'To some extent',high:'Yes, easily',
+      purpose:'What was the expense for? (optional)',purposePlaceholder:'E.g. travel to work or a medical appointment',
+      purposeHint:'A short note keeps the context with the expense.',
+      automatic:'Recurrence and amount stability are still assessed separately from transaction history.',
+      save:'Save confirmation',cancel:'Back without saving',saved:'Confirmation saved to this expense.',
+      missing:'This expense could not be found. Return to Financial View and try again.',
+      item:'Expense'
+    },
+    es:{
+      back:'Volver a la Visión Financiera',title:'Gastos que necesitan contexto',
+      intro:'Alicia no adivinará el motivo de una compra. Confirma solo lo que sabes; lo demás puede quedar sin determinar.',
+      noItems:'No hay gastos sin determinar este mes. Los nuevos movimientos que necesiten contexto podrán revisarse aquí.',
+      itemHint:'Necesita contexto',editTitle:'Ayudar a Alicia a entender este gasto',
+      explanation:'Tu respuesta queda vinculada a este movimiento. No cambia el importe, la fecha, la categoría, la subcategoría ni el saldo.',
+      nature:'Naturaleza del gasto',essential:'Esencial — protege una necesidad importante',
+      discretionary:'Discrecional — puede reducirse o aplazarse sin riesgo concreto',
+      undetermined:'Todavía no lo sé',context:'Finalidad principal',commitment:'¿Existe un contrato u obligación formal?',
+      contractual:'Sí, existe un contrato u obligación formal',nonContractual:'No existe contrato u obligación formal',
+      flexibility:'¿Se puede aplazar, reducir o sustituir?',low:'Difícil',medium:'En parte',high:'Sí, fácilmente',
+      purpose:'¿Cuál fue el motivo del gasto? (opcional)',purposePlaceholder:'Ej.: desplazamiento al trabajo o consulta médica',
+      purposeHint:'Una nota breve mantiene el contexto junto al movimiento.',
+      automatic:'La recurrencia y la estabilidad de los importes siguen evaluándose por separado, a partir del historial.',
+      save:'Guardar confirmación',cancel:'Volver sin guardar',saved:'Confirmación guardada en este movimiento.',
+      missing:'No se pudo encontrar este movimiento. Vuelve a la Visión Financiera e inténtalo de nuevo.',
+      item:'Movimiento'
+    }
+  };
+  return copies[Store.lang]||copies.pt;
+}
+function financialProfileSelect(id,label,value,options){
+  var html='<div class="form-group"><label class="form-label" for="'+id+'">'+label+'</label>';
+  html+='<select id="'+id+'">';
+  options.forEach(function(option){
+    html+='<option value="'+esc(option.value)+'"'+(value===option.value?' selected':'')+'>'+esc(option.label)+'</option>';
+  });
+  html+='</select></div>';
+  return html;
+}
+function financialProfileFindRow(data){
+  if(!data||!data.id||!data.source)return null;
+  var rows=Store.getAnalysisEntries();
+  for(var i=0;i<rows.length;i++){
+    if(String(rows[i].id)===String(data.id)&&rows[i].source===data.source)return rows[i];
+  }
+  return null;
+}
+function financialProfileFindRecord(row){
+  if(!row)return null;
+  var collection=row.source==='movement'?Store.movements:(row.source==='card'?Store.installments:null);
+  if(!collection)return null;
+  for(var i=0;i<collection.length;i++){
+    if(collection[i]&&String(collection[i].id)===String(row.id))return collection[i];
+  }
+  return null;
+}
+function renderFinancialProfileReview(){
+  var copy=financialProfileCopy();
+  var rows=AlicerceIA._periodRows(0);
+  var reality=AlicerceIA._financialReality(rows,AlicerceIA._rows());
+  var candidates=reality.assessments.filter(function(item){return item.dimensions&&item.dimensions.nature==='undetermined';});
+  var html='<div class="content">';
+  html+='<button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\\'visao\\')">'+icon('back','ico-sm')+' '+esc(copy.back)+'</button>';
+  html+='<h2 class="mt-4">'+esc(copy.title)+'</h2>';
+  html+='<p class="text-muted text-sm mt-2">'+esc(copy.intro)+'</p>';
+  if(!candidates.length){
+    html+='<div class="card mt-4"><p>'+esc(copy.noItems)+'</p></div>';
+  }else{
+    html+='<div class="section-title">'+candidates.length+' · '+esc(copy.item)+'</div>';
+    candidates.forEach(function(item,index){
+      var row=item.row;
+      var label=row.descricao||row.local||row.subcategoria||copy.item;
+      var detail=Interpreter.catDisplay(row.categoria)+' · '+Interpreter.subDisplay(row.subcategoria)+' · '+fmtDate(row.data);
+      var payload=JSON.stringify({id:row.id,source:row.source,purchaseId:row.purchaseId||''}).replace(/"/g,'&quot;');
+      html+='<button type="button" class="list-item" id="financial-profile-item-'+index+'" style="width:100%;text-align:left" onclick="go(\\'financialProfileEdit\\','+payload+')">';
+      html+='<span class="li-left"><span class="li-info"><span class="li-name">'+esc(label)+'</span><span class="li-sub">'+esc(detail)+'</span></span></span>';
+      html+='<span class="li-right"><span class="li-amount">'+fmtMoney(row.valor)+'</span><span class="li-sub">'+esc(copy.itemHint)+'</span></span>';
+      html+='</button>';
+    });
+  }
+  html+='</div>';
+  return html;
+}
+function renderFinancialProfileEdit(){
+  var copy=financialProfileCopy();
+  var data=Store.screenData||{};
+  var row=financialProfileFindRow(data);
+  var record=financialProfileFindRecord(row);
+  if(!row||!record){
+    return '<div class="content"><button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\\'financialProfileReview\\')">'+esc(copy.back)+'</button><div class="card mt-4">'+esc(copy.missing)+'</div></div>';
+  }
+  var profile=row.expenseProfile||(row.analysis&&row.analysis.expenseProfile)||{};
+  var confirmed=profile.source==='user_confirmed';
+  var value=function(field){return confirmed&&profile[field]?profile[field]:'undetermined';};
+  var html='<div class="content" style="padding-bottom:120px">';
+  html+='<button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\\'financialProfileReview\\')">'+icon('back','ico-sm')+' '+esc(copy.back)+'</button>';
+  html+='<h2 class="mt-4">'+esc(copy.editTitle)+'</h2>';
+  html+='<p class="text-muted text-sm mt-2">'+esc(copy.explanation)+'</p>';
+  html+='<div class="card mt-4"><div class="card-row"><span class="card-row-label">'+esc(copy.item)+'</span><strong>'+fmtMoney(row.valor)+'</strong></div>';
+  html+='<div class="card-row"><span class="card-row-label">'+esc(copy.itemHint)+'</span><strong>'+esc(row.descricao||row.local||row.subcategoria)+'</strong></div>';
+  html+='<div class="card-row"><span class="card-row-label">'+esc(copy.context)+'</span><strong>'+esc(Interpreter.catDisplay(row.categoria)+' · '+Interpreter.subDisplay(row.subcategoria))+'</strong></div>';
+  html+='<div class="card-row"><span class="card-row-label">'+esc(t('data'))+'</span><strong>'+esc(fmtDate(row.data))+'</strong></div></div>';
+  html+=financialProfileSelect('financial-profile-nature',copy.nature,value('nature'),[
+    {value:'undetermined',label:copy.undetermined},
+    {value:'essential',label:copy.essential},
+    {value:'discretionary',label:copy.discretionary}
+  ]);
+  html+=financialProfileSelect('financial-profile-context',copy.context,value('context'),[
+    {value:'undetermined',label:copy.undetermined},
+    {value:'work',label:Store.lang==='en'?'Work':(Store.lang==='es'?'Trabajo':'Trabalho')},
+    {value:'health',label:Store.lang==='en'?'Health':(Store.lang==='es'?'Salud':'Saúde')},
+    {value:'family',label:Store.lang==='en'?'Family':(Store.lang==='es'?'Familia':'Família')},
+    {value:'housing',label:Store.lang==='en'?'Housing':(Store.lang==='es'?'Vivienda':'Moradia')},
+    {value:'leisure',label:Store.lang==='en'?'Leisure':(Store.lang==='es'?'Ocio':'Lazer')},
+    {value:'convenience',label:Store.lang==='en'?'Convenience':(Store.lang==='es'?'Comodidad':'Conveniência')},
+    {value:'education',label:Store.lang==='en'?'Education':(Store.lang==='es'?'Educación':'Educação')},
+    {value:'other',label:Store.lang==='en'?'Other':(Store.lang==='es'?'Otro':'Outro')}
+  ]);
+  html+=financialProfileSelect('financial-profile-flexibility',copy.flexibility,value('flexibility'),[
+    {value:'undetermined',label:copy.undetermined},
+    {value:'low',label:copy.low},
+    {value:'medium',label:copy.medium},
+    {value:'high',label:copy.high}
+  ]);
+  html+=financialProfileSelect('financial-profile-commitment',copy.commitment,value('commitment'),[
+    {value:'undetermined',label:copy.undetermined},
+    {value:'contractual',label:copy.contractual},
+    {value:'non_contractual',label:copy.nonContractual}
+  ]);
+  html+='<div class="form-group"><label class="form-label" for="financial-profile-purpose">'+esc(copy.purpose)+'</label>';
+  html+='<input id="financial-profile-purpose" type="text" maxlength="180" autocomplete="off" placeholder="'+esc(copy.purposePlaceholder)+'" value="'+esc(row.purpose||'')+'">';
+  html+='<p class="text-muted text-sm mt-2">'+esc(copy.purposeHint)+'</p></div>';
+  html+='<p class="text-muted text-sm">'+esc(copy.automatic)+'</p>';
+  html+='<button type="button" id="financial-profile-save" class="btn btn-primary btn-block" onclick="saveFinancialProfile()">'+esc(copy.save)+'</button>';
+  html+='<button type="button" class="btn btn-secondary btn-block" onclick="go(\\'financialProfileReview\\')">'+esc(copy.cancel)+'</button>';
+  html+='</div>';
+  return html;
+}
+function saveFinancialProfile(){
+  var data=Store.screenData||{};
+  var row=financialProfileFindRow(data);
+  if(!row){showToast(financialProfileCopy().missing);return;}
+  var first=financialProfileFindRecord(row);
+  if(!first){showToast(financialProfileCopy().missing);return;}
+  var nature=document.getElementById('financial-profile-nature');
+  var context=document.getElementById('financial-profile-context');
+  var flexibility=document.getElementById('financial-profile-flexibility');
+  var commitment=document.getElementById('financial-profile-commitment');
+  var purposeInput=document.getElementById('financial-profile-purpose');
+  if(!nature||!context||!flexibility||!commitment)return;
+  var profile={version:1,source:'user_confirmed',nature:nature.value||'undetermined'};
+  var confidence={nature:profile.nature==='undetermined'?'low':'high'};
+  if(context.value&&context.value!=='undetermined'){profile.context=context.value;confidence.context='high';}
+  if(flexibility.value&&flexibility.value!=='undetermined'){profile.flexibility=flexibility.value;confidence.flexibility='high';}
+  if(commitment.value&&commitment.value!=='undetermined'){profile.commitment=commitment.value;confidence.commitment='high';}
+  profile.confidence=confidence;
+  var purpose=purposeInput?String(purposeInput.value||'').trim().slice(0,180):'';
+  var targets=[];
+  if(row.source==='movement'){
+    targets=Store.movements.filter(function(item){return item&&String(item.id)===String(row.id);});
+  }else if(row.source==='card'){
+    if(row.purchaseId){
+      targets=Store.installments.filter(function(item){
+        return item&&item.tipo==='cartao'&&String(item.compraId)===String(row.purchaseId)&&!item.loanId&&!item.fromCard;
+      });
+    }
+    if(!targets.length)targets=Store.installments.filter(function(item){return item&&String(item.id)===String(row.id);});
+  }
+  if(!targets.length){showToast(financialProfileCopy().missing);return;}
+  targets.forEach(function(item){
+    var current=Object.assign({},item.analysis||{});
+    current.expenseProfile=profile;
+    item.analysis=normalizeAlicerMovementAnalysis(current);
+    if(purpose)item.purpose=purpose;
+  });
+  Store.save();
+  showToast(financialProfileCopy().saved);
+  go('financialProfileReview');
+}
 function renderConfig(){
   let html='<div class="content"><h2 class="mt-4">'+t('config')+'</h2><div class="section-divider"></div>';
   html+='<div class="form-group"><label class="form-label" for="alicerce-config-theme">'+t('aparência')+'</label><select id="alicerce-config-theme" onchange="changeTheme(this.value)"><option value="azul"'+(Store.theme==='azul'?' selected':'')+'>'+t('temaAzul')+'</option><option value="claro"'+(Store.theme==='claro'?' selected':'')+'>'+t('temaClaro')+'</option><option value="marinho"'+(Store.theme==='marinho'?' selected':'')+'>'+t('temaMarinho')+'</option><option value="moderno"'+(Store.theme==='moderno'?' selected':'')+'>Moderno</option></select></div>';
