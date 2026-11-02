@@ -5522,17 +5522,17 @@ AlicerceIA._expenseClarificationMessage=function(field,item){
     pt:{
       item:'O que você comprou ou qual serviço pagou?',
       amount:'Qual foi o valor? Pode informar em reais, por exemplo: vinte e cinco reais e cinquenta centavos.',
-      purpose:'Para eu classificar '+itemLabel+' corretamente, me conta: qual era a finalidade dessa compra? Por exemplo: era para uma obra ou reforma, estudo ou escola, trabalho ou outra necessidade?'
+      purpose:'Para classificar '+itemLabel+' sem adivinhar, me conta: qual era a finalidade dessa compra? Por exemplo: era para uma obra ou reforma, estudo ou escola, trabalho, saúde, família ou outra necessidade?'
     },
     en:{
       item:'What did you buy or which service did you pay for?',
       amount:'How much was it? You can say an amount, for example: twenty-five reais and fifty centavos.',
-      purpose:'To classify '+itemLabel+' correctly, what was this purchase for? For example: a renovation, school or study, work or another need?'
+      purpose:'To classify '+itemLabel+' without guessing, what was this purchase for? For example: a renovation, school or study, work, health, family, or another need?'
     },
     es:{
       item:'¿Qué compraste o qué servicio pagaste?',
       amount:'¿Cuál fue el importe? Puedes indicar el valor en reales.',
-      purpose:'Para clasificar '+itemLabel+' correctamente, ¿para qué fue esta compra? Por ejemplo: una obra o reforma, estudios o escuela, trabajo u otra necesidad?'
+      purpose:'Para clasificar '+itemLabel+' sin adivinar, ¿para qué fue esta compra? Por ejemplo: una obra o reforma, estudios o escuela, trabajo, salud, familia u otra necesidad?'
     }
   };
   var labels=copy[lang]||copy.pt;
@@ -7287,7 +7287,34 @@ const Interpreter={
       {p:/\b(cafe|cafezinho|refrigerante|agua mineral|suco|bebida|cerveja)\b/i,c:'comida',s:'bebidas'},
       {p:/\b(almoco|jantar|refeicao|rodizio)\b/i,c:'comida',s:'restaurante'},
       {p:/\b(pao frances|pao integral|paes|padaria|sonho de padaria)\b/i,c:'comida',s:'padaria'},
-      {p:/\b(arroz|feijao|macarrao|carne|frango|ovos|leite|acucar|oleo de cozinha|farinha|fuba)\b/i,c:'comida',s:'mercado'}
+      {p:/\b(arroz|feijao|macarrao|carne|frango|ovos|leite|acucar|oleo de cozinha|farinha|fuba)\b/i,c:'comida',s:'mercado'},
+      {p:/\b(frutas?|verduras?|legumes?|hortifruti|sacolao|banana|maca|tomate|alface|cebola|batata|cenoura|laranja)\b/i,c:'comida',s:'feira'},
+      {p:/\b(queijo|iogurte|manteiga|requeijao|presunto|mortadela)\b/i,c:'comida',s:'mercado'},
+      {p:/\b(papel higienico|esponja|vassoura|rodo|pano de chao|saco de lixo)\b/i,c:'casa_dia_a_dia',s:'produtos_limpeza'},
+      {p:/\b(lampada|torneira|chuveiro|tomada|fios? eletricos?|disjuntor)\b/i,c:'moradia',s:'manutencao'},
+      {p:/\b(encanador)\b/i,c:'servicos',s:'encanador'},
+      {p:/\b(diarista|faxina|faxineira|limpeza residencial)\b/i,c:'servicos',s:'faxina'},
+      {p:/\b(condominio|taxa condominial)\b/i,c:'moradia',s:'condominio'},
+      {p:/\b(iptu)\b/i,c:'moradia',s:'iptu'},
+      {p:/\b(conta de telefone|telefone|plano de celular|recarga de celular)\b/i,c:'moradia',s:'telefone'},
+      {p:/\b(onibus|passagem de onibus|tarifa de onibus)\b/i,c:'transporte',s:'onibus'},
+      {p:/\b(metro|passagem de metro)\b/i,c:'transporte',s:'metro'},
+      {p:/\b(taxi|corrida de taxi)\b/i,c:'transporte',s:'taxi'},
+      {p:/\b(pedagio)\b/i,c:'transporte',s:'pedagio'},
+      {p:/\b(troca de oleo|oleo de motor|revisao do carro|mecanico)\b/i,c:'transporte',s:'manutencao'},
+      {p:/\b(ipva)\b/i,c:'transporte',s:'ipva'},
+      {p:/\b(seguro do carro|seguro veicular|seguro do veiculo|seguro auto)\b/i,c:'transporte',s:'seguro'},
+      {p:/\b(consulta medica|consulta medico|consulta clinica)\b/i,c:'saude',s:'consultas'},
+      {p:/\b(dentista|consulta odontologica|tratamento dentario)\b/i,c:'saude',s:'dentista'},
+      {p:/\b(exame de sangue|exames laboratoriais|exame laboratorial)\b/i,c:'saude',s:'exames'},
+      {p:/\b(oculos de grau|lentes de grau|armacao de oculos)\b/i,c:'saude',s:'oculos'},
+      {p:/\b(plano de saude|mensalidade do plano de saude)\b/i,c:'saude',s:'plano_saude'},
+      {p:/\b(mensalidade escolar|mensalidade da escola)\b/i,c:'educacao',s:'mensalidade'},
+      {p:/\b(uniforme escolar)\b/i,c:'educacao',s:'uniforme'},
+      {p:/\b(curso de ingles|curso de espanhol|curso de informatica|curso online)\b/i,c:'educacao',s:'curso'},
+      {p:/\b(pensao alimenticia)\b/i,c:'familia',s:'pensao'},
+      {p:/\b(veterinario|clinica veterinaria)\b/i,c:'animais',s:'veterinario'},
+      {p:/\b(banho e tosa|tosa)\b/i,c:'animais',s:'banho_tosa'}
     ];
     for(const rule of rules){
       if(rule.p.test(n)&&alicerClassificationPairIsValid(rule.c,rule.s))return{c:rule.c,s:rule.s};
