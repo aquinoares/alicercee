@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const supabaseMock = readFileSync(new URL('./fixtures/supabase-mock.js', import.meta.url), 'utf8');
 const classificationBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-benchmark-ptbr.json', import.meta.url), 'utf8'));
+const classificationContextBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-context-40-ptbr.json', import.meta.url), 'utf8'));
 const bankDescriptionBenchmark = JSON.parse(readFileSync(new URL('./fixtures/bank-description-benchmark-ptbr.json', import.meta.url), 'utf8'));
 const supabaseCdn = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js';
 const supabaseProject = 'https://hwmpwvbvgiqotdzkmgwh.supabase.co';
@@ -2395,3 +2396,29 @@ test('Alicia exibe avisos de privacidade somente quando a pessoa aciona ditado, 
   await expect(notice).toBeHidden();
 });
 
+test('classifica 40 exemplos complementares de gastos cotidianos brasileiros', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function (cases) {
+    Store.learning = {};
+    return cases.map(function (example) {
+      const actual = Interpreter.interpretLocal(example.text);
+      return {
+        id: example.id,
+        expected: example.categoria + '/' + example.subcategoria,
+        actual: actual && actual.categoria && actual.subcategoria ? actual.categoria + '/' + actual.subcategoria : 'sem_classificacao',
+        confidence: actual && actual.confidence,
+        source: actual && actual.source
+      };
+    });
+  }, classificationContextBenchmark);
+  const mismatches = resultado.filter(function (actual) {
+    return actual.actual !== actual.expected || actual.confidence !== 'high' || actual.source !== 'item';
+  });
+  console.log('[benchmark-context-40] ' + JSON.stringify({
+    total: resultado.length,
+    correct: resultado.length - mismatches.length,
+    mismatches: mismatches
+  }));
+  expect(resultado).toHaveLength(40);
+  expect(mismatches).toEqual([]);
+});
