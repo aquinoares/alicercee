@@ -7,6 +7,7 @@ on:
       - feat/classificacao-inteligente-20261031
       - feat/alicia-edge-tts-autonomia-20261101
       - feat/alicia-contexto-financeiro-40-exemplos-20261101
+      - feat/alicia-realidade-financeira-dimensoes-v1
   pull_request:
     branches: [main]
   workflow_dispatch:
