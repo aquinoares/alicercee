@@ -37,7 +37,7 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 
 ## Fundação de eventos de uso
 
-O compartilhamento de eventos é opcional e vem desligado. Somente `app_opened`, `financial_record_created` e `first_movement_created` podem ser enviados. O navegador não envia valores, categorias, descrições, e-mail nem identificadores de usuário no payload. A Edge Function valida o JWT, consulta o consentimento salvo em `alicerce_data/settings` no servidor e deriva o `user_id` da sessão validada. Revogar o consentimento solicita a exclusão dos eventos anteriores daquela conta. A tabela analítica tem RLS ativo e não concede acesso direto a `anon` ou `authenticated`; somente a Edge Function usa `service_role`.
+O compartilhamento de eventos é opcional e vem desligado. Somente `app_opened`, `movement_created` e `first_movement_created` podem ser enviados. O navegador não envia valores, categorias, descrições, e-mail nem identificadores de usuário no payload. A Edge Function valida o JWT, consulta o consentimento salvo em `alicerce_data/settings` no servidor e deriva o `user_id` da sessão validada. Revogar o consentimento solicita a exclusão dos eventos anteriores daquela conta. A tabela analítica tem RLS ativo e não concede acesso direto a `anon` ou `authenticated`; somente a Edge Function usa `service_role`.
 
 ## Resultado automatizado atual
 
