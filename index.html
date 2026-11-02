@@ -12723,7 +12723,7 @@ function renderFinancialProfileReview(){
   var reality=AlicerceIA._financialReality(rows,AlicerceIA._rows());
   var candidates=reality.assessments.filter(function(item){return item.dimensions&&item.dimensions.nature==='undetermined';});
   var html='<div class="content">';
-  html+='<button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\\'visao\\')">'+icon('back','ico-sm')+' '+esc(copy.back)+'</button>';
+  html+='<button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\'visao\')">'+icon('back','ico-sm')+' '+esc(copy.back)+'</button>';
   html+='<h2 class="mt-4">'+esc(copy.title)+'</h2>';
   html+='<p class="text-muted text-sm mt-2">'+esc(copy.intro)+'</p>';
   if(!candidates.length){
@@ -12735,7 +12735,7 @@ function renderFinancialProfileReview(){
       var label=row.descricao||row.local||row.subcategoria||copy.item;
       var detail=Interpreter.catDisplay(row.categoria)+' · '+Interpreter.subDisplay(row.subcategoria)+' · '+fmtDate(row.data);
       var payload=JSON.stringify({id:row.id,source:row.source,purchaseId:row.purchaseId||''}).replace(/"/g,'&quot;');
-      html+='<button type="button" class="list-item" id="financial-profile-item-'+index+'" style="width:100%;text-align:left" onclick="go(\\'financialProfileEdit\\','+payload+')">';
+      html+='<button type="button" class="list-item" id="financial-profile-item-'+index+'" style="width:100%;text-align:left" onclick="go(\'financialProfileEdit\','+payload+')">';
       html+='<span class="li-left"><span class="li-info"><span class="li-name">'+esc(label)+'</span><span class="li-sub">'+esc(detail)+'</span></span></span>';
       html+='<span class="li-right"><span class="li-amount">'+fmtMoney(row.valor)+'</span><span class="li-sub">'+esc(copy.itemHint)+'</span></span>';
       html+='</button>';
@@ -12750,13 +12750,13 @@ function renderFinancialProfileEdit(){
   var row=financialProfileFindRow(data);
   var record=financialProfileFindRecord(row);
   if(!row||!record){
-    return '<div class="content"><button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\\'financialProfileReview\\')">'+esc(copy.back)+'</button><div class="card mt-4">'+esc(copy.missing)+'</div></div>';
+    return '<div class="content"><button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\'financialProfileReview\')">'+esc(copy.back)+'</button><div class="card mt-4">'+esc(copy.missing)+'</div></div>';
   }
   var profile=row.expenseProfile||(row.analysis&&row.analysis.expenseProfile)||{};
   var confirmed=profile.source==='user_confirmed';
   var value=function(field){return confirmed&&profile[field]?profile[field]:'undetermined';};
   var html='<div class="content" style="padding-bottom:120px">';
-  html+='<button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\\'financialProfileReview\\')">'+icon('back','ico-sm')+' '+esc(copy.back)+'</button>';
+  html+='<button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\'financialProfileReview\')">'+icon('back','ico-sm')+' '+esc(copy.back)+'</button>';
   html+='<h2 class="mt-4">'+esc(copy.editTitle)+'</h2>';
   html+='<p class="text-muted text-sm mt-2">'+esc(copy.explanation)+'</p>';
   html+='<div class="card mt-4"><div class="card-row"><span class="card-row-label">'+esc(copy.item)+'</span><strong>'+fmtMoney(row.valor)+'</strong></div>';
@@ -12795,7 +12795,7 @@ function renderFinancialProfileEdit(){
   html+='<p class="text-muted text-sm mt-2">'+esc(copy.purposeHint)+'</p></div>';
   html+='<p class="text-muted text-sm">'+esc(copy.automatic)+'</p>';
   html+='<button type="button" id="financial-profile-save" class="btn btn-primary btn-block" onclick="saveFinancialProfile()">'+esc(copy.save)+'</button>';
-  html+='<button type="button" class="btn btn-secondary btn-block" onclick="go(\\'financialProfileReview\\')">'+esc(copy.cancel)+'</button>';
+  html+='<button type="button" class="btn btn-secondary btn-block" onclick="go(\'financialProfileReview\')">'+esc(copy.cancel)+'</button>';
   html+='</div>';
   return html;
 }
