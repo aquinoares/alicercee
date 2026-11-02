@@ -3312,6 +3312,63 @@ const _salvouAgora={};function travarSalvar(chave,dados,botaoId){
 function chaveItem(x){return [x&&x.tipo||'',x&&x.descricao||'',x&&x.data||'',Number(x&&x.valor)||0,x&&x.cardId||'',x&&x.loanId||''].join('|')}function dedupLista(lista){const ids={},chaves=[],out=[];(lista||[]).forEach(function(x){if(!x)return;if(x.id){if(ids[x.id])return;ids[x.id]=1}const k=chaveItem(x);if(chaves.indexOf(k)>=0)return;chaves.push(k);out.push(x)});return out}
 
 /* =============================================================
+   METADADOS OPCIONAIS PARA ANALISE FINANCEIRA
+   Mantem compatibilidade com registros antigos em JSON.
+   ============================================================= */
+function normalizeAlicerMovementAnalysis(value){
+  if(!value||typeof value!=='object'||Array.isArray(value))return null;
+  var out={version:1};
+  var origins=['manual','assistant','receipt_ocr','statement_import','bank_import','system'];
+  var roles=['consumption','transfer','investment_contribution','investment_income','refund','adjustment'];
+  var origin=String(value.origin||'').trim().toLowerCase();
+  var role=String(value.financialRole||'').trim().toLowerCase();
+  if(origins.indexOf(origin)>=0)out.origin=origin;
+  if(roles.indexOf(role)>=0)out.financialRole=role;
+  var purchaseId=String(value.purchaseId||'').trim();
+  if(purchaseId)out.purchaseId=purchaseId.slice(0,120);
+  if(Array.isArray(value.items)){
+    out.items=value.items.slice(0,200).map(function(item){
+      if(!item||typeof item!=='object')return null;
+      var name=String(item.name||item.description||'').trim().slice(0,180);
+      if(!name)return null;
+      var clean={name:name};
+      var normalized=String(item.normalizedName||'').trim().slice(0,180);
+      if(normalized)clean.normalizedName=normalized;
+      var unit=String(item.unit||'').trim().slice(0,24);
+      if(unit)clean.unit=unit;
+      ['quantity','unitPrice','total'].forEach(function(field){
+        if(item[field]!==''&&item[field]!==null&&typeof item[field]!=='undefined'){
+          var number=Number(item[field]);
+          if(isFinite(number)&&number>=0)clean[field]=number;
+        }
+      });
+      var code=String(item.code||'').trim().slice(0,64);
+      if(code)clean.code=code;
+      return clean;
+    }).filter(function(item){return !!item});
+  }
+  if(value.metrics&&typeof value.metrics==='object'&&!Array.isArray(value.metrics)){
+    var metrics={};
+    ['fuelLiters','unitPrice','odometerKm'].forEach(function(field){
+      if(value.metrics[field]!==''&&value.metrics[field]!==null&&typeof value.metrics[field]!=='undefined'){
+        var number=Number(value.metrics[field]);
+        if(isFinite(number)&&number>=0)metrics[field]=number;
+      }
+    });
+    ['vehicleId','fuelType','maintenanceType','maintenanceDescription'].forEach(function(field){
+      var text=String(value.metrics[field]||'').trim();
+      if(text)metrics[field]=text.slice(0,120);
+    });
+    if(Object.keys(metrics).length)out.metrics=metrics;
+  }
+  return out;
+}
+function alicerceIsConsumptionRecord(record){
+  var role=record&&record.analysis&&record.analysis.financialRole;
+  return role!=='investment_contribution'&&role!=='investment_income'&&role!=='transfer'&&role!=='refund'&&role!=='adjustment';
+}
+
+/* =============================================================
    SECTION 8: STORE (Motor central)
    ============================================================= */
 const Store={
@@ -3434,13 +3491,17 @@ const Store={
   },
 
   addMovement(mv){
+    if(!mv||typeof mv!=='object'||Array.isArray(mv))return null;
+    var analysis=normalizeAlicerMovementAnalysis(mv.analysis);
+    if(analysis)mv.analysis=analysis;
+    else if(mv.analysis)delete mv.analysis;
     mv.id=mv.id||this._uid();mv.userId=this.userId;mv.createdAt=mv.createdAt||new Date().toISOString();
     this.movements.push(mv);this.save();return mv;
   },
   removeMovement(id){this.movements=this.movements.filter(m=>String(m.id)!==String(id));this.save()},
   addCard(c){c.id=c.id||this._uid();c.userId=this.userId;this.cards.push(c);this.save();return c},
   addLoan(l){l.id=l.id||this._uid();l.userId=this.userId;this.loans.push(l);this.save();return l},
-  addInstallment(i){if(!i||!travarSalvar('inst',i))return null;i.id=i.id||this._uid();this.installments.push(i);this.save();return i},
+  addInstallment(i){if(!i||!travarSalvar('inst',i))return null;var analysis=normalizeAlicerMovementAnalysis(i.analysis);if(analysis)i.analysis=analysis;else if(i.analysis)delete i.analysis;i.id=i.id||this._uid();this.installments.push(i);this.save();return i},
   addCommitment(c){if(!c||!travarSalvar('comp',c))return null;c.id=c.id||this._uid();c.userId=this.userId;this.commitments.push(c);this.save();return c},
   addDoctor(d){d.id=d.id||this._uid();d.userId=this.userId;this.doctors.push(d);this.save();return d},
   addMedication(m){m.id=m.id||this._uid();m.userId=this.userId;this.medications.push(m);this.save();return m},
@@ -4539,6 +4600,53 @@ const detalhes={
       tipo:'cartao'
     })).filter(i=>i.valor>0);
   },
+  /*
+   * PROJECAO CANONICA PARA ANALISES
+   * Le registros existentes sem alterar o caixa, categorias ou saldos.
+   * Movimentos antigos sem metadados continuam validos.
+   */
+  getAnalysisEntries(){
+    var rows=[];
+    var borrowedLoans={};
+    (this.loans||[]).forEach(function(loan){
+      if(loan&&loan.fromCard===true&&loan.tipo==='emprestei')borrowedLoans[String(loan.id)]=true;
+    });
+    var append=function(record,source){
+      var analysis=normalizeAlicerMovementAnalysis(record&&record.analysis);
+      var value=Number(record&&record.valor)||0;
+      var date=String(record&&record.data||'');
+      if(value<=0||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))return;
+      if(!alicerceIsConsumptionRecord({analysis:analysis}))return;
+      rows.push({
+        id:String(record.id||''),
+        purchaseId:String((analysis&&analysis.purchaseId)||record.purchaseId||record.compraId||''),
+        data:date,
+        valor:value,
+        categoria:record.categoria||'outros',
+        subcategoria:record.subcategoria||'outros',
+        descricao:record.descricao||record.item||(source==='card'?'Compra no cartao':''),
+        local:record.estabelecimento||record.local||'',
+        purpose:String(record.purpose||''),
+        origin:(analysis&&analysis.origin)||record.origin||record.source||'legacy',
+        financialRole:(analysis&&analysis.financialRole)||'consumption',
+        items:analysis&&Array.isArray(analysis.items)?analysis.items:[],
+        metrics:analysis&&analysis.metrics?analysis.metrics:{},
+        analysis:analysis||null,
+        source:source
+      });
+    };
+    (this.movements||[]).forEach(function(m){
+      if(!m||m.tipo!=='despesa')return;
+      if(m.status&&m.status!=='pago'&&m.status!=='recebido')return;
+      if(m.loanId&&borrowedLoans[String(m.loanId)])return;
+      append(m,'movement');
+    });
+    (this.installments||[]).forEach(function(i){
+      if(!i||i.tipo!=='cartao'||!i.compraId||i.loanId||i.fromCard)return;
+      append(i,'card');
+    });
+    return rows;
+  },
   getSpendingAnalysis(month,year){
     const cats={};
     const monthStr=year+'-'+String(month).padStart(2,'0');
@@ -4574,6 +4682,7 @@ const detalhes={
         }
       }
 
+      if(!alicerceIsConsumptionRecord(m))return;
       const categoria=m.categoria||'outros';
       const subcategoria=m.subcategoria||'outros';
       const valor=money(m.valor);
@@ -6218,42 +6327,7 @@ function renderAssistente(){
    Sem rede, sem APIs pagas, sem alterar o motor financeiro.
    ============================================================= */
 AlicerceIA._rows=function(){
-  var rows=[];
-  var validDate=function(value){return /^\d{4}-\d{2}-\d{2}$/.test(String(value||''));};
-  var borrowedLoans={};
-  (Store.loans||[]).forEach(function(loan){
-    if(loan&&loan.fromCard===true&&loan.tipo==='emprestei')borrowedLoans[String(loan.id)]=true;
-  });
-  (Store.movements||[]).forEach(function(m){
-    if(!m||m.tipo!=='despesa'||(m.status!=='pago'&&m.status!=='recebido')||!validDate(m.data))return;
-    if(m.loanId&&borrowedLoans[String(m.loanId)])return;
-    var value=Number(m.valor)||0;
-    if(value<=0)return;
-    rows.push({
-      data:String(m.data),valor:value,
-      categoria:m.categoria||'outros',
-      subcategoria:m.subcategoria||'outros',
-      descricao:m.descricao||m.item||'',
-      local:m.estabelecimento||m.local||'',
-      purpose:m.purpose||'',
-      source:'movement'
-    });
-  });
-  (Store.installments||[]).forEach(function(i){
-    if(!i||i.tipo!=='cartao'||!i.compraId||i.loanId||i.fromCard||!validDate(i.data))return;
-    var value=Number(i.valor)||0;
-    if(value<=0)return;
-    rows.push({
-      data:String(i.data),valor:value,
-      categoria:i.categoria||'outros',
-      subcategoria:i.subcategoria||'outros',
-      descricao:i.descricao||'Compra no cartao',
-      local:i.local||'',
-      purpose:i.purpose||'',
-      source:'card'
-    });
-  });
-  return rows;
+  return typeof Store.getAnalysisEntries==='function'?Store.getAnalysisEntries():[];
 };
 AlicerceIA._iso=function(date){
   return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
