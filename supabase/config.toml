@@ -429,3 +429,8 @@ entrypoint = "./functions/alicerce-admin/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/alicia-tts/index.ts"
+
+[functions.alicerce-analytics-events]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/alicerce-analytics-events/index.ts"
