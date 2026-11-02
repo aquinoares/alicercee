@@ -3529,7 +3529,7 @@ const Store={
     else if(mv.analysis)delete mv.analysis;
     mv.id=mv.id||this._uid();mv.userId=this.userId;mv.createdAt=mv.createdAt||new Date().toISOString();
     this.movements.push(mv);this.save();
-    alicerceTrackEvent('financial_record_created');
+    alicerceTrackEvent('movement_created');
     if(firstMovement)alicerceTrackEvent('first_movement_created');
     return mv;
   },
@@ -13248,7 +13248,7 @@ function changeLang(lang){Store.lang=lang;Store.settings.lang=lang;Store.save();
 function toggleHideHealth(val){Store.settings.hideHealthDetails=val;Store.save()}
 
 function alicerceAnalyticsAllowedEvent(eventName){
-  return ['app_opened','financial_record_created','first_movement_created'].indexOf(String(eventName||''))>=0;
+  return ['app_opened','movement_created','first_movement_created'].indexOf(String(eventName||''))>=0;
 }
 
 async function alicerceTrackEvent(eventName){
