@@ -7259,6 +7259,8 @@ const Interpreter={
     const context=this.norm(text||'');
     const n=product||context;
     const combined=(product+' '+context).trim();
+    /* 99 Taxi é o estabelecimento/serviço; não deve virar categoria genérica de táxi. */
+    if(/\b99\s*(?:app|pop|taxi)\b/.test(context))return null;
     if(!n)return null;
     const rules=[
       {p:/\b(tenis|sapato|sandalia|chinelo|bota|calcado|calcados)\b/i,c:'vestuario',s:'calcados'},
@@ -7288,7 +7290,7 @@ const Interpreter={
       {p:/\b(almoco|jantar|refeicao|rodizio)\b/i,c:'comida',s:'restaurante'},
       {p:/\b(pao frances|pao integral|paes|padaria|sonho de padaria)\b/i,c:'comida',s:'padaria'},
       {p:/\b(arroz|feijao|macarrao|carne|frango|ovos|leite|acucar|oleo de cozinha|farinha|fuba)\b/i,c:'comida',s:'mercado'},
-      {p:/\b(frutas?|verduras?|legumes?|hortifruti|sacolao|banana|maca|tomate|alface|cebola|batata|cenoura|laranja)\b/i,c:'comida',s:'feira'},
+      {p:/\b(frutas?|verduras?|legumes?|banana|maca|tomate|alface|cebola|batata|cenoura|laranja)\b/i,c:'comida',s:'feira'},
       {p:/\b(queijo|iogurte|manteiga|requeijao|presunto|mortadela)\b/i,c:'comida',s:'mercado'},
       {p:/\b(papel higienico|esponja|vassoura|rodo|pano de chao|saco de lixo)\b/i,c:'casa_dia_a_dia',s:'produtos_limpeza'},
       {p:/\b(lampada|torneira|chuveiro|tomada|fios? eletricos?|disjuntor)\b/i,c:'moradia',s:'manutencao'},
