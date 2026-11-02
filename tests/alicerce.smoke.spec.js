@@ -411,7 +411,7 @@ test('a criação de movimento registra apenas eventos genéricos após consenti
   await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 2; });
   const result = await page.evaluate(function () { return window.__alicerceMockFunctionInvocations; });
   expect(result.map(function (item) { return item.options.body.event_name; }).sort())
-    .toEqual(['financial_record_created', 'first_movement_created']);
+    .toEqual(['movement_created', 'first_movement_created']);
   for (const item of result) {
     expect(Object.keys(item.options.body).sort()).toEqual(['action', 'event_id', 'event_name']);
     expect(JSON.stringify(item)).not.toContain('234.56');
