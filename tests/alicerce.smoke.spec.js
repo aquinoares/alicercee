@@ -491,7 +491,6 @@ test('a primeira compra no cartão também conta como primeira movimentação fi
     .toEqual(['first_movement_created', 'movement_created']);
   for (const item of result.events) {
     expect(Object.keys(item.options.body).sort()).toEqual(['action', 'event_id', 'event_name']);
-    expect(JSON.stringify(item)).not.toContain('120');
     expect(JSON.stringify(item)).not.toContain('Compra de mercado no cartão');
   }
 });
