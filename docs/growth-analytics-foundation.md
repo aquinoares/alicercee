@@ -29,6 +29,12 @@ Ao desativar, o Alicerce grava primeiro a preferência desligada e solicita a ex
 - O limite inicial é de 120 eventos por conta por hora.
 - Os resultados entregues às agentes devem ser agregados; nunca retornar user_id ou eventos individuais.
 
+## Publicação da Edge Function
+
+A função usa uma allowlist de origens. Os padrões incluem o domínio principal conhecido do Alicerce e os endereços locais de desenvolvimento/teste. Para uma URL de preview ou um domínio adicional, configure o segredo de ambiente `ALICERCE_ANALYTICS_ALLOWED_ORIGINS` no Supabase com as origens exatas separadas por vírgula (protocolo + host + porta, sem caminho). Não use curingas.
+
+A migração SQL precisa ser aplicada antes da implantação da função. Depois, implante `alicerce-analytics-events` com JWT obrigatório e confira os logs de OPTIONS/POST. Esta PR apenas versiona a migração e a função; não altera o projeto de produção.
+
 ## Limites desta etapa
 
 Os eventos ainda não significam que todos os indicadores estejam disponíveis. CAC, LTV, ROI, ROAS, CPL, churn, ticket, receita atribuída e conversão de todas as etapas exigem instrumentação e fontes contábeis/de aquisição próprias. Os relatórios não devem estimar os componentes ausentes.
