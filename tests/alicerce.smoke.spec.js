@@ -371,6 +371,31 @@ test('desativar compartilhamento persiste a preferência e solicita exclusão de
   expect(result.invocations[0].options.body).toEqual({ action: 'revoke' });
 });
 
+test('falha ao apagar eventos não reativa o consentimento após a pessoa desativá-lo', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'config');
+  await page.evaluate(function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    window.__alicerceMockSessionUserId = 'analytics-user';
+    window.__alicerceMockFunctionThrow = true;
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+  await page.locator('#alicerce-analytics-consent').uncheck();
+  await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 1; });
+  const result = await page.evaluate(function () {
+    return {
+      consent: Store.settings.analyticsConsent,
+      checked: document.getElementById('alicerce-analytics-consent').checked,
+      settingsUpsert: window.__alicerceMockUpserts.find(function (row) {
+        return row.table === 'alicerce_data' && row.payload && row.payload.store_name === 'settings';
+      })
+    };
+  });
+  expect(result.consent).toBe(false);
+  expect(result.checked).toBe(false);
+  expect(result.settingsUpsert.payload.data.analyticsConsent).toBe(false);
+});
+
 test('a configuração de analytics descreve o consentimento opcional em três idiomas', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'config');
   const initial = await page.locator('#alicerce-analytics-consent').count();
