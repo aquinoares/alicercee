@@ -5674,7 +5674,11 @@ AlicerceIA._financialReviewProfileFromReply=function(message){
       var negation=tokens.lastIndexOf('nao');
       var contrast=tokens.lastIndexOf('mas');
       var distance=negation>=0?tokens.length-1-negation:0;
-      if(negation<0||distance>3||contrast>negation)return true;
+      var natureWords=['essencial','necessario','necessaria','indispensavel','discricionario','discricionaria','superfluo','superflua'];
+      var intervening=negation>=0?tokens.slice(negation+1):[];
+      var priorNature=intervening.some(function(token){return natureWords.indexOf(token)>=0;});
+      var startsNewNatureClause=priorNature&&tokens.length>0&&tokens[tokens.length-1]==='e';
+      if(negation<0||distance>3||contrast>negation||startsNewNatureClause)return true;
     }
     return false;
   };
