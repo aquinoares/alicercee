@@ -3355,6 +3355,7 @@ function normalizeAlicerMovementAnalysis(value){
         if(isFinite(number)&&number>=0)metrics[field]=number;
       }
     });
+    if(typeof value.metrics.fullTank==='boolean')metrics.fullTank=value.metrics.fullTank;
     ['vehicleId','fuelType','maintenanceType','maintenanceDescription'].forEach(function(field){
       var text=String(value.metrics[field]||'').trim();
       if(text)metrics[field]=text.slice(0,120);
@@ -4599,6 +4600,8 @@ const detalhes={
       hora:i.hora||i.time||'',
       purpose:i.purpose||'',
       analysis:normalizeAlicerMovementAnalysis(i.analysis),
+      items:(normalizeAlicerMovementAnalysis(i.analysis)||{}).items||[],
+      metrics:(normalizeAlicerMovementAnalysis(i.analysis)||{}).metrics||{},
       tipo:'cartao'
     })).filter(i=>i.valor>0);
   },
