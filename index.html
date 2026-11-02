@@ -6672,7 +6672,8 @@ AlicerceIA._classifyExpenseDimensions=function(row,recurrenceProfiles){
   if(category==='comida'&&subcategory==='bar')clearDiscretionary=true;
   var clearEssential=false;
   if(category==='moradia'&&['aluguel','energia','agua','gas'].indexOf(subcategory)>=0)clearEssential=true;
-  if(result.nature==='undetermined'){
+  var natureExplicitlyConfirmed=!!(userConfirmed&&profile&&allowed.nature.indexOf(String(profile.nature||'').toLowerCase())>=0);
+  if(result.nature==='undetermined'&&!natureExplicitlyConfirmed){
     if(purposeContext==='leisure'||purposeContext==='convenience'){
       result.nature='discretionary';
       result.confidence.nature='medium';
@@ -12834,7 +12835,7 @@ function saveFinancialProfile(){
     var current=Object.assign({},item.analysis||{});
     current.expenseProfile=profile;
     item.analysis=normalizeAlicerMovementAnalysis(current);
-    if(purpose)item.purpose=purpose;
+    if(purpose)item.purpose=purpose;else if(Object.prototype.hasOwnProperty.call(item,'purpose'))delete item.purpose;
   });
   Store.save();
   showToast(financialProfileCopy().saved);
