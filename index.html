@@ -5008,34 +5008,7 @@ const AlicerceIA = {
       .replace(/[^a-z0-9]+/g,' ').trim();
   },
   _rows:function(){
-    var rows=[];
-    (Store.movements||[]).forEach(function(m){
-      if(!m||m.tipo!=='despesa'||!m.data||!/^\d{4}-\d{2}-\d{2}$/.test(String(m.data)))return;
-      var value=Number(m.valor)||0;
-      if(value<=0)return;
-      rows.push({
-        data:String(m.data),valor:value,
-        categoria:m.categoria||'outros',
-        subcategoria:m.subcategoria||'outros',
-        descricao:m.descricao||m.item||'',
-        local:m.estabelecimento||m.local||'',
-        purpose:m.purpose||''
-      });
-    });
-    (Store.installments||[]).forEach(function(i){
-      if(!i||i.tipo!=='cartao'||!i.compraId||!i.data||!/^\d{4}-\d{2}-\d{2}$/.test(String(i.data)))return;
-      var value=Number(i.valor)||0;
-      if(value<=0)return;
-      rows.push({
-        data:String(i.data),valor:value,
-        categoria:i.categoria||'outros',
-        subcategoria:i.subcategoria||'outros',
-        descricao:i.descricao||'Compra no cartao',
-        local:i.local||'',
-        purpose:i.purpose||''
-      });
-    });
-    return rows;
+    return typeof Store.getAnalysisEntries==='function'?Store.getAnalysisEntries():[];
   },
   _period:function(offset){
     var now=Clock.now();
@@ -6362,9 +6335,6 @@ function renderAssistente(){
    ALICERCE IA — camada estatistica e interpretacao de perguntas
    Sem rede, sem APIs pagas, sem alterar o motor financeiro.
    ============================================================= */
-AlicerceIA._rows=function(){
-  return typeof Store.getAnalysisEntries==='function'?Store.getAnalysisEntries():[];
-};
 AlicerceIA._iso=function(date){
   return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
 };
