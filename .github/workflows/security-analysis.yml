@@ -43,4 +43,5 @@ jobs:
         with:
           deno-version: v2.x
       - name: Type-check Edge Function
-        run: deno check supabase/functions/alicerce-analytics-events/index.ts
+        working-directory: supabase/functions/alicerce-analytics-events
+        run: deno check index.ts
