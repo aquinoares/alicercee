@@ -12487,6 +12487,36 @@ AlicerceIA.renderDashboard=function(){
     }
   };
   var ui=copy[lang]||copy.pt;
+  var realityCopy={
+    pt:{
+      title:'Sua realidade financeira',essential:'Essenciais estimados',discretionary:'Discricionários',undetermined:'Indeterminados',share:'das despesas',
+      note:'A classificação é estimada. Estabelecimento, horário ou dia da semana, sozinhos, não provam a finalidade da compra. Parcelamento e recorrência são avaliados separadamente.',
+      review:'Os gastos discricionários de alta flexibilidade superam 20% das despesas e os indeterminados estão abaixo de 15%. Vale revisar os itens, sem presumir que todos devam ser cortados.',
+      context:'Uma parte relevante dos gastos ainda precisa de contexto. Alicia não vai transformar esses valores em recomendações de corte.',
+      few:'Ainda há poucos lançamentos neste período para gerar um alerta de oportunidade confiável.',
+      safe:'Os valores indeterminados ficam separados e não entram em sugestões de economia.',
+      details:'Entender minha realidade financeira'
+    },
+    en:{
+      title:'Your financial picture',essential:'Estimated essentials',discretionary:'Discretionary',undetermined:'Undetermined',share:'of expenses',
+      note:'This is an estimate. A merchant, time, or day of week alone does not prove the purpose of a purchase. Installments and recurrence are assessed separately.',
+      review:'High-flexibility discretionary expenses exceed 20% of spending while undetermined expenses are below 15%. Review the items; do not assume every one should be cut.',
+      context:'A meaningful share of spending still needs context. Alicia will not turn these amounts into cut recommendations.',
+      few:'There are too few records in this period for a reliable review signal.',
+      safe:'Undetermined amounts stay separate and are excluded from savings suggestions.',
+      details:'Understand my financial picture'
+    },
+    es:{
+      title:'Tu realidad financiera',essential:'Esenciales estimados',discretionary:'Discrecionales',undetermined:'Sin determinar',share:'de los gastos',
+      note:'La clasificación es estimada. El comercio, la hora o el día de la semana por sí solos no prueban la finalidad de la compra. Las cuotas y la recurrencia se evalúan por separado.',
+      review:'Los gastos discrecionales de alta flexibilidad superan el 20% del gasto y los no determinados están por debajo del 15%. Conviene revisar los movimientos, sin asumir que todos deban eliminarse.',
+      context:'Una parte relevante de los gastos todavía necesita contexto. Alicia no convertirá esos importes en recomendaciones de recorte.',
+      few:'Todavía hay pocos movimientos en este período para generar una señal fiable.',
+      safe:'Los importes sin determinar permanecen separados y no entran en sugerencias de ahorro.',
+      details:'Entender mi realidad financiera'
+    }
+  };
+  var realityLabels=realityCopy[lang]||realityCopy.pt;
   var actionAttr=function(question){return 'onclick="AlicerceIA.perguntarDashboard('+JSON.stringify(question).replace(/\"/g,'&quot;')+')"';};
   var html='<section class="visao-ai-dashboard" id="alicerce-ai-dashboard" aria-label="Alicerce IA">';
   html+='<div class="visao-ai-heading"><div><div class="visao-ai-kicker">ALICERCE IA</div><h2>'+esc(ui.heading)+'</h2><p>'+esc(ui.intro)+'</p></div></div>';
@@ -12532,23 +12562,23 @@ AlicerceIA.renderDashboard=function(){
     html+='<button type="button" id="visao-ai-recurring" '+actionAttr('Quais pagamentos parecem recorrentes?')+'>'+esc(ui.recurringAction)+'</button></section>';
     var reality=this._financialReality(current,rows);
     html+='<section class="visao-ai-panel" id="visao-ai-financial-reality">';
-    html+='<div class="visao-ai-section-label">Sua realidade financeira</div>';
+    html+='<div class="visao-ai-section-label">'+esc(realityLabels.title)+'</div>';
     html+='<div class="visao-ai-kpis">';
-    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-essential" '+actionAttr('Quanto custa manter minha vida?')+'><span>Essenciais estimados</span><strong>'+fmtMoney(reality.essential)+'</strong><small>'+Math.round(reality.percentages.essential)+'% das despesas</small></button>';
-    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-discretionary" '+actionAttr('Quanto gastei com estilo de vida?')+'><span>Discricionários</span><strong>'+fmtMoney(reality.discretionary)+'</strong><small>'+Math.round(reality.percentages.discretionary)+'% das despesas</small></button>';
-    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-undetermined" '+actionAttr('Quais gastos ainda precisam de contexto?')+'><span>Indeterminados</span><strong>'+fmtMoney(reality.undetermined)+'</strong><small>'+Math.round(reality.percentages.undetermined)+'% das despesas</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-essential" '+actionAttr('Quanto custa manter minha vida?')+'><span>'+esc(realityLabels.essential)+'</span><strong>'+fmtMoney(reality.essential)+'</strong><small>'+Math.round(reality.percentages.essential)+'% '+esc(realityLabels.share)+'</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-discretionary" '+actionAttr('Quanto gastei com estilo de vida?')+'><span>'+esc(realityLabels.discretionary)+'</span><strong>'+fmtMoney(reality.discretionary)+'</strong><small>'+Math.round(reality.percentages.discretionary)+'% '+esc(realityLabels.share)+'</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-undetermined" '+actionAttr('Quais gastos ainda precisam de contexto?')+'><span>'+esc(realityLabels.undetermined)+'</span><strong>'+fmtMoney(reality.undetermined)+'</strong><small>'+Math.round(reality.percentages.undetermined)+'% '+esc(realityLabels.share)+'</small></button>';
     html+='</div>';
-    html+='<p class="visao-ai-muted">A classificação é estimada. Estabelecimento, horário ou dia da semana, sozinhos, não provam a finalidade da compra. Parcelamento e recorrência são avaliados separadamente.</p>';
+    html+='<p class="visao-ai-muted">'+esc(realityLabels.note)+'</p>';
     if(reality.reviewOpportunity){
-      html+='<p class="visao-ai-muted">Os gastos discricionários de alta flexibilidade superam 20% das despesas e os indeterminados estão abaixo de 15%. Vale revisar os itens, sem presumir que todos devam ser cortados.</p>';
+      html+='<p class="visao-ai-muted">'+esc(realityLabels.review)+'</p>';
     }else if(reality.needsContext){
-      html+='<p class="visao-ai-muted">Uma parte relevante dos gastos ainda precisa de contexto. Alicia não vai transformar esses valores em recomendações de corte.</p>';
+      html+='<p class="visao-ai-muted">'+esc(realityLabels.context)+'</p>';
     }else if(reality.counts.total<5){
-      html+='<p class="visao-ai-muted">Ainda há poucos lançamentos neste período para gerar um alerta de oportunidade confiável.</p>';
+      html+='<p class="visao-ai-muted">'+esc(realityLabels.few)+'</p>';
     }else{
-      html+='<p class="visao-ai-muted">Os valores indeterminados ficam separados e não entram em sugestões de economia.</p>';
+      html+='<p class="visao-ai-muted">'+esc(realityLabels.safe)+'</p>';
     }
-    html+='<button type="button" id="visao-ai-financial-reality-detail" '+actionAttr('Quanto custa manter minha vida?')+'>Entender minha realidade financeira</button>';
+    html+='<button type="button" id="visao-ai-financial-reality-detail" '+actionAttr('Quanto custa manter minha vida?')+'>'+esc(realityLabels.details)+'</button>';
     html+='</section>';
     html+='<div class="visao-ai-actions">';
     html+='<button type="button" '+actionAttr('Compare com o mês passado')+'>'+esc(ui.compareAction)+'</button>';
