@@ -3523,7 +3523,8 @@ const Store={
 
   addMovement(mv){
     if(!mv||typeof mv!=='object'||Array.isArray(mv))return null;
-    var firstMovement = Array.isArray(this.movements) && this.movements.length === 0;
+    var firstMovement = (!Array.isArray(this.movements) || this.movements.length === 0) &&
+      (!Array.isArray(this.installments) || this.installments.length === 0);
     var analysis=normalizeAlicerMovementAnalysis(mv.analysis);
     if(analysis)mv.analysis=analysis;
     else if(mv.analysis)delete mv.analysis;
@@ -3536,7 +3537,19 @@ const Store={
   removeMovement(id){this.movements=this.movements.filter(m=>String(m.id)!==String(id));this.save()},
   addCard(c){c.id=c.id||this._uid();c.userId=this.userId;this.cards.push(c);this.save();return c},
   addLoan(l){l.id=l.id||this._uid();l.userId=this.userId;this.loans.push(l);this.save();return l},
-  addInstallment(i){if(!i||!travarSalvar('inst',i))return null;var analysis=normalizeAlicerMovementAnalysis(i.analysis);if(analysis)i.analysis=analysis;else if(i.analysis)delete i.analysis;i.id=i.id||this._uid();this.installments.push(i);this.save();return i},
+  addInstallment(i){
+    if(!i||!travarSalvar('inst',i))return null;
+    var firstMovement = (!Array.isArray(this.movements) || this.movements.length === 0) &&
+      (!Array.isArray(this.installments) || this.installments.length === 0);
+    var analysis=normalizeAlicerMovementAnalysis(i.analysis);
+    if(analysis)i.analysis=analysis;else if(i.analysis)delete i.analysis;
+    i.id=i.id||this._uid();
+    this.installments.push(i);
+    this.save();
+    alicerceTrackEvent('movement_created');
+    if(firstMovement)alicerceTrackEvent('first_movement_created');
+    return i;
+  },
   addCommitment(c){if(!c||!travarSalvar('comp',c))return null;c.id=c.id||this._uid();c.userId=this.userId;this.commitments.push(c);this.save();return c},
   addDoctor(d){d.id=d.id||this._uid();d.userId=this.userId;this.doctors.push(d);this.save();return d},
   addMedication(m){m.id=m.id||this._uid();m.userId=this.userId;this.medications.push(m);this.save();return m},
