@@ -5019,6 +5019,9 @@ const AlicerceIA = {
   _pendingExpenseDraft:null,
   _pendingFinancialReview:null,
   _welcomeTypingStarted:false,
+  _proactiveConsumed:false,
+  _launcherAnimationStarted:false,
+  _launcherAnimationTimer:null,
   _resetUser:function(){
     var uid=String(Store.userId||'');
     if(uid!==this._userId){
@@ -5031,6 +5034,8 @@ const AlicerceIA = {
       this._pendingExpenseDraft=null;
       this._pendingFinancialReview=null;
       this._welcomeTypingStarted=false;
+      this._proactiveConsumed=false;
+      this.pararDigitacaoLauncher();
       this._pendingPrivacyAction='';
       this._pendingSpeechIndex=-1;
       this._pendingSpeechButton=null;
@@ -5386,9 +5391,123 @@ AlicerceIA.iniciarDigitacaoAbertura=function(text){
   registerTimer(timer);
 };
 
+AlicerceIA._launcherCallout=function(){
+  var lang=Store.lang||'pt';
+  var name='';
+  try{name=String(Store.settings&&Store.settings.displayName||'').trim().split(/\\s+/)[0]}catch(e){}
+  if(lang==='en')return (name?name+', ':'')+'I have a message for you';
+  if(lang==='es')return (name?name+', ':'')+'Tengo un mensaje para ti';
+  return (name?name+', ':'')+'tenho uma mensagem para você';
+};
+AlicerceIA._launcherNotice=function(){
+  this._resetUser();
+  if(!Store.userId||this._proactiveConsumed)return null;
+  var rows=this._rows();
+  if(!rows.length)return null;
+  var current=this._periodRows(0);
+  if(!current.length)return null;
+
+  /* Prioridade 1: despesas relevantes que ainda precisam de contexto. */
+  var reality=this._financialReality(current,rows);
+  if(reality&&reality.needsContext&&reality.counts.undetermined>0){
+    var candidates=this._financialReviewCandidates();
+    if(candidates.length){
+      return {kind:'review',detail:'',key:'review:'+candidates.length};
+    }
+  }
+
+  /* Prioridade 2: um lancamento muito acima do historico comprovavel. */
+  var anomalies=this._detectAnomalies(rows);
+  if(anomalies.length){
+    var anomaly=anomalies[0];
+    return {
+      kind:'analysis',
+      key:'anomaly:'+String(anomaly.category||'')+':'+String(anomaly.amount||0)+':'+String(anomaly.merchant||''),
+      detail:this._label('anomalyInsight',{
+        amount:fmtMoney(anomaly.amount),
+        item:this._nice(anomaly.comparisonItem||anomaly.subcategory||anomaly.category),
+        median:fmtMoney(anomaly.median)
+      })
+    };
+  }
+
+  /* Prioridade 3: crescimento expressivo de uma categoria, comparando periodos iguais. */
+  var previous=this._periodRows(1);
+  var changes=this._categoryChanges(current,previous);
+  if(changes.length){
+    var change=changes[0];
+    return {
+      kind:'analysis',
+      key:'category:'+change.key+':'+change.percent,
+      detail:this._label('categoryRise',{
+        item:this._nice(change.key),
+        percent:change.percent,
+        current:fmtMoney(change.current),
+        previous:fmtMoney(change.previous)
+      })
+    };
+  }
+
+  /* Prioridade 4: aumento total material, com comparacao ate o mesmo dia do mes. */
+  var currentTotal=this._sum(current);
+  var previousTotal=this._sum(previous);
+  if(previousTotal>0&&currentTotal-previousTotal>=100&&currentTotal>=previousTotal*1.25){
+    var percent=Math.round((currentTotal-previousTotal)/previousTotal*100);
+    return {
+      kind:'analysis',
+      key:'total:'+percent+':'+Math.round(currentTotal),
+      detail:this._label('upInsight',{amount:fmtMoney(currentTotal),percent:percent})
+    };
+  }
+  return null;
+};
+AlicerceIA.pararDigitacaoLauncher=function(){
+  if(this._launcherAnimationTimer){
+    window.clearInterval(this._launcherAnimationTimer);
+    this._launcherAnimationTimer=null;
+  }
+  this._launcherAnimationStarted=false;
+};
+AlicerceIA.iniciarDigitacaoLauncher=function(text){
+  if(this._launcherAnimationStarted)return;
+  var target=document.getElementById('alicerce-ai-launcher-title');
+  if(!target||Store.screen!=='home')return;
+  this._launcherAnimationStarted=true;
+  var message=String(text||'');
+  var position=0;
+  var deleting=false;
+  var pause=0;
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+    target.textContent=message;
+    return;
+  }
+  var timer=window.setInterval(function(){
+    if(!target.isConnected||Store.screen!=='home'||AlicerceIA._proactiveConsumed){
+      window.clearInterval(timer);
+      if(AlicerceIA._launcherAnimationTimer===timer)AlicerceIA._launcherAnimationTimer=null;
+      AlicerceIA._launcherAnimationStarted=false;
+      return;
+    }
+    if(pause>0){pause--;return;}
+    if(!deleting){
+      position++;
+      target.textContent=message.slice(0,position);
+      if(position>=message.length){deleting=true;pause=28;}
+    }else{
+      position--;
+      target.textContent=message.slice(0,position);
+      if(position<=0){deleting=false;pause=8;}
+    }
+  },65);
+  this._launcherAnimationTimer=timer;
+};
+
 AlicerceIA.renderCard=function(){
   this._resetUser();
+  this.pararDigitacaoLauncher();
   var lang=Store.lang||'pt';
+  var notice=this._launcherNotice();
+  var callout=notice?this._launcherCallout():'';
   var label=lang==='en'?'Chat':lang==='es'?'Conversar':'Conversar';
   var html='<style id="alicerce-ai-launcher-styles">';
   html+='.alicerce-ai-launcher{box-sizing:border-box;width:100%;margin:10px 0 14px;padding:9px 12px;border:1px solid var(--line);border-radius:15px;background:var(--surface);color:var(--text);min-width:0}';
@@ -5396,20 +5515,39 @@ AlicerceIA.renderCard=function(){
   html+='.alicerce-ai-launcher-icon{width:48px;height:52px;display:flex;align-items:center;justify-content:center;flex:0 0 48px;border:2px solid var(--accent);border-radius:12px;overflow:hidden;background:var(--surface2);padding:1px;box-sizing:border-box}';
   html+='.alicerce-ai-launcher-icon img{width:100%;height:100%;object-fit:contain;object-position:center center;display:block;border-radius:9px}';
   html+='.alicerce-ai-launcher-title{flex:1;min-width:0;font-size:14px;font-weight:800;line-height:1.25;overflow-wrap:anywhere}';
+  html+='.alicerce-ai-launcher-title.is-proactive{color:var(--negative);font-size:11px;font-weight:850;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:14px}';
   html+='.alicerce-ai-launcher-cta{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;color:var(--accent);font-size:11px;font-weight:800;white-space:nowrap}';
   html+='.alicerce-ai-launcher-action:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:10px}';
   html+='</style>';
   html+='<section class="alicerce-ai-launcher" id="alicerce-ai-card" aria-label="Assistente Alicerce">';
   html+='<button class="alicerce-ai-launcher-action" id="alicerce-ai-open-assistant" type="button" onclick="AlicerceIA.abrir()">';
   html+='<span class="alicerce-ai-launcher-icon"><img src="/assets/alicia-assistente.webp" width="44" height="46" alt=""></span>';
-  html+='<span class="alicerce-ai-launcher-title">'+esc(this.saudacao())+'</span>';
+  html+='<span class="alicerce-ai-launcher-title'+(notice?' is-proactive':'')+'" id="alicerce-ai-launcher-title"'+(notice?' data-full-text="'+esc(callout)+'" aria-live="off"':'')+'>'+(notice?'':esc(this.saudacao()))+'</span>';
   html+='<span class="alicerce-ai-launcher-cta">'+esc(label)+icon('arrowRight','ico-xs')+'</span>';
   html+='</button></section>';
+  if(notice){window.requestAnimationFrame(function(){AlicerceIA.iniciarDigitacaoLauncher(callout);});}
   return html;
 };
 
 AlicerceIA.abrir=function(){
   this._resetUser();
+  var notice=this._launcherNotice();
+  if(notice&&!this._proactiveConsumed){
+    this._proactiveConsumed=true;
+    this.pararDigitacaoLauncher();
+    var proactiveAnswer='';
+    if(notice.kind==='review'){
+      if(!this._pendingFinancialReview)this._pendingFinancialReview={handled:[],current:null};
+      proactiveAnswer=this._financialReviewNextPrompt(true);
+    }else{
+      proactiveAnswer=notice.detail;
+    }
+    if(proactiveAnswer){
+      this._messages.push({role:'assistant',text:proactiveAnswer});
+      while(this._messages.length>4)this._messages.splice(0,2);
+      this._answer=proactiveAnswer;
+    }
+  }
   if(!Array.isArray(this._messages)||!this._messages.length)this._welcomeTypingStarted=false;
   go('assistente');
 };
