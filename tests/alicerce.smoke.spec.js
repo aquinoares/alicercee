@@ -2563,3 +2563,127 @@ test('Alicia explica a realidade financeira e mantém a análise no painel da Vi
   expect(result.html).toContain('Essenciais estimados');
   expect(result.html).toContain('Indeterminados');
 });
+
+
+test('Alicia permite confirmar a natureza e a finalidade de um gasto sem alterar a classificação ou o valor', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'financial-profile-ui-movement';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul', displayName: 'Teste' };
+    Store.movements = [{
+      id: 'movement-unknown',
+      tipo: 'despesa',
+      status: 'pago',
+      data: Clock.today(),
+      valor: 42.50,
+      categoria: 'transporte',
+      subcategoria: 'uber',
+      estabelecimento: 'Uber',
+      descricao: 'Corrida'
+    }];
+    Store.installments = [];
+    AlicerceIA._resetUser();
+    go('visao');
+  });
+
+  await expect(page.locator('#visao-ai-review-undetermined')).toBeVisible();
+  await page.locator('#visao-ai-review-undetermined').click();
+  await expect(page.locator('#financial-profile-item-0')).toBeVisible();
+  await page.locator('#financial-profile-item-0').click();
+  await expect(page.locator('#financial-profile-save')).toBeVisible();
+
+  await page.locator('#financial-profile-nature').selectOption('essential');
+  await page.locator('#financial-profile-context').selectOption('work');
+  await page.locator('#financial-profile-flexibility').selectOption('low');
+  await page.locator('#financial-profile-commitment').selectOption('non_contractual');
+  await page.locator('#financial-profile-purpose').fill('Deslocamento para o trabalho');
+  await page.locator('#financial-profile-save').click();
+
+  const saved = await page.evaluate(function () {
+    var movement = Store.movements[0];
+    var analysis = Store.getAnalysisEntries()[0];
+    return {
+      amount: movement.valor,
+      category: movement.categoria,
+      subcategory: movement.subcategoria,
+      profile: analysis.expenseProfile,
+      purpose: movement.purpose,
+      status: movement.status
+    };
+  });
+  expect(saved).toMatchObject({
+    amount: 42.50,
+    category: 'transporte',
+    subcategory: 'uber',
+    status: 'pago',
+    purpose: 'Deslocamento para o trabalho',
+    profile: {
+      source: 'user_confirmed',
+      nature: 'essential',
+      context: 'work',
+      flexibility: 'low',
+      commitment: 'non_contractual'
+    }
+  });
+  await expect(page.locator('body')).toContainText('Não há gastos indeterminados neste mês');
+});
+
+test('A confirmação de uma compra no cartão é aplicada a todas as parcelas da mesma compra', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    var today = Clock.today();
+    var date = new Date(today + 'T00:00:00');
+    date.setMonth(date.getMonth() + 1);
+    var nextMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    Store.userId = 'financial-profile-ui-card';
+    Store.lang = 'pt';
+    Store.settings = { lang: 'pt', theme: 'azul', displayName: 'Teste' };
+    Store.movements = [];
+    Store.installments = [
+      {
+        id: 'card-installment-1', tipo: 'cartao', compraId: 'purchase-profile-1',
+        cardId: 'card-1', categoria: 'transporte', subcategoria: 'uber',
+        descricao: 'Compra parcelada', local: 'Uber', valor: 60,
+        data: today, dataCompra: today, parcelaAtual: 1, parcelas: 2, status: 'pago'
+      },
+      {
+        id: 'card-installment-2', tipo: 'cartao', compraId: 'purchase-profile-1',
+        cardId: 'card-1', categoria: 'transporte', subcategoria: 'uber',
+        descricao: 'Compra parcelada', local: 'Uber', valor: 60,
+        data: nextMonth, dataCompra: today, parcelaAtual: 2, parcelas: 2, status: 'pendente'
+      }
+    ];
+    AlicerceIA._resetUser();
+    go('visao');
+  });
+
+  await expect(page.locator('#visao-ai-review-undetermined')).toBeVisible();
+  await page.locator('#visao-ai-review-undetermined').click();
+  await page.locator('#financial-profile-item-0').click();
+  await page.locator('#financial-profile-nature').selectOption('discretionary');
+  await page.locator('#financial-profile-context').selectOption('leisure');
+  await page.locator('#financial-profile-flexibility').selectOption('high');
+  await page.locator('#financial-profile-save').click();
+
+  const saved = await page.evaluate(function () {
+    return Store.installments.map(function (item) {
+      return {
+        id: item.id,
+        value: item.valor,
+        category: item.categoria,
+        purchaseId: item.compraId,
+        profile: item.analysis && item.analysis.expenseProfile
+      };
+    });
+  });
+  expect(saved).toHaveLength(2);
+  saved.forEach(function (item) {
+    expect(item).toMatchObject({
+      value: 60,
+      category: 'transporte',
+      purchaseId: 'purchase-profile-1',
+      profile: { source: 'user_confirmed', nature: 'discretionary', context: 'leisure', flexibility: 'high' }
+    });
+  });
+});
