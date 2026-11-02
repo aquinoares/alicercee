@@ -13338,6 +13338,7 @@ async function doLogout(){
     return;
   }
   tfInvalidarCacheAdmin();
+  window.__alicerceAnalyticsOpenedUser='';
   Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
   ['movements','cards','loans','installments','commitments','financing','consortium','extraIncome','insurance','familyPeople','familyCategories','doctors','medications','doseLogs','learning'].forEach(k=>{Store[k]=Array.isArray(Store[k])?[]:{}});
   clearAllTimers();render();
