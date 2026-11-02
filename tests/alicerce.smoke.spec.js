@@ -2526,13 +2526,15 @@ test('agrega essenciais, discricionários e indeterminados sem recomendar cortes
     });
     var current = history.filter(function (row) { return row.data.slice(0, 7) === date(0).slice(0, 7); });
     current.push({ id: 'rent', data: date(0), valor: 300, categoria: 'moradia', subcategoria: 'aluguel', local: 'Imobiliaria', descricao: 'Aluguel' });
+    current.push({ id: 'bar-extra-1', data: date(0), valor: 100, categoria: 'comida', subcategoria: 'bar', local: 'Bel do Bar', descricao: 'Bel do Bar' });
+    current.push({ id: 'bar-extra-2', data: date(0), valor: 100, categoria: 'comida', subcategoria: 'bar', local: 'Bel do Bar', descricao: 'Bel do Bar' });
     var clear = AlicerceIA._financialReality(current, history);
     current.push({ id: 'market', data: date(0), valor: 900, categoria: 'comida', subcategoria: 'mercado', local: 'Carrefour', descricao: 'Compra' });
     var uncertain = AlicerceIA._financialReality(current, history);
     return { clear: clear, uncertain: uncertain };
   });
   expect(result.clear.essential).toBe(300);
-  expect(result.clear.discretionary).toBe(145);
+  expect(result.clear.discretionary).toBe(345);
   expect(result.clear.reviewOpportunity).toBe(true);
   expect(result.uncertain.undetermined).toBe(900);
   expect(result.uncertain.reviewOpportunity).toBe(false);
