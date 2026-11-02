@@ -296,6 +296,98 @@ test('gera prévias dos PDFs de Gastos e Visão Financeira sem abrir janela exte
 });
 
 
+test('eventos de uso permanecem desativados por padrão e exigem consentimento explícito', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: false };
+    window.__alicerceMockSessionUserId = 'analytics-user';
+    await alicerceTrackEvent('app_opened');
+    return window.__alicerceMockFunctionInvocations.slice();
+  });
+  expect(result).toEqual([]);
+});
+
+test('eventos autorizados enviam apenas nome do evento e identificador aleatório, nunca dados financeiros', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    Store.movements = [{ valor: 999.99, categoria: 'saude', descricao: 'Dado que não pode sair' }];
+    window.__alicerceMockSessionUserId = 'analytics-user';
+    await alicerceTrackEvent('app_opened');
+    await alicerceTrackEvent('not-an-allowed-event');
+    return window.__alicerceMockFunctionInvocations.slice();
+  });
+  expect(result).toHaveLength(1);
+  expect(result[0].name).toBe('alicerce-analytics-events');
+  expect(Object.keys(result[0].options.body).sort()).toEqual(['action', 'event_id', 'event_name']);
+  expect(result[0].options.body.action).toBe('track');
+  expect(result[0].options.body.event_name).toBe('app_opened');
+  expect(result[0].options.body.event_id).toMatch(/^[0-9a-f-]{36}$/i);
+  expect(JSON.stringify(result)).not.toContain('999.99');
+  expect(JSON.stringify(result)).not.toContain('Dado que não pode sair');
+});
+
+test('eventos não são enviados quando a sessão Supabase não pertence à conta ativa', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    window.__alicerceMockSessionUserId = 'another-user';
+    await alicerceTrackEvent('app_opened');
+    return window.__alicerceMockFunctionInvocations.slice();
+  });
+  expect(result).toEqual([]);
+});
+
+test('desativar compartilhamento persiste a preferência e solicita exclusão de eventos anteriores', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'config');
+  await page.evaluate(function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    window.__alicerceMockSessionUserId = 'analytics-user';
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+  await expect(page.locator('#alicerce-analytics-consent')).toBeChecked();
+  await page.locator('#alicerce-analytics-consent').uncheck();
+  await expect(page.locator('#alicerce-analytics-consent')).not.toBeChecked();
+  const result = await page.evaluate(function () {
+    return {
+      consent: Store.settings.analyticsConsent,
+      invocations: window.__alicerceMockFunctionInvocations,
+      settingsUpsert: window.__alicerceMockUpserts.find(function (row) {
+        return row.table === 'alicerce_data' && row.payload && row.payload.store_name === 'settings';
+      })
+    };
+  });
+  expect(result.consent).toBe(false);
+  expect(result.settingsUpsert.payload.data.analyticsConsent).toBe(false);
+  expect(result.invocations).toHaveLength(1);
+  expect(result.invocations[0].name).toBe('alicerce-analytics-events');
+  expect(result.invocations[0].options.body).toEqual({ action: 'revoke' });
+});
+
+test('a configuração de analytics descreve o consentimento opcional em três idiomas', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'config');
+  const initial = await page.locator('#alicerce-analytics-consent').count();
+  expect(initial).toBe(1);
+  const translations = await page.evaluate(function () {
+    const original = Store.lang;
+    const values = {};
+    ['pt', 'en', 'es'].forEach(function (lang) {
+      Store.lang = lang;
+      document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+      values[lang] = document.getElementById('app').textContent;
+    });
+    Store.lang = original;
+    return values;
+  });
+  expect(translations.pt).toContain('Compartilhar eventos de uso');
+  expect(translations.en).toContain('Share usage events');
+  expect(translations.es).toContain('Compartir eventos de uso');
+});
+
 test('envia cadastro com sucesso usando autenticação simulada', async function ({ page }) {
   await abrirAbertura(page);
   await page.locator('#calGlassBtn').click();
