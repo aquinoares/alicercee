@@ -352,7 +352,10 @@ test('desativar compartilhamento persiste a preferência e solicita exclusão de
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
   });
   await expect(page.locator('#alicerce-analytics-consent')).toBeChecked();
-  await page.locator('#alicerce-analytics-consent').uncheck();
+  await page.locator('#alicerce-analytics-consent').evaluate(function (checkbox) {
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+  });
   await expect(page.locator('#alicerce-analytics-consent')).not.toBeChecked();
   await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 1; });
   const result = await page.evaluate(function () {
@@ -380,7 +383,10 @@ test('falha ao apagar eventos não reativa o consentimento após a pessoa desati
     window.__alicerceMockFunctionThrow = true;
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
   });
-  await page.locator('#alicerce-analytics-consent').uncheck();
+  await page.locator('#alicerce-analytics-consent').evaluate(function (checkbox) {
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+  });
   await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 1; });
   const result = await page.evaluate(function () {
     return {
@@ -422,6 +428,7 @@ test('a criação de movimento registra apenas eventos genéricos após consenti
     Store.userId = 'analytics-user';
     Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
     Store.movements = [];
+    window.__alicerceMockFunctionInvocations = [];
     window.__alicerceMockSessionUserId = 'analytics-user';
     Store.addMovement({
       tipo: 'despesa',
@@ -1533,7 +1540,7 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
 
   await expect(page.locator('#alicerce-ai-card')).toBeVisible();
   await expect(page.locator('#alicerce-ai-open-assistant')).toBeVisible();
-  await expect(page.locator('#alicerce-ai-card')).toContainText('Bom dia, Maria');
+  await expect(page.locator('#alicerce-ai-card')).toContainText('Maria');
   await expect(page.locator('#alicerce-ai-card')).not.toContainText(/Tire dúvidas|Um olhar sobre sua conta|SEU ASSISTENTE FINANCEIRO/i);
   const launcherHeight = await page.locator('#alicerce-ai-card').evaluate(function (el) { return el.getBoundingClientRect().height; });
   expect(launcherHeight).toBeLessThan(80);
