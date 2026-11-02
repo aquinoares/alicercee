@@ -1469,6 +1469,8 @@ test('Alicia chama a pessoa na tela inicial e abre a análise que motivou o avis
   });
   expect(calloutColor.length).toBeGreaterThanOrEqual(3);
   expect(calloutColor[0]).toBeGreaterThan(calloutColor[1] * 1.4);
+  await expect(callout).toHaveText('Ewerton, tenho uma mensagem pra você', { timeout: 5000 });
+  await expect.poll(async function () { return callout.textContent(); }, { timeout: 5000 }).not.toBe('Ewerton, tenho uma mensagem pra você');
   await expect(page.locator('.alicerce-ai-launcher-cta')).toContainText('Conversar');
 
   await page.locator('#alicerce-ai-open-assistant').click();
