@@ -5394,7 +5394,7 @@ AlicerceIA.iniciarDigitacaoAbertura=function(text){
 AlicerceIA._launcherCallout=function(){
   var lang=Store.lang||'pt';
   var name='';
-  try{name=String(Store.settings&&Store.settings.displayName||'').trim().split(/\\s+/)[0]}catch(e){}
+  try{name=String(Store.settings&&Store.settings.displayName||'').trim().split(/\s+/)[0]}catch(e){}
   if(lang==='en')return (name?name+', ':'')+'I have a message for you';
   if(lang==='es')return (name?name+', ':'')+'Tengo un mensaje para ti';
   return (name?name+', ':'')+'tenho uma mensagem pra você';
