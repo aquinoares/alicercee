@@ -3363,6 +3363,35 @@ function normalizeAlicerMovementAnalysis(value){
     });
     if(Object.keys(metrics).length)out.metrics=metrics;
   }
+  /* User-confirmed finance profile is optional and backward compatible. */
+  if(value.expenseProfile&&typeof value.expenseProfile==='object'&&!Array.isArray(value.expenseProfile)){
+    var rawProfile=value.expenseProfile;
+    var profile={version:1};
+    var profileEnums={
+      nature:['essential','discretionary','undetermined'],
+      commitment:['contractual','non_contractual','undetermined'],
+      recurrence:['recurring','occasional','undetermined'],
+      behavior:['fixed','variable','undetermined'],
+      flexibility:['low','medium','high','undetermined'],
+      context:['work','health','family','housing','leisure','convenience','education','other','undetermined']
+    };
+    Object.keys(profileEnums).forEach(function(field){
+      var candidate=String(rawProfile[field]||'').trim().toLowerCase();
+      if(profileEnums[field].indexOf(candidate)>=0)profile[field]=candidate;
+    });
+    var confidence={};
+    if(rawProfile.confidence&&typeof rawProfile.confidence==='object'&&!Array.isArray(rawProfile.confidence)){
+      ['nature','commitment','recurrence','behavior','flexibility','context'].forEach(function(field){
+        var level=String(rawProfile.confidence[field]||'').trim().toLowerCase();
+        if(['high','medium','low'].indexOf(level)>=0)confidence[field]=level;
+      });
+    }
+    if(Object.keys(confidence).length)profile.confidence=confidence;
+    if(String(rawProfile.source||'').trim()==='user_confirmed'&&Object.keys(profile).length>1){
+      profile.source='user_confirmed';
+      out.expenseProfile=profile;
+    }
+  }
   return out;
 }
 function alicerceIsConsumptionRecord(record){
@@ -4635,7 +4664,9 @@ const detalhes={
         purpose:String(record.purpose||''),
         origin:(analysis&&analysis.origin)||record.origin||record.source||'legacy',
         financialRole:(analysis&&analysis.financialRole)||'consumption',
-        items:analysis&&Array.isArray(analysis.items)?analysis.items:[],
+        expenseProfile:analysis&&analysis.expenseProfile?analysis.expenseProfile:null,
+        installmentCount:Math.max(0,Number(record.installmentCount||record.installments||record.parcelas)||0),
+        items:analysis&&Array.isArray(analysis.items)?analysis.items:[] ,
         metrics:analysis&&analysis.metrics?analysis.metrics:{},
         analysis:analysis||null,
         source:source
@@ -6542,6 +6573,269 @@ AlicerceIA._detectMonthlyPatterns=function(rows){
   return result.sort(function(a,b){return b.months-a.months||b.average-a.average;});
 };
 
+AlicerceIA._expenseRecurrenceKey=function(row){
+  if(!row)return '';
+  var identity='';
+  if(row.local){
+    try{identity=typeof normalizeAlicerMerchantIdentity==='function'?normalizeAlicerMerchantIdentity(row.local):'';}catch(e){}
+  }
+  identity=identity||this._norm(row.descricao||'');
+  if(!identity||identity.length<4)return '';
+  return [this._norm(row.categoria),this._norm(row.subcategoria),identity].join('|');
+};
+AlicerceIA._expenseRecurrenceProfiles=function(rows){
+  var now=Clock.now();
+  var cutoff=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-179));
+  var groups={};
+  (rows||this._rows()).forEach(function(row){
+    if(!row||!row.data||row.data<cutoff||row.data>this._iso(now))return;
+    var key=this._expenseRecurrenceKey(row);
+    if(!key)return;
+    if(!groups[key])groups[key]={merchant:row.local||row.descricao||'',months:{}};
+    var month=row.data.slice(0,7);
+    groups[key].months[month]=(groups[key].months[month]||0)+(Number(row.valor)||0);
+  },this);
+  var profiles={};
+  Object.keys(groups).forEach(function(key){
+    var group=groups[key];
+    var months=Object.keys(group.months).sort();
+    if(months.length<3)return;
+    var values=months.map(function(month){return group.months[month];});
+    var median=this._median(values);
+    if(median<=0)return;
+    var min=Math.min.apply(Math,values);
+    var max=Math.max.apply(Math,values);
+    var stable=min>=median*0.75&&max<=median*1.25;
+    profiles[key]={
+      recurrence:'recurring',
+      behavior:stable?'fixed':'variable',
+      months:months.length,
+      median:median,
+      minimum:min,
+      maximum:max,
+      confidence:'medium',
+      merchant:group.merchant
+    };
+  },this);
+  return profiles;
+};
+AlicerceIA._classifyExpenseDimensions=function(row,recurrenceProfiles){
+  if(!row)return null;
+  var profile=row.expenseProfile||(row.analysis&&row.analysis.expenseProfile)||null;
+  var userConfirmed=!!(profile&&profile.source==='user_confirmed');
+  var allowed={
+    nature:['essential','discretionary','undetermined'],
+    commitment:['contractual','non_contractual','undetermined'],
+    recurrence:['recurring','occasional','undetermined'],
+    behavior:['fixed','variable','undetermined'],
+    flexibility:['low','medium','high','undetermined'],
+    context:['work','health','family','housing','leisure','convenience','education','other','undetermined']
+  };
+  var result={
+    nature:'undetermined',
+    commitment:'undetermined',
+    recurrence:'undetermined',
+    behavior:'undetermined',
+    flexibility:'undetermined',
+    context:'undetermined',
+    confidence:{nature:'low',commitment:'low',recurrence:'low',behavior:'low',flexibility:'low',context:'low'},
+    evidence:{nature:'insufficient_data',commitment:'insufficient_data',recurrence:'insufficient_data',behavior:'insufficient_data',flexibility:'insufficient_data',context:'insufficient_data'}
+  };
+  var fields=Object.keys(allowed);
+  fields.forEach(function(field){
+    var value=profile&&String(profile[field]||'').toLowerCase();
+    if(userConfirmed&&allowed[field].indexOf(value)>=0){
+      result[field]=value;
+      result.confidence[field]=(profile.confidence&&profile.confidence[field])||'high';
+      result.evidence[field]='user_confirmed';
+    }
+  });
+  var category=this._norm(row.categoria);
+  var subcategory=this._norm(row.subcategoria);
+  var purpose=this._norm(row.purpose||'');
+  var purposeContext='undetermined';
+  if(/\b(trabalho|emprego|profissao|profissional|trabalhar)\b/.test(purpose))purposeContext='work';
+  else if(/\b(saude|medico|medica|hospital|tratamento|remedio|consulta|exame)\b/.test(purpose))purposeContext='health';
+  else if(/\b(familia|filho|filha|pais|dependente)\b/.test(purpose))purposeContext='family';
+  else if(/\b(casa|moradia|aluguel|obra|reforma|habitacao)\b/.test(purpose))purposeContext='housing';
+  else if(/\b(lazer|passeio|cinema|bar|descanso|diversao)\b/.test(purpose))purposeContext='leisure';
+  else if(/\b(conveniencia|praticidade|falta de tempo|comodidade)\b/.test(purpose))purposeContext='convenience';
+  else if(/\b(escola|estudo|estudar|faculdade|curso|educacao)\b/.test(purpose))purposeContext='education';
+  if(result.context==='undetermined'&&purposeContext!=='undetermined'){
+    result.context=purposeContext;
+    result.confidence.context='high';
+    result.evidence.context='user_stated_purpose';
+  }
+  var clearDiscretionary=false;
+  if(category==='lazer'&&['streaming','cinema','shows','jogos','games','hobbies','eventos'].indexOf(subcategory)>=0)clearDiscretionary=true;
+  if(category==='apostas')clearDiscretionary=true;
+  if(category==='comida'&&subcategory==='bar')clearDiscretionary=true;
+  var clearEssential=false;
+  if(category==='moradia'&&['aluguel','energia','agua','gas'].indexOf(subcategory)>=0)clearEssential=true;
+  if(result.nature==='undetermined'){
+    if(purposeContext==='leisure'||purposeContext==='convenience'){
+      result.nature='discretionary';
+      result.confidence.nature='medium';
+      result.evidence.nature='user_stated_purpose';
+    }else if(clearEssential){
+      result.nature='essential';
+      result.confidence.nature='medium';
+      result.evidence.nature='category_rule';
+    }else if(clearDiscretionary){
+      result.nature='discretionary';
+      result.confidence.nature='medium';
+      result.evidence.nature='category_rule';
+    }else if((purposeContext==='work'&&(category==='transporte'||category==='trabalho'||category==='moradia'))||
+             (purposeContext==='health'&&category==='saude')){
+      result.nature='essential';
+      result.confidence.nature='medium';
+      result.evidence.nature='user_stated_purpose';
+    }else if(category==='saude'&&subcategory==='medicamentos'&&/\b(uso continuo|prescrito|receita medica|tratamento continuo)\b/.test(purpose)){
+      result.nature='essential';
+      result.confidence.nature='medium';
+      result.evidence.nature='user_stated_purpose';
+    }else if(category==='comida'&&['mercado','feira','padaria'].indexOf(subcategory)>=0&&Array.isArray(row.items)&&row.items.length){
+      var basicFood=/\b(arroz|feijao|macarrao|carne|frango|ovos|leite|pao|banana|maca|tomate|alface|cebola|batata|cenoura|laranja|farinha|fuba|acucar|oleo de cozinha)\b/;
+      var allBasic=row.items.every(function(item){
+        var name=this._norm(item&&(item.normalizedName||item.name||item.description)||'');
+        return !!name&&basicFood.test(name);
+      },this);
+      if(allBasic){
+        result.nature='essential';
+        result.confidence.nature='medium';
+        result.evidence.nature='identified_basic_food_items';
+      }
+    }
+  }
+  var installmentCount=Math.max(0,Number(row.installmentCount||row.installments||row.parcelas)||0);
+  if(result.commitment==='undetermined'&&installmentCount>1){
+    result.commitment='contractual';
+    result.confidence.commitment='high';
+    result.evidence.commitment='installment_metadata';
+  }
+  var recurringKey=this._expenseRecurrenceKey(row);
+  var recurringProfile=recurrenceProfiles&&recurrenceProfiles[recurringKey];
+  if(recurringProfile){
+    if(result.recurrence==='undetermined'){
+      result.recurrence='recurring';
+      result.confidence.recurrence=recurringProfile.confidence;
+      result.evidence.recurrence='three_or_more_distinct_months';
+    }
+    if(result.behavior==='undetermined'){
+      result.behavior=recurringProfile.behavior;
+      result.confidence.behavior=recurringProfile.confidence;
+      result.evidence.behavior='monthly_amount_stability';
+    }
+  }
+  if(result.flexibility==='undetermined'){
+    if(result.nature==='essential'){
+      if(category==='moradia'&&['aluguel','energia','agua','gas'].indexOf(subcategory)>=0){
+        result.flexibility='low';
+        result.confidence.flexibility='medium';
+        result.evidence.flexibility='essential_housing_rule';
+      }else if(purposeContext==='work'||purposeContext==='health'){
+        result.flexibility='low';
+        result.confidence.flexibility='medium';
+        result.evidence.flexibility='user_stated_essential_context';
+      }
+    }else if(result.nature==='discretionary'){
+      result.flexibility='high';
+      result.confidence.flexibility='medium';
+      result.evidence.flexibility='discretionary_category_or_context';
+    }
+  }
+  if(userConfirmed&&profile){
+    fields.forEach(function(field){
+      if(allowed[field].indexOf(String(profile[field]||'').toLowerCase())>=0){
+        result[field]=String(profile[field]).toLowerCase();
+        result.confidence[field]=(profile.confidence&&profile.confidence[field])||'high';
+        result.evidence[field]='user_confirmed';
+      }
+    });
+  }
+  return result;
+};
+AlicerceIA._financialReality=function(periodRows,historyRows){
+  var period=periodRows||this._periodRows(0);
+  var history=historyRows||this._rows();
+  var recurrenceProfiles=this._expenseRecurrenceProfiles(history);
+  var result={
+    total:0,
+    essential:0,
+    discretionary:0,
+    undetermined:0,
+    discretionaryFlexible:0,
+    counts:{total:period.length,essential:0,discretionary:0,undetermined:0},
+    percentages:{essential:0,discretionary:0,undetermined:0,discretionaryFlexible:0},
+    classifiedCoverage:0,
+    reviewOpportunity:false,
+    needsContext:false,
+    assessments:[]
+  };
+  period.forEach(function(row){
+    var assessment=this._classifyExpenseDimensions(row,recurrenceProfiles);
+    if(!assessment)return;
+    var amount=Number(row.valor)||0;
+    result.total+=amount;
+    result.assessments.push({row:row,dimensions:assessment});
+    if(assessment.nature==='essential'){
+      result.essential+=amount;
+      result.counts.essential++;
+    }else if(assessment.nature==='discretionary'){
+      result.discretionary+=amount;
+      result.counts.discretionary++;
+      if(assessment.flexibility==='high')result.discretionaryFlexible+=amount;
+    }else{
+      result.undetermined+=amount;
+      result.counts.undetermined++;
+    }
+  },this);
+  if(result.total>0){
+    result.percentages.essential=result.essential/result.total*100;
+    result.percentages.discretionary=result.discretionary/result.total*100;
+    result.percentages.undetermined=result.undetermined/result.total*100;
+    result.percentages.discretionaryFlexible=result.discretionaryFlexible/result.total*100;
+    result.classifiedCoverage=(result.essential+result.discretionary)/result.total*100;
+    result.needsContext=result.percentages.undetermined>=15;
+    result.reviewOpportunity=result.counts.total>=5&&
+      result.percentages.discretionaryFlexible>20&&
+      result.percentages.undetermined<15;
+  }
+  return result;
+};
+AlicerceIA._financialRealityAnswer=function(reality){
+  var data=reality||this._financialReality();
+  var lang=Store.lang||'pt';
+  var essential=fmtMoney(data.essential);
+  var discretionary=fmtMoney(data.discretionary);
+  var unknown=fmtMoney(data.undetermined);
+  var share=Math.round(data.percentages.discretionaryFlexible||0);
+  var unknownShare=Math.round(data.percentages.undetermined||0);
+  if(!data.total){
+    if(lang==='en')return 'There are no eligible expense records in this period yet.';
+    if(lang==='es')return 'Todavía no hay gastos válidos registrados en este período.';
+    return 'Ainda não há despesas elegíveis registradas neste período.';
+  }
+  if(lang==='en'){
+    var answer='In this period, estimated essential expenses total '+essential+', discretionary expenses total '+discretionary+', and '+unknown+' remain undetermined.';
+    if(data.reviewOpportunity)answer+=' High-flexibility discretionary expenses represent '+share+'% of recorded spending. This is a review signal, not an instruction to cut spending.';
+    else if(data.needsContext)answer+=' '+unknownShare+'% remain undetermined, so I will not suggest savings until there is more context.';
+    answer+=' Estimates use recorded categories and stated purposes; contractual status is separate from recurrence.';
+    return answer;
+  }
+  if(lang==='es'){
+    var respuesta='En este período, los gastos esenciales estimados suman '+essential+', los discrecionales suman '+discretionary+' y '+unknown+' siguen sin determinar.';
+    if(data.reviewOpportunity)respuesta+=' Los gastos discrecionales de alta flexibilidad representan el '+share+'% del gasto registrado. Es una señal para revisar, no una instrucción para recortar.';
+    else if(data.needsContext)respuesta+=' El '+unknownShare+'% sigue sin determinar, por lo que no sugeriré ahorros sin más contexto.';
+    respuesta+=' Las estimaciones usan categorías registradas y finalidades declaradas; el compromiso contractual se distingue de la recurrencia.';
+    return respuesta;
+  }
+  var resposta='Neste período, as despesas essenciais estimadas somam '+essential+', as discricionárias somam '+discretionary+' e '+unknown+' permanecem indeterminadas.';
+  if(data.reviewOpportunity)resposta+=' Os gastos discricionários de alta flexibilidade representam '+share+'% das despesas registradas. Isso é um sinal para revisar, não uma ordem para cortar.';
+  else if(data.needsContext)resposta+=' '+unknownShare+'% ainda estão indeterminados; por isso não vou sugerir economia antes de entender melhor esses gastos.';
+  resposta+=' As estimativas usam as categorias registradas e as finalidades informadas; compromisso contratual é diferente de recorrência.';
+  return resposta;
+};
 AlicerceIA._vehicleSummary=function(rows){
   var fuel={purchases:0,total:0,liters:0,totalWithLiters:0};
   var fullTankReadings={};
@@ -6762,6 +7056,9 @@ AlicerceIA.responder=function(question){
   var rows=this._rows();
   var range=this._questionRange(question);
   var selected=this._rangeRows(range.start,range.end,rows);
+  if(/custo de sobrevivencia|quanto custa manter|despesas? essenciais|gastos? essenciais|estilo de vida|discricionari|sup[eé]rflu|necessidades basicas|realidade financeira/.test(q)){
+    return this._financialRealityAnswer(this._financialReality(selected,rows));
+  }
   if(/combustivel|abastecimento|preco por litro|litros abastecidos/.test(q)){
     var vehicleData=this._vehicleSummary(rows).fuel;
     if(!vehicleData.purchases)return this._label('noFuelData');
@@ -12233,6 +12530,26 @@ AlicerceIA.renderDashboard=function(){
     html+='</section></div>';
     html+='<section class="visao-ai-recurring"><div><div class="visao-ai-section-label">'+esc(ui.recurring)+'</div><p>'+(recurring?esc(this._label('recurringInsight',{item:recurring.merchant,amount:fmtMoney(recurring.amount),months:recurring.months})):esc(ui.recurringNone))+'</p></div>';
     html+='<button type="button" id="visao-ai-recurring" '+actionAttr('Quais pagamentos parecem recorrentes?')+'>'+esc(ui.recurringAction)+'</button></section>';
+    var reality=this._financialReality(current,rows);
+    html+='<section class="visao-ai-panel" id="visao-ai-financial-reality">';
+    html+='<div class="visao-ai-section-label">Sua realidade financeira</div>';
+    html+='<div class="visao-ai-kpis">';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-essential" '+actionAttr('Quanto custa manter minha vida?')+'><span>Essenciais estimados</span><strong>'+fmtMoney(reality.essential)+'</strong><small>'+Math.round(reality.percentages.essential)+'% das despesas</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-discretionary" '+actionAttr('Quanto gastei com estilo de vida?')+'><span>Discricionários</span><strong>'+fmtMoney(reality.discretionary)+'</strong><small>'+Math.round(reality.percentages.discretionary)+'% das despesas</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-undetermined" '+actionAttr('Quais gastos ainda precisam de contexto?')+'><span>Indeterminados</span><strong>'+fmtMoney(reality.undetermined)+'</strong><small>'+Math.round(reality.percentages.undetermined)+'% das despesas</small></button>';
+    html+='</div>';
+    html+='<p class="visao-ai-muted">A classificação é estimada. Estabelecimento, horário ou dia da semana, sozinhos, não provam a finalidade da compra. Parcelamento e recorrência são avaliados separadamente.</p>';
+    if(reality.reviewOpportunity){
+      html+='<p class="visao-ai-muted">Os gastos discricionários de alta flexibilidade superam 20% das despesas e os indeterminados estão abaixo de 15%. Vale revisar os itens, sem presumir que todos devam ser cortados.</p>';
+    }else if(reality.needsContext){
+      html+='<p class="visao-ai-muted">Uma parte relevante dos gastos ainda precisa de contexto. Alicia não vai transformar esses valores em recomendações de corte.</p>';
+    }else if(reality.counts.total<5){
+      html+='<p class="visao-ai-muted">Ainda há poucos lançamentos neste período para gerar um alerta de oportunidade confiável.</p>';
+    }else{
+      html+='<p class="visao-ai-muted">Os valores indeterminados ficam separados e não entram em sugestões de economia.</p>';
+    }
+    html+='<button type="button" id="visao-ai-financial-reality-detail" '+actionAttr('Quanto custa manter minha vida?')+'>Entender minha realidade financeira</button>';
+    html+='</section>';
     html+='<div class="visao-ai-actions">';
     html+='<button type="button" '+actionAttr('Compare com o mês passado')+'>'+esc(ui.compareAction)+'</button>';
     html+='<button type="button" '+actionAttr('Onde gastei mais?')+'>'+esc(ui.topAction)+'</button>';
