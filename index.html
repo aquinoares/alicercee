@@ -5017,6 +5017,7 @@ const AlicerceIA = {
   _answer:'',
   _messages:[],
   _pendingExpenseDraft:null,
+  _pendingFinancialReview:null,
   _welcomeTypingStarted:false,
   _resetUser:function(){
     var uid=String(Store.userId||'');
@@ -5028,6 +5029,7 @@ const AlicerceIA = {
       this._answer='';
       this._messages=[];
       this._pendingExpenseDraft=null;
+      this._pendingFinancialReview=null;
       this._welcomeTypingStarted=false;
       this._pendingPrivacyAction='';
       this._pendingSpeechIndex=-1;
@@ -5416,6 +5418,7 @@ AlicerceIA.limparConversa=function(){
   this.pararAudio();
   this._messages=[];
   this._pendingExpenseDraft=null;
+  this._pendingFinancialReview=null;
   this._question='';
   this._answer='';
   this._welcomeTypingStarted=false;
@@ -5570,6 +5573,184 @@ AlicerceIA._expenseClarificationMessage=function(field,item){
   return labels[field]||labels.amount;
 };
 
+
+AlicerceIA._isFinancialReviewRequest=function(messageNorm){
+  var value=String(messageNorm||'');
+  var hasExpense=/\b(gastos?|despesas?|expense|expenses|spending)\b/.test(value);
+  var hasReviewIntent=/\b(contexto|context|indeterminad\w*|revis\w*|sem contexto|need context|needs context)\b/.test(value);
+  return hasExpense&&hasReviewIntent;
+};
+AlicerceIA._financialReviewKey=function(row){
+  if(!row)return '';
+  if(row.source==='card'&&row.purchaseId)return 'card:'+String(row.purchaseId);
+  return String(row.source||'')+':'+String(row.id||'');
+};
+AlicerceIA._financialReviewCandidates=function(){
+  var reality=this._financialReality(this._periodRows(0),this._rows());
+  var state=this._pendingFinancialReview||{handled:[]};
+  var handled=Array.isArray(state.handled)?state.handled:[];
+  var seen={};
+  var candidates=[];
+  (reality.assessments||[]).forEach(function(item){
+    if(!item||!item.row||!item.dimensions||item.dimensions.nature!=='undetermined')return;
+    var key=this._financialReviewKey(item.row);
+    if(!key||handled.indexOf(key)>=0||seen[key])return;
+    seen[key]=true;
+    candidates.push(item);
+  },this);
+  candidates.sort(function(a,b){return (Number(b.row.valor)||0)-(Number(a.row.valor)||0);});
+  return candidates;
+};
+AlicerceIA._financialReviewNextPrompt=function(first){
+  var state=this._pendingFinancialReview;
+  if(!state)return '';
+  var candidates=this._financialReviewCandidates();
+  if(!candidates.length){
+    this._pendingFinancialReview=null;
+    if(first){
+      if(Store.lang==='en')return 'There are no expenses in this month that still need context. I will not invent a purpose or suggest cuts.';
+      if(Store.lang==='es')return 'Este mes no hay gastos que todavía necesiten contexto. No voy a inventar finalidades ni sugerir recortes.';
+      return 'Neste mês não encontrei gastos que ainda precisem de contexto. Não vou inventar finalidades nem sugerir cortes.';
+    }
+    if(Store.lang==='en')return 'Thank you. We have reviewed the available items in this conversation. Anything you marked as unknown remains undetermined and will not be used for cut recommendations.';
+    if(Store.lang==='es')return 'Gracias. Revisamos los elementos disponibles en esta conversación. Lo que marcaste como desconocido seguirá indeterminado y no se usará para recomendar recortes.';
+    return 'Obrigado. Revisamos os itens disponíveis nesta conversa. O que você marcou como desconhecido continuará indeterminado e não será usado para recomendar cortes.';
+  }
+  var selected=candidates[0].row;
+  state.current={
+    id:selected.id,
+    source:selected.source,
+    purchaseId:selected.purchaseId||''
+  };
+  var label=String(selected.descricao||selected.local||selected.subcategoria||selected.categoria||'despesa');
+  var amount=fmtMoney(selected.valor);
+  var date=fmtDate(selected.data);
+  if(Store.lang==='en'){
+    return (first?'I found '+candidates.length+' expense(s) that still need context. ':'Next, let us review this item: ')+label+' ('+amount+', '+date+'). What was it for? You can answer in your own words, or say “I am not sure”.';
+  }
+  if(Store.lang==='es'){
+    return (first?'Encontré '+candidates.length+' gasto(s) que todavía necesitan contexto. ':'Ahora revisemos este elemento: ')+label+' ('+amount+', '+date+'). ¿Para qué fue? Puedes responder con tus palabras o decir “todavía no lo sé”.';
+  }
+  return (first?'Encontrei '+candidates.length+' gasto(s) que ainda precisam de contexto. ':'Agora vamos revisar este lançamento: ')+label+' ('+amount+', '+date+'). Qual era a finalidade? Responda com suas palavras ou diga “ainda não sei”.';
+};
+AlicerceIA._financialReviewProfileFromReply=function(message){
+  var text=String(message||'').trim();
+  var normalized=this._norm(text);
+  var profile={version:1,source:'user_confirmed'};
+  var confidence={};
+  var contextDefinitions=[
+    {value:'health',pattern:/\b(saude|medico|medica|hospital|tratamento|remedio|consulta|exame|dentista|terapia)\b/},
+    {value:'work',pattern:/\b(trabalho|emprego|profissao|profissional|trabalhar|expediente|empresa)\b/},
+    {value:'family',pattern:/\b(familia|filho|filha|pais|dependente|mae|pai|esposa|marido)\b/},
+    {value:'housing',pattern:/\b(casa|moradia|aluguel|obra|reforma|habitacao|energia|agua|gas|conta de luz)\b/},
+    {value:'education',pattern:/\b(escola|estudo|estudar|faculdade|curso|educacao|material escolar)\b/},
+    {value:'leisure',pattern:/\b(lazer|passeio|cinema|bar|descanso|diversao|show|festa|hobby|viagem|ferias)\b/},
+    {value:'convenience',pattern:/\b(conveniencia|praticidade|falta de tempo|comodidade|entrega rapida)\b/},
+    {value:'other',pattern:/\b(outro motivo|outra finalidade|outros motivos)\b/}
+  ];
+  var context='';
+  for(var i=0;i<contextDefinitions.length;i++){
+    var match=normalized.match(contextDefinitions[i].pattern);
+    if(!match)continue;
+    var position=normalized.indexOf(match[0]);
+    var left=normalized.slice(Math.max(0,position-24),position);
+    var noPrefix=left.lastIndexOf('nao');
+    var butPrefix=left.lastIndexOf('mas');
+    if(noPrefix>=0&&noPrefix>butPrefix)continue;
+    context=contextDefinitions[i].value;
+    break;
+  }
+  if(context){
+    profile.context=context;
+    confidence.context='high';
+  }
+  var unknown=/\b(ainda nao sei|nao sei|nao lembro|nao tenho certeza|nao consegui identificar)\b/.test(normalized);
+  if(/\b(essencial|necessario|necessaria|indispensavel)\b/.test(normalized)&&!unknown){
+    profile.nature='essential';
+    confidence.nature='high';
+  }else if(/\b(discricionario|discricionaria|superfluo|superflua|poderia cortar|poderia reduzir)\b/.test(normalized)&&!unknown){
+    profile.nature='discretionary';
+    confidence.nature='high';
+  }else if(unknown&&!context){
+    profile.nature='undetermined';
+    confidence.nature='low';
+  }
+  if(/\b(sem contrato|nao tem contrato|nao existe contrato|sem fidelidade)\b/.test(normalized)){
+    profile.commitment='non_contractual';
+    confidence.commitment='high';
+  }else if(/\b(tem contrato|com contrato|contrato assinado|fidelidade|obrigacao formal)\b/.test(normalized)){
+    profile.commitment='contractual';
+    confidence.commitment='high';
+  }
+  if(/\b(nao posso adiar|nao posso reduzir|dificil adiar|nao consigo reduzir|sem alternativa)\b/.test(normalized)){
+    profile.flexibility='low';
+    confidence.flexibility='high';
+  }else if(/\b(posso reduzir um pouco|em parte|parcialmente)\b/.test(normalized)){
+    profile.flexibility='medium';
+    confidence.flexibility='high';
+  }else if(/\b(posso cancelar|posso adiar|posso reduzir|posso substituir|com facilidade|facilmente)\b/.test(normalized)){
+    profile.flexibility='high';
+    confidence.flexibility='high';
+  }
+  if(!context&&!profile.nature){
+    profile.nature='undetermined';
+    confidence.nature='low';
+  }
+  if(Object.keys(confidence).length)profile.confidence=confidence;
+  return {
+    profile:profile,
+    purpose:unknown?'':text.slice(0,180),
+    unknown:unknown
+  };
+};
+AlicerceIA._applyFinancialReviewReply=function(message){
+  var state=this._pendingFinancialReview;
+  if(!state||!state.current)return 'Não encontrei uma revisão financeira em andamento. Peça novamente para revisar os gastos que precisam de contexto.';
+  var current=state.current;
+  var row=financialProfileFindRow(current);
+  if(!row){
+    state.handled.push(this._financialReviewKey(current));
+    return 'Esse lançamento não está mais disponível. '+this._financialReviewNextPrompt(false);
+  }
+  var parsed=this._financialReviewProfileFromReply(message);
+  var targets=[];
+  if(row.source==='movement'){
+    targets=Store.movements.filter(function(item){return item&&String(item.id)===String(row.id);});
+  }else if(row.source==='card'){
+    if(row.purchaseId){
+      targets=Store.installments.filter(function(item){
+        return item&&item.tipo==='cartao'&&String(item.compraId)===String(row.purchaseId)&&!item.loanId&&!item.fromCard;
+      });
+    }
+    if(!targets.length)targets=Store.installments.filter(function(item){return item&&String(item.id)===String(row.id);});
+  }
+  if(!targets.length){
+    state.handled.push(this._financialReviewKey(row));
+    return 'Não localizei o registro para salvar a resposta; nenhum dado foi alterado. '+this._financialReviewNextPrompt(false);
+  }
+  targets.forEach(function(item){
+    var analysis=Object.assign({},item.analysis||{});
+    analysis.expenseProfile=parsed.profile;
+    item.analysis=normalizeAlicerMovementAnalysis(analysis);
+    if(parsed.purpose)item.purpose=parsed.purpose;
+  });
+  Store.save();
+  state.handled.push(this._financialReviewKey(row));
+  var savedText='';
+  if(Store.lang==='en'){
+    savedText=parsed.unknown?'Okay. I kept this expense undetermined.':'I saved the purpose you provided with this expense.';
+    savedText+=' Amount, date, category, and balance were not changed. ';
+  }else if(Store.lang==='es'){
+    savedText=parsed.unknown?'De acuerdo. Mantuve este gasto como indeterminado.':'Guardé la finalidad que indicaste junto a este gasto.';
+    savedText+=' No cambié el importe, la fecha, la categoría ni el saldo. ';
+  }else{
+    savedText=parsed.unknown?'Tudo bem. Mantive este gasto como indeterminado.':'Registrei a finalidade informada neste lançamento.';
+    savedText+=' Não alterei valor, data, categoria ou saldo. ';
+  }
+  return savedText+this._financialReviewNextPrompt(false);
+};
+
+
 AlicerceIA.enviarMensagem=async function(question){
   this._resetUser();
   this.pararAudio();
@@ -5583,8 +5764,42 @@ AlicerceIA.enviarMensagem=async function(question){
 
   var expenseCommand=null;
   var messageNorm=this._norm(message);
-  var pendingQuestion=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque)\b/.test(messageNorm)||/\?\s*$/.test(message);
+  var pendingQuestion=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque|what|which|where|when|how|compare|show|tell|why|cuanto|donde|cual|que|como|cuando|compara|muestra|dime)\b/.test(messageNorm)||/\?\s*$/.test(message);
   var cancelPending=/^(?:cancela|cancelar|cancelar compra|desisti|desistir|deixa|deixa pra la|nao quero|esquece)$/i.test(messageNorm);
+  if(this._pendingFinancialReview&&cancelPending){
+    this._pendingFinancialReview=null;
+    var cancelledReview=Store.lang==='en'?'Okay. I stopped the review. Unknown expenses remain unchanged.':Store.lang==='es'?'De acuerdo. Detuve la revisión. Los gastos desconocidos siguen sin cambios.':'Tudo bem. Parei a revisão. Os gastos desconhecidos continuam sem alterações.';
+    this._messages.push({role:'assistant',text:cancelledReview});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._question=message;
+    this._answer=cancelledReview;
+    render();
+    return;
+  }
+  if(this._pendingFinancialReview&&!pendingQuestion){
+    var reviewAnswer=this._applyFinancialReviewReply(message);
+    this._messages.push({role:'assistant',text:reviewAnswer});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._question=message;
+    this._answer=reviewAnswer;
+    render();
+    return;
+  }
+  if(!this._pendingFinancialReview&&!this._pendingExpenseDraft&&this._isFinancialReviewRequest(messageNorm)){
+    var reviewStartAnswer='';
+    if(!Store.userId){
+      reviewStartAnswer=Store.lang==='en'?'Sign in to review and save the context of your expenses.':Store.lang==='es'?'Inicia sesión para revisar y guardar el contexto de tus gastos.':'Entre na sua conta para revisar e salvar o contexto dos seus gastos.';
+    }else{
+      this._pendingFinancialReview={handled:[],current:null};
+      reviewStartAnswer=this._financialReviewNextPrompt(true);
+    }
+    this._messages.push({role:'assistant',text:reviewStartAnswer});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._question=message;
+    this._answer=reviewStartAnswer;
+    render();
+    return;
+  }
   if(this._pendingExpenseDraft&&pendingQuestion){
     expenseCommand=null;
   }else if(this._pendingExpenseDraft&&cancelPending){
@@ -6259,9 +6474,9 @@ function renderAssistente(){
   AlicerceIA._resetUser();
   var lang=Store.lang||'pt';
   var copy={
-    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Falar com Alicia',micStop:'Parar gravação',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
-    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Speak to Alicia',micStop:'Stop recording',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
-    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Hablar con Alicia',micStop:'Detener grabación',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
+    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Falar com Alicia',micStop:'Parar gravação',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?','Quais gastos ainda precisam de contexto?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
+    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Speak to Alicia',micStop:'Stop recording',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?','Which expenses still need context?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
+    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Hablar con Alicia',micStop:'Detener grabación',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?','¿Qué gastos aún necesitan contexto?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
   };
   var ui=copy[lang]||copy.pt;
   var messages=Array.isArray(AlicerceIA._messages)?AlicerceIA._messages:[];
