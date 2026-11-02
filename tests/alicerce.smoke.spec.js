@@ -700,6 +700,12 @@ test('recarrega gastos e cartões do armazenamento cloud simulado sem depender d
       subcategoria: 'mercado',
       descricao: 'Mercado sincronizado',
       purpose: 'obra',
+      analysis: {
+        origin: 'receipt_ocr',
+        purchaseId: 'compra-mercado-cloud-1',
+        items: [{ name: 'Arroz', quantity: 2, unit: 'kg', unitPrice: 10, total: 20 }],
+        metrics: { fuelLiters: 0 }
+      },
       valor: 145.7,
       data: '2026-10-31',
       status: 'pago'
@@ -732,6 +738,7 @@ test('recarrega gastos e cartões do armazenamento cloud simulado sem depender d
       cartoes: Store.cards,
       cacheMovimentos: Repository.get(uid, 'movements', []),
       cacheCartoes: Repository.get(uid, 'cards', []),
+      analyticalRows: AlicerceIA._rows(),
       cloudRows: window.__alicerceMockCloudRows,
       upserts: window.__alicerceMockUpserts
     };
@@ -755,6 +762,12 @@ test('recarrega gastos e cartões do armazenamento cloud simulado sem depender d
   });
   expect(resultado.cacheMovimentos).toEqual(resultado.movimentos);
   expect(resultado.cacheCartoes).toEqual(resultado.cartoes);
+  expect(resultado.analyticalRows[0]).toMatchObject({
+    purpose: 'obra',
+    purchaseId: 'compra-mercado-cloud-1',
+    origin: 'receipt_ocr',
+    items: [{ name: 'Arroz', quantity: 2, unit: 'kg', unitPrice: 10, total: 20 }]
+  });
   expect(resultado.cloudRows).toHaveLength(2);
   expect(resultado.upserts).toHaveLength(2);
   expect(resultado.upserts.every(function (item) {
@@ -1518,6 +1531,67 @@ test('Alicerce IA respeita o motor financeiro e exclui pendencias, transferencia
   expect(result.rows.map(function (row) { return row.source; }).sort()).toEqual(['card', 'movement']);
 });
 
+test('motor preserva metadados estruturados de compras e separa aporte de consumo', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    Store.userId = 'motor-metadados-compra';
+    Store.loans = [];
+    Store.installments = [];
+    Store.movements = [];
+    var movement = Store.addMovement({
+      tipo: 'despesa',
+      status: 'pago',
+      categoria: 'comida',
+      subcategoria: 'feira',
+      descricao: 'Feira de sábado',
+      valor: 45,
+      data: Clock.today(),
+      analysis: {
+        origin: 'manual',
+        purchaseId: 'feira-001',
+        items: [
+          { name: 'Tomate', quantity: 1.5, unit: 'kg', unitPrice: 6, total: 9 },
+          { name: '', quantity: -2, unitPrice: 'inválido' }
+        ],
+        metrics: { fuelLiters: -5, unitPrice: 5.89, odometerKm: 120000, vehicleId: 'carro-1' }
+      }
+    });
+    var investment = {
+      id: 'aporte-nao-consumo',
+      tipo: 'despesa',
+      status: 'pago',
+      categoria: 'financeiro',
+      subcategoria: 'investimento',
+      descricao: 'Aporte corretora',
+      valor: 500,
+      data: Clock.today(),
+      analysis: { financialRole: 'investment_contribution' }
+    };
+    Store.movements.push(investment);
+    Repository.set(Store.userId, 'movements', Store.movements);
+    return {
+      movement: movement,
+      stored: Repository.get(Store.userId, 'movements', []),
+      rows: Store.getAnalysisEntries()
+    };
+  });
+  expect(result.movement.analysis).toMatchObject({
+    version: 1,
+    origin: 'manual',
+    purchaseId: 'feira-001',
+    items: [{ name: 'Tomate', quantity: 1.5, unit: 'kg', unitPrice: 6, total: 9 }],
+    metrics: { unitPrice: 5.89, odometerKm: 120000, vehicleId: 'carro-1' }
+  });
+  expect(result.stored[0].analysis.purchaseId).toBe('feira-001');
+  expect(result.rows).toHaveLength(1);
+  expect(result.rows[0]).toMatchObject({
+    purpose: '',
+    purchaseId: 'feira-001',
+    items: [{ name: 'Tomate', total: 9 }],
+    metrics: { unitPrice: 5.89, odometerKm: 120000 }
+  });
+});
+
 test('Alicerce IA identifica um gasto muito acima da mediana pessoal quando existe historico suficiente', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   const result = await page.evaluate(function () {
@@ -1599,13 +1673,14 @@ test('Alicerce IA entende periodos, estabelecimentos e aumentos por categoria', 
       yesterday: AlicerceIA.responder('Quanto gastei ontem?'),
       merchant: AlicerceIA.responder('Qual estabelecimento levou mais dinheiro?'),
       categoryRise: AlicerceIA.insight(),
-      expectedLastMonth: previousMonthDate.slice(0, 7)===yesterdayDate.slice(0, 7)?'R$ 115,00':'R$ 100,00'
+      expectedLastMonth: previousMonthDate.slice(0, 7)===yesterdayDate.slice(0, 7)?'R$ 115,00':'R$ 100,00',
+      expectedRisePercent: Math.round(((195+(yesterdayDate.slice(0,7)===currentDate.slice(0,7)?15:0))-100)/100*100)
     };
   });
   expect(result.lastMonth).toContain(result.expectedLastMonth);
   expect(result.yesterday).toContain('R$ 15,00');
   expect(result.merchant).toContain('Mercado Bom');
-  expect(result.categoryRise).toContain('aumentaram 95%');
+  expect(result.categoryRise).toContain('aumentaram '+result.expectedRisePercent+'%');
 });
 
 
