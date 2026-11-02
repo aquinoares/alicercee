@@ -35,7 +35,7 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 
 ## Resultado automatizado atual
 
-A suíte reúne 66 cenários Playwright, executa benchmarks com 43 exemplos-base e 40 exemplos complementares de despesas brasileiras, além de 27 descrições bancárias ruidosas. Sete cenários novos cobrem separação das dimensões, incerteza, dados confirmados, recorrência, agregação financeira e confirmação manual de perfis em despesas e compras parceladas. Os exemplos são sintéticos e servem para regressão do comportamento esperado; não são transações de clientes e não representam, sozinhos, a precisão real em produção. O CI imprime acertos e total por categoria e par categoria/subcategoria. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
+A suíte reúne 67 cenários Playwright, executa benchmarks com 43 exemplos-base e 40 exemplos complementares de despesas brasileiras, além de 27 descrições bancárias ruidosas. Oito cenários novos cobrem separação das dimensões, incerteza, dados confirmados, recorrência, agregação financeira, confirmação manual de perfis em despesas e compras parceladas e preservação da escolha explícita de manter a natureza indeterminada. Os exemplos são sintéticos e servem para regressão do comportamento esperado; não são transações de clientes e não representam, sozinhos, a precisão real em produção. O CI imprime acertos e total por categoria e par categoria/subcategoria. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
 
 ## Isolamento e limites
 
