@@ -455,6 +455,47 @@ test('a criação de movimento registra apenas eventos genéricos após consenti
   }
 });
 
+test('a primeira compra no cartão também conta como primeira movimentação financeira', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'analytics-user-installment';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    Store.movements = [];
+    Store.installments = [];
+    window.__alicerceMockFunctionInvocations = [];
+    window.__alicerceMockSessionUserId = 'analytics-user-installment';
+    Store.addInstallment({
+      id: 'analytics-card-purchase-1',
+      compraId: 'analytics-card-purchase',
+      cardId: 'card-test',
+      tipo: 'cartao',
+      categoria: 'comida',
+      subcategoria: 'mercado',
+      descricao: 'Compra de mercado no cartão',
+      valor: 120,
+      data: '2026-11-27',
+      status: 'pendente',
+      parcelaAtual: 1,
+      parcelas: 3
+    });
+  });
+  await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 2; });
+  const result = await page.evaluate(function () {
+    return {
+      events: window.__alicerceMockFunctionInvocations,
+      installments: Store.installments
+    };
+  });
+  expect(result.installments).toHaveLength(1);
+  expect(result.events.map(function (item) { return item.options.body.event_name; }).sort())
+    .toEqual(['first_movement_created', 'movement_created']);
+  for (const item of result.events) {
+    expect(Object.keys(item.options.body).sort()).toEqual(['action', 'event_id', 'event_name']);
+    expect(JSON.stringify(item)).not.toContain('120');
+    expect(JSON.stringify(item)).not.toContain('Compra de mercado no cartão');
+  }
+});
+
 test('a Edge Function e a tabela limitam coleta, exigem consentimento e não expõem a tabela pela Data API', function () {
   expect(analyticsEdgeFunction).toContain('auth.getUser(token)');
   expect(analyticsEdgeFunction).toContain('settings.analyticsConsent !== true');
