@@ -76,3 +76,17 @@ Se os indeterminados forem 15% ou mais, o painel prioriza pedir contexto em vez 
 - Inferir contrato a partir de recorrência.
 - Julgar consumo por hora, dia, valor isolado ou estabelecimento.
 - Tratar a classificação como aconselhamento financeiro ou prova de necessidade familiar.
+
+## Revisão conversacional pela Alicia
+
+A confirmação também pode ser iniciada no chat quando a pessoa pede para revisar gastos sem contexto (ou escolhe a sugestão correspondente). A Alicia não interrompe conversas comuns nem inicia perguntas financeiras automaticamente.
+
+1. A fonte continua sendo Store.getAnalysisEntries(), limitada ao mês atual e aos lançamentos cuja natureza permanece indeterminada.
+2. A Alicia apresenta um lançamento por vez, priorizando os maiores valores. Parcelas com o mesmo compraId são tratadas como uma única compra para evitar perguntas repetidas.
+3. A finalidade é perguntada em linguagem natural. A resposta é salva no campo purpose do próprio registro e os campos de perfil só são preenchidos quando a resposta fornece evidência explícita.
+4. Se a resposta indicar uma finalidade reconhecível, o classificador pode produzir uma estimativa derivada com a evidência user_stated_purpose. Isso não transforma uma inferência em confirmação explícita de natureza.
+5. Se a pessoa responder que não sabe, a natureza é salva explicitamente como undetermined, com confiança baixa. Alicia segue para o próximo item sem insistir no mesmo gasto durante aquela revisão.
+6. Compromisso e flexibilidade só são confirmados quando a resposta contém evidência textual específica. Recorrência e estabilidade continuam derivadas do histórico.
+7. A resposta é vinculada ao lançamento; em compras de cartão, o perfil e a finalidade são aplicados às parcelas da mesma compra, exceto registros vinculados a empréstimos.
+
+O estado temporário da revisão é descartado ao trocar de conta ou limpar a conversa. A persistência continua usando Store.save() e os registros JSON existentes, sem nova tabela ou migration. Valores, datas, categorias, subcategorias, status e saldos não são alterados. A pessoa pode interromper a revisão a qualquer momento.
