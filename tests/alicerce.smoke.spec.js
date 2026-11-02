@@ -2881,3 +2881,29 @@ test('Alicia mantém a resposta ainda não sei como indeterminada e continua par
   expect(result.marketAmount).toBe(90);
   expect(result.marketCategory).toBe('comida');
 });
+
+test('Alicia respeita negações ao confirmar natureza e flexibilidade', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(function () {
+    var discretionary = AlicerceIA._financialReviewProfileFromReply(
+      'Não é essencial, é discricionário. Não posso cancelar.'
+    );
+    var essential = AlicerceIA._financialReviewProfileFromReply(
+      'Não é discricionário, é essencial.'
+    );
+    return {
+      discretionary: discretionary.profile,
+      essential: essential.profile
+    };
+  });
+
+  expect(result.discretionary).toMatchObject({
+    nature: 'discretionary',
+    flexibility: 'low',
+    confidence: { nature: 'high', flexibility: 'high' }
+  });
+  expect(result.essential).toMatchObject({
+    nature: 'essential',
+    confidence: { nature: 'high' }
+  });
+});

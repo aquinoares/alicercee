@@ -5665,10 +5665,23 @@ AlicerceIA._financialReviewProfileFromReply=function(message){
     confidence.context='high';
   }
   var unknown=/\b(ainda nao sei|nao sei|nao lembro|nao tenho certeza|nao consegui identificar)\b/.test(normalized);
-  if(/\b(essencial|necessario|necessaria|indispensavel)\b/.test(normalized)&&!unknown){
+  var hasAffirmedTerm=function(pattern){
+    var expression=new RegExp(pattern.source,'g');
+    var match;
+    while((match=expression.exec(normalized))){
+      var before=normalized.slice(0,match.index).trim();
+      var tokens=before?before.split(/\s+/).slice(-4):[];
+      var negation=tokens.lastIndexOf('nao');
+      var contrast=tokens.lastIndexOf('mas');
+      var distance=negation>=0?tokens.length-1-negation:0;
+      if(negation<0||distance>3||contrast>negation)return true;
+    }
+    return false;
+  };
+  if(hasAffirmedTerm(/\b(essencial|necessario|necessaria|indispensavel)\b/)&&!unknown){
     profile.nature='essential';
     confidence.nature='high';
-  }else if(/\b(discricionario|discricionaria|superfluo|superflua|poderia cortar|poderia reduzir)\b/.test(normalized)&&!unknown){
+  }else if(hasAffirmedTerm(/\b(discricionario|discricionaria|superfluo|superflua|poderia cortar|poderia reduzir)\b/)&&!unknown){
     profile.nature='discretionary';
     confidence.nature='high';
   }else if(unknown&&!context){
@@ -5682,13 +5695,13 @@ AlicerceIA._financialReviewProfileFromReply=function(message){
     profile.commitment='contractual';
     confidence.commitment='high';
   }
-  if(/\b(nao posso adiar|nao posso reduzir|dificil adiar|nao consigo reduzir|sem alternativa)\b/.test(normalized)){
+  if(/\b(nao posso adiar|nao posso reduzir|nao posso cancelar|nao consigo cancelar|nao posso substituir|dificil adiar|nao consigo adiar|nao consigo reduzir|sem alternativa)\b/.test(normalized)){
     profile.flexibility='low';
     confidence.flexibility='high';
-  }else if(/\b(posso reduzir um pouco|em parte|parcialmente)\b/.test(normalized)){
+  }else if(hasAffirmedTerm(/\b(posso reduzir um pouco|em parte|parcialmente)\b/)){
     profile.flexibility='medium';
     confidence.flexibility='high';
-  }else if(/\b(posso cancelar|posso adiar|posso reduzir|posso substituir|com facilidade|facilmente)\b/.test(normalized)){
+  }else if(hasAffirmedTerm(/\b(posso cancelar|posso adiar|posso reduzir|posso substituir|com facilidade|facilmente)\b/)){
     profile.flexibility='high';
     confidence.flexibility='high';
   }
