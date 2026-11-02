@@ -1635,12 +1635,14 @@ test('motor oferece base estruturada para comparacoes de combustivel, manutencao
       itemAnswer: AlicerceIA.responder('Qual foi o preço do arroz?')
     };
   });
-  expect(result.vehicle.fuel).toMatchObject({ purchases: 2, total: 410, liters: 70 });
+  expect(result.vehicle.fuel).toMatchObject({ purchases: 2, total: 410, liters: 70, fullTankIntervals: 1 });
   expect(result.vehicle.fuel.averagePricePerLiter).toBeCloseTo(410 / 70, 2);
+  expect(result.vehicle.fuel.averageKmPerLiter).toBeCloseTo(12.5, 2);
   expect(result.vehicle.maintenance).toMatchObject({ purchases: 1, total: 280 });
   expect(result.items[0]).toMatchObject({ item: 'Arroz', unit: 'kg', quantity: 9, total: 50, purchases: 2 });
   expect(result.items[0].averageUnitPrice).toBeCloseTo(5.6, 2);
   expect(result.fuelAnswer).toContain('70,00 litros');
+  expect(result.fuelAnswer).toContain('12,5 km/l');
   expect(result.maintenanceAnswer).toContain('R$ 280,00');
   expect(result.itemAnswer).toContain('R$ 5,60');
 });
