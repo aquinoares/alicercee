@@ -2570,7 +2570,16 @@ test('Alicia permite confirmar a natureza e a finalidade de um gasto sem alterar
   await page.evaluate(function () {
     Store.userId = 'financial-profile-ui-movement';
     Store.lang = 'pt';
-    Store.settings = { lang: 'pt', theme: 'azul', displayName: 'Teste' };
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      displayName: 'Teste',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
     Store.movements = [{
       id: 'movement-unknown',
       tipo: 'despesa',
@@ -2638,7 +2647,16 @@ test('A confirmação de uma compra no cartão é aplicada a todas as parcelas d
     var nextMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
     Store.userId = 'financial-profile-ui-card';
     Store.lang = 'pt';
-    Store.settings = { lang: 'pt', theme: 'azul', displayName: 'Teste' };
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      displayName: 'Teste',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
     Store.movements = [];
     Store.installments = [
       {
