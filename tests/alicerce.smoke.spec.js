@@ -2422,3 +2422,140 @@ test('classifica 40 exemplos complementares de gastos cotidianos brasileiros', a
   expect(resultado).toHaveLength(40);
   expect(mismatches).toEqual([]);
 });
+
+test('separa natureza, compromisso, recorrência, comportamento e contexto', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var rows = [
+      { id: 'rent', data: Clock.today(), valor: 1200, categoria: 'moradia', subcategoria: 'aluguel', local: 'Imobiliaria Central', descricao: 'Aluguel' },
+      { id: 'netflix', data: Clock.today(), valor: 39.90, categoria: 'lazer', subcategoria: 'streaming', local: 'Netflix', descricao: 'Assinatura Netflix' },
+      { id: 'uber', data: Clock.today(), valor: 28, categoria: 'transporte', subcategoria: 'uber', local: 'Uber', descricao: 'Corrida' },
+      { id: 'market', data: Clock.today(), valor: 190, categoria: 'comida', subcategoria: 'mercado', local: 'Carrefour', descricao: 'Compra' },
+      { id: 'work-uber', data: Clock.today(), valor: 32, categoria: 'transporte', subcategoria: 'uber', local: 'Uber', descricao: 'Corrida para o trabalho', purpose: 'trabalho' },
+      { id: 'bar', data: Clock.today(), valor: 78, categoria: 'comida', subcategoria: 'bar', local: 'Bel do Bar', descricao: 'Bel do Bar' }
+    ];
+    var profiles = AlicerceIA._expenseRecurrenceProfiles(rows);
+    return rows.map(function (row) {
+      return { id: row.id, dimensions: AlicerceIA._classifyExpenseDimensions(row, profiles) };
+    });
+  });
+  var byId = {};
+  result.forEach(function (item) { byId[item.id] = item.dimensions; });
+  expect(byId.rent).toMatchObject({ nature: 'essential', commitment: 'undetermined', flexibility: 'low' });
+  expect(byId.netflix).toMatchObject({ nature: 'discretionary', commitment: 'undetermined', flexibility: 'high' });
+  expect(byId.uber).toMatchObject({ nature: 'undetermined', context: 'undetermined', flexibility: 'undetermined' });
+  expect(byId.market).toMatchObject({ nature: 'undetermined', context: 'undetermined' });
+  expect(byId['work-uber']).toMatchObject({ nature: 'essential', context: 'work' });
+  expect(byId.bar).toMatchObject({ nature: 'discretionary', flexibility: 'high' });
+});
+
+test('distingue recorrência observada de contrato e identifica valores fixos ou variáveis', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function monthDate(offset, day) {
+      var date = new Date(now.getFullYear(), now.getMonth() - offset, day || 10);
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    var fixed = [89.90, 89.90, 89.90].map(function (amount, index) {
+      return { id: 'stream-' + index, data: monthDate(2 - index), valor: amount, categoria: 'lazer', subcategoria: 'streaming', local: 'Netflix', descricao: 'Netflix' };
+    });
+    var variable = [30, 90, 170].map(function (amount, index) {
+      return { id: 'internet-' + index, data: monthDate(2 - index), valor: amount, categoria: 'moradia', subcategoria: 'internet', local: 'Net Fibra', descricao: 'Internet residencial' };
+    });
+    var installments = { id: 'installment', data: monthDate(0), valor: 200, categoria: 'eletronicos', subcategoria: 'celular', local: 'Loja', descricao: 'Celular parcelado', installmentCount: 10 };
+    var rows = fixed.concat(variable).concat([installments]);
+    var profiles = AlicerceIA._expenseRecurrenceProfiles(rows);
+    return {
+      fixed: AlicerceIA._classifyExpenseDimensions(fixed[2], profiles),
+      variable: AlicerceIA._classifyExpenseDimensions(variable[2], profiles),
+      installment: AlicerceIA._classifyExpenseDimensions(installments, profiles)
+    };
+  });
+  expect(result.fixed).toMatchObject({ recurrence: 'recurring', behavior: 'fixed', commitment: 'undetermined' });
+  expect(result.variable).toMatchObject({ recurrence: 'recurring', behavior: 'variable', commitment: 'undetermined' });
+  expect(result.installment).toMatchObject({ commitment: 'contractual', nature: 'undetermined' });
+});
+
+test('preserva perfil confirmado pelo usuário e ignora valores fora da lista permitida', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    Store.userId = 'financial-profile-test';
+    Store.movements = [{
+      id: 'profile-1', tipo: 'despesa', status: 'pago', data: Clock.today(), valor: 32,
+      categoria: 'transporte', subcategoria: 'uber', estabelecimento: 'Uber', descricao: 'Corrida',
+      analysis: {
+        expenseProfile: {
+          source: 'user_confirmed',
+          nature: 'essential',
+          commitment: 'non_contractual',
+          flexibility: 'low',
+          context: 'work',
+          confidence: { nature: 'high', context: 'high' },
+          injectedField: 'should-not-survive'
+        }
+      }
+    }];
+    var row = Store.getAnalysisEntries()[0];
+    return { row: row, dimensions: AlicerceIA._classifyExpenseDimensions(row, {}) };
+  });
+  expect(result.row.expenseProfile).toMatchObject({ source: 'user_confirmed', nature: 'essential', context: 'work' });
+  expect(result.row.expenseProfile.injectedField).toBeUndefined();
+  expect(result.dimensions).toMatchObject({
+    nature: 'essential', commitment: 'non_contractual', flexibility: 'low', context: 'work',
+    confidence: { nature: 'high', context: 'high' }
+  });
+});
+
+test('agrega essenciais, discricionários e indeterminados sem recomendar cortes com dados incompletos', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function date(offset) {
+      var d = new Date(now.getFullYear(), now.getMonth() - offset, 10);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    var history = [];
+    [0, 1, 2].forEach(function (offset) {
+      history.push({ id: 'netflix-' + offset, data: date(offset), valor: 45, categoria: 'lazer', subcategoria: 'streaming', local: 'Netflix', descricao: 'Netflix' });
+    });
+    [0, 1, 2].forEach(function (offset) {
+      history.push({ id: 'bar-' + offset, data: date(offset), valor: 100, categoria: 'comida', subcategoria: 'bar', local: 'Bel do Bar', descricao: 'Bel do Bar' });
+    });
+    var current = history.filter(function (row) { return row.data.slice(0, 7) === date(0).slice(0, 7); });
+    current.push({ id: 'rent', data: date(0), valor: 1000, categoria: 'moradia', subcategoria: 'aluguel', local: 'Imobiliaria', descricao: 'Aluguel' });
+    var clear = AlicerceIA._financialReality(current, history);
+    current.push({ id: 'market', data: date(0), valor: 900, categoria: 'comida', subcategoria: 'mercado', local: 'Carrefour', descricao: 'Compra' });
+    var uncertain = AlicerceIA._financialReality(current, history);
+    return { clear: clear, uncertain: uncertain };
+  });
+  expect(result.clear.essential).toBe(1000);
+  expect(result.clear.discretionary).toBe(145);
+  expect(result.clear.reviewOpportunity).toBe(true);
+  expect(result.uncertain.undetermined).toBe(900);
+  expect(result.uncertain.reviewOpportunity).toBe(false);
+  expect(result.uncertain.needsContext).toBe(true);
+});
+
+test('Alicia explica a realidade financeira e mantém a análise no painel da Visão Financeira', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    var data = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(Math.min(12, now.getDate())).padStart(2, '0');
+    Store.userId = 'financial-reality-dashboard-test';
+    Store.lang = 'pt';
+    Store.movements = [
+      { id: 'rent', tipo: 'despesa', status: 'pago', data: data, valor: 1000, categoria: 'moradia', subcategoria: 'aluguel', estabelecimento: 'Imobiliaria' },
+      { id: 'streaming', tipo: 'despesa', status: 'pago', data: data, valor: 40, categoria: 'lazer', subcategoria: 'streaming', estabelecimento: 'Netflix' },
+      { id: 'market', tipo: 'despesa', status: 'pago', data: data, valor: 250, categoria: 'comida', subcategoria: 'mercado', estabelecimento: 'Carrefour' }
+    ];
+    var answer = AlicerceIA.responder('Quanto custa manter minha vida?');
+    var html = AlicerceIA.renderDashboard();
+    return { answer: answer, html: html };
+  });
+  expect(result.answer).toContain('essenciais estimadas');
+  expect(result.answer).toContain('indeterminadas');
+  expect(result.html).toContain('visao-ai-financial-reality');
+  expect(result.html).toContain('Essenciais estimados');
+  expect(result.html).toContain('Indeterminados');
+});
