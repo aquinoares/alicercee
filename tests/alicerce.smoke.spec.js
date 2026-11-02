@@ -2454,7 +2454,8 @@ test('distingue recorrência observada de contrato e identifica valores fixos ou
   const result = await page.evaluate(function () {
     var now = Clock.now();
     function monthDate(offset, day) {
-      var date = new Date(now.getFullYear(), now.getMonth() - offset, day || 10);
+      var dayValue=offset===0?Math.min(day||10,now.getDate()):(day||10);
+      var date = new Date(now.getFullYear(), now.getMonth() - offset, dayValue);
       return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
     }
     var fixed = [89.90, 89.90, 89.90].map(function (amount, index) {
@@ -2512,7 +2513,8 @@ test('agrega essenciais, discricionários e indeterminados sem recomendar cortes
   const result = await page.evaluate(function () {
     var now = Clock.now();
     function date(offset) {
-      var d = new Date(now.getFullYear(), now.getMonth() - offset, 10);
+      var dayValue=offset===0?Math.min(10,now.getDate()):10;
+      var d = new Date(now.getFullYear(), now.getMonth() - offset, dayValue);
       return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
     }
     var history = [];
