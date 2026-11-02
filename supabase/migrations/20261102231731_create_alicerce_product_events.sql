@@ -7,7 +7,7 @@ create table public.alicerce_product_events (
   event_id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
   event_name text not null
-    check (event_name in ('app_opened', 'financial_record_created', 'first_movement_created')),
+    check (event_name in ('app_opened', 'movement_created', 'first_movement_created')),
   created_at timestamptz not null default now()
 );
 
