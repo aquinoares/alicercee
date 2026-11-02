@@ -24,6 +24,9 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 - Reconhecimento de lanches, fast food e subcategorias válidas da taxonomia.
 - Normalização conservadora de aliases brasileiros e sufixos de loja/terminal, preservando a identidade de estabelecimentos desconhecidos.
 - Benchmark curado de 43 exemplos brasileiros sintéticos, com medição de acerto por categoria e subcategoria.
+- Benchmark complementar de 40 itens cotidianos brasileiros, cobrindo feira, casa, serviços, transporte, saúde, educação, família e animais; exige categoria/subcategoria válidas e evidência do produto.
+- Dimensões financeiras separadas: natureza, compromisso, recorrência, comportamento, flexibilidade e contexto; sem transformar ausência de dados em certeza.
+- Revisão manual e conversacional de gastos indeterminados: a Alicia pergunta um item por vez, salva a finalidade confirmada, respeita a resposta ainda não sei e propaga perfis para as parcelas da mesma compra.
 - Benchmark de 27 descrições bancárias ruidosas, validando estabelecimento, valor, categoria, subcategoria, confiança e ausência de produto inventado.
 - Catálogo adicional de redes brasileiras de supermercados, hortifrúti, farmácias, energia e vestuário.
 - Testes de colisão para identificadores numéricos e calibração conservadora de confiança: loja isolada = média, produto ou correção individual = alta, descrição sem evidência = baixa.
@@ -32,7 +35,7 @@ Esta suíte usa Playwright, Chromium e axe-core para verificar fluxos reais da i
 
 ## Resultado automatizado atual
 
-A suíte reúne 30 cenários Playwright, executa um benchmark de 43 exemplos de despesas brasileiras e um segundo benchmark com 27 descrições bancárias ruidosas. Os exemplos são sintéticos e servem para regressão do comportamento esperado; não são transações de clientes e não representam, sozinhos, a precisão real em produção. O CI imprime acertos e total por categoria e par categoria/subcategoria. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
+A suíte reúne 70 cenários Playwright, executa benchmarks com 43 exemplos-base e 40 exemplos complementares de despesas brasileiras, além de 27 descrições bancárias ruidosas. Onze cenários cobrem separação das dimensões, incerteza, dados confirmados, recorrência, agregação financeira, confirmação manual e conversacional de perfis, compras parceladas, preservação da resposta explícita ainda não sei, leitura de negações e flexibilidade. Os dois cenários conversacionais verificam a revisão de um item por vez, a persistência da finalidade e a manutenção de gastos desconhecidos como indeterminados. Os exemplos são sintéticos e servem para regressão do comportamento esperado; não são transações de clientes e não representam, sozinhos, a precisão real em produção. O CI imprime acertos e total por categoria e par categoria/subcategoria. A quantidade de testes aprovados deve ser confirmada no workflow referente ao commit mais recente desta branch.
 
 ## Isolamento e limites
 

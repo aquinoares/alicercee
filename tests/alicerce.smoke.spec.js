@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const supabaseMock = readFileSync(new URL('./fixtures/supabase-mock.js', import.meta.url), 'utf8');
 const classificationBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-benchmark-ptbr.json', import.meta.url), 'utf8'));
+const classificationContextBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-context-40-ptbr.json', import.meta.url), 'utf8'));
 const bankDescriptionBenchmark = JSON.parse(readFileSync(new URL('./fixtures/bank-description-benchmark-ptbr.json', import.meta.url), 'utf8'));
 const supabaseCdn = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js';
 const supabaseProject = 'https://hwmpwvbvgiqotdzkmgwh.supabase.co';
@@ -2395,3 +2396,531 @@ test('Alicia exibe avisos de privacidade somente quando a pessoa aciona ditado, 
   await expect(notice).toBeHidden();
 });
 
+test('classifica 40 exemplos complementares de gastos cotidianos brasileiros', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const resultado = await page.evaluate(function (cases) {
+    Store.learning = {};
+    return cases.map(function (example) {
+      const actual = Interpreter.interpretLocal(example.text);
+      return {
+        id: example.id,
+        expected: example.categoria + '/' + example.subcategoria,
+        actual: actual && actual.categoria && actual.subcategoria ? actual.categoria + '/' + actual.subcategoria : 'sem_classificacao',
+        confidence: actual && actual.confidence,
+        source: actual && actual.source
+      };
+    });
+  }, classificationContextBenchmark);
+  const mismatches = resultado.filter(function (actual) {
+    return actual.actual !== actual.expected || actual.confidence !== 'high' || actual.source !== 'item';
+  });
+  console.log('[benchmark-context-40] ' + JSON.stringify({
+    total: resultado.length,
+    correct: resultado.length - mismatches.length,
+    mismatches: mismatches
+  }));
+  expect(resultado).toHaveLength(40);
+  expect(mismatches).toEqual([]);
+});
+
+test('separa natureza, compromisso, recorrência, comportamento e contexto', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var rows = [
+      { id: 'rent', data: Clock.today(), valor: 1200, categoria: 'moradia', subcategoria: 'aluguel', local: 'Imobiliaria Central', descricao: 'Aluguel' },
+      { id: 'netflix', data: Clock.today(), valor: 39.90, categoria: 'lazer', subcategoria: 'streaming', local: 'Netflix', descricao: 'Assinatura Netflix' },
+      { id: 'uber', data: Clock.today(), valor: 28, categoria: 'transporte', subcategoria: 'uber', local: 'Uber', descricao: 'Corrida' },
+      { id: 'market', data: Clock.today(), valor: 190, categoria: 'comida', subcategoria: 'mercado', local: 'Carrefour', descricao: 'Compra' },
+      { id: 'work-uber', data: Clock.today(), valor: 32, categoria: 'transporte', subcategoria: 'uber', local: 'Uber', descricao: 'Corrida para o trabalho', purpose: 'trabalho' },
+      { id: 'bar', data: Clock.today(), valor: 78, categoria: 'comida', subcategoria: 'bar', local: 'Bel do Bar', descricao: 'Bel do Bar' }
+    ];
+    var profiles = AlicerceIA._expenseRecurrenceProfiles(rows);
+    return rows.map(function (row) {
+      return { id: row.id, dimensions: AlicerceIA._classifyExpenseDimensions(row, profiles) };
+    });
+  });
+  var byId = {};
+  result.forEach(function (item) { byId[item.id] = item.dimensions; });
+  expect(byId.rent).toMatchObject({ nature: 'essential', commitment: 'undetermined', flexibility: 'low' });
+  expect(byId.netflix).toMatchObject({ nature: 'discretionary', commitment: 'undetermined', flexibility: 'high' });
+  expect(byId.uber).toMatchObject({ nature: 'undetermined', context: 'undetermined', flexibility: 'undetermined' });
+  expect(byId.market).toMatchObject({ nature: 'undetermined', context: 'undetermined' });
+  expect(byId['work-uber']).toMatchObject({ nature: 'essential', context: 'work' });
+  expect(byId.bar).toMatchObject({ nature: 'discretionary', flexibility: 'high' });
+});
+
+test('distingue recorrência observada de contrato e identifica valores fixos ou variáveis', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function monthDate(offset, day) {
+      var dayValue=offset===0?Math.min(day||10,now.getDate()):(day||10);
+      var date = new Date(now.getFullYear(), now.getMonth() - offset, dayValue);
+      return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    }
+    var fixed = [89.90, 89.90, 89.90].map(function (amount, index) {
+      return { id: 'stream-' + index, data: monthDate(2 - index), valor: amount, categoria: 'lazer', subcategoria: 'streaming', local: 'Netflix', descricao: 'Netflix' };
+    });
+    var variable = [30, 90, 170].map(function (amount, index) {
+      return { id: 'internet-' + index, data: monthDate(2 - index), valor: amount, categoria: 'moradia', subcategoria: 'internet', local: 'Net Fibra', descricao: 'Internet residencial' };
+    });
+    var installments = { id: 'installment', data: monthDate(0), valor: 200, categoria: 'eletronicos', subcategoria: 'celular', local: 'Loja', descricao: 'Celular parcelado', installmentCount: 10 };
+    var rows = fixed.concat(variable).concat([installments]);
+    var profiles = AlicerceIA._expenseRecurrenceProfiles(rows);
+    return {
+      fixed: AlicerceIA._classifyExpenseDimensions(fixed[2], profiles),
+      variable: AlicerceIA._classifyExpenseDimensions(variable[2], profiles),
+      installment: AlicerceIA._classifyExpenseDimensions(installments, profiles)
+    };
+  });
+  expect(result.fixed).toMatchObject({ recurrence: 'recurring', behavior: 'fixed', commitment: 'undetermined' });
+  expect(result.variable).toMatchObject({ recurrence: 'recurring', behavior: 'variable', commitment: 'undetermined' });
+  expect(result.installment).toMatchObject({ commitment: 'contractual', nature: 'undetermined' });
+});
+
+test('preserva perfil confirmado pelo usuário e ignora valores fora da lista permitida', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    Store.userId = 'financial-profile-test';
+    Store.movements = [{
+      id: 'profile-1', tipo: 'despesa', status: 'pago', data: Clock.today(), valor: 32,
+      categoria: 'transporte', subcategoria: 'uber', estabelecimento: 'Uber', descricao: 'Corrida',
+      analysis: {
+        expenseProfile: {
+          source: 'user_confirmed',
+          nature: 'essential',
+          commitment: 'non_contractual',
+          flexibility: 'low',
+          context: 'work',
+          confidence: { nature: 'high', context: 'high' },
+          injectedField: 'should-not-survive'
+        }
+      }
+    }];
+    var row = Store.getAnalysisEntries()[0];
+    return { row: row, dimensions: AlicerceIA._classifyExpenseDimensions(row, {}) };
+  });
+  expect(result.row.expenseProfile).toMatchObject({ source: 'user_confirmed', nature: 'essential', context: 'work' });
+  expect(result.row.expenseProfile.injectedField).toBeUndefined();
+  expect(result.dimensions).toMatchObject({
+    nature: 'essential', commitment: 'non_contractual', flexibility: 'low', context: 'work',
+    confidence: { nature: 'high', context: 'high' }
+  });
+});
+
+test('agrega essenciais, discricionários e indeterminados sem recomendar cortes com dados incompletos', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    function date(offset) {
+      var dayValue=offset===0?Math.min(10,now.getDate()):10;
+      var d = new Date(now.getFullYear(), now.getMonth() - offset, dayValue);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+    var history = [];
+    [0, 1, 2].forEach(function (offset) {
+      history.push({ id: 'netflix-' + offset, data: date(offset), valor: 45, categoria: 'lazer', subcategoria: 'streaming', local: 'Netflix', descricao: 'Netflix' });
+    });
+    [0, 1, 2].forEach(function (offset) {
+      history.push({ id: 'bar-' + offset, data: date(offset), valor: 100, categoria: 'comida', subcategoria: 'bar', local: 'Bel do Bar', descricao: 'Bel do Bar' });
+    });
+    var current = history.filter(function (row) { return row.data.slice(0, 7) === date(0).slice(0, 7); });
+    current.push({ id: 'rent', data: date(0), valor: 300, categoria: 'moradia', subcategoria: 'aluguel', local: 'Imobiliaria', descricao: 'Aluguel' });
+    current.push({ id: 'bar-extra-1', data: date(0), valor: 100, categoria: 'comida', subcategoria: 'bar', local: 'Bel do Bar', descricao: 'Bel do Bar' });
+    current.push({ id: 'bar-extra-2', data: date(0), valor: 100, categoria: 'comida', subcategoria: 'bar', local: 'Bel do Bar', descricao: 'Bel do Bar' });
+    var clear = AlicerceIA._financialReality(current, history);
+    current.push({ id: 'market', data: date(0), valor: 900, categoria: 'comida', subcategoria: 'mercado', local: 'Carrefour', descricao: 'Compra' });
+    var uncertain = AlicerceIA._financialReality(current, history);
+    return { clear: clear, uncertain: uncertain };
+  });
+  expect(result.clear.essential).toBe(300);
+  expect(result.clear.discretionary).toBe(345);
+  expect(result.clear.reviewOpportunity).toBe(true);
+  expect(result.uncertain.undetermined).toBe(900);
+  expect(result.uncertain.reviewOpportunity).toBe(false);
+  expect(result.uncertain.needsContext).toBe(true);
+});
+
+test('Alicia explica a realidade financeira e mantém a análise no painel da Visão Financeira', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var now = Clock.now();
+    var data = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(Math.min(12, now.getDate())).padStart(2, '0');
+    Store.userId = 'financial-reality-dashboard-test';
+    Store.lang = 'pt';
+    Store.movements = [
+      { id: 'rent', tipo: 'despesa', status: 'pago', data: data, valor: 1000, categoria: 'moradia', subcategoria: 'aluguel', estabelecimento: 'Imobiliaria' },
+      { id: 'streaming', tipo: 'despesa', status: 'pago', data: data, valor: 40, categoria: 'lazer', subcategoria: 'streaming', estabelecimento: 'Netflix' },
+      { id: 'market', tipo: 'despesa', status: 'pago', data: data, valor: 250, categoria: 'comida', subcategoria: 'mercado', estabelecimento: 'Carrefour' }
+    ];
+    var answer = AlicerceIA.responder('Quanto custa manter minha vida?');
+    var html = AlicerceIA.renderDashboard();
+    return { answer: answer, html: html };
+  });
+  expect(result.answer).toContain('essenciais estimadas');
+  expect(result.answer).toContain('indeterminadas');
+  expect(result.html).toContain('visao-ai-financial-reality');
+  expect(result.html).toContain('Essenciais estimados');
+  expect(result.html).toContain('Indeterminados');
+});
+
+
+test('Alicia permite confirmar a natureza e a finalidade de um gasto sem alterar a classificação ou o valor', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'financial-profile-ui-movement';
+    Store.lang = 'pt';
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      displayName: 'Teste',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
+    Store.movements = [{
+      id: 'movement-unknown',
+      tipo: 'despesa',
+      status: 'pago',
+      data: Clock.today(),
+      valor: 42.50,
+      categoria: 'transporte',
+      subcategoria: 'uber',
+      estabelecimento: 'Uber',
+      descricao: 'Corrida'
+    }];
+    Store.installments = [];
+    AlicerceIA._resetUser();
+    go('visao');
+  });
+
+  await expect(page.locator('#visao-ai-review-undetermined')).toBeVisible();
+  await page.locator('#visao-ai-review-undetermined').click();
+  await expect(page.locator('#financial-profile-item-0')).toBeVisible();
+  await page.locator('#financial-profile-item-0').click();
+  await expect(page.locator('#financial-profile-save')).toBeVisible();
+
+  await page.locator('#financial-profile-nature').selectOption('essential');
+  await page.locator('#financial-profile-context').selectOption('work');
+  await page.locator('#financial-profile-flexibility').selectOption('low');
+  await page.locator('#financial-profile-commitment').selectOption('non_contractual');
+  await page.locator('#financial-profile-purpose').fill('Deslocamento para o trabalho');
+  await page.locator('#financial-profile-save').click();
+
+  const saved = await page.evaluate(function () {
+    var movement = Store.movements[0];
+    var analysis = Store.getAnalysisEntries()[0];
+    return {
+      amount: movement.valor,
+      category: movement.categoria,
+      subcategory: movement.subcategoria,
+      profile: analysis.expenseProfile,
+      purpose: movement.purpose,
+      status: movement.status
+    };
+  });
+  expect(saved).toMatchObject({
+    amount: 42.50,
+    category: 'transporte',
+    subcategory: 'uber',
+    status: 'pago',
+    purpose: 'Deslocamento para o trabalho',
+    profile: {
+      source: 'user_confirmed',
+      nature: 'essential',
+      context: 'work',
+      flexibility: 'low',
+      commitment: 'non_contractual'
+    }
+  });
+  await expect(page.locator('body')).toContainText('Não há gastos indeterminados neste mês');
+});
+
+test('A confirmação de uma compra no cartão é aplicada a todas as parcelas da mesma compra', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    var today = Clock.today();
+    var date = new Date(today + 'T00:00:00');
+    date.setMonth(date.getMonth() + 1);
+    var nextMonth = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+    Store.userId = 'financial-profile-ui-card';
+    Store.lang = 'pt';
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      displayName: 'Teste',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
+    Store.movements = [];
+    Store.installments = [
+      {
+        id: 'card-installment-1', tipo: 'cartao', compraId: 'purchase-profile-1',
+        cardId: 'card-1', categoria: 'transporte', subcategoria: 'uber',
+        descricao: 'Compra parcelada', local: 'Uber', valor: 60,
+        data: today, dataCompra: today, parcelaAtual: 1, parcelas: 2, status: 'pago'
+      },
+      {
+        id: 'card-installment-2', tipo: 'cartao', compraId: 'purchase-profile-1',
+        cardId: 'card-1', categoria: 'transporte', subcategoria: 'uber',
+        descricao: 'Compra parcelada', local: 'Uber', valor: 60,
+        data: nextMonth, dataCompra: today, parcelaAtual: 2, parcelas: 2, status: 'pendente'
+      }
+    ];
+    AlicerceIA._resetUser();
+    go('visao');
+  });
+
+  await expect(page.locator('#visao-ai-review-undetermined')).toBeVisible();
+  await page.locator('#visao-ai-review-undetermined').click();
+  await page.locator('#financial-profile-item-0').click();
+  await page.locator('#financial-profile-nature').selectOption('discretionary');
+  await page.locator('#financial-profile-context').selectOption('leisure');
+  await page.locator('#financial-profile-flexibility').selectOption('high');
+  await page.locator('#financial-profile-save').click();
+
+  const saved = await page.evaluate(function () {
+    return Store.installments.map(function (item) {
+      return {
+        id: item.id,
+        value: item.valor,
+        category: item.categoria,
+        purchaseId: item.compraId,
+        profile: item.analysis && item.analysis.expenseProfile
+      };
+    });
+  });
+  expect(saved).toHaveLength(2);
+  saved.forEach(function (item) {
+    expect(item).toMatchObject({
+      value: 60,
+      category: 'transporte',
+      purchaseId: 'purchase-profile-1',
+      profile: { source: 'user_confirmed', nature: 'discretionary', context: 'leisure', flexibility: 'high' }
+    });
+  });
+});
+
+
+test('A confirmação explícita de “Ainda não sei” não é sobrescrita pelas regras automáticas', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    var row = {
+      id: 'unknown-confirmed',
+      data: Clock.today(),
+      valor: 39.90,
+      categoria: 'lazer',
+      subcategoria: 'streaming',
+      local: 'Netflix',
+      descricao: 'Assinatura',
+      expenseProfile: {
+        version: 1,
+        source: 'user_confirmed',
+        nature: 'undetermined',
+        confidence: { nature: 'low' }
+      }
+    };
+    return AlicerceIA._classifyExpenseDimensions(row, {});
+  });
+  expect(result).toMatchObject({
+    nature: 'undetermined',
+    confidence: { nature: 'low' },
+    evidence: { nature: 'user_confirmed' }
+  });
+});
+
+test('Alicia revisa gastos sem contexto pelo chat e salva a finalidade sem alterar os dados financeiros', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'alicia-review-chat-test';
+    Store.lang = 'pt';
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      displayName: 'Teste',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
+    Store.movements = [{
+      id: 'review-chat-uber',
+      tipo: 'despesa',
+      status: 'pago',
+      data: Clock.today(),
+      valor: 42.50,
+      categoria: 'transporte',
+      subcategoria: 'uber',
+      estabelecimento: 'Uber',
+      descricao: 'Corrida por aplicativo'
+    }];
+    Store.installments = [];
+    Store.loans = [];
+    AlicerceIA._resetUser();
+
+    await AlicerceIA.enviarMensagem('Quais gastos ainda precisam de contexto?');
+    var firstPrompt = AlicerceIA._messages[AlicerceIA._messages.length - 1].text;
+    await AlicerceIA.enviarMensagem('Uber para ir ao trabalho');
+
+    var movement = Store.movements[0];
+    var analysisRow = Store.getAnalysisEntries()[0];
+    var dimensions = AlicerceIA._classifyExpenseDimensions(analysisRow, {});
+    return {
+      firstPrompt: firstPrompt,
+      movement: {
+        amount: movement.valor,
+        date: movement.data,
+        category: movement.categoria,
+        subcategory: movement.subcategoria,
+        purpose: movement.purpose
+      },
+      profile: analysisRow.expenseProfile,
+      dimensions: dimensions,
+      pendingReview: AlicerceIA._pendingFinancialReview
+    };
+  });
+
+  expect(result.firstPrompt).toContain('Corrida por aplicativo');
+  expect(result.firstPrompt).toContain('finalidade');
+  expect(result.movement).toMatchObject({
+    amount: 42.50,
+    category: 'transporte',
+    subcategory: 'uber',
+    purpose: 'Uber para ir ao trabalho'
+  });
+  expect(result.profile).toMatchObject({
+    source: 'user_confirmed',
+    context: 'work'
+  });
+  expect(result.profile.nature).toBeUndefined();
+  expect(result.dimensions).toMatchObject({
+    context: 'work',
+    nature: 'essential',
+    evidence: { nature: 'user_stated_purpose' }
+  });
+  expect(result.pendingReview).toBeNull();
+});
+
+test('Alicia mantém a resposta ainda não sei como indeterminada e continua para o próximo gasto', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'alicia-review-unknown-test';
+    Store.lang = 'pt';
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      displayName: 'Teste',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
+    Store.movements = [
+      {
+        id: 'review-market',
+        tipo: 'despesa',
+        status: 'pago',
+        data: Clock.today(),
+        valor: 90,
+        categoria: 'comida',
+        subcategoria: 'mercado',
+        estabelecimento: 'Carrefour',
+        descricao: 'Compra no mercado'
+      },
+      {
+        id: 'review-uber',
+        tipo: 'despesa',
+        status: 'pago',
+        data: Clock.today(),
+        valor: 40,
+        categoria: 'transporte',
+        subcategoria: 'uber',
+        estabelecimento: 'Uber',
+        descricao: 'Corrida por aplicativo'
+      }
+    ];
+    Store.installments = [];
+    Store.loans = [];
+    AlicerceIA._resetUser();
+
+    await AlicerceIA.enviarMensagem('Quais gastos ainda precisam de contexto?');
+    var firstPrompt = AlicerceIA._messages[AlicerceIA._messages.length - 1].text;
+    await AlicerceIA.enviarMensagem('Ainda não sei');
+    var secondPrompt = AlicerceIA._messages[AlicerceIA._messages.length - 1].text;
+    var market = Store.movements[0];
+    return {
+      firstPrompt: firstPrompt,
+      secondPrompt: secondPrompt,
+      marketProfile: Store.getAnalysisEntries().filter(function (row) {
+        return row.id === 'review-market';
+      })[0].expenseProfile,
+      nextId: AlicerceIA._pendingFinancialReview && AlicerceIA._pendingFinancialReview.current
+        ? AlicerceIA._pendingFinancialReview.current.id
+        : null,
+      marketAmount: market.valor,
+      marketCategory: market.categoria
+    };
+  });
+
+  expect(result.firstPrompt).toContain('Compra no mercado');
+  expect(result.secondPrompt).toContain('Corrida por aplicativo');
+  expect(result.nextId).toBe('review-uber');
+  expect(result.marketProfile).toMatchObject({
+    source: 'user_confirmed',
+    nature: 'undetermined',
+    confidence: { nature: 'low' }
+  });
+  expect(result.marketProfile.context).toBeUndefined();
+  expect(result.marketAmount).toBe(90);
+  expect(result.marketCategory).toBe('comida');
+});
+
+test('Alicia respeita negações ao confirmar natureza e flexibilidade', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(function () {
+    var discretionary = AlicerceIA._financialReviewProfileFromReply(
+      'Não é essencial, é discricionário. Não posso cancelar.'
+    );
+    var essential = AlicerceIA._financialReviewProfileFromReply(
+      'Não é discricionário, é essencial.'
+    );
+    var correctedContext = AlicerceIA._financialReviewProfileFromReply(
+      'Não era lazer, foi trabalho.'
+    );
+    var unknownWithContext = AlicerceIA._financialReviewProfileFromReply(
+      'Ainda não sei, mas era para o trabalho.'
+    );
+    return {
+      discretionary: discretionary.profile,
+      essential: essential.profile,
+      correctedContext: correctedContext.profile,
+      unknownWithContext: unknownWithContext.profile
+    };
+  });
+
+  expect(result.discretionary).toMatchObject({
+    nature: 'discretionary',
+    flexibility: 'low',
+    confidence: { nature: 'high', flexibility: 'high' }
+  });
+  expect(result.essential).toMatchObject({
+    nature: 'essential',
+    confidence: { nature: 'high' }
+  });
+  expect(result.correctedContext).toMatchObject({
+    context: 'work',
+    confidence: { context: 'high' }
+  });
+  expect(result.unknownWithContext).toMatchObject({
+    nature: 'undetermined',
+    context: 'work',
+    confidence: { nature: 'low', context: 'high' }
+  });
+});
