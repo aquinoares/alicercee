@@ -5116,6 +5116,14 @@ const AlicerceIA = {
         noRecurring:'Ainda não encontrei pagamentos mensais semelhantes com histórico suficiente para indicar recorrência.',
         frequentPurchaseAnswer:'Nos últimos 84 dias, encontrei {purchases} compras de {item}, distribuídas em {weeks} semanas. O total registrado foi {total}, com média de {average} por semana em que houve compra. Isso sugere um hábito frequente, não uma despesa fixa.',
         noFrequentPurchase:'Ainda não há registros suficientes de feira ou compras frequentes para identificar um padrão confiável.',
+        monthlyPatternAnswer:'Encontrei uma despesa que aparece em {months} dos últimos 6 meses: {item}. A média mensal foi {average}, com valores entre {minimum} e {maximum}. A repetição indica um padrão, mas não confirma uma assinatura nem um valor fixo.',
+        noFuelData:'Ainda não encontrei abastecimentos registrados com detalhes suficientes para analisar combustível.',
+        fuelWithoutLiters:'Encontrei {purchases} registros de combustível, totalizando {total}. Para comparar preço por litro ou consumo, também preciso dos litros abastecidos.',
+        fuelSummary:'Encontrei {purchases} abastecimentos, com {liters} litros registrados e média aproximada de {price} por litro. O total desses registros foi {total}.',
+        maintenanceSummary:'Encontrei {purchases} registros de manutenção do veículo, somando {total}. Essa análise considera apenas os lançamentos identificados como manutenção.',
+        noMaintenanceData:'Ainda não encontrei registros suficientes de manutenção do veículo para comparar.',
+        itemPriceSummary:'Nos itens registrados, {item} aparece em {purchases} compras. A quantidade acumulada foi {quantity} {unit}, com preço médio registrado de {unitPrice} por {unit}.',
+        noItemPriceData:'Ainda não encontrei notas com itens, quantidades e preços suficientes para comparar o preço desse produto.'
         help:'Posso consultar o total do mês, localizar gastos por categoria ou comparar com o mesmo período do mês passado. Experimente perguntar: “Quanto gastei com lanche?”',
         suggestions:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado']
       },
@@ -5149,6 +5157,14 @@ const AlicerceIA = {
         noRecurring:'I could not find similar monthly payments with enough history to suggest a recurring expense.',
         frequentPurchaseAnswer:'In the last 84 days, I found {purchases} purchases of {item} across {weeks} weeks. The recorded total was {total}, averaging {average} per week with a purchase. This suggests a frequent habit, not a fixed bill.',
         noFrequentPurchase:'There are not enough market or frequent-purchase records yet to identify a reliable pattern.',
+        monthlyPatternAnswer:'I found an expense that appears in {months} of the last 6 months: {item}. The monthly average was {average}, with values between {minimum} and {maximum}. This repetition suggests a pattern, but does not confirm a subscription or fixed amount.',
+        noFuelData:'I could not find enough fuel records with details for an analysis yet.',
+        fuelWithoutLiters:'I found {purchases} fuel records totaling {total}. To compare price per liter or fuel consumption, I also need the number of liters.',
+        fuelSummary:'I found {purchases} fill-ups, with {liters} recorded liters and an approximate average of {price} per liter. The total was {total}.',
+        maintenanceSummary:'I found {purchases} vehicle maintenance records totaling {total}. This analysis includes only entries identified as maintenance.',
+        noMaintenanceData:'There are not enough vehicle maintenance records to compare yet.',
+        itemPriceSummary:'In the recorded items, {item} appears in {purchases} purchases. The accumulated quantity was {quantity} {unit}, with a recorded average price of {unitPrice} per {unit}.',
+        noItemPriceData:'There are not enough receipts with item names, quantities, and prices to compare this product yet.'
         help:'I can check this month’s total, find spending by category, or compare it with the same period last month. Try: “How much did I spend on snacks?”',
         suggestions:['How much did I spend this month?','Where did I spend the most?','Compare with last month']
       },
@@ -5182,6 +5198,14 @@ const AlicerceIA = {
         noRecurring:'Aún no encontré pagos mensuales similares con historial suficiente para indicar recurrencia.',
         frequentPurchaseAnswer:'En los últimos 84 días encontré {purchases} compras de {item}, distribuidas en {weeks} semanas. El total registrado fue {total}, con un promedio de {average} por semana con compras. Esto sugiere un hábito frecuente, no una factura fija.',
         noFrequentPurchase:'Aún no hay registros suficientes de feria o compras frecuentes para identificar un patrón confiable.',
+        monthlyPatternAnswer:'Encontré un gasto que aparece en {months} de los últimos 6 meses: {item}. El promedio mensual fue {average}, con valores entre {minimum} y {maximum}. La repetición indica un patrón, pero no confirma una suscripción ni un valor fijo.',
+        noFuelData:'Aún no encontré suficientes registros de combustible con detalles para analizarlos.',
+        fuelWithoutLiters:'Encontré {purchases} registros de combustible, por un total de {total}. Para comparar el precio por litro o el consumo, también necesito los litros abastecidos.',
+        fuelSummary:'Encontré {purchases} cargas, con {liters} litros registrados y un promedio aproximado de {price} por litro. El total fue {total}.',
+        maintenanceSummary:'Encontré {purchases} registros de mantenimiento del vehículo, por un total de {total}. El análisis considera solo los gastos identificados como mantenimiento.',
+        noMaintenanceData:'Aún no hay suficientes registros de mantenimiento del vehículo para comparar.',
+        itemPriceSummary:'En los artículos registrados, {item} aparece en {purchases} compras. La cantidad acumulada fue {quantity} {unit}, con un precio promedio registrado de {unitPrice} por {unit}.',
+        noItemPriceData:'Aún no hay suficientes recibos con productos, cantidades y precios para comparar este producto.'
         help:'Puedo consultar el total del mes, encontrar gastos por categoría o comparar con el mismo período del mes pasado. Prueba: “¿Cuánto gasté en comida?”',
         suggestions:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Comparar con el mes pasado']
       }
@@ -6493,6 +6517,115 @@ AlicerceIA._detectRecurring=function(rows){
   return result.sort(function(a,b){return b.months-a.months||b.amount-a.amount;});
 };
 
+AlicerceIA._detectMonthlyPatterns=function(rows){
+  var now=Clock.now();
+  var cutoff=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-180));
+  var eligible={
+    moradia:['aluguel','energia','agua','gas','internet','telefone','condominio','manutencao'],
+    lazer:['streaming'],
+    saude:['plano_saude'],
+    financeiro:['tarifas_bancarias','anuidade','juros'],
+    transporte:['seguro']
+  };
+  var groups={};
+  (rows||this._rows()).forEach(function(row){
+    if(!row||row.source!=='movement'||row.data<cutoff)return;
+    var allowed=eligible[row.categoria]||[];
+    if(allowed.indexOf(row.subcategoria)<0)return;
+    var identity='';
+    if(row.local){
+      try{
+        identity=typeof normalizeAlicerMerchantIdentity==='function'
+          ?normalizeAlicerMerchantIdentity(row.local):'';
+      }catch(e){}
+    }
+    identity=identity||this._norm(row.descricao||'');
+    if(!identity||identity.length<4)return;
+    var key=String(row.categoria)+'|'+String(row.subcategoria)+'|'+identity;
+    if(!groups[key])groups[key]={name:row.local||row.descricao||this._nice(row.subcategoria),months:{}};
+    var month=row.data.slice(0,7);
+    groups[key].months[month]=(groups[key].months[month]||0)+(Number(row.valor)||0);
+  },this);
+  var result=[];
+  Object.keys(groups).forEach(function(key){
+    var group=groups[key];
+    var months=Object.keys(group.months).sort();
+    if(months.length<3)return;
+    var values=months.map(function(month){return group.months[month];});
+    var total=values.reduce(function(sum,value){return sum+value;},0);
+    var median=this._median(values);
+    if(median<10)return;
+    result.push({
+      merchant:group.name,
+      months:months.length,
+      average:total/months.length,
+      minimum:Math.min.apply(Math,values),
+      maximum:Math.max.apply(Math,values),
+      median:median,
+      stable:Math.min.apply(Math,values)>=median*0.75&&Math.max.apply(Math,values)<=median*1.25
+    });
+  },this);
+  return result.sort(function(a,b){return b.months-a.months||b.average-a.average;});
+};
+
+AlicerceIA._vehicleSummary=function(rows){
+  var fuel={purchases:0,total:0,liters:0,totalWithLiters:0};
+  var maintenance={purchases:0,total:0};
+  (rows||this._rows()).forEach(function(row){
+    var metrics=row.metrics||{};
+    var category=this._norm(row.categoria);
+    var subcategory=this._norm(row.subcategoria);
+    var description=this._norm(row.descricao||'');
+    var liters=Number(metrics.fuelLiters)||0;
+    var unitPrice=Number(metrics.unitPrice)||0;
+    var isFuel=liters>0||subcategory==='combustivel'||/\b(gasolina|etanol|diesel|abastecimento)\b/.test(description);
+    if(isFuel){
+      fuel.purchases++;
+      fuel.total+=Number(row.valor)||0;
+      if(liters>0){
+        fuel.liters+=liters;
+        fuel.totalWithLiters+=unitPrice>0?unitPrice*liters:(Number(row.valor)||0);
+      }
+    }
+    var isMaintenance=!!metrics.maintenanceType||
+      (category==='transporte'&&(/\b(manutencao|carro|moto)\b/.test(subcategory)||/\b(troca de oleo|revisao|mecanica|pneu|freio)\b/.test(description)));
+    if(isMaintenance){
+      maintenance.purchases++;
+      maintenance.total+=Number(row.valor)||0;
+    }
+  },this);
+  fuel.averagePricePerLiter=fuel.liters>0?fuel.totalWithLiters/fuel.liters:0;
+  return {fuel:fuel,maintenance:maintenance};
+};
+
+AlicerceIA._analyzePurchaseItems=function(rows){
+  var groups={};
+  (rows||this._rows()).forEach(function(row){
+    (Array.isArray(row.items)?row.items:[]).forEach(function(item){
+      if(!item)return;
+      var name=String(item.normalizedName||item.name||'').trim();
+      var unit=String(item.unit||'').trim().toLowerCase();
+      var key=this._norm(name)+'|'+unit;
+      if(!key||key==='|')return;
+      if(!groups[key])groups[key]={item:String(item.name||name),unit:unit,quantity:0,total:0,purchases:0,unitPriceTotal:0,unitPriceCount:0};
+      var group=groups[key];
+      var quantity=Number(item.quantity)||0;
+      var total=Number(item.total)||0;
+      var unitPrice=Number(item.unitPrice)||0;
+      if(quantity>0)group.quantity+=quantity;
+      if(total>0)group.total+=total;
+      if(unitPrice>0){group.unitPriceTotal+=unitPrice;group.unitPriceCount++;}
+      else if(quantity>0&&total>0){group.unitPriceTotal+=total/quantity;group.unitPriceCount++;}
+      group.purchases++;
+    },this);
+  },this);
+  return Object.keys(groups).map(function(key){
+    var group=groups[key];
+    group.averageUnitPrice=group.unitPriceCount?group.unitPriceTotal/group.unitPriceCount:0;
+    return group;
+  }).sort(function(a,b){return b.total-a.total;});
+};
+
 AlicerceIA._detectFrequentPurchases=function(rows){
   var now=Clock.now();
   var end=this._iso(now);
@@ -6592,6 +6725,14 @@ AlicerceIA.insight=function(){
   }
   var recurring=this._detectRecurring(allRows);
   if(recurring.length)return this._label('recurringInsight',{item:recurring[0].merchant,amount:fmtMoney(recurring[0].amount),months:recurring[0].months});
+  var monthlyPatterns=this._detectMonthlyPatterns(allRows);
+  if(monthlyPatterns.length)return this._label('monthlyPatternAnswer',{
+    item:monthlyPatterns[0].merchant,
+    months:monthlyPatterns[0].months,
+    average:fmtMoney(monthlyPatterns[0].average),
+    minimum:fmtMoney(monthlyPatterns[0].minimum),
+    maximum:fmtMoney(monthlyPatterns[0].maximum)
+  });
   var frequent=this._detectFrequentPurchases(allRows);
   if(frequent.length)return this._label('frequentPurchaseAnswer',{
     purchases:frequent[0].purchases,
@@ -6615,6 +6756,38 @@ AlicerceIA.responder=function(question){
   var rows=this._rows();
   var range=this._questionRange(question);
   var selected=this._rangeRows(range.start,range.end,rows);
+  if(/combustivel|abastecimento|preco por litro|litros abastecidos/.test(q)){
+    var vehicleData=this._vehicleSummary(rows).fuel;
+    if(!vehicleData.purchases)return this._label('noFuelData');
+    if(!vehicleData.liters)return this._label('fuelWithoutLiters',{purchases:vehicleData.purchases,total:fmtMoney(vehicleData.total)});
+    return this._label('fuelSummary',{
+      purchases:vehicleData.purchases,
+      liters:vehicleData.liters.toFixed(2).replace('.',','),
+      price:fmtMoney(vehicleData.averagePricePerLiter),
+      total:fmtMoney(vehicleData.total)
+    });
+  }
+  if(/manutencao|troca de oleo|revisao|oficina|mecanico/.test(q)){
+    var maintenanceData=this._vehicleSummary(rows).maintenance;
+    if(!maintenanceData.purchases)return this._label('noMaintenanceData');
+    return this._label('maintenanceSummary',{purchases:maintenanceData.purchases,total:fmtMoney(maintenanceData.total)});
+  }
+  var itemQuestion=q.match(/(?:preco|valor|quanto paguei|quanto custou) (?:do|da|de|por) ([a-z0-9 ]+)/);
+  if(itemQuestion){
+    var requestedItem=this._norm(itemQuestion[1]).replace(/\b(este mes|mes passado|no mercado|no supermercado)\b/g,'').trim();
+    var itemMatches=this._analyzePurchaseItems(rows).filter(function(item){
+      return this._norm(item.item).indexOf(requestedItem)>=0||requestedItem.indexOf(this._norm(item.item))>=0;
+    },this);
+    var itemData=itemMatches[0];
+    if(!itemData||!itemData.averageUnitPrice||!itemData.quantity)return this._label('noItemPriceData');
+    return this._label('itemPriceSummary',{
+      item:itemData.item,
+      purchases:itemData.purchases,
+      quantity:itemData.quantity.toFixed(2).replace('.',','),
+      unit:itemData.unit||'unidades',
+      unitPrice:fmtMoney(itemData.averageUnitPrice)
+    });
+  }
   if(/feira|hortifruti|sacolao|frutas|verduras|compras? frequentes?|fim de semana/.test(q)){
     var frequent=this._detectFrequentPurchases(rows);
     if(!frequent.length)return this._label('noFrequentPurchase');
@@ -6626,10 +6799,18 @@ AlicerceIA.responder=function(question){
       average:fmtMoney(frequent[0].average)
     });
   }
-  if(/assinatura|recorrente|se repete|pagamento fixo/.test(q)){
+  if(/assinatura|recorrente|se repete|pagamento fixo|despesa mensal|contas mensais/.test(q)){
     var recurringMatches=this._detectRecurring(rows);
-    if(!recurringMatches.length)return this._label('noRecurring');
-    return this._label('recurringAnswer',{item:recurringMatches[0].merchant,amount:fmtMoney(recurringMatches[0].amount),months:recurringMatches[0].months});
+    if(recurringMatches.length)return this._label('recurringAnswer',{item:recurringMatches[0].merchant,amount:fmtMoney(recurringMatches[0].amount),months:recurringMatches[0].months});
+    var monthlyMatches=this._detectMonthlyPatterns(rows);
+    if(monthlyMatches.length)return this._label('monthlyPatternAnswer',{
+      item:monthlyMatches[0].merchant,
+      months:monthlyMatches[0].months,
+      average:fmtMoney(monthlyMatches[0].average),
+      minimum:fmtMoney(monthlyMatches[0].minimum),
+      maximum:fmtMoney(monthlyMatches[0].maximum)
+    });
+    return this._label('noRecurring');
   }
   if(!selected.length)return this._label('noData');
   if(/fora do padrao|fora do normal|anomal|estranho|incomum/.test(q)){
