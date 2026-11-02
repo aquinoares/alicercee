@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 
 const ALLOWED_EVENTS = new Set([
   "app_opened",
-  "financial_record_created",
+  "movement_created",
   "first_movement_created"
 ]);
 
