@@ -2733,3 +2733,151 @@ test('A confirmação explícita de “Ainda não sei” não é sobrescrita pel
     evidence: { nature: 'user_confirmed' }
   });
 });
+
+test('Alicia revisa gastos sem contexto pelo chat e salva a finalidade sem alterar os dados financeiros', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'alicia-review-chat-test';
+    Store.lang = 'pt';
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      displayName: 'Teste',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
+    Store.movements = [{
+      id: 'review-chat-uber',
+      tipo: 'despesa',
+      status: 'pago',
+      data: Clock.today(),
+      valor: 42.50,
+      categoria: 'transporte',
+      subcategoria: 'uber',
+      estabelecimento: 'Uber',
+      descricao: 'Corrida por aplicativo'
+    }];
+    Store.installments = [];
+    Store.loans = [];
+    AlicerceIA._resetUser();
+
+    await AlicerceIA.enviarMensagem('Quais gastos ainda precisam de contexto?');
+    var firstPrompt = AlicerceIA._messages[AlicerceIA._messages.length - 1].text;
+    await AlicerceIA.enviarMensagem('Uber para ir ao trabalho');
+
+    var movement = Store.movements[0];
+    var analysisRow = Store.getAnalysisEntries()[0];
+    var dimensions = AlicerceIA._classifyExpenseDimensions(analysisRow, {});
+    return {
+      firstPrompt: firstPrompt,
+      movement: {
+        amount: movement.valor,
+        date: movement.data,
+        category: movement.categoria,
+        subcategory: movement.subcategoria,
+        purpose: movement.purpose
+      },
+      profile: analysisRow.expenseProfile,
+      dimensions: dimensions,
+      pendingReview: AlicerceIA._pendingFinancialReview
+    };
+  });
+
+  expect(result.firstPrompt).toContain('Corrida por aplicativo');
+  expect(result.firstPrompt).toContain('finalidade');
+  expect(result.movement).toMatchObject({
+    amount: 42.50,
+    category: 'transporte',
+    subcategory: 'uber',
+    purpose: 'Uber para ir ao trabalho'
+  });
+  expect(result.profile).toMatchObject({
+    source: 'user_confirmed',
+    context: 'work'
+  });
+  expect(result.profile.nature).toBeUndefined();
+  expect(result.dimensions).toMatchObject({
+    context: 'work',
+    nature: 'essential',
+    evidence: { nature: 'user_stated_purpose' }
+  });
+  expect(result.pendingReview).toBeNull();
+});
+
+test('Alicia mantém a resposta ainda não sei como indeterminada e continua para o próximo gasto', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'alicia-review-unknown-test';
+    Store.lang = 'pt';
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      displayName: 'Teste',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-10-31T12:00:00.000Z'
+      }
+    };
+    Store.movements = [
+      {
+        id: 'review-market',
+        tipo: 'despesa',
+        status: 'pago',
+        data: Clock.today(),
+        valor: 90,
+        categoria: 'comida',
+        subcategoria: 'mercado',
+        estabelecimento: 'Carrefour',
+        descricao: 'Compra no mercado'
+      },
+      {
+        id: 'review-uber',
+        tipo: 'despesa',
+        status: 'pago',
+        data: Clock.today(),
+        valor: 40,
+        categoria: 'transporte',
+        subcategoria: 'uber',
+        estabelecimento: 'Uber',
+        descricao: 'Corrida por aplicativo'
+      }
+    ];
+    Store.installments = [];
+    Store.loans = [];
+    AlicerceIA._resetUser();
+
+    await AlicerceIA.enviarMensagem('Quais gastos ainda precisam de contexto?');
+    var firstPrompt = AlicerceIA._messages[AlicerceIA._messages.length - 1].text;
+    await AlicerceIA.enviarMensagem('Ainda não sei');
+    var secondPrompt = AlicerceIA._messages[AlicerceIA._messages.length - 1].text;
+    var market = Store.movements[0];
+    return {
+      firstPrompt: firstPrompt,
+      secondPrompt: secondPrompt,
+      marketProfile: Store.getAnalysisEntries().filter(function (row) {
+        return row.id === 'review-market';
+      })[0].expenseProfile,
+      nextId: AlicerceIA._pendingFinancialReview && AlicerceIA._pendingFinancialReview.current
+        ? AlicerceIA._pendingFinancialReview.current.id
+        : null,
+      marketAmount: market.valor,
+      marketCategory: market.categoria
+    };
+  });
+
+  expect(result.firstPrompt).toContain('Compra no mercado');
+  expect(result.secondPrompt).toContain('Corrida por aplicativo');
+  expect(result.nextId).toBe('review-uber');
+  expect(result.marketProfile).toMatchObject({
+    source: 'user_confirmed',
+    nature: 'undetermined',
+    confidence: { nature: 'low' }
+  });
+  expect(result.marketProfile.context).toBeUndefined();
+  expect(result.marketAmount).toBe(90);
+  expect(result.marketCategory).toBe('comida');
+});
