@@ -5095,7 +5095,7 @@ const AlicerceIA = {
         monthlyPatternAnswer:'Encontrei uma despesa que aparece em {months} dos últimos 6 meses: {item}. A média mensal foi {average}, com valores entre {minimum} e {maximum}. A repetição indica um padrão, mas não confirma uma assinatura nem um valor fixo.',
         noFuelData:'Ainda não encontrei abastecimentos registrados com detalhes suficientes para analisar combustível.',
         fuelWithoutLiters:'Encontrei {purchases} registros de combustível, totalizando {total}. Para comparar preço por litro ou consumo, também preciso dos litros abastecidos.',
-        fuelSummary:'Encontrei {purchases} abastecimentos, com {liters} litros registrados e média aproximada de {price} por litro. O total desses registros foi {total}.',
+        fuelSummary:'Encontrei {purchases} abastecimentos, com {liters} litros registrados e média aproximada de {price} por litro. O total desses registros foi {total}.{efficiency}',
         maintenanceSummary:'Encontrei {purchases} registros de manutenção do veículo, somando {total}. Essa análise considera apenas os lançamentos identificados como manutenção.',
         noMaintenanceData:'Ainda não encontrei registros suficientes de manutenção do veículo para comparar.',
         itemPriceSummary:'Nos itens registrados, {item} aparece em {purchases} compras. A quantidade acumulada foi {quantity} {unit}, com preço médio registrado de {unitPrice} por {unit}.',
@@ -5136,7 +5136,7 @@ const AlicerceIA = {
         monthlyPatternAnswer:'I found an expense that appears in {months} of the last 6 months: {item}. The monthly average was {average}, with values between {minimum} and {maximum}. This repetition suggests a pattern, but does not confirm a subscription or fixed amount.',
         noFuelData:'I could not find enough fuel records with details for an analysis yet.',
         fuelWithoutLiters:'I found {purchases} fuel records totaling {total}. To compare price per liter or fuel consumption, I also need the number of liters.',
-        fuelSummary:'I found {purchases} fill-ups, with {liters} recorded liters and an approximate average of {price} per liter. The total was {total}.',
+        fuelSummary:'I found {purchases} fill-ups, with {liters} recorded liters and an approximate average of {price} per liter. The total was {total}.{efficiency}',
         maintenanceSummary:'I found {purchases} vehicle maintenance records totaling {total}. This analysis includes only entries identified as maintenance.',
         noMaintenanceData:'There are not enough vehicle maintenance records to compare yet.',
         itemPriceSummary:'In the recorded items, {item} appears in {purchases} purchases. The accumulated quantity was {quantity} {unit}, with a recorded average price of {unitPrice} per {unit}.',
@@ -5177,7 +5177,7 @@ const AlicerceIA = {
         monthlyPatternAnswer:'Encontré un gasto que aparece en {months} de los últimos 6 meses: {item}. El promedio mensual fue {average}, con valores entre {minimum} y {maximum}. La repetición indica un patrón, pero no confirma una suscripción ni un valor fijo.',
         noFuelData:'Aún no encontré suficientes registros de combustible con detalles para analizarlos.',
         fuelWithoutLiters:'Encontré {purchases} registros de combustible, por un total de {total}. Para comparar el precio por litro o el consumo, también necesito los litros abastecidos.',
-        fuelSummary:'Encontré {purchases} cargas, con {liters} litros registrados y un promedio aproximado de {price} por litro. El total fue {total}.',
+        fuelSummary:'Encontré {purchases} cargas, con {liters} litros registrados y un promedio aproximado de {price} por litro. El total fue {total}.{efficiency}',
         maintenanceSummary:'Encontré {purchases} registros de mantenimiento del vehículo, por un total de {total}. El análisis considera solo los gastos identificados como mantenimiento.',
         noMaintenanceData:'Aún no hay suficientes registros de mantenimiento del vehículo para comparar.',
         itemPriceSummary:'En los artículos registrados, {item} aparece en {purchases} compras. La cantidad acumulada fue {quantity} {unit}, con un precio promedio registrado de {unitPrice} por {unit}.',
@@ -6502,7 +6502,7 @@ AlicerceIA._detectMonthlyPatterns=function(rows){
   };
   var groups={};
   (rows||this._rows()).forEach(function(row){
-    if(!row||row.source!=='movement'||row.data<cutoff)return;
+    if(!row||(row.source!=='movement'&&row.source!=='card')||row.data<cutoff)return;
     var allowed=eligible[row.categoria]||[];
     if(allowed.indexOf(row.subcategoria)<0)return;
     var identity='';
@@ -6543,6 +6543,7 @@ AlicerceIA._detectMonthlyPatterns=function(rows){
 
 AlicerceIA._vehicleSummary=function(rows){
   var fuel={purchases:0,total:0,liters:0,totalWithLiters:0};
+  var fullTankReadings={};
   var maintenance={purchases:0,total:0};
   (rows||this._rows()).forEach(function(row){
     var metrics=row.metrics||{};
@@ -6558,6 +6559,12 @@ AlicerceIA._vehicleSummary=function(rows){
       if(liters>0){
         fuel.liters+=liters;
         fuel.totalWithLiters+=unitPrice>0?unitPrice*liters:(Number(row.valor)||0);
+        var odometer=Number(metrics.odometerKm)||0;
+        if(metrics.fullTank===true&&odometer>0){
+          var vehicleKey=String(metrics.vehicleId||'sem-veiculo');
+          if(!fullTankReadings[vehicleKey])fullTankReadings[vehicleKey]=[];
+          fullTankReadings[vehicleKey].push({odometer:odometer,liters:liters,data:row.data});
+        }
       }
     }
     var isMaintenance=!!metrics.maintenanceType||
@@ -6568,6 +6575,21 @@ AlicerceIA._vehicleSummary=function(rows){
     }
   },this);
   fuel.averagePricePerLiter=fuel.liters>0?fuel.totalWithLiters/fuel.liters:0;
+  var drivenKm=0;
+  var intervalLiters=0;
+  var fullTankIntervals=0;
+  Object.keys(fullTankReadings).forEach(function(vehicleKey){
+    var readings=fullTankReadings[vehicleKey].sort(function(a,b){return a.odometer-b.odometer;});
+    for(var index=1;index<readings.length;index++){
+      var distance=readings[index].odometer-readings[index-1].odometer;
+      if(distance<=0||readings[index].liters<=0)continue;
+      drivenKm+=distance;
+      intervalLiters+=readings[index].liters;
+      fullTankIntervals++;
+    }
+  });
+  fuel.averageKmPerLiter=intervalLiters>0?drivenKm/intervalLiters:0;
+  fuel.fullTankIntervals=fullTankIntervals;
   return {fuel:fuel,maintenance:maintenance};
 };
 
@@ -6737,7 +6759,8 @@ AlicerceIA.responder=function(question){
       purchases:vehicleData.purchases,
       liters:vehicleData.liters.toFixed(2).replace('.',','),
       price:fmtMoney(vehicleData.averagePricePerLiter),
-      total:fmtMoney(vehicleData.total)
+      total:fmtMoney(vehicleData.total),
+      efficiency:vehicleData.averageKmPerLiter>0?' A média entre abastecimentos de tanque cheio foi '+vehicleData.averageKmPerLiter.toFixed(1).replace('.',',')+' km/l.':''
     });
   }
   if(/manutencao|troca de oleo|revisao|oficina|mecanico/.test(q)){
