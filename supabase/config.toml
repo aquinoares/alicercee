@@ -424,3 +424,8 @@ entrypoint = "./functions/alicerce-admin/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/alicerce-admin/*.html" ]
+
+[functions.alicia-tts]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/alicia-tts/index.ts"
