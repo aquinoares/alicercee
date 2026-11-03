@@ -3228,7 +3228,7 @@ test('Alicia conversa com acolhimento e mantém somente contexto temporário', a
     };
   });
 
-  expect(memoryState.brainVersion).toBe('1.0.0');
+  expect(memoryState.brainVersion).toBe('2.0.0');
   expect(memoryState.messageCount).toBe(4);
   expect(memoryState.roles).toEqual(['user', 'assistant', 'user', 'assistant']);
   expect(memoryState.storedConversationKeys).toEqual([]);
