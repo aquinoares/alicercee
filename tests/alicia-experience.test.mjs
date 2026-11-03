@@ -477,7 +477,7 @@ test('confirmação positiva retoma a pergunta financeira que estava pendente', 
   await env.ai.enviarMensagem('quanto gastei este mês?');
   const answer = await env.ai.enviarMensagem('sim, pode continuar');
   assert.equal(answer, 'Resposta financeira do motor.');
-  assert.equal(env.calls[2], 'quanto gastei este mês?');
+  assert.equal(env.calls[1], 'quanto gastei este mês?');
 });
 
 test('estado de cuidado expira automaticamente depois de 30 minutos', async function () {
