@@ -71,7 +71,7 @@
       var item = messages[i];
       if (!item || item.role !== 'assistant' || !item.text) continue;
       var text = normalize(item.text);
-      return /\?|quer me contar|me conta|o que aconteceu|o que esta pesando|o que esta mais dificil|como voce esta|como esta seu dia/.test(text);
+      return /quer me contar|me conta|o que aconteceu|o que esta pesando|o que esta mais dificil|o que precisa de atencao|o que esta mais urgente|o que esta passando|como voce esta|como esta seu dia|tem algo especifico|o que seria mais util|qual seria o proximo passo/.test(text);
     }
     return false;
   }
