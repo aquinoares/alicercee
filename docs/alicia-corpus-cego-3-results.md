@@ -23,7 +23,7 @@ A validação direta da versão corrigida cobriu 24 mensagens individuais, os do
 
 ## 2. Verificação automática
 
-O workflow `Alicia Brain Tests` concluiu com **130 testes aprovados e 0 falhas** no commit `861ff14bd735f97dc228bb37ed8a68af27011acf`. O CI foi iniciado novamente no commit posterior que limpa o estado temporário também no logout; a confirmação final desse workflow deve ser conferida no PR.
+O workflow `Alicia Brain Tests` concluiu com **130 testes aprovados e 0 falhas** no commit de aplicação `2ba50d9ff82c9b3509b68f0d2d77444d6cc58f7b`, que já inclui a limpeza do estado temporário no logout. O PR recebeu depois apenas esta atualização documental (`351c37960d2a4ef18ed576a97a34118a5c694ed4`). Na última consulta, Playwright + axe-core e CodeQL permaneciam em execução; a checagem de tipo da função Edge de analytics concluiu com sucesso. Os checks de build do Vercel reportaram `build-rate-limit`; não houve publicação/deploy por esta etapa.
 
 O teste automatizado inclui:
 - corpus cego nº 2, agora regressão;
