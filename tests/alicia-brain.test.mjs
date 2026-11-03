@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { trainingCases as cases, blindCases } from './alicia-blind-cases.mjs';
+import { corpusCego2 } from './corpus_cego_2.mjs';
 
 const source = readFileSync(new URL('../assets/alicia-brain.js', import.meta.url), 'utf8');
 
@@ -282,5 +283,59 @@ test('dados pessoais e pedido de CPF de terceiro nunca chegam ao motor nem à me
     assert.equal(env.calls.originalSend, 0);
     assert.equal(env.alicia._messages[0].text.indexOf(input), -1);
     assert.match(env.alicia._answer, /segurança|CPF/i);
+  }
+});
+
+
+test('corpus_cego_2 integrado à suíte de regressão', async function (t) {
+  const { brain } = loadBrain();
+  const groups = [
+    ['risk', corpusCego2.crisis],
+    ['non_crisis', corpusCego2.falsePositive],
+    ['frontier', corpusCego2.frontier],
+    ['common', corpusCego2.common],
+    ['privacy', corpusCego2.sensitive]
+  ];
+  for (const [group, items] of groups) {
+    for (const item of items) {
+      await t.test(group + ': ' + item.input, function () {
+        const result = brain.respond(item.input, [], 'pt');
+        assert.equal(result.intent, item.intent);
+        assert.equal(result.handled, item.handled !== undefined ? item.handled : true);
+        assert.equal(brain.assessSelfHarmRisk(item.input), item.risk);
+        if (group === 'risk') {
+          assert.match(result.text, /188/);
+          assert.match(result.text, /segurança/i);
+          assert.doesNotMatch(result.text, /saldo|gasto|dinheiro|fatura|orçamento/i);
+          if (item.immediate) assert.match(result.text, /192/);
+        }
+        if (group === 'non_crisis') assert.doesNotMatch(result.text, /CVV|SAMU/i);
+        if (group === 'frontier') assert.match(result.text, /como você está|como tem sido/i);
+        if (item.intent === 'sensitive_data_request') assert.match(result.text, /não posso consultar nem compartilhar/i);
+        if (item.intent === 'sensitive_data') assert.match(result.text, /por segurança/i);
+      });
+    }
+  }
+});
+
+test('rotas de urgência usam mensagem especializada e interrompem o motor', async function () {
+  const cases = corpusCego2.crisis.filter(function (item) { return item.kind === 'ingestion' || item.kind === 'jump'; });
+  for (const item of cases) {
+    const env = loadBrain();
+    await env.alicia.enviarMensagem(item.input);
+    assert.equal(env.calls.originalSend, 0);
+    assert.match(env.alicia._answer, /192/);
+    assert.match(env.alicia._answer, /188/);
+    assert.match(env.alicia._answer, /segurança|seguro/i);
+  }
+});
+
+test('credenciais e pedido de dado de terceiro não passam ao motor nem à memória', async function () {
+  for (const item of corpusCego2.sensitive) {
+    const env = loadBrain();
+    await env.alicia.enviarMensagem(item.input);
+    assert.equal(env.calls.originalSend, 0);
+    assert.equal(env.alicia._messages[0].text.indexOf(item.input), -1);
+    assert.match(env.alicia._answer, /segurança|não posso consultar/i);
   }
 });
