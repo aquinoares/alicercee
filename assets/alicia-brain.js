@@ -208,7 +208,7 @@
   function isThirdPartySelfSafetyConcern(value) {
     return hasAny(value, [
       /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:disse|falou|contou|escreveu|escrever|mandou|gravou)\b.*\b(?:nao quer mais viver|nao quer viver|nao quer continuar|nao quer estar aqui|nao aguento mais|nao aguenta mais|quer morrer|quer sumir|pensa em se matar|desistir de tudo)\b/,
-      /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:postou|publicou|escreveu|escrever|mandou)\b.*\b(?:despedida|adeus|tchau|nao aguento mais|nao aguenta mais|nao quer mais viver|sumir)\b/
+      /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:postou|publicou|escreveu|escrever|mandou|gravou)\b.*\b(?:despedida|se despedindo|audio se despedindo|adeus|tchau|nao aguento mais|nao aguenta mais|nao quer mais viver|sumir)\b/
     ]);
   }
 
@@ -227,6 +227,9 @@
       /\b(?:tomei|ing[ei]ri|bebi|usei)\b.*\b(?:comprimidos?|remedios?|medicamentos?|veneno)\b/,
       /\b(?:peguei|separei|abri|tirei|estou com|to com|tenho)\b.*\b(?:a )?cartela\b.*\b(?:remedios?|comprimidos?|medicamentos?)\b/,
       /\b(?:peguei|abri|separei|estou com|to com|tenho)\b.*\b(?:o )?(?:vidro|frasco|pote)\b.*\b(?:remedios?|comprimidos?|medicamentos?)\b/,
+      /\b(?:to|estou) com (?:o )?veneno\b/,
+      /\b(?:vou|quero|pretendo) me despedir de todos\b/,
+      /\b(?:deixei|escrevi|preparei|terminei) (?:uma )?(?:carta|mensagem|recado) pronta\b.*\b(?:familia|mae|pai|todos)\b/,
       /\b(?:to|estou) na beirada (?:do|da)\b.*\b(?:viaduto|ponte|predio|varanda)\b/,
       /\b(?:vou|pretendo) partir dessa pra melhor\b/,
       /\b(?:vou|pretendo|estou pensando em) tomar (?:todos os )?(?:os )?(?:comprimidos?|remedios?|medicamentos?)\b/,
@@ -288,7 +291,11 @@
       /\bnao consigo continuar\b/,
       /\b(?:cansei de tudo|cansado de tudo)\b.*\b(?:quero sumir|sumir de vez)\b/,
       /\bnao (?:to |estou )?aguentando mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/,
-      /\bnao aguento mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/
+      /\bnao aguento mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/,
+      /\b(?:nao tenho|nao vejo) (?:nenhuma )?saida\b/,
+      /\bqueria ir embora pra sempre\b/,
+      /\bo mundo fica melhor sem mim\b/,
+      /\bqueria nao existir(?: mais)?\b/
     ])) return 'medium';
 
     return 'low';
