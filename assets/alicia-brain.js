@@ -68,8 +68,8 @@
   }
 
   function isFinancialQuestion(value) {
-    var topics = /\b(?:gasto|gastos|gastei|despesa|despesas|saldo|fatura|cartao|conta|dinheiro|grana|orcamento|economia|economizar|parcelas|parcelar|receita|renda|uber|mercado|farmacia|extrato)\b/;
-    var question = /\b(?:quanto|onde|qual|quais|compare|comparar|compara|analise|analisa|aumentou|diminuiu|sobrou|posso pagar|consigo pagar|posso parcelar|parcelar|mostra|mostre|exibe|exibir|consulta|consultar|ver|veja|kd|cade|gastei)\b/;
+    var topics = /\b(?:gasto|gastos|gastei|despesa|despesas|saldo|fatura|cartao|conta|dinheiro|grana|orcamento|economia|economizar|parcelas|parcelar|receita|renda|uber|mercado|farmacia|extrato|luz|energia|agua|internet|telefone|aluguel|paguei|pagamento|sobrou)\b/;
+    var question = /\b(?:quanto|onde|qual|quais|compare|comparar|compara|analise|analisa|aumentou|diminuiu|sobrou|posso pagar|consigo pagar|posso parcelar|parcelar|mostra|mostre|exibe|exibir|consulta|consultar|ver|veja|kd|cade|gastei|paguei|entrou|entraram|recebi)\b/;
     return topics.test(value) && question.test(value);
   }
 
@@ -102,44 +102,73 @@
       /\b(?:essa|a) fatura me mata\b/,
       /\b(?:fiquei|estou|to) mort[oa] de vergonha\b/,
       /\b(?:estou|to) morrendo de preguica\b/,
-      /\bme mato de rir\b/
+      /\bme mato de rir\b/,
+      /\b(?:esse|o) boleto me deu um infarto\b/,
+      /\bse (?:a )?minha mae (?:vir|ver) (?:essa )?fatura\b.*\bela me mata\b/,
+      /\b(?:esse|o) preco e um crime\b/
     ]);
   }
 
   function isImmediateSelfSafetyRisk(value) {
     return hasAny(value, [
-      /\b(?:vou|pretendo|estou pensando em) tomar (?:todos os )?(?:os )?(?:remedios|comprimidos)(?: de uma vez)?\b/
+      /\b(?:tomei|ing[ei]ri|bebi|usei)\b.*\b(?:comprimidos?|remedios?|medicamentos?|veneno)\b/,
+      /\b(?:vou|pretendo|estou pensando em) tomar (?:todos os )?(?:os )?(?:comprimidos?|remedios?|medicamentos?)\b/,
+      /\b(?:vou|pretendo|decidi|ja escolhi|planejei|tenho um plano)\b.*\b(?:me jogar|pular|saltar|me matar|me suicidar|tirar (?:a )?minha vida|acabar com tudo)\b/,
+      /\b(?:ja escolhi como vou fazer|so falta coragem)\b/,
+      /\b(?:vou|to pensando em|estou pensando em|pretendo) fazer uma besteira com (?:a )?minha vida\b/,
+      /\b(?:vou me jogar|me jogar da|pular da?)\b.*\b(?:ponte|predio|viaduto)\b/
     ]);
   }
 
-  function isSelfSafetyRisk(value) {
-    if (isEverydayMetaphor(value)) return false;
-    if (isImmediateSelfSafetyRisk(value)) return true;
-    return hasAny(value, [
-      /\b(?:quero|queria|vou|penso em|estou pensando em|tenho vontade de|pretendo)\s+(?:me\s+)?(?:matar|suicidar)\b/,
-      /\b(?:tirar|acabar com)\s+a minha vida\b/,
-      /\b(?:quero|queria|vou|penso em|tenho vontade de)\s+(?:me\s+)?(?:machucar|ferir)\b/,
-      /\b(?:quero|queria|vou|penso em|tenho vontade de)\s+(?:sumir|desaparecer)\b/,
-      /\b(?:quero|queria|vou) dormir (?:para|pra) sempre\b/,
+  /*
+   * Segunda camada independente do interpretador de intenções.
+   * Recebe somente o texto da mensagem e devolve low, medium ou high.
+   * Não recebe perfil, nome, histórico, saldo ou dados financeiros.
+   */
+  function assessSelfHarmRisk(message) {
+    var value = normalize(message);
+    if (!value || isEverydayMetaphor(value)) return 'low';
+
+    if (isImmediateSelfSafetyRisk(value) || hasAny(value, [
+      /\b(?:quero|queria|vou|pretendo|penso em|estou pensando em|to pensando em)\s+(?:me\s+)?(?:matar|suicidar)\b/,
+      /\b(?:vou|queria|quero|pretendo)\s+(?:me\s+)?(?:machucar|ferir)\b/,
+      /\b(?:vou|to pensando em|estou pensando em|pretendo) fazer uma besteira com (?:a )?minha vida\b/,
+      /\b(?:tirar|acabar com) a minha vida\b/
+    ])) return 'high';
+
+    if (hasAny(value, [
+      /\b(?:desligar tudo|sumir|desaparecer)\b.*\b(?:nao voltar|nunca mais voltar)\b/,
+      /\b(?:nao voltar|nunca mais voltar)\b/,
+      /\b(?:a familia|minha familia)\b.*\bficaria\b.*\b(?:melhor|bem)\b.*\b(?:sem mim|sem esse peso)\b/,
+      /\b(?:sou|sinto que sou|me sinto como) (?:um )?peso\b/,
+      /\bnao tem mais motivo\b.*\b(?:pra|para) (?:eu )?(?:ficar|continuar|estar) aqui\b/,
+      /\bsem esperanca\b/,
+      /\bnao sei por que ainda acordo\b/,
+      /\bso penso em acabar com tudo\b/,
+      /\b(?:quero|queria) acabar com tudo\b/,
+      /\b(?:nao aguento mais|nao vejo saida)\b.*\b(?:acabar|sumir|morrer|nao ficar)\b/,
+      /\bqueria (?:poder )?(?:desligar tudo|nao acordar|nao voltar)\b/,
+      /\b(?:quero|queria|vou|penso em|estou pensando em|tenho vontade de|pretendo)\s+(?:me\s+)?(?:sumir|desaparecer)\b/,
       /\bninguem (?:ia|iria|vai) sentir (?:a )?minha falta\b/,
-      /\bnao vejo saida\b.*\bmelhor acabar(?: logo)?\b/,
-      /\bnao quero mais estar aqui\b/,
-      /\bsinto que(?: eu)? (?:to|estou) sumindo\b/,
       /\b(?:seria melhor|era melhor|melhor) (?:se )?eu nao existisse\b/,
       /\b(?:seria melhor|era melhor) sem mim\b/,
-      /\b(?:nao aguento mais|nao da mais|nao consigo continuar)\b/,
-      /\b(?:quero|queria) acabar com tudo\b/,
-      /\bpra que continuar\b/,
-      /\bpara que continuar\b/,
-      /\bso quero dormir e nao acordar\b/,
-      /\bso queria dormir e nao acordar\b/,
-      /\bnao quero mais viver\b/,
-      /\bnao queria mais viver\b/,
-      /\bqueria nao acordar\b/,
-      /\bnao quero acordar\b/,
+      /\bnao quero mais estar aqui\b/,
+      /\bsinto que(?: eu)? (?:to|estou) sumindo\b/,
+      /\b(?:nao quero|nao queria) mais viver\b/,
+      /\bso (?:quero|queria) dormir e nao acordar\b/,
       /\bqueria deixar de existir\b/,
-      /\bseria melhor se eu sumisse\b/
-    ]);
+      /\bnao aguento mais\b.*\b(?:continuar|viver|ficar)\b/,
+      /\b(?:pra|para) que continuar\b/,
+      /\b(?:queria|nao quero|nao queria) (?:mais )?acordar\b/,
+      /\bseria melhor se eu sumisse\b/,
+      /\bnao consigo continuar\b/
+    ])) return 'medium';
+
+    return 'low';
+  }
+
+  function isSelfSafetyRisk(value) {
+    return assessSelfHarmRisk(value) !== 'low';
   }
 
   function hasSensitiveData(message) {
@@ -147,14 +176,18 @@
     var normalized = normalize(raw);
     var cpf = /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/.test(raw);
     var email = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(raw);
-    var password = /\b(?:senha|password|pass)\s*(?:e|é|:|=)\s*\S+/i.test(raw);
+    var password = /\b(?:minha\s+)?(?:senha|password|pass)(?:\s+do\s+[a-z0-9]+){0,4}\s*(?:e|é|:|=)\s*\S+/i.test(raw);
     var cardNumber = /\b(?:\d[ -]?){13,19}\b/.test(raw) && /\b(?:cartao|credito|debito|cvv|cvc)\b/.test(normalized);
-    var explicitSecret = /\b(?:meu|minha)\s+(?:cpf|senha|cartao completo|numero do cartao|cvv)\b/.test(normalized) && /\b\d{4,}\b/.test(raw);
-    return cpf || email || password || cardNumber || explicitSecret;
+    var cardTail = /\bcartao\b.*\b(?:final|terminado em)\s*\d{4}\b/.test(normalized);
+    var expiry = /\bvalidade\s*\d{2}\s*\d{2,4}\b/.test(normalized);
+    var cvv = /\b(?:cvv|cvc|codigo de seguranca)\s*(?:e|é|:|=)?\s*\d{3,4}\b/.test(normalized);
+    var explicitSecret = /\b(?:meu|minha)\s+(?:cpf|senha|cartao completo|numero do cartao|cvv)\b/.test(normalized) && /\b\d{3,}\b/.test(raw);
+    return cpf || email || password || cardNumber || (cardTail && (expiry || cvv)) || cvv || explicitSecret;
   }
 
   function isSensitiveDataRequest(value) {
     return hasAny(value, [
+      /\b(?:me manda|manda|me passa|passa|me diga|diga|me informa|informa|me mostra|mostra|consulta|consultar|ver|quero saber|qual e)\b.*\b(?:cpf|saldo|extrato|movimentacao|movimentacoes|conta|cartao|fatura)\b.*\b(?:da|do)\s+(?:minha ex|meu ex|ex|minha|meu|dele|dela|outra pessoa|terceiro)\b/,
       /\b(?:me manda|manda|me passa|passa|me diga|diga|me informa|informa|me mostra|mostra|qual e)\b.*\bcpf\b.*\b(?:do|da)\s+(?:meu|minha|seu|sua)\s+(?:marido|esposa|esposo|mulher|namorado|namorada|pai|mae|filho|filha|irmao|irma)\b/
     ]);
   }
@@ -165,11 +198,15 @@
 
     /* Segurança é avaliada antes de finanças, memória e conversa. */
     if (isThirdPartyDanger(value)) return 'third_party_danger';
-    if (isSelfSafetyRisk(value)) return 'self_safety_crisis';
+    var riskLevel = assessSelfHarmRisk(message);
+    if (riskLevel === 'high' || riskLevel === 'medium') return 'self_safety_crisis';
     if (hasSensitiveData(message)) return 'sensitive_data';
     if (isSensitiveDataRequest(value)) return 'sensitive_data_request';
     if (isEverydayMetaphor(value)) return 'figurative_expression';
 
+    if (/\b(?:pode|quero|preciso|me ajuda a)?\s*(?:apagar|apague|limpar|limpe)\b.*\b(?:o que a gente conversou|conversa|mensagens|historico)\b.*\b(?:ontem|antes|de outro dia)\b/.test(value)) {
+      return 'forget_past';
+    }
     if (/\b(?:esquece|esqueca)\s+(?:o que eu falei|o que eu disse|essa conversa|minhas mensagens)\b/.test(value) ||
         /\b(?:apaga|apague|limpa|limpe)\b.*\b(?:o que eu falei|essa conversa|minhas mensagens|o que eu disse)\b/.test(value)) {
       return 'forget';
@@ -178,12 +215,16 @@
       return 'privacy_summary';
     }
     if (/^(?:deixa pra la|deixa|esquece|nao quero falar|prefiro nao falar|vamos mudar de assunto)$/.test(value) ||
-        /\b(?:esquece|deixa)\b.*\bdepois\b.*\ba gente ve\b/.test(value)) {
+        /\b(?:esquece|deixa)\b.*\bdepois\b.*\ba gente ve\b/.test(value) ||
+        /\b(?:ah\s+)?deixa\s+(?:quieto|quieta|isso quieto|pra la|para la)\b/.test(value)) {
       return 'leave_it';
     }
+
     if (language && language !== 'pt') return 'unsupported_language';
 
     if (/\b(?:to|estou) sem grana\b.*\bate (?:o )?dia \d{1,2}\b/.test(value)) return 'cashflow_support';
+    if (/\b(?:me lembra|lembra|lembrete|quero lembrar|preciso lembrar)\b.*\b(?:pagar|pagamento)\b.*\b(?:amanha|hoje|depois)\b/.test(value)) return 'reminder';
+    if (/\b(?:to|estou) devendo\b.*\b(?:por onde comeco|como comeco|o que faco)\b/.test(value)) return 'debt_support';
     if (isFinancialFollowup(value, messages)) return 'financial_followup';
     if (/\b(?:quanto|qual|que valor)\b.*\b(?:vou ter|terei|vai sobrar|sobrara|vou juntar|vou acumular)\b.*\b(?:ano que vem|proximo ano|ano seguinte)\b/.test(value)) {
       return 'forecast_without_data';
@@ -223,7 +264,9 @@
         hasAny(value, [
           /\bnao estou bem\b/, /\bnao to bem\b/, /\bme sinto mal\b/, /\bme sinto triste\b/,
           /\bestou triste\b/, /\bestou desanimad[oa]\b/, /\bando desanimad[oa]\b/,
-          /\bdecepcionad[oa]\b/, /\bsem animo\b/, /\bdesanimad[oa]\b/
+          /\bdecepcionad[oa]\b/, /\bsem animo\b/, /\bdesanimad[oa]\b/,
+          /\b(?:ando|estou|to|tenho estado|venho ficando) (?:muito )?pra baixo\b/,
+          /\bsem esperanca(?: nenhuma)?\b/
         ])) return 'sadness';
 
     if (hasAny(value, [
@@ -235,7 +278,11 @@
       return 'overwhelmed';
     }
     if (hasAny(value, [/\b(?:frustrad[oa]|irritad[oa]|com raiva|chatead[oa]|indignad[oa])\b/])) return 'frustration';
-    if (hasAny(value, [/\b(?:cansad[oa]|esgotad[oa]|exaust[oa]|sem energia)\b/])) return 'tiredness';
+    if (hasAny(value, [
+      /\b(?:cansad[oa]|esgotad[oa]|exaust[oa]|sem energia)\b/,
+      /\bmort[oa] de cansaco\b/,
+      /\bexaust[oa] de tudo\b/
+    ])) return 'tiredness';
 
     if (/\b(?:consegui pagar|quitei|paguei a divida|terminei de pagar|alcancei minha meta|consegui guardar|consegui economizar)\b/.test(value)) {
       return 'achievement';
@@ -284,9 +331,10 @@
       'Tudo certo por aqui para seguir com você. Como está seu dia?'
     ],
     sadness: [
-      'Mês difícil não apaga o esforço que você já fez. Quer que a gente olhe juntos o que aconteceu, sem pressa?',
-      'Parece que esse mês pesou. Não vou julgar você; podemos entender o que aconteceu, um passo de cada vez. Quer olhar isso comigo?'
+      'Sinto que as coisas têm pesado para você. Como você está se sentindo nos últimos dias?',
+      'Parece que você vem carregando muita coisa. Como tem sido para você lidar com isso?'
     ],
+
     app_frustration: [
       'Poxa, parece que o Alicerce te atrapalhou. Quero entender sem me defender: o que não funcionou?',
       'Que chato passar por isso. Vamos identificar o que travou para eu orientar melhor. Em que parte aconteceu?'
@@ -304,9 +352,19 @@
       'Isso não saiu como você esperava. Vamos entender o ponto que incomodou, sem julgamento. O que aconteceu?'
     ],
     tiredness: [
-      'Parece que você está precisando de um respiro. Podemos ir com calma e deixar o restante para depois. O que seria mais útil agora?',
-      'Você não precisa resolver tudo neste momento. Podemos escolher algo pequeno ou simplesmente retomar quando estiver melhor.'
+      'Parece que tudo isso tem pesado bastante. Como você está se sentindo hoje?',
+      'Você não precisa resolver tudo neste momento. Como tem ficado emocionalmente com tanta coisa acontecendo?'
     ],
+    reminder: [
+      'Eu não consigo programar uma notificação automática nesta versão. Para não te prometer um lembrete que não posso disparar, adicione “Pagar a internet” ao calendário do seu celular para amanhã.'
+    ],
+    debt_support: [
+      'Vamos começar separando as despesas essenciais, os vencimentos e os juros, sem assumir outra parcela antes de entender o orçamento. Qual dívida tem juros mais altos ou vence primeiro?'
+    ],
+    forget_past: [
+      'Posso limpar o contexto temporário desta conversa, mas não consigo apagar mensagens de conversas anteriores por aqui. Você quer limpar o contexto atual?'
+    ],
+
     achievement: [
       'Conseguir pagar essa dívida é um passo importante. Isso merece reconhecimento, sem exagero. Se quiser, podemos olhar como manter esse avanço.',
       'Você concluiu uma etapa que exigiu esforço. Que bom ver esse progresso; podemos pensar no próximo passo no seu ritmo.'
@@ -380,7 +438,7 @@
       'Por segurança, você não precisa compartilhar CPF, senhas ou números completos de cartão. Não vou reutilizar esse dado; envie apenas a informação necessária, sem identificadores.'
     ],
     sensitive_data_request: [
-      'Não posso fornecer nem buscar o CPF do seu marido ou de outra pessoa. Peça o dado diretamente à própria pessoa e use um canal seguro; não envie o número aqui.'
+      'Não posso consultar nem compartilhar saldo, extrato ou dados financeiros de outra pessoa. Posso ajudar você a consultar apenas seus próprios registros no Alicerce.'
     ],
     leave_it: [
       'Tudo bem. Não precisa continuar agora. Quando quiser retomar, estou por aqui.',
@@ -396,8 +454,15 @@
       'Estou levando o que você disse a sério. Sua segurança importa. Você está em segurança agora? O CVV atende gratuitamente pelo 188, 24 horas, e também em cvv.org.br; se houver risco imediato, ligue para o SAMU 192. Procure agora alguém de confiança para ficar com você; posso continuar aqui enquanto você busca apoio.'
     ],
     self_safety_immediate: [
-      'Isso é uma emergência. Não tome os remédios. Afaste-se deles, vá para perto de alguém de confiança e peça que essa pessoa fique com você. Se já tomou algum ou acha que pode tomar, ligue para o SAMU 192 agora ou peça que alguém ligue. O CVV atende pelo 188, 24 horas. Você está em segurança agora e longe dos remédios?'
+      'Há risco de você se machucar agora. Afaste-se de qualquer meio que possa usar para isso e vá para perto de alguém de confiança. Peça ajuda presencial e ligue para o SAMU 192. O CVV atende pelo 188, 24 horas. Você está em segurança e acompanhado neste momento?'
     ],
+    self_safety_ingestion: [
+      'Isso precisa de ajuda médica agora. Ligue para o SAMU 192 imediatamente ou peça a alguém que ligue por você. Não fique sozinho; vá para perto de alguém de confiança e peça que essa pessoa permaneça com você. O CVV atende pelo 188, 24 horas. Você está em segurança agora e com alguém ao seu lado?'
+    ],
+    self_safety_jump: [
+      'Afaste-se da ponte e de qualquer lugar alto agora. Vá para perto de outras pessoas e peça a alguém de confiança que fique com você. Ligue para o SAMU 192 imediatamente ou peça que alguém ligue. O CVV atende pelo 188, 24 horas. Você está em um lugar seguro e acompanhado agora?'
+    ],
+
     doing_well: [
       'Que bom saber disso. Tem algo específico em que você queira minha ajuda hoje?'
     ],
@@ -417,8 +482,14 @@
 
   function respond(message, messages, language) {
     var intent = classify(message, messages, language);
-    if (intent === 'self_safety_crisis' && isImmediateSelfSafetyRisk(normalize(message))) {
-      return { handled: true, intent: intent, text: chooseResponse('self_safety_immediate', messages) };
+    var riskLevel = assessSelfHarmRisk(message);
+    if (intent === 'self_safety_crisis' && riskLevel === 'high') {
+      var normalizedMessage = normalize(message);
+      var urgentIntent = /\b(?:tomei|ing[ei]ri|bebi|usei)\b.*\b(?:comprimidos?|remedios?|medicamentos?|veneno)\b/.test(normalizedMessage) ?
+        'self_safety_ingestion' :
+        /\b(?:vou me jogar|me jogar da|pular da?)\b.*\b(?:ponte|predio|viaduto)\b/.test(normalizedMessage) ?
+          'self_safety_jump' : 'self_safety_immediate';
+      return { handled: true, intent: intent, text: chooseResponse(urgentIntent, messages) };
     }
     if (intent === 'financial' || intent === 'financial_followup' ||
         intent === 'unsupported_language' || intent === 'empty') {
@@ -472,7 +543,8 @@
     hasSensitiveData: hasSensitiveData,
     isSelfSafetyRisk: isSelfSafetyRisk,
     isThirdPartyDanger: isThirdPartyDanger,
-    registerSafetyAlert: registerSafetyAlert
+    registerSafetyAlert: registerSafetyAlert,
+    assessSelfHarmRisk: assessSelfHarmRisk
   };
 
   if (typeof AlicerceIA !== 'undefined' &&
@@ -527,6 +599,12 @@
         var sensitiveLabel = intent === 'sensitive_data_request' ?
           '[solicitação de dado pessoal bloqueada]' : '[conteúdo sensível omitido]';
         appendLocalReply(this, sensitiveLabel, chooseResponse(intent, this._messages));
+        if (input) input.value = '';
+        return;
+      }
+
+      if (intent === 'forget_past') {
+        appendLocalReply(this, '[pedido de exclusão fora do alcance]', chooseResponse('forget_past', this._messages));
         if (input) input.value = '';
         return;
       }
