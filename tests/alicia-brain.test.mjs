@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { trainingCases as cases, blindCases } from './alicia-blind-cases.mjs';
 import { corpusCego2 } from './corpus_cego_2.mjs';
+import { corpusCego3 } from './corpus_cego_3.mjs';
 
 const source = readFileSync(new URL('../assets/alicia-brain.js', import.meta.url), 'utf8');
 
@@ -43,15 +44,16 @@ function loadBrain(options = {}) {
     }
   };
 
+  const documentMock = options.document || {
+    getElementById() {
+      return options.input || null;
+    }
+  };
   const context = vm.createContext({
     window: root,
     AlicerceIA: fakeAlicia,
     Store: { lang: 'pt' },
-    document: {
-      getElementById() {
-        return options.input || null;
-      }
-    },
+    document: documentMock,
     render() {
       calls.rendered = (calls.rendered || 0) + 1;
     }
@@ -338,4 +340,140 @@ test('credenciais e pedido de dado de terceiro não passam ao motor nem à memó
     assert.equal(env.alicia._messages[0].text.indexOf(item.input), -1);
     assert.match(env.alicia._answer, /segurança|não posso consultar/i);
   }
+});
+
+
+test('corpus cego nº 3 — regressão após o baseline', async function (t) {
+  const { brain } = loadBrain();
+  const groups = [
+    ['Crise', corpusCego3.crisis],
+    ['Terceira pessoa', corpusCego3.thirdParty],
+    ['Negação/passado/sarcasmo', corpusCego3.negationPastSarcasm],
+    ['Fronteira', corpusCego3.frontier],
+    ['Áudio transcrito', corpusCego3.audioTranscribed],
+    ['Comum/sensível', corpusCego3.commonAndSensitive]
+  ];
+  for (const [category, entries] of groups) {
+    for (const item of entries) {
+      await t.test(category + ': ' + item.input, function () {
+        const result = brain.respond(item.input, [], 'pt');
+        assert.equal(result.intent, item.intent);
+        assert.equal(brain.assessSelfHarmRisk(item.input), item.risk);
+        if (category === 'Crise') {
+          assert.equal(result.handled, true);
+          assert.match(result.text, /Você está em segurança agora\?/);
+          assert.match(result.text, /CVV[\s\S]*188/);
+          assert.doesNotMatch(result.text, /saldo|gasto|dinheiro|fatura|orçamento|dívida/i);
+          if (item.urgent) assert.match(result.text, /SAMU 192/);
+        }
+        if (category === 'Terceira pessoa') {
+          assert.equal(result.handled, true);
+          assert.notEqual(result.intent, 'self_safety_crisis');
+          assert.match(result.text, /essa pessoa/i);
+          assert.match(result.text, /CVV.*188/);
+          assert.match(result.text, /SAMU 192/);
+          assert.doesNotMatch(result.text, /Você está em segurança agora\?/);
+        }
+        if (category === 'Negação/passado/sarcasmo') {
+          assert.doesNotMatch(result.text, /CVV|SAMU|Você está em segurança/i);
+          if (item.intent === 'tiredness') assert.match(result.text, /Como você está se sentindo/i);
+          if (item.intent === 'past_reflection') assert.match(result.text, /hoje você está melhor/i);
+          if (item.intent === 'figurative_expression') assert.match(result.text, /força de expressão/i);
+        }
+        if (category === 'Fronteira') {
+          assert.match(result.text, /Como você está\?/);
+          assert.doesNotMatch(result.text, /CVV|SAMU/i);
+        }
+        if (category === 'Áudio transcrito' && item.intent === 'self_safety_crisis') {
+          assert.match(result.text, /188/);
+          assert.match(result.text, /segurança/i);
+        }
+        if (category === 'Comum/sensível') {
+          if (item.intent === 'financial') assert.equal(result.handled, false);
+          if (item.intent === 'sensitive_data') {
+            assert.equal(result.handled, true);
+            assert.match(result.text, /Por segurança/i);
+            assert.doesNotMatch(result.text, /123456/);
+          }
+          if (item.intent === 'sensitive_data_request') {
+            assert.equal(result.handled, true);
+            assert.match(result.text, /não posso fornecer nem buscar o CPF/i);
+          }
+        }
+      });
+    }
+  }
+});
+
+test('mensagens em sequência mantêm o estado de cuidado e bloqueiam o motor financeiro', async function () {
+  const scenarios = corpusCego3.sequences;
+  for (const scenario of scenarios) {
+    const env = loadBrain();
+    await env.alicia.enviarMensagem(scenario.turns[0].input);
+    assert.ok(env.alicia._aliciaCareState);
+    assert.equal(typeof env.alicia._aliciaCareState.level, 'string');
+    assert.equal(typeof env.alicia._aliciaCareState.remaining, 'number');
+    assert.deepEqual(Object.keys(env.alicia._aliciaCareState).sort(), ['level', 'remaining']);
+    await env.alicia.enviarMensagem(scenario.turns[1].input);
+    assert.equal(env.calls.originalSend, scenario.name === 'crisis_then_finance' ? 0 : 1);
+    assert.doesNotMatch(env.alicia._answer, /RESPOSTA_DO_MOTOR:/);
+    assert.match(env.alicia._answer, /você está em segurança agora/i);
+    assert.ok(env.alicia._aliciaCareState);
+  }
+});
+
+test('a sessão só sai do estado de cuidado após confirmação explícita de segurança', async function () {
+  const env = loadBrain();
+  await env.alicia.enviarMensagem('não aguento mais, queria sumir.');
+  assert.ok(env.alicia._aliciaCareState);
+  await env.alicia.enviarMensagem('tô bem, esquece. qual meu saldo?');
+  assert.ok(env.alicia._aliciaCareState);
+  assert.equal(env.calls.originalSend, 0);
+  await env.alicia.enviarMensagem('sim, estou em segurança e não vou me machucar');
+  assert.equal(env.alicia._aliciaCareState, null);
+  assert.match(env.alicia._answer, /podemos retomar as finanças com calma/i);
+});
+
+test('o botão fixo de ajuda é instalado independentemente do classificador', function () {
+  const nodes = [];
+  function createElement(tag) {
+    return {
+      tagName: tag,
+      children: [],
+      attributes: {},
+      listeners: {},
+      style: {},
+      hidden: false,
+      appendChild(child) { this.children.push(child); child.parent = this; },
+      setAttribute(name, value) { this.attributes[name] = String(value); },
+      addEventListener(name, callback) { this.listeners[name] = callback; },
+      focus() { this.focused = true; }
+    };
+  }
+  const body = createElement('body');
+  const head = createElement('head');
+  const document = {
+    readyState: 'complete',
+    body,
+    head,
+    createElement(tag) {
+      const element = createElement(tag);
+      nodes.push(element);
+      return element;
+    },
+    getElementById(id) {
+      return nodes.find(function (element) { return element.id === id; }) || null;
+    },
+    addEventListener() {}
+  };
+  loadBrain({ document });
+  const button = nodes.find(function (element) { return element.id === 'alicia-help-now'; });
+  const panel = nodes.find(function (element) { return element.id === 'alicia-help-panel'; });
+  assert.ok(button);
+  assert.equal(button.textContent, 'Preciso de ajuda agora');
+  assert.ok(panel);
+  const hrefs = nodes.filter(function (element) { return element.href; }).map(function (element) { return element.href; });
+  assert.ok(hrefs.includes('tel:188'));
+  assert.ok(hrefs.includes('tel:192'));
+  assert.ok(hrefs.includes('https://cvv.org.br'));
 });
