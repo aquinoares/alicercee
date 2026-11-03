@@ -3238,6 +3238,14 @@ test('Alicia conversa com acolhimento e mantém somente contexto temporário', a
     return AlicerceIA._messages.length;
   });
   expect(cleared).toBe(0);
+
+  await page.locator('#alicerce-assistant-input').fill('Estou preocupado com o futuro');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('O que está mais urgente para você agora?');
+
+  await page.locator('#alicerce-assistant-input').fill('Sim');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Pode me contar no seu ritmo');
 });
 
 test('Alicia preserva as perguntas financeiras no interpretador local existente', async function ({ page }) {
