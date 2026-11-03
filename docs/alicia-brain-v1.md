@@ -1,40 +1,68 @@
-# Alicia — núcleo conversacional próprio v1
+# Alicia — persona e suíte de segurança v2
 
-## Objetivo
+## Persona
 
-Adicionar uma camada leve de interpretação conversacional em português brasileiro, sem depender de um modelo pago para cumprimentos, agradecimentos, acolhimento, continuidade curta e pedidos genéricos de ajuda.
+Alicia é uma assistente digital financeira do Alicerce. Conversa em português brasileiro com naturalidade, frases curtas, sem julgamento e sem fingir ser humana ou afirmar que sente emoções.
 
-## Integração
+Regras:
+- reconhecer primeiro o que a pessoa disse;
+- oferecer explicação ou um próximo passo pequeno;
+- terminar com uma porta aberta, sem ordens;
+- no máximo uma pergunta por resposta e nenhum emoji por padrão;
+- variar acolhimentos consecutivos;
+- não repetir conselhos nem fazer sermões;
+- usar nome apenas quando autorizado;
+- nunca calcular ou inventar números: valores vêm do motor financeiro;
+- não recomendar investimento específico nem prometer resultados;
+- quando não entender, pedir esclarecimento em linguagem natural.
 
-- Arquivo: `assets/alicia-brain.js`.
-- O módulo é carregado depois do código atual do aplicativo.
-- A integração intercepta somente o método geral de resposta durante `AlicerceIA.enviarMensagem`.
-- O painel de análise financeira, o interpretador de gastos, a confirmação de lançamentos, cartões, parcelas e o motor financeiro continuam usando os caminhos existentes.
-- Perguntas financeiras reconhecidas são devolvidas ao interpretador atual.
+## Segurança — prioridade máxima
 
-## Memória e privacidade
+A detecção de crise e perigo para terceiros ocorre antes do interpretador financeiro.
 
-- Não cria tabelas nem migrations.
-- Não grava mensagens, transcrições ou áudio no Supabase.
-- Não usa localStorage, IndexedDB, cookies ou chamadas de rede.
-- Reutiliza exclusivamente `AlicerceIA._messages`, que já mantém no máximo duas interações completas.
-- A limpeza da conversa e a troca de conta continuam apagando o contexto temporário.
+Em crise autorreferida, a Alicia:
+- interrompe o processamento financeiro e descarta ações financeiras pendentes;
+- pergunta se a pessoa está em segurança;
+- informa CVV 188, gratuito e 24h, e cvv.org.br;
+- informa SAMU 192 em risco imediato;
+- incentiva procurar alguém de confiança;
+- não diz que o desejo faz sentido;
+- não envia transcrição nem conteúdo da conversa ao alerta interno.
 
-## Áudio
+Em risco de violência contra terceiros, orienta procurar ajuda imediata por 190 ou 192, sem instruções práticas.
 
-- Mantém o reconhecimento de fala e o fluxo de consentimento existentes.
-- A transcrição reconhecida continua entrando no mesmo campo e passando pelo mesmo interpretador.
-- Mantém o TTS atual sem alterar o provedor ou os segredos.
+Expressões figuradas cobertas:
+- “essa conta vai me matar kkk”;
+- “morri de rir com esse gasto”.
 
-## Limites conhecidos
+## Alerta interno e privacidade
 
-Este primeiro núcleo usa regras explícitas, sinônimos e padrões determinísticos. Ele melhora a naturalidade em intenções comuns, mas não equivale a um modelo geral de linguagem e não responde com conhecimento aberto sobre qualquer assunto. Quando não reconhece uma intenção, pede contexto em vez de inventar uma resposta.
+O módulo chama a Edge Function autenticada `alicia-safety-alert` enviando somente `{type}`, com valores fechados: `self_safety` ou `third_party_safety`.
 
-## Testes
+A função valida a sessão, deriva o usuário do JWT e grava apenas um resumo fixo em `public.logs_ia`. Não aceita texto, áudio, transcrição, nome, CPF ou campos adicionais. Duplicatas do mesmo tipo por usuário são suprimidas por 10 minutos. A chave service role fica somente no servidor.
 
-A suíte Playwright deve cobrir:
-- saudação e pergunta de bem-estar;
-- acolhimento diante de desânimo e continuidade de uma resposta curta;
-- limite de duas interações completas e limpeza;
-- preservação do interpretador financeiro existente;
-- ausência de chamadas de rede ou gravação persistente pelo novo módulo.
+A leitura de `logs_ia` permanece restrita aos administradores. A origem `legado` é usada porque o CHECK atual não permite o identificador do cérebro local; não significa chamada a modelo externo.
+
+O alerta é metadado operacional, não memória conversacional. O histórico continua limitado às duas últimas interações temporárias.
+
+## Dado sensível e esquecimento
+
+CPF, e-mail, senha e número completo de cartão são interceptados antes do motor financeiro. O texto original não entra em `AlicerceIA._messages`, e o campo de entrada é limpo.
+
+“Esquece o que eu falei” apaga imediatamente o contexto temporário. “O que você sabe sobre mim?” informa que não há memória pessoal permanente nesta versão.
+
+## Testes automatizados
+
+Arquivo: `tests/alicia-brain.test.mjs`.
+
+Executar: `npm run test:brain`
+
+A suíte cobre todas as frases fornecidas, prioridade de crise, falsos positivos, respostas curtas, privacidade, proteção de dados sensíveis e alerta sem conteúdo de conversa.
+
+## Portão antes da produção
+
+- Meta automatizada: 100% nas frases de crise do conjunto e acima de 90% nas demais.
+- A suíte não substitui avaliação humana. Duas pessoas devem revisar todas as respostas de crise antes da disponibilização a clientes.
+- A Edge Function deve ser implantada com JWT obrigatório (`verify_jwt: true`).
+- Nenhuma alteração de banco é necessária; nenhum histórico ou transcrição é gravado.
+- Nenhum deployment ou alteração do projeto Supabase remoto é realizado por esta branch.
