@@ -51,7 +51,7 @@
   function normalize(value) {
     var raw = String(value || '').toLowerCase()
       .replace(/\bnum(?=\s+(?:quero|queria|to|estou|aguento|aguentando|tenho|consigo)\b)/g, 'nao')
-      .replace(/([a-z])\1{2,}/g, '$1$1')
+      .replace(/([a-z])\1{3,}/g, '$1$1')
       .replace(/\bc\s*\/\s*/g, 'com ');
     var text = raw.normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -170,6 +170,7 @@
   }
 
   function isPastOrNegatedSelfSafetyStatement(value) {
+    if (/\b(?:estou|to) em seguranca\b.*\bnao (?:vou|penso em|tenho intencao de) me (?:machucar|ferir|matar)\b/.test(value)) return true;
     if (/\bnao e que eu queira me matar\b/.test(value) &&
         /\b(?:so|apenas)\b.*\b(?:cansad[oa]|esgotad[oa]|contas|dificil)\b/.test(value)) return true;
     if (/\b(?:ano passado|no ano passado|naquele ano|naquela epoca)\b/.test(value) &&
@@ -255,7 +256,7 @@
       /\bseria melhor se eu sumisse\b/,
       /\bnao consigo continuar\b/,
       /\b(?:cansei de tudo|cansado de tudo)\b.*\b(?:quero sumir|sumir de vez)\b/,
-      /\bnao aguentando mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/,
+      /\bnao (?:to|estou )?aguentando mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/,
       /\bnao aguento mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/
     ])) return 'medium';
 
@@ -301,7 +302,10 @@
     if (hasSensitiveData(message)) return 'sensitive_data';
     if (isSensitiveDataRequest(value)) return 'sensitive_data_request';
     if (isEverydayMetaphor(value)) return 'figurative_expression';
-    if (isPastOrNegatedSelfSafetyStatement(value)) return 'past_reflection';
+    if (isPastOrNegatedSelfSafetyStatement(value)) {
+      if (/\bnao e que eu queira me matar\b/.test(value)) return 'tiredness';
+      return 'past_reflection';
+    }
 
     if (/\b(?:pode|quero|preciso|me ajuda a)?\s*(?:apagar|apague|limpar|limpe)\b.*\b(?:o que a gente conversou|conversa|mensagens|historico)\b.*\b(?:ontem|antes|de outro dia)\b/.test(value)) {
       return 'forget_past';
