@@ -31,16 +31,16 @@ Ao desativar, o Alicerce grava primeiro a preferência desligada e solicita a ex
 
 ## Publicação da Edge Function
 
-A função usa uma allowlist de origens. Os padrões incluem `https://alicerce-app.vercel.app` (domínio ativo observado), `https://alicerce-swart.vercel.app` (domínio anterior conhecido) e os endereços locais de desenvolvimento/teste. Para uma URL de preview ou um domínio adicional, configure o segredo de ambiente `ALICERCE_ANALYTICS_ALLOWED_ORIGINS` no Supabase com as origens exatas separadas por vírgula (protocolo + host + porta, sem caminho). Não use curingas.
+A função usa uma allowlist de origens. Os padrões incluem `https://alicerce-app.vercel.app` (domínio ativo observado), `https://alicerce-swart.vercel.app` (domínio anterior conhecido), os dois previews da branch conhecidos e os endereços locais de desenvolvimento/teste. Para uma URL de preview ou um domínio adicional, configure o segredo de ambiente `ALICERCE_ANALYTICS_ALLOWED_ORIGINS` no Supabase com as origens exatas separadas por vírgula (protocolo + host + porta, sem caminho). Não use curingas.
 
 ## Estado de publicação em 03/11/2026
 
 - A migração `20261103000434_create_alicerce_product_events` foi aplicada ao projeto Supabase de produção `hwmpwvbvgiqotdzkmgwh`.
-- `alicerce-analytics-events` está ativa na versão 2, com JWT obrigatório.
+- `alicerce-analytics-events` está ativa na versão 3, com JWT obrigatório e allowlist para o domínio principal e os previews conhecidos.
 - `alicerce-team-insights` está ativa na versão 2, com JWT obrigatório e agregação dos eventos de uso, anúncios, tráfego e indicações.
 - A tabela começou vazia; a última verificação confirmou zero eventos. A coleta no aplicativo só começa quando a pessoa ativa o consentimento e a versão do frontend que contém o rastreador é publicada.
 - O frontend ainda depende desta PR e da branch-base de Alicia. Não mesclar a cadeia de branches automaticamente.
-- O Vercel recusou novas implantações após atingir o limite diário do plano gratuito (`api-deployments-free-per-day`).
+- O Vercel recusou novas implantações após atingir o limite diário do plano gratuito (`api-deployments-free-per-day`). Os previews que já estavam `Ready` permanecem identificados, mas não há confirmação de um build do frontend no commit mais recente.
 
 A Edge Function pode ser publicada antes do frontend, mas a coleta só será exercida pelo aplicativo quando o código do consentimento e rastreamento estiver disponível no domínio ativo. Para validar chamadas autenticadas reais, usar uma sessão de teste autorizada; não inserir eventos artificiais em contas de clientes.
 
