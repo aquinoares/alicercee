@@ -2,6 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 
 const allowedOrigins = new Set([
+  "https://alicerce-app.vercel.app",
   "https://alicerce-swart.vercel.app",
   "http://localhost:5500",
   "http://127.0.0.1:5500",
@@ -11,7 +12,7 @@ function makeCorsHeaders(origin: string) {
   return {
     "Access-Control-Allow-Origin": allowedOrigins.has(origin)
       ? origin
-      : "https://alicerce-swart.vercel.app",
+      : "https://alicerce-app.vercel.app",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Max-Age": "86400",
