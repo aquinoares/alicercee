@@ -215,6 +215,20 @@ test('Uber de 50 ontem no Pix reconhece valor, item, pagamento e data', function
   assert.equal(result.category, 'transporte');
 });
 
+test('resposta pendente com item do dicionário atualiza a categoria sem repetir pergunta nem ecoar frase', async function () {
+  const store = makeStore();
+  const env = makeHarness({ testStore: store });
+  const first = await env.ai.enviarMensagem('comprei um negócio de 15 no pix');
+  assert.match(first, /Em qual categoria/);
+  const second = await env.ai.enviarMensagem('Alicia eu tava com vontade resolvi comprar um picolé');
+  assert.match(second, /Anotei: picolé, R\$\s*15,00/);
+  assert.doesNotMatch(second, /Alicia eu tava com vontade/i);
+  assert.equal(store.movements.length, 1);
+  assert.equal(store.movements[0].descricao, 'picolé');
+  assert.equal(store.movements[0].categoria, 'comida');
+  assert.equal(store.movements[0].forma, 'pix');
+});
+
 test('comprei um negócio sem valor pede primeiro somente o valor', function () {
   const env = makeHarness();
   const result = env.root.AliciaExpense.parse('comprei um negócio', '2026-11-03');

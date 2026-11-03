@@ -109,10 +109,21 @@ function saveExpense(instance,d){
  return append(instance,'[gasto de teste anotado]','Anotei: '+d.item+', '+cash(d.amount)+', '+d.paymentMethod+', '+catLabel(d.category)+'. Registrei somente no armazenamento de teste.');
 }
 function continueDraft(instance,d,text){
+ var follow=parse(text,typeof Clock!=='undefined'?Clock.today():'');
+ if(follow){
+  if(follow.item&&follow.item!=='Compra'){
+   d.item=follow.item;
+   var inferred=catOf(follow.item);
+   if(inferred){d.category=inferred.category;d.subcategory=inferred.subcategory;d.categoryFallback=false;}
+  }
+  if(follow.amount!==null&&follow.amount!==undefined)d.amount=follow.amount;
+  if(follow.paymentMethod){d.paymentMethod=follow.paymentMethod;d.cardType=follow.cardType||d.cardType;d.isCardPurchase=follow.paymentMethod==='cartao';}
+  if(/\\b(hoje|ontem|anteontem|domingo|segunda|terca|quarta|quinta|sexta|sabado)\\b/.test(n(text)))d.date=follow.date;
+ }
  if(d.awaiting==='debit_installment'){if(/\b(sim|avista|a vista|pode|quero)\b/.test(n(text))){d.installments=1;d.invalidDebitInstallments=false;d.awaiting='';return saveExpense(instance,d);}instance._aliciaExpensePending=null;return append(instance,'[compra no débito cancelada]','Tudo bem. Não registrei a compra. No cartão de débito, o pagamento precisa ser à vista.');}
  if(d.awaiting==='amount'){var a=amount(text).value;if(!a){instance._aliciaExpensePending=null;return append(instance,'[valor não identificado]','Não consegui identificar o valor. Não registrei a compra; quando souber, pode me enviar só o valor.');}d.amount=a;}
  else if(d.awaiting==='payment'){var p=payment(text);if(!p.method){instance._aliciaExpensePending=null;return append(instance,'[pagamento não identificado]','Não identifiquei a forma de pagamento. Não registrei a compra.');}d.paymentMethod=p.method;d.cardName=p.cardName||d.cardName;d.cardType=p.cardType||d.cardType||'';d.isCardPurchase=p.method==='cartao';d.invalidDebitInstallments=d.cardType==='debito'&&Number(d.installments)>1;}
- else if(d.awaiting==='category'){var c=catReply(text);d.category=c||'outros';d.subcategory=c?'outros':'nao_identificado';d.categoryFallback=!c;instance._aliciaShowChangeCategory=!c;}
+ else if(d.awaiting==='category'){var c=catReply(text);if(c){d.category=c;d.subcategory='outros';d.categoryFallback=false;}else if(!d.category){d.category='outros';d.subcategory='nao_identificado';d.categoryFallback=true;}instance._aliciaShowChangeCategory=!!d.categoryFallback;}
  else if(d.awaiting==='card'){var card=findCard(testStore?testStore.cards:[],text);if(!card){instance._aliciaExpensePending=null;return append(instance,'[cartão não identificado]','Não identifiquei esse cartão no ambiente de teste. Não registrei.');}d.cardName=card.nome;d.cardId=card.id;}
  d.awaiting='';if(!d.category)return askCat(instance,d);if(!d.paymentMethod)return ask(instance,d,'payment');
  var result=saveExpense(instance,d);if(d.categoryFallback)instance._aliciaShowChangeCategory=true;return result;

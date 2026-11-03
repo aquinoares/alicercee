@@ -69,7 +69,7 @@ Assim, uma compra antiga deve aparecer quando uma das suas parcelas tem vencimen
 ### Gastos
 - Parser separado para verbos comuns, números e valores por extenso, "conto", "uns 30", Pix, dinheiro, cartão, crédito/débito, datas relativas e quantidade de parcelas.
 - Dicionário inicial com alimentos, transporte, saúde, contas, lazer, vestuário e regionalismos nordestinos.
-- Se faltar apenas forma de pagamento, pergunta somente isso. O estado pendente guarda o campo esperado e a próxima mensagem o preenche sem repetir a pergunta.
+- Se faltar apenas forma de pagamento, pergunta somente isso. O estado pendente guarda o campo esperado e a próxima mensagem o preenche sem repetir a pergunta. Se a resposta pendente revelar um item conhecido (por exemplo, picolé), o dicionário atualiza o item e a categoria sem ecoar a frase.
 - Palavras genéricas como "negócio" são convertidas em descrição provisória "Compra", não na frase inteira.
 - A categoria desconhecida tem opções de escolha; a opção "Mudar categoria" atualiza o movimento de teste existente, sem criar duplicata.
 
