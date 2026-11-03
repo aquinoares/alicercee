@@ -477,3 +477,68 @@ test('o botão fixo de ajuda é instalado independentemente do classificador', f
   assert.ok(hrefs.includes('tel:192'));
   assert.ok(hrefs.includes('https://cvv.org.br'));
 });
+
+
+test('normalização de voz e mensagens pesadas não classificadas usam cuidado ou crise', function () {
+  const { brain } = loadBrain();
+  const audio = 'eu num tô aguentano mais nada queria so dexar tudo pra tras e sumir';
+  assert.equal(brain.assessSelfHarmRisk(audio), 'medium');
+  assert.equal(brain.classify(audio, [], 'pt'), 'self_safety_crisis');
+  assert.match(brain.respond(audio, [], 'pt').text, /188/);
+
+  const heavy = [
+    'não tenho forças pra levantar',
+    'tô no limite, não dá mais',
+    'não consigo fazer mais nada',
+    'não sei por que continuo tentando',
+    'não tenho ânimo pra nada'
+  ];
+  for (const input of heavy) {
+    const result = brain.respond(input, [], 'pt');
+    assert.equal(result.intent, 'care_check', input);
+    assert.match(result.text, /Como você está\?/);
+    assert.doesNotMatch(result.text, /CVV|SAMU/i);
+  }
+});
+
+test('negação explícita não é confundida com intenção suicida', function () {
+  const { brain } = loadBrain();
+  const inputs = [
+    'não vou me matar, só queria desaparecer',
+    'não quero me machucar, só tô muito triste'
+  ];
+  for (const input of inputs) {
+    const result = brain.respond(input, [], 'pt');
+    assert.equal(brain.assessSelfHarmRisk(input), 'low');
+    assert.equal(result.intent, 'care_check');
+    assert.match(result.text, /Como você está\?/);
+    assert.doesNotMatch(result.text, /CVV|SAMU/i);
+  }
+});
+
+test('meios e locais de risco não explícitos no corpus acionam cautela alta', function () {
+  const { brain } = loadBrain();
+  const inputs = [
+    'peguei o vidro de comprimidos e tô pensando',
+    'tô na beirada do viaduto',
+    'vou partir dessa pra melhor'
+  ];
+  for (const input of inputs) {
+    const result = brain.respond(input, [], 'pt');
+    assert.equal(brain.assessSelfHarmRisk(input), 'high');
+    assert.equal(result.intent, 'self_safety_crisis');
+    assert.match(result.text, /SAMU 192/);
+    assert.match(result.text, /CVV.*188/);
+    assert.match(result.text, /segurança/i);
+  }
+});
+
+test('relato de terceira pessoa com expressão de despedida mantém foco na outra pessoa', function () {
+  const { brain } = loadBrain();
+  const result = brain.respond('minha irmã escreveu que não aguento mais', [], 'pt');
+  assert.equal(result.intent, 'third_party_self_safety');
+  assert.match(result.text, /essa pessoa/i);
+  assert.match(result.text, /CVV.*188/);
+  assert.match(result.text, /SAMU 192/);
+  assert.doesNotMatch(result.text, /Você está em segurança agora\?/);
+});
