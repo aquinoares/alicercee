@@ -15,6 +15,7 @@ function allowedOrigins() {
     .map((value) => value.trim())
     .filter(Boolean);
   const defaults = [
+    "https://alicerce-app.vercel.app",
     "https://alicerce-swart.vercel.app",
     "http://127.0.0.1:4310",
     "http://localhost:4310",
