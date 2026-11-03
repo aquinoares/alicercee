@@ -5048,6 +5048,7 @@ const AlicerceIA = {
       this._question='';
       this._answer='';
       this._messages=[];
+      this._aliciaCareState=null;
       this._pendingExpenseDraft=null;
       this._pendingFinancialReview=null;
       this._welcomeTypingStarted=false;
@@ -13357,6 +13358,7 @@ async function doLogout(){
   tfInvalidarCacheAdmin();
   window.__alicerceAnalyticsOpenedUser='';
   Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
+  if(window.AlicerceIA)window.AlicerceIA._aliciaCareState=null;
   ['movements','cards','loans','installments','commitments','financing','consortium','extraIncome','insurance','familyPeople','familyCategories','doctors','medications','doseLogs','learning'].forEach(k=>{Store[k]=Array.isArray(Store[k])?[]:{}});
   clearAllTimers();render();
 }
