@@ -208,7 +208,8 @@
   function isThirdPartySelfSafetyConcern(value) {
     return hasAny(value, [
       /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:disse|falou|contou|escreveu|mandou)\b.*\b(?:nao quer mais viver|nao quer viver|nao quer continuar|nao quer estar aqui|quer morrer|quer sumir|pensa em se matar|desistir de tudo)\b/,
-      /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:postou|publicou|escreveu|mandou)\b.*\b(?:despedida|adeus|tchau|nao aguento mais|nao aguenta mais|nao quer mais viver|sumir)\b/
+      /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:postou|publicou|escreveu|mandou)\b.*\b(?:despedida|adeus|tchau|nao aguento mais|nao aguenta mais|nao quer mais viver|sumir)\b/,
+      /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:escreveu|mandou|gravou)\b.*\bnao aguento mais\b/
     ]);
   }
 
