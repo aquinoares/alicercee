@@ -21,8 +21,38 @@
     priority: ['seguranca', 'privacidade', 'intencao', 'motor_financeiro', 'conversa']
   };
 
+  function editDistanceWithin(source, target, maximum) {
+    var a = String(source || '');
+    var b = String(target || '');
+    if (Math.abs(a.length - b.length) > maximum) return maximum + 1;
+    var previous = [];
+    var current = [];
+    var i;
+    var j;
+    for (j = 0; j <= b.length; j++) previous[j] = j;
+    for (i = 1; i <= a.length; i++) {
+      current = [i];
+      var rowMinimum = i;
+      for (j = 1; j <= b.length; j++) {
+        var cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+        current[j] = Math.min(
+          current[j - 1] + 1,
+          previous[j] + 1,
+          previous[j - 1] + cost
+        );
+        if (current[j] < rowMinimum) rowMinimum = current[j];
+      }
+      if (rowMinimum > maximum) return maximum + 1;
+      previous = current;
+    }
+    return previous[b.length];
+  }
+
   function normalize(value) {
-    var raw = String(value || '').toLowerCase().replace(/\bc\s*\/\s*/g, 'com ');
+    var raw = String(value || '').toLowerCase()
+      .replace(/\bnum(?=\s+(?:quero|queria|to|estou|aguento|aguentando|tenho|consigo)\b)/g, 'nao')
+      .replace(/([a-z])\1{2,}/g, '$1$1')
+      .replace(/\bc\s*\/\s*/g, 'com ');
     var text = raw.normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, ' ')
@@ -32,12 +62,39 @@
     var corrections = {
       qaunto: 'quanto', qanto: 'quanto', qunto: 'quanto',
       gstei: 'gastei', ontm: 'ontem', ontne: 'ontem',
-      farmcia: 'farmacia', cartaoo: 'cartao'
+      farmcia: 'farmacia', cartaoo: 'cartao',
+      aguentano: 'aguentando', aguentano: 'aguentando',
+      dexar: 'deixar', dxa: 'deixa', tras: 'tras',
+      qro: 'quero', qria: 'queria', amanhaa: 'amanha',
+      remdio: 'remedio', remedioo: 'remedio',
+      predioo: 'predio', varnda: 'varanda'
     };
-    return text.replace(/\b[a-z0-9]+\b/g, function (word) {
-      return corrections[word] || word;
-    }).replace(/\s+/g, ' ').trim();
+    var fuzzyWords = [
+      'aguentando', 'aguento', 'deixar', 'desaparecer', 'desapareco',
+      'acordar', 'remedio', 'medicamentos', 'varanda', 'predio',
+      'terminar', 'despedida', 'escrever', 'familia', 'mae',
+      'sumir', 'viver', 'matar', 'morrer', 'continuar'
+    ];
+    return text.split(' ').map(function (word) {
+      if (corrections[word]) return corrections[word];
+      if (word.length < 6) return word;
+      var best = word;
+      var bestDistance = 2;
+      for (var index = 0; index < fuzzyWords.length; index++) {
+        var candidate = fuzzyWords[index];
+        if (Math.abs(candidate.length - word.length) > 1) continue;
+        var distance = editDistanceWithin(word, candidate, 1);
+        if (distance < bestDistance) {
+          best = candidate;
+          bestDistance = distance;
+          if (distance === 0) break;
+        }
+      }
+      return best;
+    }).join(' ').replace(/\s+/g, ' ').trim();
   }
+
+
 
   function hasAny(value, patterns) {
     for (var i = 0; i < patterns.length; i++) {
@@ -68,7 +125,7 @@
   }
 
   function isFinancialQuestion(value) {
-    var topics = /\b(?:gasto|gastos|gastei|despesa|despesas|saldo|fatura|cartao|conta|dinheiro|grana|orcamento|economia|economizar|parcelas|parcelar|receita|renda|uber|mercado|farmacia|extrato|luz|energia|agua|internet|telefone|aluguel|paguei|pagamento|sobrou)\b/;
+    var topics = /\b(?:gasto|gastos|gastei|despesa|despesas|saldo|fatura|cartao|conta|dinheiro|grana|orcamento|economia|economizar|parcelas|parcelar|receita|renda|uber|mercado|farmacia|extrato|luz|energia|agua|internet|telefone|aluguel|paguei|pagamento|sobrou|pix|transferencia|transferencias)\b/;
     var question = /\b(?:quanto|onde|qual|quais|compare|comparar|compara|analise|analisa|aumentou|diminuiu|sobrou|posso pagar|consigo pagar|posso parcelar|parcelar|mostra|mostre|exibe|exibir|consulta|consultar|ver|veja|kd|cade|gastei|paguei|entrou|entraram|recebi)\b/;
     return topics.test(value) && question.test(value);
   }
@@ -105,18 +162,50 @@
       /\bme mato de rir\b/,
       /\b(?:esse|o) boleto me deu um infarto\b/,
       /\bse (?:a )?minha mae (?:vir|ver) (?:essa )?fatura\b.*\bela me mata\b/,
-      /\b(?:esse|o) preco e um crime\b/
+      /\b(?:esse|o) preco e um crime\b/,
+      /\b(?:desapareco|desapareceria|sumo)\b.*\b(?:saldo|conta|fatura|boleto)\b.*\b(?:kkk|haha|rs)\b/,
+      /\b(?:a vontade era|vontade era|vontade de)\b.*\b(?:sumir|desaparecer)\b.*\b(?:fatura|conta|boleto)\b/,
+      /\b(?:sumir|desaparecer)\b.*\b(?:quando vi|ao ver)\b.*\b(?:fatura|conta|boleto)\b/
+    ]);
+  }
+
+  function isPastOrNegatedSelfSafetyStatement(value) {
+    if (/\bnao e que eu queira me matar\b/.test(value) &&
+        /\b(?:so|apenas)\b.*\b(?:cansad[oa]|esgotad[oa]|contas|dificil)\b/.test(value)) return true;
+    if (/\b(?:ano passado|no ano passado|naquele ano|naquela epoca)\b/.test(value) &&
+        /\b(?:hoje|agora)\b.*\b(?:melhor|bem|mais tranquil[oa])\b/.test(value)) return true;
+    return false;
+  }
+
+  function isThirdPartySelfSafetyConcern(value) {
+    return hasAny(value, [
+      /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:disse|falou|contou|escreveu|mandou)\b.*\b(?:nao quer mais viver|nao quer viver|nao quer continuar|nao quer estar aqui|quer morrer|quer sumir|pensa em se matar|desistir de tudo)\b/,
+      /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:postou|publicou|escreveu|mandou)\b.*\b(?:despedida|adeus|tchau|nao aguento mais|sumir)\b/
+    ]);
+  }
+
+  function isThirdPartyImmediateConcern(value) {
+    return hasAny(value, [
+      /\b(?:tomou|tomando|pegou|pegando|ingeriu)\b.*\b(?:cartela|comprimidos?|remedios?|medicamentos?)\b/,
+      /\b(?:na|em uma) varanda\b.*\b(?:pular|se jogar)\b/,
+      /\b(?:vai|quer|pretende)\s+(?:se jogar|pular|se matar)\b/,
+      /\b(?:tem tudo pronto|plano pronto|ja escolheu como)\b/,
+      /\b(?:se despediu|despedida final|carta de despedida)\b/
     ]);
   }
 
   function isImmediateSelfSafetyRisk(value) {
     return hasAny(value, [
       /\b(?:tomei|ing[ei]ri|bebi|usei)\b.*\b(?:comprimidos?|remedios?|medicamentos?|veneno)\b/,
+      /\b(?:peguei|separei|abri|tirei|estou com|to com|tenho)\b.*\b(?:a )?cartela\b.*\b(?:remedios?|comprimidos?|medicamentos?)\b/,
       /\b(?:vou|pretendo|estou pensando em) tomar (?:todos os )?(?:os )?(?:comprimidos?|remedios?|medicamentos?)\b/,
       /\b(?:vou|pretendo|decidi|ja escolhi|planejei|tenho um plano)\b.*\b(?:me jogar|pular|saltar|me matar|me suicidar|tirar (?:a )?minha vida|acabar com tudo)\b/,
       /\b(?:ja escolhi como vou fazer|so falta coragem)\b/,
       /\b(?:vou|to pensando em|estou pensando em|pretendo) fazer uma besteira com (?:a )?minha vida\b/,
-      /\b(?:vou me jogar|me jogar da|pular da?)\b.*\b(?:ponte|predio|viaduto)\b/
+      /\b(?:vou me jogar|me jogar da|pular da?)\b.*\b(?:ponte|predio|viaduto)\b/,
+      /\b(?:to|estou) aqui na varanda\b.*\b(?:pensando em pular|pensando em me jogar|vou pular|vou me jogar)\b/,
+      /\b(?:nao vejo|nao tem) (?:nenhuma )?saida\b.*\b(?:vou|quero|pretendo) (?:terminar|acabar) com tudo\b.*\b(?:hoje|agora)\b/,
+      /\btenho tudo pronto\b.*\b(?:so falta|falta)\b.*\b(?:escrever|me despedir|carta|recado)\b.*\b(?:mae|pai|familia)\b/
     ]);
   }
 
@@ -128,8 +217,10 @@
   function assessSelfHarmRisk(message) {
     var value = normalize(message);
     if (!value || isEverydayMetaphor(value)) return 'low';
+    if (isImmediateSelfSafetyRisk(value)) return 'high';
+    if (isPastOrNegatedSelfSafetyStatement(value)) return 'low';
 
-    if (isImmediateSelfSafetyRisk(value) || hasAny(value, [
+    if (hasAny(value, [
       /\b(?:quero|queria|vou|pretendo|penso em|estou pensando em|to pensando em)\s+(?:me\s+)?(?:matar|suicidar)\b/,
       /\b(?:vou|queria|quero|pretendo)\s+(?:me\s+)?(?:machucar|ferir)\b/,
       /\b(?:vou|to pensando em|estou pensando em|pretendo) fazer uma besteira com (?:a )?minha vida\b/,
@@ -146,7 +237,7 @@
       /\bnao sei por que ainda acordo\b/,
       /\bso penso em acabar com tudo\b/,
       /\b(?:quero|queria) acabar com tudo\b/,
-      /\b(?:nao aguento mais|nao vejo saida)\b.*\b(?:acabar|sumir|morrer|nao ficar)\b/,
+      /\b(?:nao aguento mais|nao vejo saida)\b.*\b(?:acabar|sumir|morrer|nao ficar|deixar tudo pra tras)\b/,
       /\bqueria (?:poder )?(?:desligar tudo|nao acordar|nao voltar)\b/,
       /\b(?:quero|queria|vou|penso em|estou pensando em|tenho vontade de|pretendo)\s+(?:me\s+)?(?:sumir|desaparecer)\b/,
       /\bninguem (?:ia|iria|vai) sentir (?:a )?minha falta\b/,
@@ -157,12 +248,15 @@
       /\b(?:nao quero|nao queria) mais viver\b/,
       /\bso (?:quero|queria) dormir e nao acordar\b/,
       /\bqueria deixar de existir\b/,
-      /\bnao aguento mais\b.*\b(?:continuar|viver|ficar)\b/,
+      /\bnao aguento mais\b.*\b(?:continuar|viver|ficar|nada)\b/,
       /\b(?:pra|para) que continuar\b/,
-      /\b(?:queria|nao quero|nao queria) (?:mais )?acordar\b/,
+      /\b(?:queria|nao quero|nao queria) (?:mais )?acordar(?: amanha)?\b/,
       /\b(?:queria|quero) dormir (?:para|pra) sempre\b/,
       /\bseria melhor se eu sumisse\b/,
-      /\bnao consigo continuar\b/
+      /\bnao consigo continuar\b/,
+      /\b(?:cansei de tudo|cansado de tudo)\b.*\b(?:quero sumir|sumir de vez)\b/,
+      /\bnao aguentando mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/,
+      /\bnao aguento mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/
     ])) return 'medium';
 
     return 'low';
@@ -171,6 +265,8 @@
   function isSelfSafetyRisk(value) {
     return assessSelfHarmRisk(value) !== 'low';
   }
+
+
 
   function hasSensitiveData(message) {
     var raw = String(message || '');
@@ -188,8 +284,8 @@
 
   function isSensitiveDataRequest(value) {
     return hasAny(value, [
-      /\b(?:me manda|manda|me passa|passa|me diga|diga|me informa|informa|me mostra|mostra|consulta|consultar|ver|quero saber|qual e)\b.*\b(?:cpf|saldo|extrato|movimentacao|movimentacoes|conta|cartao|fatura)\b.*\b(?:da|do)\s+(?:minha ex|meu ex|ex|minha|meu|dele|dela|outra pessoa|terceiro)\b/,
-      /\b(?:me manda|manda|me passa|passa|me diga|diga|me informa|informa|me mostra|mostra|qual e)\b.*\bcpf\b.*\b(?:do|da)\s+(?:meu|minha|seu|sua)\s+(?:marido|esposa|esposo|mulher|namorado|namorada|pai|mae|filho|filha|irmao|irma)\b/
+      /\b(?:me manda|manda|me passa|passa|me diga|diga|me informa|informa|me mostra|mostra|consulta|consultar|ver|quero saber|qual e|me da|me de|me traz|me fornece)\b.*\b(?:cpf|saldo|extrato|movimentacao|movimentacoes|conta|cartao|fatura)\b.*\b(?:da|do)\s+(?:minha ex|meu ex|ex|minha|meu|dele|dela|outra pessoa|terceiro)\b/,
+      /\b(?:me manda|manda|me passa|passa|me diga|diga|me informa|informa|me mostra|mostra|qual e|me da|me de|me traz|me fornece)\b.*\bcpf\b.*\b(?:cadastrado|cadastrada|registrado|registrada)?\b.*\b(?:do|da)\s+(?:meu|minha|seu|sua)\s+(?:marido|esposa|esposo|mulher|namorado|namorada|pai|mae|filho|filha|irmao|irma|amigo|amiga)\b/
     ]);
   }
 
@@ -199,11 +295,13 @@
 
     /* Segurança é avaliada antes de finanças, memória e conversa. */
     if (isThirdPartyDanger(value)) return 'third_party_danger';
+    if (isThirdPartySelfSafetyConcern(value)) return 'third_party_self_safety';
     var riskLevel = assessSelfHarmRisk(message);
     if (riskLevel === 'high' || riskLevel === 'medium') return 'self_safety_crisis';
     if (hasSensitiveData(message)) return 'sensitive_data';
     if (isSensitiveDataRequest(value)) return 'sensitive_data_request';
     if (isEverydayMetaphor(value)) return 'figurative_expression';
+    if (isPastOrNegatedSelfSafetyStatement(value)) return 'past_reflection';
 
     if (/\b(?:pode|quero|preciso|me ajuda a)?\s*(?:apagar|apague|limpar|limpe)\b.*\b(?:o que a gente conversou|conversa|mensagens|historico)\b.*\b(?:ontem|antes|de outro dia)\b/.test(value)) {
       return 'forget_past';
@@ -285,6 +383,16 @@
       /\bexaust[oa] de tudo\b/
     ])) return 'tiredness';
 
+    if (/\b(?:ano passado|no ano passado|naquela epoca)\b/.test(value) && /\b(?:hoje|agora)\b/.test(value)) return 'past_reflection';
+    if (hasAny(value, [
+      /\bando sem vontade de fazer nada\b/,
+      /\b(?:to|estou) numa fase muito ruim\b/,
+      /\bnao tenho animo\b/,
+      /\bsem vontade de fazer nada\b/,
+      /\bnao sei mais o que fazer\b/,
+      /\btudo parece pesado\b/
+    ])) return 'care_check';
+
     if (/\b(?:consegui pagar|quitei|paguei a divida|terminei de pagar|alcancei minha meta|consegui guardar|consegui economizar)\b/.test(value)) {
       return 'achievement';
     }
@@ -336,6 +444,18 @@
       'Parece que você vem carregando muita coisa. Como tem sido para você lidar com isso?'
     ],
 
+    care_check: [
+      'Não precisa organizar tudo de uma vez. Como você está? Estou aqui para ouvir sem julgamento.'
+    ],
+    past_reflection: [
+      'Obrigado por me contar. Que bom saber que hoje você está melhor. Como tem se sentido nos últimos dias?'
+    ],
+    third_party_self_safety: [
+      'Leve isso a sério e tente falar com essa pessoa agora, de preferência pessoalmente. Pergunte diretamente se ela pensa em se machucar ou tirar a própria vida. Escute sem julgar, não a deixe sozinha se houver risco e chame alguém de confiança que possa estar perto. O CVV atende pelo 188. Se houver plano, acesso a meios, tentativa ou perigo imediato, ligue para o SAMU 192 agora. Você consegue falar com essa pessoa neste momento?'
+    ],
+    self_safety_balcony: [
+      'Afaste-se da varanda agora e vá para dentro, para um lugar seguro, perto de outras pessoas. Peça a alguém de confiança que fique com você e ligue para o SAMU 192 imediatamente. O CVV atende pelo 188, 24 horas. Você está em segurança agora, longe da varanda e acompanhado?'
+    ],
     app_frustration: [
       'Poxa, parece que o Alicerce te atrapalhou. Quero entender sem me defender: o que não funcionou?',
       'Que chato passar por isso. Vamos identificar o que travou para eu orientar melhor. Em que parte aconteceu?'
@@ -461,7 +581,7 @@
       'Isso precisa de ajuda médica agora. Ligue para o SAMU 192 imediatamente ou peça a alguém que ligue por você. Não fique sozinho; vá para perto de alguém de confiança e peça que essa pessoa permaneça com você. O CVV atende pelo 188, 24 horas. Você está em segurança agora, com alguém ao seu lado?'
     ],
     self_safety_medication_plan: [
-      'Não tome os medicamentos. Afaste-se deles agora e vá para perto de alguém de confiança; peça que essa pessoa fique com você. Se acha que pode agir agora, ligue para o SAMU 192. O CVV atende pelo 188, 24 horas. Você está em segurança agora e longe dos medicamentos?'
+      'Não tome os medicamentos. Afaste-se da cartela agora e vá para perto de alguém de confiança; peça que essa pessoa fique com você. Ligue para o SAMU 192 imediatamente ou peça que alguém ligue. O CVV atende pelo 188, 24 horas. Você está em segurança agora e longe dos medicamentos?'
     ],
     self_safety_jump: [
       'Afaste-se da ponte e de qualquer lugar alto agora. Vá para perto de outras pessoas e peça a alguém de confiança que fique com você. Ligue para o SAMU 192 imediatamente ou peça que alguém ligue. O CVV atende pelo 188, 24 horas. Você está em segurança agora, longe da ponte e acompanhado?'
@@ -489,12 +609,15 @@
     var riskLevel = assessSelfHarmRisk(message);
     if (intent === 'self_safety_crisis' && riskLevel === 'high') {
       var normalizedMessage = normalize(message);
-      var urgentIntent = /\b(?:tomei|ing[ei]ri|bebi|usei)\b.*\b(?:comprimidos?|remedios?|medicamentos?|veneno)\b/.test(normalizedMessage) ?
-        'self_safety_ingestion' :
-        /\b(?:vou|pretendo|estou pensando em|to pensando em) tomar\b.*\b(?:comprimidos?|remedios?|medicamentos?)\b/.test(normalizedMessage) ?
-          'self_safety_medication_plan' :
-          /\b(?:vou me jogar|me jogar da|pular da?)\b.*\b(?:ponte|predio|viaduto)\b/.test(normalizedMessage) ?
-            'self_safety_jump' : 'self_safety_immediate';
+      var urgentIntent =
+        /\b(?:tomei|ing[ei]ri|bebi|usei)\b.*\b(?:comprimidos?|remedios?|medicamentos?|veneno)\b/.test(normalizedMessage) ?
+          'self_safety_ingestion' :
+          /\b(?:peguei|separei|abri|tirei|estou com|to com|tenho)\b.*\b(?:a )?cartela\b/.test(normalizedMessage) ?
+            'self_safety_medication_plan' :
+            /\b(?:to|estou) aqui na varanda\b/.test(normalizedMessage) ?
+              'self_safety_balcony' :
+              /\b(?:vou me jogar|me jogar da|pular da?)\b.*\b(?:ponte|predio|viaduto)\b/.test(normalizedMessage) ?
+                'self_safety_jump' : 'self_safety_immediate';
       return { handled: true, intent: intent, text: chooseResponse(urgentIntent, messages) };
     }
     if (intent === 'financial' || intent === 'financial_followup' ||
@@ -526,6 +649,101 @@
     if (typeof render === 'function') render();
   }
 
+  function isSafetyConfirmation(value) {
+    var text = normalize(value);
+    return /\b(?:sim|estou|to|fico)\b.*\b(?:em seguranca|segura|seguro)\b.*\b(?:nao vou|nao penso|nao tenho intencao|sem intencao)\b.*\b(?:me machucar|me ferir|me matar)\b/.test(text) ||
+      /\b(?:sim,? )?(?:estou|to) em seguranca e nao vou me machucar\b/.test(text);
+  }
+
+  function installHelpAccess() {
+    if (typeof document === 'undefined') return;
+    function createAccess() {
+      if (!document.body || document.getElementById('alicia-help-now')) return;
+
+      var style = document.createElement('style');
+      style.id = 'alicia-help-now-style';
+      style.textContent = [
+        '#alicia-help-now{position:fixed;right:16px;bottom:16px;z-index:2147483000;border:0;border-radius:999px;padding:13px 17px;background:#8f1d2c;color:#fff;font:600 14px/1.2 system-ui,sans-serif;box-shadow:0 4px 18px rgba(0,0,0,.25);cursor:pointer}',
+        '#alicia-help-now:focus-visible,#alicia-help-panel button:focus-visible,#alicia-help-panel a:focus-visible{outline:3px solid #f0b44c;outline-offset:3px}',
+        '#alicia-help-panel{position:fixed;right:16px;bottom:76px;z-index:2147483001;width: min(360px, calc(100vw - 32px));box-sizing:border-box;background:#fff;color:#202124;border:1px solid #d7d7d7;border-radius:16px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.25);font:14px/1.5 system-ui,sans-serif}',
+        '#alicia-help-panel[hidden]{display:none}',
+        '#alicia-help-panel h2{font-size:18px;line-height:1.3;margin:0 32px 10px 0}',
+        '#alicia-help-panel p{margin:8px 0}',
+        '#alicia-help-panel .alicia-help-actions{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}',
+        '#alicia-help-panel a{display:inline-block;padding:9px 12px;border-radius:9px;background:#8f1d2c;color:#fff;text-decoration:none;font-weight:600}',
+        '#alicia-help-panel button{border:1px solid #a5a5a5;background:#fff;color:#222;border-radius:8px;padding:8px 12px;cursor:pointer}',
+        '@media(max-width:480px){#alicia-help-now{right:12px;bottom:12px;padding:12px 14px}#alicia-help-panel{right:12px;bottom:68px;width:calc(100vw - 24px)}}'
+      ].join('');
+      (document.head || document.body).appendChild(style);
+
+      var button = document.createElement('button');
+      button.id = 'alicia-help-now';
+      button.type = 'button';
+      button.textContent = 'Preciso de ajuda agora';
+      button.setAttribute('aria-haspopup', 'dialog');
+      button.setAttribute('aria-controls', 'alicia-help-panel');
+
+      var panel = document.createElement('section');
+      panel.id = 'alicia-help-panel';
+      panel.setAttribute('role', 'dialog');
+      panel.setAttribute('aria-modal', 'false');
+      panel.setAttribute('aria-labelledby', 'alicia-help-title');
+      panel.hidden = true;
+
+      var heading = document.createElement('h2');
+      heading.id = 'alicia-help-title';
+      heading.textContent = 'Ajuda imediata';
+      var intro = document.createElement('p');
+      intro.textContent = 'Se você ou alguém estiver em perigo imediato, procure ajuda presencial e ligue para o SAMU 192.';
+      var cvv = document.createElement('p');
+      cvv.textContent = 'O CVV oferece apoio emocional gratuito pelo 188, 24 horas.';
+      var actions = document.createElement('div');
+      actions.className = 'alicia-help-actions';
+      var cvvLink = document.createElement('a');
+      cvvLink.href = 'tel:188';
+      cvvLink.textContent = 'Ligar 188';
+      var samuLink = document.createElement('a');
+      samuLink.href = 'tel:192';
+      samuLink.textContent = 'Ligar 192';
+      var cvvSite = document.createElement('a');
+      cvvSite.href = 'https://cvv.org.br';
+      cvvSite.target = '_blank';
+      cvvSite.rel = 'noopener noreferrer';
+      cvvSite.textContent = 'Site do CVV';
+      var close = document.createElement('button');
+      close.type = 'button';
+      close.textContent = 'Fechar';
+      close.addEventListener('click', function () {
+        panel.hidden = true;
+        button.setAttribute('aria-expanded', 'false');
+        button.focus();
+      });
+
+      actions.appendChild(cvvLink);
+      actions.appendChild(samuLink);
+      actions.appendChild(cvvSite);
+      panel.appendChild(heading);
+      panel.appendChild(intro);
+      panel.appendChild(cvv);
+      panel.appendChild(actions);
+      panel.appendChild(close);
+      document.body.appendChild(panel);
+      button.addEventListener('click', function () {
+        panel.hidden = !panel.hidden;
+        button.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+        if (!panel.hidden) close.focus();
+      });
+      button.setAttribute('aria-expanded', 'false');
+      document.body.appendChild(button);
+    }
+
+    if (document.readyState === 'loading' && typeof document.addEventListener === 'function') {
+      document.addEventListener('DOMContentLoaded', createAccess, { once: true });
+    } else {
+      createAccess();
+    }
+  }
+
   function registerSafetyAlert(type) {
     var client = root.alicerceSupabase;
     if (!client || !client.functions || typeof client.functions.invoke !== 'function') return false;
@@ -550,7 +768,8 @@
     isSelfSafetyRisk: isSelfSafetyRisk,
     isThirdPartyDanger: isThirdPartyDanger,
     registerSafetyAlert: registerSafetyAlert,
-    assessSelfHarmRisk: assessSelfHarmRisk
+    assessSelfHarmRisk: assessSelfHarmRisk,
+    isSafetyConfirmation: isSafetyConfirmation
   };
 
   if (typeof AlicerceIA !== 'undefined' &&
@@ -589,11 +808,17 @@
       if (typeof this.pararAudio === 'function') this.pararAudio();
       if (typeof this.pararReconhecimento === 'function') this.pararReconhecimento(true);
 
-      if (intent === 'self_safety_crisis' || intent === 'third_party_danger') {
+      if (intent === 'self_safety_crisis' || intent === 'third_party_danger' || intent === 'third_party_self_safety') {
         this._pendingExpenseDraft = null;
         this._pendingFinancialReview = null;
         var safetyResult = root.AliciaBrain.respond(rawMessage, this._messages, language);
         appendLocalReply(this, '[mensagem de segurança recebida]', safetyResult.text || chooseResponse(intent, this._messages));
+        if (intent === 'self_safety_crisis') {
+          this._aliciaCareState = {
+            level: root.AliciaBrain.assessSelfHarmRisk(rawMessage),
+            remaining: 3
+          };
+        }
         registerSafetyAlert(intent === 'self_safety_crisis' ? 'self_safety' : 'third_party_safety');
         if (input) input.value = '';
         return;
@@ -607,6 +832,23 @@
         appendLocalReply(this, sensitiveLabel, chooseResponse(intent, this._messages));
         if (input) input.value = '';
         return;
+      }
+
+      if (this._aliciaCareState) {
+        if (root.AliciaBrain.isSafetyConfirmation(rawMessage)) {
+          this._aliciaCareState = null;
+          appendLocalReply(this, '[confirmação de segurança]', 'Obrigado por me confirmar. Podemos retomar as finanças com calma quando você quiser. Qual assunto gostaria de retomar?');
+          if (input) input.value = '';
+          return;
+        }
+        this._aliciaCareState.remaining = Math.max(0, Number(this._aliciaCareState.remaining || 0) - 1);
+        appendLocalReply(this, '[checagem de segurança]', 'Entendo. Antes de voltar ao saldo ou aos gastos, quero confirmar: você está em segurança agora e sem intenção de se machucar?');
+        if (input) input.value = '';
+        return;
+      }
+
+      if (intent === 'sadness' || intent === 'care_check') {
+        this._aliciaCareState = { level: 'care', remaining: 3 };
       }
 
       if (intent === 'forget_past') {
@@ -641,5 +883,6 @@
     };
 
     AlicerceIA._aliciaBrainV2Installed = true;
+    installHelpAccess();
   }
 })(window);
