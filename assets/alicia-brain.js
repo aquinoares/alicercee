@@ -257,7 +257,7 @@
       /\bseria melhor se eu sumisse\b/,
       /\bnao consigo continuar\b/,
       /\b(?:cansei de tudo|cansado de tudo)\b.*\b(?:quero sumir|sumir de vez)\b/,
-      /\bnao (?:to|estou )?aguentando mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/,
+      /\bnao (?:to |estou )?aguentando mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/,
       /\bnao aguento mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/
     ])) return 'medium';
 
