@@ -3363,6 +3363,35 @@ function normalizeAlicerMovementAnalysis(value){
     });
     if(Object.keys(metrics).length)out.metrics=metrics;
   }
+  /* User-confirmed finance profile is optional and backward compatible. */
+  if(value.expenseProfile&&typeof value.expenseProfile==='object'&&!Array.isArray(value.expenseProfile)){
+    var rawProfile=value.expenseProfile;
+    var profile={version:1};
+    var profileEnums={
+      nature:['essential','discretionary','undetermined'],
+      commitment:['contractual','non_contractual','undetermined'],
+      recurrence:['recurring','occasional','undetermined'],
+      behavior:['fixed','variable','undetermined'],
+      flexibility:['low','medium','high','undetermined'],
+      context:['work','health','family','housing','leisure','convenience','education','other','undetermined']
+    };
+    Object.keys(profileEnums).forEach(function(field){
+      var candidate=String(rawProfile[field]||'').trim().toLowerCase();
+      if(profileEnums[field].indexOf(candidate)>=0)profile[field]=candidate;
+    });
+    var confidence={};
+    if(rawProfile.confidence&&typeof rawProfile.confidence==='object'&&!Array.isArray(rawProfile.confidence)){
+      ['nature','commitment','recurrence','behavior','flexibility','context'].forEach(function(field){
+        var level=String(rawProfile.confidence[field]||'').trim().toLowerCase();
+        if(['high','medium','low'].indexOf(level)>=0)confidence[field]=level;
+      });
+    }
+    if(Object.keys(confidence).length)profile.confidence=confidence;
+    if(String(rawProfile.source||'').trim()==='user_confirmed'&&Object.keys(profile).length>1){
+      profile.source='user_confirmed';
+      out.expenseProfile=profile;
+    }
+  }
   return out;
 }
 function alicerceIsConsumptionRecord(record){
@@ -4635,7 +4664,9 @@ const detalhes={
         purpose:String(record.purpose||''),
         origin:(analysis&&analysis.origin)||record.origin||record.source||'legacy',
         financialRole:(analysis&&analysis.financialRole)||'consumption',
-        items:analysis&&Array.isArray(analysis.items)?analysis.items:[],
+        expenseProfile:analysis&&analysis.expenseProfile?analysis.expenseProfile:null,
+        installmentCount:Math.max(0,Number(record.installmentCount||record.installments||record.parcelas)||0),
+        items:analysis&&Array.isArray(analysis.items)?analysis.items:[] ,
         metrics:analysis&&analysis.metrics?analysis.metrics:{},
         analysis:analysis||null,
         source:source
@@ -4986,6 +5017,7 @@ const AlicerceIA = {
   _answer:'',
   _messages:[],
   _pendingExpenseDraft:null,
+  _pendingFinancialReview:null,
   _welcomeTypingStarted:false,
   _resetUser:function(){
     var uid=String(Store.userId||'');
@@ -4997,6 +5029,7 @@ const AlicerceIA = {
       this._answer='';
       this._messages=[];
       this._pendingExpenseDraft=null;
+      this._pendingFinancialReview=null;
       this._welcomeTypingStarted=false;
       this._pendingPrivacyAction='';
       this._pendingSpeechIndex=-1;
@@ -5385,6 +5418,7 @@ AlicerceIA.limparConversa=function(){
   this.pararAudio();
   this._messages=[];
   this._pendingExpenseDraft=null;
+  this._pendingFinancialReview=null;
   this._question='';
   this._answer='';
   this._welcomeTypingStarted=false;
@@ -5522,22 +5556,222 @@ AlicerceIA._expenseClarificationMessage=function(field,item){
     pt:{
       item:'O que você comprou ou qual serviço pagou?',
       amount:'Qual foi o valor? Pode informar em reais, por exemplo: vinte e cinco reais e cinquenta centavos.',
-      purpose:'Para eu classificar '+itemLabel+' corretamente, me conta: qual era a finalidade dessa compra? Por exemplo: era para uma obra ou reforma, estudo ou escola, trabalho ou outra necessidade?'
+      purpose:'Para classificar '+itemLabel+' sem adivinhar, me conta: qual era a finalidade dessa compra? Por exemplo: era para uma obra ou reforma, estudo ou escola, trabalho, saúde, família ou outra necessidade?'
     },
     en:{
       item:'What did you buy or which service did you pay for?',
       amount:'How much was it? You can say an amount, for example: twenty-five reais and fifty centavos.',
-      purpose:'To classify '+itemLabel+' correctly, what was this purchase for? For example: a renovation, school or study, work or another need?'
+      purpose:'To classify '+itemLabel+' without guessing, what was this purchase for? For example: a renovation, school or study, work, health, family, or another need?'
     },
     es:{
       item:'¿Qué compraste o qué servicio pagaste?',
       amount:'¿Cuál fue el importe? Puedes indicar el valor en reales.',
-      purpose:'Para clasificar '+itemLabel+' correctamente, ¿para qué fue esta compra? Por ejemplo: una obra o reforma, estudios o escuela, trabajo u otra necesidad?'
+      purpose:'Para clasificar '+itemLabel+' sin adivinar, ¿para qué fue esta compra? Por ejemplo: una obra o reforma, estudios o escuela, trabajo, salud, familia u otra necesidad?'
     }
   };
   var labels=copy[lang]||copy.pt;
   return labels[field]||labels.amount;
 };
+
+
+AlicerceIA._isFinancialReviewRequest=function(messageNorm){
+  var value=String(messageNorm||'');
+  var hasExpense=/\b(gastos?|despesas?|expense|expenses|spending)\b/.test(value);
+  var hasReviewIntent=/\b(contexto|context|indeterminad\w*|revis\w*|sem contexto|need context|needs context)\b/.test(value);
+  return hasExpense&&hasReviewIntent;
+};
+AlicerceIA._financialReviewKey=function(row){
+  if(!row)return '';
+  if(row.source==='card'&&row.purchaseId)return 'card:'+String(row.purchaseId);
+  return String(row.source||'')+':'+String(row.id||'');
+};
+AlicerceIA._financialReviewCandidates=function(){
+  var reality=this._financialReality(this._periodRows(0),this._rows());
+  var state=this._pendingFinancialReview||{handled:[]};
+  var handled=Array.isArray(state.handled)?state.handled:[];
+  var seen={};
+  var candidates=[];
+  (reality.assessments||[]).forEach(function(item){
+    if(!item||!item.row||!item.dimensions||item.dimensions.nature!=='undetermined')return;
+    var key=this._financialReviewKey(item.row);
+    if(!key||handled.indexOf(key)>=0||seen[key])return;
+    seen[key]=true;
+    candidates.push(item);
+  },this);
+  candidates.sort(function(a,b){return (Number(b.row.valor)||0)-(Number(a.row.valor)||0);});
+  return candidates;
+};
+AlicerceIA._financialReviewNextPrompt=function(first){
+  var state=this._pendingFinancialReview;
+  if(!state)return '';
+  var candidates=this._financialReviewCandidates();
+  if(!candidates.length){
+    this._pendingFinancialReview=null;
+    if(first){
+      if(Store.lang==='en')return 'There are no expenses in this month that still need context. I will not invent a purpose or suggest cuts.';
+      if(Store.lang==='es')return 'Este mes no hay gastos que todavía necesiten contexto. No voy a inventar finalidades ni sugerir recortes.';
+      return 'Neste mês não encontrei gastos que ainda precisem de contexto. Não vou inventar finalidades nem sugerir cortes.';
+    }
+    if(Store.lang==='en')return 'Thank you. We have reviewed the available items in this conversation. Anything you marked as unknown remains undetermined and will not be used for cut recommendations.';
+    if(Store.lang==='es')return 'Gracias. Revisamos los elementos disponibles en esta conversación. Lo que marcaste como desconocido seguirá indeterminado y no se usará para recomendar recortes.';
+    return 'Obrigado. Revisamos os itens disponíveis nesta conversa. O que você marcou como desconhecido continuará indeterminado e não será usado para recomendar cortes.';
+  }
+  var selected=candidates[0].row;
+  state.current={
+    id:selected.id,
+    source:selected.source,
+    purchaseId:selected.purchaseId||''
+  };
+  var label=String(selected.descricao||selected.local||selected.subcategoria||selected.categoria||'despesa');
+  var amount=fmtMoney(selected.valor);
+  var date=fmtDate(selected.data);
+  if(Store.lang==='en'){
+    return (first?'I found '+candidates.length+' expense(s) that still need context. ':'Next, let us review this item: ')+label+' ('+amount+', '+date+'). What was it for? You can answer in your own words, or say “I am not sure”.';
+  }
+  if(Store.lang==='es'){
+    return (first?'Encontré '+candidates.length+' gasto(s) que todavía necesitan contexto. ':'Ahora revisemos este elemento: ')+label+' ('+amount+', '+date+'). ¿Para qué fue? Puedes responder con tus palabras o decir “todavía no lo sé”.';
+  }
+  return (first?'Encontrei '+candidates.length+' gasto(s) que ainda precisam de contexto. ':'Agora vamos revisar este lançamento: ')+label+' ('+amount+', '+date+'). Qual era a finalidade? Responda com suas palavras ou diga “ainda não sei”.';
+};
+AlicerceIA._financialReviewProfileFromReply=function(message){
+  var text=String(message||'').trim();
+  var normalized=this._norm(text);
+  var profile={version:1,source:'user_confirmed'};
+  var confidence={};
+  var contextDefinitions=[
+    {value:'health',pattern:/\b(saude|medico|medica|hospital|tratamento|remedio|consulta|exame|dentista|terapia)\b/},
+    {value:'work',pattern:/\b(trabalho|emprego|profissao|profissional|trabalhar|expediente|empresa)\b/},
+    {value:'family',pattern:/\b(familia|filho|filha|pais|dependente|mae|pai|esposa|marido)\b/},
+    {value:'housing',pattern:/\b(casa|moradia|aluguel|obra|reforma|habitacao|energia|agua|gas|conta de luz)\b/},
+    {value:'education',pattern:/\b(escola|estudo|estudar|faculdade|curso|educacao|material escolar)\b/},
+    {value:'leisure',pattern:/\b(lazer|passeio|cinema|bar|descanso|diversao|show|festa|hobby|viagem|ferias)\b/},
+    {value:'convenience',pattern:/\b(conveniencia|praticidade|falta de tempo|comodidade|entrega rapida)\b/},
+    {value:'other',pattern:/\b(outro motivo|outra finalidade|outros motivos)\b/}
+  ];
+  var contextWords=['saude','medico','medica','hospital','tratamento','remedio','consulta','exame','dentista','terapia','trabalho','emprego','profissao','profissional','trabalhar','expediente','empresa','familia','filho','filha','pais','dependente','mae','pai','esposa','marido','casa','moradia','aluguel','obra','reforma','habitacao','energia','agua','gas','escola','estudo','estudar','faculdade','curso','educacao','material','lazer','passeio','cinema','bar','descanso','diversao','show','festa','hobby','viagem','ferias','conveniencia','praticidade','comodidade'];
+  var context='';
+  for(var i=0;i<contextDefinitions.length;i++){
+    var match=normalized.match(contextDefinitions[i].pattern);
+    if(!match)continue;
+    var position=normalized.indexOf(match[0]);
+    var left=normalized.slice(Math.max(0,position-48),position);
+    var noPrefix=left.lastIndexOf('nao');
+    var butPrefix=left.lastIndexOf('mas');
+    var priorWords=left.slice(noPrefix>=0?noPrefix+3:0).trim().split(/\s+/);
+    var hasPriorContext=priorWords.some(function(word){return contextWords.indexOf(word)>=0;});
+    var lastToken=priorWords.length?priorWords[priorWords.length-1]:'';
+    var renewedClause=hasPriorContext&&['mas','foi','era','e','para','porem'].indexOf(lastToken)>=0;
+    if(noPrefix>=0&&noPrefix>butPrefix&&!renewedClause)continue;
+    context=contextDefinitions[i].value;
+    break;
+  }
+  if(context){
+    profile.context=context;
+    confidence.context='high';
+  }
+  var unknown=/\b(ainda nao sei|nao sei|nao lembro|nao tenho certeza|nao consegui identificar)\b/.test(normalized);
+  var hasAffirmedTerm=function(pattern){
+    var expression=new RegExp(pattern.source,'g');
+    var match;
+    while((match=expression.exec(normalized))){
+      var before=normalized.slice(0,match.index).trim();
+      var tokens=before?before.split(/\s+/).slice(-4):[];
+      var negation=tokens.lastIndexOf('nao');
+      var contrast=tokens.lastIndexOf('mas');
+      var distance=negation>=0?tokens.length-1-negation:0;
+      var natureWords=['essencial','necessario','necessaria','indispensavel','discricionario','discricionaria','superfluo','superflua'];
+      var intervening=negation>=0?tokens.slice(negation+1):[];
+      var priorNature=intervening.some(function(token){return natureWords.indexOf(token)>=0;});
+      var startsNewNatureClause=priorNature&&tokens.length>0&&tokens[tokens.length-1]==='e';
+      if(negation<0||distance>3||contrast>negation||startsNewNatureClause)return true;
+    }
+    return false;
+  };
+  if(hasAffirmedTerm(/\b(essencial|necessario|necessaria|indispensavel)\b/)&&!unknown){
+    profile.nature='essential';
+    confidence.nature='high';
+  }else if(hasAffirmedTerm(/\b(discricionario|discricionaria|superfluo|superflua|poderia cortar|poderia reduzir)\b/)&&!unknown){
+    profile.nature='discretionary';
+    confidence.nature='high';
+  }else if(unknown){
+    profile.nature='undetermined';
+    confidence.nature='low';
+  }
+  if(/\b(sem contrato|nao tem contrato|nao existe contrato|sem fidelidade)\b/.test(normalized)){
+    profile.commitment='non_contractual';
+    confidence.commitment='high';
+  }else if(/\b(tem contrato|com contrato|contrato assinado|fidelidade|obrigacao formal)\b/.test(normalized)){
+    profile.commitment='contractual';
+    confidence.commitment='high';
+  }
+  if(/\b(nao posso adiar|nao posso reduzir|nao posso cancelar|nao consigo cancelar|nao posso substituir|dificil adiar|nao consigo adiar|nao consigo reduzir|sem alternativa)\b/.test(normalized)){
+    profile.flexibility='low';
+    confidence.flexibility='high';
+  }else if(hasAffirmedTerm(/\b(posso reduzir um pouco|em parte|parcialmente)\b/)){
+    profile.flexibility='medium';
+    confidence.flexibility='high';
+  }else if(hasAffirmedTerm(/\b(posso cancelar|posso adiar|posso reduzir|posso substituir|com facilidade|facilmente)\b/)){
+    profile.flexibility='high';
+    confidence.flexibility='high';
+  }
+  if(!context&&!profile.nature){
+    profile.nature='undetermined';
+    confidence.nature='low';
+  }
+  if(Object.keys(confidence).length)profile.confidence=confidence;
+  return {
+    profile:profile,
+    purpose:unknown?'':text.slice(0,180),
+    unknown:unknown
+  };
+};
+AlicerceIA._applyFinancialReviewReply=function(message){
+  var state=this._pendingFinancialReview;
+  if(!state||!state.current)return 'Não encontrei uma revisão financeira em andamento. Peça novamente para revisar os gastos que precisam de contexto.';
+  var current=state.current;
+  var row=financialProfileFindRow(current);
+  if(!row){
+    state.handled.push(this._financialReviewKey(current));
+    return 'Esse lançamento não está mais disponível. '+this._financialReviewNextPrompt(false);
+  }
+  var parsed=this._financialReviewProfileFromReply(message);
+  var targets=[];
+  if(row.source==='movement'){
+    targets=Store.movements.filter(function(item){return item&&String(item.id)===String(row.id);});
+  }else if(row.source==='card'){
+    if(row.purchaseId){
+      targets=Store.installments.filter(function(item){
+        return item&&item.tipo==='cartao'&&String(item.compraId)===String(row.purchaseId)&&!item.loanId&&!item.fromCard;
+      });
+    }
+    if(!targets.length)targets=Store.installments.filter(function(item){return item&&String(item.id)===String(row.id);});
+  }
+  if(!targets.length){
+    state.handled.push(this._financialReviewKey(row));
+    return 'Não localizei o registro para salvar a resposta; nenhum dado foi alterado. '+this._financialReviewNextPrompt(false);
+  }
+  targets.forEach(function(item){
+    var analysis=Object.assign({},item.analysis||{});
+    analysis.expenseProfile=parsed.profile;
+    item.analysis=normalizeAlicerMovementAnalysis(analysis);
+    if(parsed.purpose)item.purpose=parsed.purpose;
+  });
+  Store.save();
+  state.handled.push(this._financialReviewKey(row));
+  var savedText='';
+  if(Store.lang==='en'){
+    savedText=parsed.unknown?'Okay. I kept this expense undetermined.':'I saved the purpose you provided with this expense.';
+    savedText+=' Amount, date, category, and balance were not changed. ';
+  }else if(Store.lang==='es'){
+    savedText=parsed.unknown?'De acuerdo. Mantuve este gasto como indeterminado.':'Guardé la finalidad que indicaste junto a este gasto.';
+    savedText+=' No cambié el importe, la fecha, la categoría ni el saldo. ';
+  }else{
+    savedText=parsed.unknown?'Tudo bem. Mantive este gasto como indeterminado.':'Registrei a finalidade informada neste lançamento.';
+    savedText+=' Não alterei valor, data, categoria ou saldo. ';
+  }
+  return savedText+this._financialReviewNextPrompt(false);
+};
+
 
 AlicerceIA.enviarMensagem=async function(question){
   this._resetUser();
@@ -5552,8 +5786,42 @@ AlicerceIA.enviarMensagem=async function(question){
 
   var expenseCommand=null;
   var messageNorm=this._norm(message);
-  var pendingQuestion=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque)\b/.test(messageNorm)||/\?\s*$/.test(message);
+  var pendingQuestion=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque|what|which|where|when|how|compare|show|tell|why|cuanto|donde|cual|que|como|cuando|compara|muestra|dime)\b/.test(messageNorm)||/\?\s*$/.test(message);
   var cancelPending=/^(?:cancela|cancelar|cancelar compra|desisti|desistir|deixa|deixa pra la|nao quero|esquece)$/i.test(messageNorm);
+  if(this._pendingFinancialReview&&cancelPending){
+    this._pendingFinancialReview=null;
+    var cancelledReview=Store.lang==='en'?'Okay. I stopped the review. Unknown expenses remain unchanged.':Store.lang==='es'?'De acuerdo. Detuve la revisión. Los gastos desconocidos siguen sin cambios.':'Tudo bem. Parei a revisão. Os gastos desconhecidos continuam sem alterações.';
+    this._messages.push({role:'assistant',text:cancelledReview});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._question=message;
+    this._answer=cancelledReview;
+    render();
+    return;
+  }
+  if(this._pendingFinancialReview&&!pendingQuestion){
+    var reviewAnswer=this._applyFinancialReviewReply(message);
+    this._messages.push({role:'assistant',text:reviewAnswer});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._question=message;
+    this._answer=reviewAnswer;
+    render();
+    return;
+  }
+  if(!this._pendingFinancialReview&&!this._pendingExpenseDraft&&this._isFinancialReviewRequest(messageNorm)){
+    var reviewStartAnswer='';
+    if(!Store.userId){
+      reviewStartAnswer=Store.lang==='en'?'Sign in to review and save the context of your expenses.':Store.lang==='es'?'Inicia sesión para revisar y guardar el contexto de tus gastos.':'Entre na sua conta para revisar e salvar o contexto dos seus gastos.';
+    }else{
+      this._pendingFinancialReview={handled:[],current:null};
+      reviewStartAnswer=this._financialReviewNextPrompt(true);
+    }
+    this._messages.push({role:'assistant',text:reviewStartAnswer});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._question=message;
+    this._answer=reviewStartAnswer;
+    render();
+    return;
+  }
   if(this._pendingExpenseDraft&&pendingQuestion){
     expenseCommand=null;
   }else if(this._pendingExpenseDraft&&cancelPending){
@@ -6228,9 +6496,9 @@ function renderAssistente(){
   AlicerceIA._resetUser();
   var lang=Store.lang||'pt';
   var copy={
-    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Falar com Alicia',micStop:'Parar gravação',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
-    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Speak to Alicia',micStop:'Stop recording',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
-    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Hablar con Alicia',micStop:'Detener grabación',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
+    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Falar com Alicia',micStop:'Parar gravação',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?','Quais gastos ainda precisam de contexto?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
+    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Speak to Alicia',micStop:'Stop recording',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?','Which expenses still need context?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
+    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Hablar con Alicia',micStop:'Detener grabación',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?','¿Qué gastos aún necesitan contexto?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
   };
   var ui=copy[lang]||copy.pt;
   var messages=Array.isArray(AlicerceIA._messages)?AlicerceIA._messages:[];
@@ -6542,6 +6810,270 @@ AlicerceIA._detectMonthlyPatterns=function(rows){
   return result.sort(function(a,b){return b.months-a.months||b.average-a.average;});
 };
 
+AlicerceIA._expenseRecurrenceKey=function(row){
+  if(!row)return '';
+  var identity='';
+  if(row.local){
+    try{identity=typeof normalizeAlicerMerchantIdentity==='function'?normalizeAlicerMerchantIdentity(row.local):'';}catch(e){}
+  }
+  identity=identity||this._norm(row.descricao||'');
+  if(!identity||identity.length<4)return '';
+  return [this._norm(row.categoria),this._norm(row.subcategoria),identity].join('|');
+};
+AlicerceIA._expenseRecurrenceProfiles=function(rows){
+  var now=Clock.now();
+  var cutoff=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-179));
+  var groups={};
+  (rows||this._rows()).forEach(function(row){
+    if(!row||!row.data||row.data<cutoff||row.data>this._iso(now))return;
+    var key=this._expenseRecurrenceKey(row);
+    if(!key)return;
+    if(!groups[key])groups[key]={merchant:row.local||row.descricao||'',months:{}};
+    var month=row.data.slice(0,7);
+    groups[key].months[month]=(groups[key].months[month]||0)+(Number(row.valor)||0);
+  },this);
+  var profiles={};
+  Object.keys(groups).forEach(function(key){
+    var group=groups[key];
+    var months=Object.keys(group.months).sort();
+    if(months.length<3)return;
+    var values=months.map(function(month){return group.months[month];});
+    var median=this._median(values);
+    if(median<=0)return;
+    var min=Math.min.apply(Math,values);
+    var max=Math.max.apply(Math,values);
+    var stable=min>=median*0.75&&max<=median*1.25;
+    profiles[key]={
+      recurrence:'recurring',
+      behavior:stable?'fixed':'variable',
+      months:months.length,
+      median:median,
+      minimum:min,
+      maximum:max,
+      confidence:'medium',
+      merchant:group.merchant
+    };
+  },this);
+  return profiles;
+};
+AlicerceIA._classifyExpenseDimensions=function(row,recurrenceProfiles){
+  if(!row)return null;
+  var profile=row.expenseProfile||(row.analysis&&row.analysis.expenseProfile)||null;
+  var userConfirmed=!!(profile&&profile.source==='user_confirmed');
+  var allowed={
+    nature:['essential','discretionary','undetermined'],
+    commitment:['contractual','non_contractual','undetermined'],
+    recurrence:['recurring','occasional','undetermined'],
+    behavior:['fixed','variable','undetermined'],
+    flexibility:['low','medium','high','undetermined'],
+    context:['work','health','family','housing','leisure','convenience','education','other','undetermined']
+  };
+  var result={
+    nature:'undetermined',
+    commitment:'undetermined',
+    recurrence:'undetermined',
+    behavior:'undetermined',
+    flexibility:'undetermined',
+    context:'undetermined',
+    confidence:{nature:'low',commitment:'low',recurrence:'low',behavior:'low',flexibility:'low',context:'low'},
+    evidence:{nature:'insufficient_data',commitment:'insufficient_data',recurrence:'insufficient_data',behavior:'insufficient_data',flexibility:'insufficient_data',context:'insufficient_data'}
+  };
+  var fields=Object.keys(allowed);
+  fields.forEach(function(field){
+    var value=profile&&String(profile[field]||'').toLowerCase();
+    if(userConfirmed&&allowed[field].indexOf(value)>=0){
+      result[field]=value;
+      result.confidence[field]=(profile.confidence&&profile.confidence[field])||'high';
+      result.evidence[field]='user_confirmed';
+    }
+  });
+  var category=this._norm(row.categoria);
+  var subcategory=this._norm(row.subcategoria);
+  var purpose=this._norm(row.purpose||'');
+  var purposeContext='undetermined';
+  if(/\b(trabalho|emprego|profissao|profissional|trabalhar)\b/.test(purpose))purposeContext='work';
+  else if(/\b(saude|medico|medica|hospital|tratamento|remedio|consulta|exame)\b/.test(purpose))purposeContext='health';
+  else if(/\b(familia|filho|filha|pais|dependente)\b/.test(purpose))purposeContext='family';
+  else if(/\b(casa|moradia|aluguel|obra|reforma|habitacao)\b/.test(purpose))purposeContext='housing';
+  else if(/\b(lazer|passeio|cinema|bar|descanso|diversao)\b/.test(purpose))purposeContext='leisure';
+  else if(/\b(conveniencia|praticidade|falta de tempo|comodidade)\b/.test(purpose))purposeContext='convenience';
+  else if(/\b(escola|estudo|estudar|faculdade|curso|educacao)\b/.test(purpose))purposeContext='education';
+  if(result.context==='undetermined'&&purposeContext!=='undetermined'){
+    result.context=purposeContext;
+    result.confidence.context='high';
+    result.evidence.context='user_stated_purpose';
+  }
+  var clearDiscretionary=false;
+  if(category==='lazer'&&['streaming','cinema','shows','jogos','games','hobbies','eventos'].indexOf(subcategory)>=0)clearDiscretionary=true;
+  if(category==='apostas')clearDiscretionary=true;
+  if(category==='comida'&&subcategory==='bar')clearDiscretionary=true;
+  var clearEssential=false;
+  if(category==='moradia'&&['aluguel','energia','agua','gas'].indexOf(subcategory)>=0)clearEssential=true;
+  var natureExplicitlyConfirmed=!!(userConfirmed&&profile&&allowed.nature.indexOf(String(profile.nature||'').toLowerCase())>=0);
+  if(result.nature==='undetermined'&&!natureExplicitlyConfirmed){
+    if(purposeContext==='leisure'||purposeContext==='convenience'){
+      result.nature='discretionary';
+      result.confidence.nature='medium';
+      result.evidence.nature='user_stated_purpose';
+    }else if(clearEssential){
+      result.nature='essential';
+      result.confidence.nature='medium';
+      result.evidence.nature='category_rule';
+    }else if(clearDiscretionary){
+      result.nature='discretionary';
+      result.confidence.nature='medium';
+      result.evidence.nature='category_rule';
+    }else if((purposeContext==='work'&&(category==='transporte'||category==='trabalho'||category==='moradia'))||
+             (purposeContext==='health'&&category==='saude')){
+      result.nature='essential';
+      result.confidence.nature='medium';
+      result.evidence.nature='user_stated_purpose';
+    }else if(category==='saude'&&subcategory==='medicamentos'&&/\b(uso continuo|prescrito|receita medica|tratamento continuo)\b/.test(purpose)){
+      result.nature='essential';
+      result.confidence.nature='medium';
+      result.evidence.nature='user_stated_purpose';
+    }else if(category==='comida'&&['mercado','feira','padaria'].indexOf(subcategory)>=0&&Array.isArray(row.items)&&row.items.length){
+      var basicFood=/\b(arroz|feijao|macarrao|carne|frango|ovos|leite|pao|banana|maca|tomate|alface|cebola|batata|cenoura|laranja|farinha|fuba|acucar|oleo de cozinha)\b/;
+      var allBasic=row.items.every(function(item){
+        var name=this._norm(item&&(item.normalizedName||item.name||item.description)||'');
+        return !!name&&basicFood.test(name);
+      },this);
+      if(allBasic){
+        result.nature='essential';
+        result.confidence.nature='medium';
+        result.evidence.nature='identified_basic_food_items';
+      }
+    }
+  }
+  var installmentCount=Math.max(0,Number(row.installmentCount||row.installments||row.parcelas)||0);
+  if(result.commitment==='undetermined'&&installmentCount>1){
+    result.commitment='contractual';
+    result.confidence.commitment='high';
+    result.evidence.commitment='installment_metadata';
+  }
+  var recurringKey=this._expenseRecurrenceKey(row);
+  var recurringProfile=recurrenceProfiles&&recurrenceProfiles[recurringKey];
+  if(recurringProfile){
+    if(result.recurrence==='undetermined'){
+      result.recurrence='recurring';
+      result.confidence.recurrence=recurringProfile.confidence;
+      result.evidence.recurrence='three_or_more_distinct_months';
+    }
+    if(result.behavior==='undetermined'){
+      result.behavior=recurringProfile.behavior;
+      result.confidence.behavior=recurringProfile.confidence;
+      result.evidence.behavior='monthly_amount_stability';
+    }
+  }
+  if(result.flexibility==='undetermined'){
+    if(result.nature==='essential'){
+      if(category==='moradia'&&['aluguel','energia','agua','gas'].indexOf(subcategory)>=0){
+        result.flexibility='low';
+        result.confidence.flexibility='medium';
+        result.evidence.flexibility='essential_housing_rule';
+      }else if(purposeContext==='work'||purposeContext==='health'){
+        result.flexibility='low';
+        result.confidence.flexibility='medium';
+        result.evidence.flexibility='user_stated_essential_context';
+      }
+    }else if(result.nature==='discretionary'){
+      result.flexibility='high';
+      result.confidence.flexibility='medium';
+      result.evidence.flexibility='discretionary_category_or_context';
+    }
+  }
+  if(userConfirmed&&profile){
+    fields.forEach(function(field){
+      if(allowed[field].indexOf(String(profile[field]||'').toLowerCase())>=0){
+        result[field]=String(profile[field]).toLowerCase();
+        result.confidence[field]=(profile.confidence&&profile.confidence[field])||'high';
+        result.evidence[field]='user_confirmed';
+      }
+    });
+  }
+  return result;
+};
+AlicerceIA._financialReality=function(periodRows,historyRows){
+  var period=periodRows||this._periodRows(0);
+  var history=historyRows||this._rows();
+  var recurrenceProfiles=this._expenseRecurrenceProfiles(history);
+  var result={
+    total:0,
+    essential:0,
+    discretionary:0,
+    undetermined:0,
+    discretionaryFlexible:0,
+    counts:{total:period.length,essential:0,discretionary:0,undetermined:0},
+    percentages:{essential:0,discretionary:0,undetermined:0,discretionaryFlexible:0},
+    classifiedCoverage:0,
+    reviewOpportunity:false,
+    needsContext:false,
+    assessments:[]
+  };
+  period.forEach(function(row){
+    var assessment=this._classifyExpenseDimensions(row,recurrenceProfiles);
+    if(!assessment)return;
+    var amount=Number(row.valor)||0;
+    result.total+=amount;
+    result.assessments.push({row:row,dimensions:assessment});
+    if(assessment.nature==='essential'){
+      result.essential+=amount;
+      result.counts.essential++;
+    }else if(assessment.nature==='discretionary'){
+      result.discretionary+=amount;
+      result.counts.discretionary++;
+      if(assessment.flexibility==='high')result.discretionaryFlexible+=amount;
+    }else{
+      result.undetermined+=amount;
+      result.counts.undetermined++;
+    }
+  },this);
+  if(result.total>0){
+    result.percentages.essential=result.essential/result.total*100;
+    result.percentages.discretionary=result.discretionary/result.total*100;
+    result.percentages.undetermined=result.undetermined/result.total*100;
+    result.percentages.discretionaryFlexible=result.discretionaryFlexible/result.total*100;
+    result.classifiedCoverage=(result.essential+result.discretionary)/result.total*100;
+    result.needsContext=result.percentages.undetermined>=15;
+    result.reviewOpportunity=result.counts.total>=5&&
+      result.percentages.discretionaryFlexible>20&&
+      result.percentages.undetermined<15;
+  }
+  return result;
+};
+AlicerceIA._financialRealityAnswer=function(reality){
+  var data=reality||this._financialReality();
+  var lang=Store.lang||'pt';
+  var essential=fmtMoney(data.essential);
+  var discretionary=fmtMoney(data.discretionary);
+  var unknown=fmtMoney(data.undetermined);
+  var share=Math.round(data.percentages.discretionaryFlexible||0);
+  var unknownShare=Math.round(data.percentages.undetermined||0);
+  if(!data.total){
+    if(lang==='en')return 'There are no eligible expense records in this period yet.';
+    if(lang==='es')return 'Todavía no hay gastos válidos registrados en este período.';
+    return 'Ainda não há despesas elegíveis registradas neste período.';
+  }
+  if(lang==='en'){
+    var answer='In this period, estimated essential expenses total '+essential+', discretionary expenses total '+discretionary+', and '+unknown+' remain undetermined.';
+    if(data.reviewOpportunity)answer+=' High-flexibility discretionary expenses represent '+share+'% of recorded spending. This is a review signal, not an instruction to cut spending.';
+    else if(data.needsContext)answer+=' '+unknownShare+'% remain undetermined, so I will not suggest savings until there is more context.';
+    answer+=' Estimates use recorded categories and stated purposes; contractual status is separate from recurrence.';
+    return answer;
+  }
+  if(lang==='es'){
+    var respuesta='En este período, los gastos esenciales estimados suman '+essential+', los discrecionales suman '+discretionary+' y '+unknown+' siguen sin determinar.';
+    if(data.reviewOpportunity)respuesta+=' Los gastos discrecionales de alta flexibilidad representan el '+share+'% del gasto registrado. Es una señal para revisar, no una instrucción para recortar.';
+    else if(data.needsContext)respuesta+=' El '+unknownShare+'% sigue sin determinar, por lo que no sugeriré ahorros sin más contexto.';
+    respuesta+=' Las estimaciones usan categorías registradas y finalidades declaradas; el compromiso contractual se distingue de la recurrencia.';
+    return respuesta;
+  }
+  var resposta='Neste período, as despesas essenciais estimadas somam '+essential+', as discricionárias somam '+discretionary+' e '+unknown+' permanecem indeterminadas.';
+  if(data.reviewOpportunity)resposta+=' Os gastos discricionários de alta flexibilidade representam '+share+'% das despesas registradas. Isso é um sinal para revisar, não uma ordem para cortar.';
+  else if(data.needsContext)resposta+=' '+unknownShare+'% ainda estão indeterminados; por isso não vou sugerir economia antes de entender melhor esses gastos.';
+  resposta+=' As estimativas usam as categorias registradas e as finalidades informadas; compromisso contratual é diferente de recorrência.';
+  return resposta;
+};
 AlicerceIA._vehicleSummary=function(rows){
   var fuel={purchases:0,total:0,liters:0,totalWithLiters:0};
   var fullTankReadings={};
@@ -6762,6 +7294,9 @@ AlicerceIA.responder=function(question){
   var rows=this._rows();
   var range=this._questionRange(question);
   var selected=this._rangeRows(range.start,range.end,rows);
+  if(/custo de sobrevivencia|quanto custa manter|despesas? essenciais|gastos? essenciais|estilo de vida|discricionari|sup[eé]rflu|necessidades basicas|realidade financeira/.test(q)){
+    return this._financialRealityAnswer(this._financialReality(selected,rows));
+  }
   if(/combustivel|abastecimento|preco por litro|litros abastecidos/.test(q)){
     var vehicleData=this._vehicleSummary(rows).fuel;
     if(!vehicleData.purchases)return this._label('noFuelData');
@@ -7259,6 +7794,8 @@ const Interpreter={
     const context=this.norm(text||'');
     const n=product||context;
     const combined=(product+' '+context).trim();
+    /* 99 Taxi é o estabelecimento/serviço; não deve virar categoria genérica de táxi. */
+    if(/\b99\s*(?:app|pop|taxi)\b/.test(context))return null;
     if(!n)return null;
     const rules=[
       {p:/\b(tenis|sapato|sandalia|chinelo|bota|calcado|calcados)\b/i,c:'vestuario',s:'calcados'},
@@ -7287,7 +7824,34 @@ const Interpreter={
       {p:/\b(cafe|cafezinho|refrigerante|agua mineral|suco|bebida|cerveja)\b/i,c:'comida',s:'bebidas'},
       {p:/\b(almoco|jantar|refeicao|rodizio)\b/i,c:'comida',s:'restaurante'},
       {p:/\b(pao frances|pao integral|paes|padaria|sonho de padaria)\b/i,c:'comida',s:'padaria'},
-      {p:/\b(arroz|feijao|macarrao|carne|frango|ovos|leite|acucar|oleo de cozinha|farinha|fuba)\b/i,c:'comida',s:'mercado'}
+      {p:/\b(arroz|feijao|macarrao|carne|frango|ovos|leite|acucar|oleo de cozinha|farinha|fuba)\b/i,c:'comida',s:'mercado'},
+      {p:/\b(frutas?|verduras?|legumes?|banana|maca|tomate|alface|cebola|batata|cenoura|laranja)\b/i,c:'comida',s:'feira'},
+      {p:/\b(queijo|iogurte|manteiga|requeijao|presunto|mortadela)\b/i,c:'comida',s:'mercado'},
+      {p:/\b(papel higienico|esponja|vassoura|rodo|pano de chao|saco de lixo)\b/i,c:'casa_dia_a_dia',s:'produtos_limpeza'},
+      {p:/\b(lampada|torneira|chuveiro|tomada|fios? eletricos?|disjuntor)\b/i,c:'moradia',s:'manutencao'},
+      {p:/\b(encanador)\b/i,c:'servicos',s:'encanador'},
+      {p:/\b(diarista|faxina|faxineira|limpeza residencial)\b/i,c:'servicos',s:'faxina'},
+      {p:/\b(condominio|taxa condominial)\b/i,c:'moradia',s:'condominio'},
+      {p:/\b(iptu)\b/i,c:'moradia',s:'iptu'},
+      {p:/\b(conta de telefone|telefone|plano de celular|recarga de celular)\b/i,c:'moradia',s:'telefone'},
+      {p:/\b(onibus|passagem de onibus|tarifa de onibus)\b/i,c:'transporte',s:'onibus'},
+      {p:/\b(metro|passagem de metro)\b/i,c:'transporte',s:'metro'},
+      {p:/\b(taxi|corrida de taxi)\b/i,c:'transporte',s:'taxi'},
+      {p:/\b(pedagio)\b/i,c:'transporte',s:'pedagio'},
+      {p:/\b(troca de oleo|oleo de motor|revisao do carro|mecanico)\b/i,c:'transporte',s:'manutencao'},
+      {p:/\b(ipva)\b/i,c:'transporte',s:'ipva'},
+      {p:/\b(seguro do carro|seguro veicular|seguro do veiculo|seguro auto)\b/i,c:'transporte',s:'seguro'},
+      {p:/\b(consulta medica|consulta medico|consulta clinica)\b/i,c:'saude',s:'consultas'},
+      {p:/\b(dentista|consulta odontologica|tratamento dentario)\b/i,c:'saude',s:'dentista'},
+      {p:/\b(exame de sangue|exames laboratoriais|exame laboratorial)\b/i,c:'saude',s:'exames'},
+      {p:/\b(oculos de grau|lentes de grau|armacao de oculos)\b/i,c:'saude',s:'oculos'},
+      {p:/\b(plano de saude|mensalidade do plano de saude)\b/i,c:'saude',s:'plano_saude'},
+      {p:/\b(mensalidade escolar|mensalidade da escola)\b/i,c:'educacao',s:'mensalidade'},
+      {p:/\b(uniforme escolar)\b/i,c:'educacao',s:'uniforme'},
+      {p:/\b(curso de ingles|curso de espanhol|curso de informatica|curso online)\b/i,c:'educacao',s:'curso'},
+      {p:/\b(pensao alimenticia)\b/i,c:'familia',s:'pensao'},
+      {p:/\b(veterinario|clinica veterinaria)\b/i,c:'animais',s:'veterinario'},
+      {p:/\b(banho e tosa|tosa)\b/i,c:'animais',s:'banho_tosa'}
     ];
     for(const rule of rules){
       if(rule.p.test(n)&&alicerClassificationPairIsValid(rule.c,rule.s))return{c:rule.c,s:rule.s};
@@ -8346,6 +8910,8 @@ function renderScreen(){
       case 'emprestimos':return renderEmprestimos();
       case 'calendario':return renderCalendario();
       case 'visao':return renderVisao();
+      case 'financialProfileReview':return renderFinancialProfileReview();
+      case 'financialProfileEdit':return renderFinancialProfileEdit();
       case 'config':return renderConfig();
       case 'indicacoes':return renderIndicacoes();
       case 'conta':return renderConta();
@@ -12161,6 +12727,36 @@ AlicerceIA.renderDashboard=function(){
     }
   };
   var ui=copy[lang]||copy.pt;
+  var realityCopy={
+    pt:{
+      title:'Sua realidade financeira',essential:'Essenciais estimados',discretionary:'Discricionários',undetermined:'Indeterminados',share:'das despesas',
+      note:'A classificação é estimada. Estabelecimento, horário ou dia da semana, sozinhos, não provam a finalidade da compra. Parcelamento e recorrência são avaliados separadamente.',
+      review:'Os gastos discricionários de alta flexibilidade superam 20% das despesas e os indeterminados estão abaixo de 15%. Vale revisar os itens, sem presumir que todos devam ser cortados.',
+      context:'Uma parte relevante dos gastos ainda precisa de contexto. Alicia não vai transformar esses valores em recomendações de corte.',
+      few:'Ainda há poucos lançamentos neste período para gerar um alerta de oportunidade confiável.',
+      safe:'Os valores indeterminados ficam separados e não entram em sugestões de economia.',
+      details:'Entender minha realidade financeira',reviewItems:'Revisar gastos que precisam de contexto'
+    },
+    en:{
+      title:'Your financial picture',essential:'Estimated essentials',discretionary:'Discretionary',undetermined:'Undetermined',share:'of expenses',
+      note:'This is an estimate. A merchant, time, or day of week alone does not prove the purpose of a purchase. Installments and recurrence are assessed separately.',
+      review:'High-flexibility discretionary expenses exceed 20% of spending while undetermined expenses are below 15%. Review the items; do not assume every one should be cut.',
+      context:'A meaningful share of spending still needs context. Alicia will not turn these amounts into cut recommendations.',
+      few:'There are too few records in this period for a reliable review signal.',
+      safe:'Undetermined amounts stay separate and are excluded from savings suggestions.',
+      details:'Understand my financial picture',reviewItems:'Review expenses that need context'
+    },
+    es:{
+      title:'Tu realidad financiera',essential:'Esenciales estimados',discretionary:'Discrecionales',undetermined:'Sin determinar',share:'de los gastos',
+      note:'La clasificación es estimada. El comercio, la hora o el día de la semana por sí solos no prueban la finalidad de la compra. Las cuotas y la recurrencia se evalúan por separado.',
+      review:'Los gastos discrecionales de alta flexibilidad superan el 20% del gasto y los no determinados están por debajo del 15%. Conviene revisar los movimientos, sin asumir que todos deban eliminarse.',
+      context:'Una parte relevante de los gastos todavía necesita contexto. Alicia no convertirá esos importes en recomendaciones de recorte.',
+      few:'Todavía hay pocos movimientos en este período para generar una señal fiable.',
+      safe:'Los importes sin determinar permanecen separados y no entran en sugerencias de ahorro.',
+      details:'Entender mi realidad financiera',reviewItems:'Revisar gastos que necesitan contexto'
+    }
+  };
+  var realityLabels=realityCopy[lang]||realityCopy.pt;
   var actionAttr=function(question){return 'onclick="AlicerceIA.perguntarDashboard('+JSON.stringify(question).replace(/\"/g,'&quot;')+')"';};
   var html='<section class="visao-ai-dashboard" id="alicerce-ai-dashboard" aria-label="Alicerce IA">';
   html+='<div class="visao-ai-heading"><div><div class="visao-ai-kicker">ALICERCE IA</div><h2>'+esc(ui.heading)+'</h2><p>'+esc(ui.intro)+'</p></div></div>';
@@ -12204,6 +12800,29 @@ AlicerceIA.renderDashboard=function(){
     html+='</section></div>';
     html+='<section class="visao-ai-recurring"><div><div class="visao-ai-section-label">'+esc(ui.recurring)+'</div><p>'+(recurring?esc(this._label('recurringInsight',{item:recurring.merchant,amount:fmtMoney(recurring.amount),months:recurring.months})):esc(ui.recurringNone))+'</p></div>';
     html+='<button type="button" id="visao-ai-recurring" '+actionAttr('Quais pagamentos parecem recorrentes?')+'>'+esc(ui.recurringAction)+'</button></section>';
+    var reality=this._financialReality(current,rows);
+    html+='<section class="visao-ai-panel" id="visao-ai-financial-reality">';
+    html+='<div class="visao-ai-section-label">'+esc(realityLabels.title)+'</div>';
+    html+='<div class="visao-ai-kpis">';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-essential" '+actionAttr('Quanto custa manter minha vida?')+'><span>'+esc(realityLabels.essential)+'</span><strong>'+fmtMoney(reality.essential)+'</strong><small>'+Math.round(reality.percentages.essential)+'% '+esc(realityLabels.share)+'</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-discretionary" '+actionAttr('Quanto gastei com estilo de vida?')+'><span>'+esc(realityLabels.discretionary)+'</span><strong>'+fmtMoney(reality.discretionary)+'</strong><small>'+Math.round(reality.percentages.discretionary)+'% '+esc(realityLabels.share)+'</small></button>';
+    html+='<button type="button" class="visao-ai-kpi" id="visao-ai-undetermined" '+actionAttr('Quais gastos ainda precisam de contexto?')+'><span>'+esc(realityLabels.undetermined)+'</span><strong>'+fmtMoney(reality.undetermined)+'</strong><small>'+Math.round(reality.percentages.undetermined)+'% '+esc(realityLabels.share)+'</small></button>';
+    html+='</div>';
+    html+='<p class="visao-ai-muted">'+esc(realityLabels.note)+'</p>';
+    if(reality.reviewOpportunity){
+      html+='<p class="visao-ai-muted">'+esc(realityLabels.review)+'</p>';
+    }else if(reality.needsContext){
+      html+='<p class="visao-ai-muted">'+esc(realityLabels.context)+'</p>';
+    }else if(reality.counts.total<5){
+      html+='<p class="visao-ai-muted">'+esc(realityLabels.few)+'</p>';
+    }else{
+      html+='<p class="visao-ai-muted">'+esc(realityLabels.safe)+'</p>';
+    }
+    html+='<button type="button" id="visao-ai-financial-reality-detail" '+actionAttr('Quanto custa manter minha vida?')+'>'+esc(realityLabels.details)+'</button>';
+    if(reality.counts.undetermined>0){
+      html+='<button type="button" class="btn btn-secondary btn-block" id="visao-ai-review-undetermined" onclick="go(\'financialProfileReview\')">'+esc(realityLabels.reviewItems)+' ('+reality.counts.undetermined+')</button>';
+    }
+    html+='</section>';
     html+='<div class="visao-ai-actions">';
     html+='<button type="button" '+actionAttr('Compare com o mês passado')+'>'+esc(ui.compareAction)+'</button>';
     html+='<button type="button" '+actionAttr('Onde gastei mais?')+'>'+esc(ui.topAction)+'</button>';
@@ -12251,6 +12870,214 @@ function renderVisao(){
   return html;
 }
 
+function financialProfileCopy(){
+  var copies={
+    pt:{
+      back:'Voltar à Visão Financeira',title:'Gastos que precisam de contexto',
+      intro:'Alicia não vai adivinhar a finalidade de uma compra. Revise apenas o que você conhece; o que não souber pode continuar indeterminado.',
+      noItems:'Não há gastos indeterminados neste mês. Quando aparecer algum, ele poderá ser revisado aqui.',
+      itemHint:'Precisa de contexto',editTitle:'Ajudar Alicia a entender este gasto',
+      explanation:'Sua resposta fica vinculada a este lançamento. Ela não altera valor, data, categoria, subcategoria ou saldo.',
+      nature:'Natureza do gasto',essential:'Essencial — protege uma necessidade importante',
+      discretionary:'Discricionário — pode ser reduzido ou adiado sem risco concreto',
+      undetermined:'Ainda não sei',context:'Finalidade principal',commitment:'Existe contrato ou obrigação formal?',
+      contractual:'Sim, existe contrato ou obrigação formal',nonContractual:'Não existe contrato ou obrigação formal',
+      flexibility:'É possível adiar, reduzir ou substituir?',low:'Difícil',medium:'Em parte',high:'Sim, com facilidade',
+      purpose:'O que motivou esse gasto? (opcional)',purposePlaceholder:'Ex.: deslocamento para o trabalho ou consulta médica',
+      purposeHint:'Uma frase curta ajuda a manter o contexto junto ao lançamento.',
+      automatic:'A recorrência e a estabilidade dos valores continuam sendo avaliadas pelo histórico, separadamente.',
+      save:'Salvar confirmação',cancel:'Voltar sem salvar',saved:'Confirmação salva neste lançamento.',
+      missing:'Não foi possível localizar esse lançamento. Volte à Visão Financeira e tente novamente.',
+      item:'Lançamento'
+    },
+    en:{
+      back:'Back to Financial View',title:'Expenses that need context',
+      intro:'Alicia will not guess why a purchase was made. Confirm only what you know; unknown details can remain undetermined.',
+      noItems:'There are no undetermined expenses this month. New items that need context can be reviewed here.',
+      itemHint:'Needs context',editTitle:'Help Alicia understand this expense',
+      explanation:'Your answer is stored with this expense. It does not change the amount, date, category, subcategory, or balance.',
+      nature:'Expense nature',essential:'Essential — protects an important need',
+      discretionary:'Discretionary — can be reduced or delayed without concrete risk',
+      undetermined:'I am not sure',context:'Main purpose',commitment:'Is there a formal contract or obligation?',
+      contractual:'Yes, there is a contract or formal obligation',nonContractual:'No contract or formal obligation',
+      flexibility:'Can it be delayed, reduced, or replaced?',low:'Difficult',medium:'To some extent',high:'Yes, easily',
+      purpose:'What was the expense for? (optional)',purposePlaceholder:'E.g. travel to work or a medical appointment',
+      purposeHint:'A short note keeps the context with the expense.',
+      automatic:'Recurrence and amount stability are still assessed separately from transaction history.',
+      save:'Save confirmation',cancel:'Back without saving',saved:'Confirmation saved to this expense.',
+      missing:'This expense could not be found. Return to Financial View and try again.',
+      item:'Expense'
+    },
+    es:{
+      back:'Volver a la Visión Financiera',title:'Gastos que necesitan contexto',
+      intro:'Alicia no adivinará el motivo de una compra. Confirma solo lo que sabes; lo demás puede quedar sin determinar.',
+      noItems:'No hay gastos sin determinar este mes. Los nuevos movimientos que necesiten contexto podrán revisarse aquí.',
+      itemHint:'Necesita contexto',editTitle:'Ayudar a Alicia a entender este gasto',
+      explanation:'Tu respuesta queda vinculada a este movimiento. No cambia el importe, la fecha, la categoría, la subcategoría ni el saldo.',
+      nature:'Naturaleza del gasto',essential:'Esencial — protege una necesidad importante',
+      discretionary:'Discrecional — puede reducirse o aplazarse sin riesgo concreto',
+      undetermined:'Todavía no lo sé',context:'Finalidad principal',commitment:'¿Existe un contrato u obligación formal?',
+      contractual:'Sí, existe un contrato u obligación formal',nonContractual:'No existe contrato u obligación formal',
+      flexibility:'¿Se puede aplazar, reducir o sustituir?',low:'Difícil',medium:'En parte',high:'Sí, fácilmente',
+      purpose:'¿Cuál fue el motivo del gasto? (opcional)',purposePlaceholder:'Ej.: desplazamiento al trabajo o consulta médica',
+      purposeHint:'Una nota breve mantiene el contexto junto al movimiento.',
+      automatic:'La recurrencia y la estabilidad de los importes siguen evaluándose por separado, a partir del historial.',
+      save:'Guardar confirmación',cancel:'Volver sin guardar',saved:'Confirmación guardada en este movimiento.',
+      missing:'No se pudo encontrar este movimiento. Vuelve a la Visión Financiera e inténtalo de nuevo.',
+      item:'Movimiento'
+    }
+  };
+  return copies[Store.lang]||copies.pt;
+}
+function financialProfileSelect(id,label,value,options){
+  var html='<div class="form-group"><label class="form-label" for="'+id+'">'+label+'</label>';
+  html+='<select id="'+id+'" style="font-size:16px">';
+  options.forEach(function(option){
+    html+='<option value="'+esc(option.value)+'"'+(value===option.value?' selected':'')+'>'+esc(option.label)+'</option>';
+  });
+  html+='</select></div>';
+  return html;
+}
+function financialProfileFindRow(data){
+  if(!data||!data.id||!data.source)return null;
+  var rows=Store.getAnalysisEntries();
+  for(var i=0;i<rows.length;i++){
+    if(String(rows[i].id)===String(data.id)&&rows[i].source===data.source)return rows[i];
+  }
+  return null;
+}
+function financialProfileFindRecord(row){
+  if(!row)return null;
+  var collection=row.source==='movement'?Store.movements:(row.source==='card'?Store.installments:null);
+  if(!collection)return null;
+  for(var i=0;i<collection.length;i++){
+    if(collection[i]&&String(collection[i].id)===String(row.id))return collection[i];
+  }
+  return null;
+}
+function renderFinancialProfileReview(){
+  var copy=financialProfileCopy();
+  var rows=AlicerceIA._periodRows(0);
+  var reality=AlicerceIA._financialReality(rows,AlicerceIA._rows());
+  var candidates=reality.assessments.filter(function(item){return item.dimensions&&item.dimensions.nature==='undetermined';});
+  var html='<div class="content">';
+  html+='<button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\'visao\')">'+icon('back','ico-sm')+' '+esc(copy.back)+'</button>';
+  html+='<h2 class="mt-4">'+esc(copy.title)+'</h2>';
+  html+='<p class="text-muted text-sm mt-2">'+esc(copy.intro)+'</p>';
+  if(!candidates.length){
+    html+='<div class="card mt-4"><p>'+esc(copy.noItems)+'</p></div>';
+  }else{
+    html+='<div class="section-title">'+candidates.length+' · '+esc(copy.item)+'</div>';
+    candidates.forEach(function(item,index){
+      var row=item.row;
+      var label=row.descricao||row.local||row.subcategoria||copy.item;
+      var detail=Interpreter.catDisplay(row.categoria)+' · '+Interpreter.subDisplay(row.subcategoria)+' · '+fmtDate(row.data);
+      var payload=JSON.stringify({id:row.id,source:row.source,purchaseId:row.purchaseId||''}).replace(/"/g,'&quot;');
+      html+='<button type="button" class="list-item" id="financial-profile-item-'+index+'" style="width:100%;text-align:left" onclick="go(\'financialProfileEdit\','+payload+')">';
+      html+='<span class="li-left"><span class="li-info"><span class="li-name">'+esc(label)+'</span><span class="li-sub">'+esc(detail)+'</span></span></span>';
+      html+='<span class="li-right"><span class="li-amount">'+fmtMoney(row.valor)+'</span><span class="li-sub">'+esc(copy.itemHint)+'</span></span>';
+      html+='</button>';
+    });
+  }
+  html+='</div>';
+  return html;
+}
+function renderFinancialProfileEdit(){
+  var copy=financialProfileCopy();
+  var data=Store.screenData||{};
+  var row=financialProfileFindRow(data);
+  var record=financialProfileFindRecord(row);
+  if(!row||!record){
+    return '<div class="content"><button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\'financialProfileReview\')">'+esc(copy.back)+'</button><div class="card mt-4">'+esc(copy.missing)+'</div></div>';
+  }
+  var profile=row.expenseProfile||(row.analysis&&row.analysis.expenseProfile)||{};
+  var confirmed=profile.source==='user_confirmed';
+  var value=function(field){return confirmed&&profile[field]?profile[field]:'undetermined';};
+  var html='<div class="content" style="padding-bottom:120px">';
+  html+='<button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\'financialProfileReview\')">'+icon('back','ico-sm')+' '+esc(copy.back)+'</button>';
+  html+='<h2 class="mt-4">'+esc(copy.editTitle)+'</h2>';
+  html+='<p class="text-muted text-sm mt-2">'+esc(copy.explanation)+'</p>';
+  html+='<div class="card mt-4"><div class="card-row"><span class="card-row-label">'+esc(copy.item)+'</span><strong>'+fmtMoney(row.valor)+'</strong></div>';
+  html+='<div class="card-row"><span class="card-row-label">'+esc(copy.itemHint)+'</span><strong>'+esc(row.descricao||row.local||row.subcategoria)+'</strong></div>';
+  html+='<div class="card-row"><span class="card-row-label">'+esc(copy.context)+'</span><strong>'+esc(Interpreter.catDisplay(row.categoria)+' · '+Interpreter.subDisplay(row.subcategoria))+'</strong></div>';
+  html+='<div class="card-row"><span class="card-row-label">'+esc(t('data'))+'</span><strong>'+esc(fmtDate(row.data))+'</strong></div></div>';
+  html+=financialProfileSelect('financial-profile-nature',copy.nature,value('nature'),[
+    {value:'undetermined',label:copy.undetermined},
+    {value:'essential',label:copy.essential},
+    {value:'discretionary',label:copy.discretionary}
+  ]);
+  html+=financialProfileSelect('financial-profile-context',copy.context,value('context'),[
+    {value:'undetermined',label:copy.undetermined},
+    {value:'work',label:Store.lang==='en'?'Work':(Store.lang==='es'?'Trabajo':'Trabalho')},
+    {value:'health',label:Store.lang==='en'?'Health':(Store.lang==='es'?'Salud':'Saúde')},
+    {value:'family',label:Store.lang==='en'?'Family':(Store.lang==='es'?'Familia':'Família')},
+    {value:'housing',label:Store.lang==='en'?'Housing':(Store.lang==='es'?'Vivienda':'Moradia')},
+    {value:'leisure',label:Store.lang==='en'?'Leisure':(Store.lang==='es'?'Ocio':'Lazer')},
+    {value:'convenience',label:Store.lang==='en'?'Convenience':(Store.lang==='es'?'Comodidad':'Conveniência')},
+    {value:'education',label:Store.lang==='en'?'Education':(Store.lang==='es'?'Educación':'Educação')},
+    {value:'other',label:Store.lang==='en'?'Other':(Store.lang==='es'?'Otro':'Outro')}
+  ]);
+  html+=financialProfileSelect('financial-profile-flexibility',copy.flexibility,value('flexibility'),[
+    {value:'undetermined',label:copy.undetermined},
+    {value:'low',label:copy.low},
+    {value:'medium',label:copy.medium},
+    {value:'high',label:copy.high}
+  ]);
+  html+=financialProfileSelect('financial-profile-commitment',copy.commitment,value('commitment'),[
+    {value:'undetermined',label:copy.undetermined},
+    {value:'contractual',label:copy.contractual},
+    {value:'non_contractual',label:copy.nonContractual}
+  ]);
+  html+='<div class="form-group"><label class="form-label" for="financial-profile-purpose">'+esc(copy.purpose)+'</label>';
+  html+='<input id="financial-profile-purpose" type="text" maxlength="180" autocomplete="off" style="font-size:16px" placeholder="'+esc(copy.purposePlaceholder)+'" value="'+esc(row.purpose||'')+'">';
+  html+='<p class="text-muted text-sm mt-2">'+esc(copy.purposeHint)+'</p></div>';
+  html+='<p class="text-muted text-sm">'+esc(copy.automatic)+'</p>';
+  html+='<button type="button" id="financial-profile-save" class="btn btn-primary btn-block" onclick="saveFinancialProfile()">'+esc(copy.save)+'</button>';
+  html+='<button type="button" class="btn btn-secondary btn-block" onclick="go(\'financialProfileReview\')">'+esc(copy.cancel)+'</button>';
+  html+='</div>';
+  return html;
+}
+function saveFinancialProfile(){
+  var data=Store.screenData||{};
+  var row=financialProfileFindRow(data);
+  if(!row){showToast(financialProfileCopy().missing);return;}
+  var first=financialProfileFindRecord(row);
+  if(!first){showToast(financialProfileCopy().missing);return;}
+  var nature=document.getElementById('financial-profile-nature');
+  var context=document.getElementById('financial-profile-context');
+  var flexibility=document.getElementById('financial-profile-flexibility');
+  var commitment=document.getElementById('financial-profile-commitment');
+  var purposeInput=document.getElementById('financial-profile-purpose');
+  if(!nature||!context||!flexibility||!commitment)return;
+  var profile={version:1,source:'user_confirmed',nature:nature.value||'undetermined'};
+  var confidence={nature:profile.nature==='undetermined'?'low':'high'};
+  if(context.value&&context.value!=='undetermined'){profile.context=context.value;confidence.context='high';}
+  if(flexibility.value&&flexibility.value!=='undetermined'){profile.flexibility=flexibility.value;confidence.flexibility='high';}
+  if(commitment.value&&commitment.value!=='undetermined'){profile.commitment=commitment.value;confidence.commitment='high';}
+  profile.confidence=confidence;
+  var purpose=purposeInput?String(purposeInput.value||'').trim().slice(0,180):'';
+  var targets=[];
+  if(row.source==='movement'){
+    targets=Store.movements.filter(function(item){return item&&String(item.id)===String(row.id);});
+  }else if(row.source==='card'){
+    if(row.purchaseId){
+      targets=Store.installments.filter(function(item){
+        return item&&item.tipo==='cartao'&&String(item.compraId)===String(row.purchaseId)&&!item.loanId&&!item.fromCard;
+      });
+    }
+    if(!targets.length)targets=Store.installments.filter(function(item){return item&&String(item.id)===String(row.id);});
+  }
+  if(!targets.length){showToast(financialProfileCopy().missing);return;}
+  targets.forEach(function(item){
+    var current=Object.assign({},item.analysis||{});
+    current.expenseProfile=profile;
+    item.analysis=normalizeAlicerMovementAnalysis(current);
+    if(purpose)item.purpose=purpose;else if(Object.prototype.hasOwnProperty.call(item,'purpose'))delete item.purpose;
+  });
+  Store.save();
+  showToast(financialProfileCopy().saved);
+  go('financialProfileReview');
+}
 function renderConfig(){
   let html='<div class="content"><h2 class="mt-4">'+t('config')+'</h2><div class="section-divider"></div>';
   html+='<div class="form-group"><label class="form-label" for="alicerce-config-theme">'+t('aparência')+'</label><select id="alicerce-config-theme" onchange="changeTheme(this.value)"><option value="azul"'+(Store.theme==='azul'?' selected':'')+'>'+t('temaAzul')+'</option><option value="claro"'+(Store.theme==='claro'?' selected':'')+'>'+t('temaClaro')+'</option><option value="marinho"'+(Store.theme==='marinho'?' selected':'')+'>'+t('temaMarinho')+'</option><option value="moderno"'+(Store.theme==='moderno'?' selected':'')+'>Moderno</option></select></div>';

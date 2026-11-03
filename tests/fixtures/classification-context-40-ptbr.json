@@ -1,0 +1,282 @@
+[
+  {
+    "id": "feira-banana",
+    "text": "Valor: 12 | Item: Banana | Local: Hortifruti do Bairro",
+    "item": "Banana",
+    "categoria": "comida",
+    "subcategoria": "feira"
+  },
+  {
+    "id": "feira-tomate",
+    "text": "Valor: 8 | Item: Tomate | Local: Feira Livre",
+    "item": "Tomate",
+    "categoria": "comida",
+    "subcategoria": "feira"
+  },
+  {
+    "id": "feira-alface",
+    "text": "Valor: 5 | Item: Alface | Local: Feira Livre",
+    "item": "Alface",
+    "categoria": "comida",
+    "subcategoria": "feira"
+  },
+  {
+    "id": "feira-maca",
+    "text": "Valor: 10 | Item: Maçã | Local: Hortifruti do Bairro",
+    "item": "Maçã",
+    "categoria": "comida",
+    "subcategoria": "feira"
+  },
+  {
+    "id": "mercado-carne-moida",
+    "text": "Valor: 32 | Item: Carne moída | Local: Açougue Central",
+    "item": "Carne moída",
+    "categoria": "comida",
+    "subcategoria": "mercado"
+  },
+  {
+    "id": "mercado-queijo",
+    "text": "Valor: 18 | Item: Queijo | Local: Mercado do Bairro",
+    "item": "Queijo",
+    "categoria": "comida",
+    "subcategoria": "mercado"
+  },
+  {
+    "id": "padaria-pao-frances",
+    "text": "Valor: 4 | Item: Pão francês | Local: Padaria Central",
+    "item": "Pão francês",
+    "categoria": "comida",
+    "subcategoria": "padaria"
+  },
+  {
+    "id": "restaurante-almoco",
+    "text": "Valor: 35 | Item: Almoço executivo | Local: Restaurante Central",
+    "item": "Almoço executivo",
+    "categoria": "comida",
+    "subcategoria": "restaurante"
+  },
+  {
+    "id": "casa-detergente",
+    "text": "Valor: 7 | Item: Detergente | Local: Mercado do Bairro",
+    "item": "Detergente",
+    "categoria": "casa_dia_a_dia",
+    "subcategoria": "produtos_limpeza"
+  },
+  {
+    "id": "casa-sabao-po",
+    "text": "Valor: 22 | Item: Sabão em pó | Local: Mercado do Bairro",
+    "item": "Sabão em pó",
+    "categoria": "casa_dia_a_dia",
+    "subcategoria": "produtos_limpeza"
+  },
+  {
+    "id": "casa-papel-higienico",
+    "text": "Valor: 16 | Item: Papel higiênico | Local: Mercado do Bairro",
+    "item": "Papel higiênico",
+    "categoria": "casa_dia_a_dia",
+    "subcategoria": "produtos_limpeza"
+  },
+  {
+    "id": "casa-lampada",
+    "text": "Valor: 14 | Item: Lâmpada | Local: Loja de Construção",
+    "item": "Lâmpada",
+    "categoria": "moradia",
+    "subcategoria": "manutencao"
+  },
+  {
+    "id": "casa-torneira",
+    "text": "Valor: 45 | Item: Torneira | Local: Loja de Construção",
+    "item": "Torneira",
+    "categoria": "moradia",
+    "subcategoria": "manutencao"
+  },
+  {
+    "id": "casa-cimento",
+    "text": "Valor: 38 | Item: Cimento | Local: Material de Construção",
+    "item": "Cimento",
+    "categoria": "moradia",
+    "subcategoria": "manutencao"
+  },
+  {
+    "id": "servico-encanador",
+    "text": "Valor: 120 | Item: Serviço de encanador | Local: Profissional Autônomo",
+    "item": "Serviço de encanador",
+    "categoria": "servicos",
+    "subcategoria": "encanador"
+  },
+  {
+    "id": "servico-diarista",
+    "text": "Valor: 150 | Item: Diarista | Local: Profissional Autônomo",
+    "item": "Diarista",
+    "categoria": "servicos",
+    "subcategoria": "faxina"
+  },
+  {
+    "id": "moradia-condominio",
+    "text": "Valor: 420 | Item: Condomínio | Local: Administradora do Condomínio",
+    "item": "Condomínio",
+    "categoria": "moradia",
+    "subcategoria": "condominio"
+  },
+  {
+    "id": "moradia-iptu",
+    "text": "Valor: 95 | Item: IPTU | Local: Prefeitura",
+    "item": "IPTU",
+    "categoria": "moradia",
+    "subcategoria": "iptu"
+  },
+  {
+    "id": "moradia-telefone",
+    "text": "Valor: 55 | Item: Conta de telefone | Local: Operadora",
+    "item": "Conta de telefone",
+    "categoria": "moradia",
+    "subcategoria": "telefone"
+  },
+  {
+    "id": "transporte-onibus",
+    "text": "Valor: 4,5 | Item: Passagem de ônibus | Local: Transporte Público",
+    "item": "Passagem de ônibus",
+    "categoria": "transporte",
+    "subcategoria": "onibus"
+  },
+  {
+    "id": "transporte-metro",
+    "text": "Valor: 5 | Item: Passagem de metrô | Local: Transporte Público",
+    "item": "Passagem de metrô",
+    "categoria": "transporte",
+    "subcategoria": "metro"
+  },
+  {
+    "id": "transporte-taxi",
+    "text": "Valor: 28 | Item: Corrida de táxi | Local: Táxi",
+    "item": "Corrida de táxi",
+    "categoria": "transporte",
+    "subcategoria": "taxi"
+  },
+  {
+    "id": "transporte-pedagio",
+    "text": "Valor: 11 | Item: Pedágio | Local: Concessionária",
+    "item": "Pedágio",
+    "categoria": "transporte",
+    "subcategoria": "pedagio"
+  },
+  {
+    "id": "transporte-oleo",
+    "text": "Valor: 160 | Item: Troca de óleo do carro | Local: Oficina",
+    "item": "Troca de óleo do carro",
+    "categoria": "transporte",
+    "subcategoria": "manutencao"
+  },
+  {
+    "id": "transporte-ipva",
+    "text": "Valor: 240 | Item: IPVA | Local: Detran",
+    "item": "IPVA",
+    "categoria": "transporte",
+    "subcategoria": "ipva"
+  },
+  {
+    "id": "transporte-seguro",
+    "text": "Valor: 180 | Item: Seguro do carro | Local: Seguradora",
+    "item": "Seguro do carro",
+    "categoria": "transporte",
+    "subcategoria": "seguro"
+  },
+  {
+    "id": "saude-consulta",
+    "text": "Valor: 130 | Item: Consulta médica | Local: Clínica",
+    "item": "Consulta médica",
+    "categoria": "saude",
+    "subcategoria": "consultas"
+  },
+  {
+    "id": "saude-dentista",
+    "text": "Valor: 90 | Item: Dentista | Local: Consultório Odontológico",
+    "item": "Dentista",
+    "categoria": "saude",
+    "subcategoria": "dentista"
+  },
+  {
+    "id": "saude-exame",
+    "text": "Valor: 75 | Item: Exame de sangue | Local: Laboratório",
+    "item": "Exame de sangue",
+    "categoria": "saude",
+    "subcategoria": "exames"
+  },
+  {
+    "id": "saude-oculos",
+    "text": "Valor: 260 | Item: Óculos de grau | Local: Ótica",
+    "item": "Óculos de grau",
+    "categoria": "saude",
+    "subcategoria": "oculos"
+  },
+  {
+    "id": "saude-plano",
+    "text": "Valor: 380 | Item: Plano de saúde | Local: Operadora de Saúde",
+    "item": "Plano de saúde",
+    "categoria": "saude",
+    "subcategoria": "plano_saude"
+  },
+  {
+    "id": "educacao-mensalidade",
+    "text": "Valor: 650 | Item: Mensalidade escolar | Local: Escola",
+    "item": "Mensalidade escolar",
+    "categoria": "educacao",
+    "subcategoria": "mensalidade"
+  },
+  {
+    "id": "educacao-uniforme",
+    "text": "Valor: 85 | Item: Uniforme escolar | Local: Loja Escolar",
+    "item": "Uniforme escolar",
+    "categoria": "educacao",
+    "subcategoria": "uniforme"
+  },
+  {
+    "id": "educacao-curso",
+    "text": "Valor: 210 | Item: Curso de inglês | Local: Escola de Idiomas",
+    "item": "Curso de inglês",
+    "categoria": "educacao",
+    "subcategoria": "curso"
+  },
+  {
+    "id": "educacao-material",
+    "text": "Valor: 18 | Item: Caderno escolar | Local: Papelaria",
+    "item": "Caderno escolar",
+    "categoria": "educacao",
+    "subcategoria": "material_escolar"
+  },
+  {
+    "id": "familia-pensao",
+    "text": "Valor: 500 | Item: Pensão alimentícia | Local: Transferência Familiar",
+    "item": "Pensão alimentícia",
+    "categoria": "familia",
+    "subcategoria": "pensao"
+  },
+  {
+    "id": "animais-racao",
+    "text": "Valor: 72 | Item: Ração de gato | Local: Pet Shop",
+    "item": "Ração de gato",
+    "categoria": "animais",
+    "subcategoria": "racao"
+  },
+  {
+    "id": "animais-veterinario",
+    "text": "Valor: 150 | Item: Veterinário | Local: Clínica Veterinária",
+    "item": "Veterinário",
+    "categoria": "animais",
+    "subcategoria": "veterinario"
+  },
+  {
+    "id": "animais-banho-tosa",
+    "text": "Valor: 65 | Item: Banho e tosa | Local: Pet Shop",
+    "item": "Banho e tosa",
+    "categoria": "animais",
+    "subcategoria": "banho_tosa"
+  },
+  {
+    "id": "comida-coxinha",
+    "text": "Valor: 7 | Item: Coxinha | Local: Lanchonete",
+    "item": "Coxinha",
+    "categoria": "comida",
+    "subcategoria": "lanchonete"
+  }
+]
