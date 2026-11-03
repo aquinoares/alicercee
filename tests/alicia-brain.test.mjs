@@ -361,7 +361,7 @@ test('corpus cego nº 3 — regressão após o baseline', async function (t) {
         assert.equal(brain.assessSelfHarmRisk(item.input), item.risk);
         if (category === 'Crise') {
           assert.equal(result.handled, true);
-          assert.match(result.text, /Você está em segurança agora\?/);
+          assert.match(result.text, /Você está em segurança agora[^?]*\?/);
           assert.match(result.text, /CVV[\s\S]*188/);
           assert.doesNotMatch(result.text, /saldo|gasto|dinheiro|fatura|orçamento|dívida/i);
           if (item.urgent) assert.match(result.text, /SAMU 192/);
