@@ -160,6 +160,7 @@
       /\bnao aguento mais\b.*\b(?:continuar|viver|ficar)\b/,
       /\b(?:pra|para) que continuar\b/,
       /\b(?:queria|nao quero|nao queria) (?:mais )?acordar\b/,
+      /\b(?:queria|quero) dormir (?:para|pra) sempre\b/,
       /\bseria melhor se eu sumisse\b/,
       /\bnao consigo continuar\b/
     ])) return 'medium';
@@ -438,7 +439,7 @@
       'Por segurança, você não precisa compartilhar CPF, senhas ou números completos de cartão. Não vou reutilizar esse dado; envie apenas a informação necessária, sem identificadores.'
     ],
     sensitive_data_request: [
-      'Não posso consultar nem compartilhar saldo, extrato ou dados financeiros de outra pessoa. Posso ajudar você a consultar apenas seus próprios registros no Alicerce.'
+      'Não posso fornecer nem buscar o CPF de outra pessoa. Também não posso consultar nem compartilhar saldo, extrato ou dados financeiros de terceiros. Posso ajudar você a consultar apenas seus próprios registros no Alicerce.'
     ],
     leave_it: [
       'Tudo bem. Não precisa continuar agora. Quando quiser retomar, estou por aqui.',
@@ -454,13 +455,16 @@
       'Estou levando o que você disse a sério. Sua segurança importa. Você está em segurança agora? O CVV atende gratuitamente pelo 188, 24 horas, e também em cvv.org.br; se houver risco imediato, ligue para o SAMU 192. Procure agora alguém de confiança para ficar com você; posso continuar aqui enquanto você busca apoio.'
     ],
     self_safety_immediate: [
-      'Há risco de você se machucar agora. Afaste-se de qualquer meio que possa usar para isso e vá para perto de alguém de confiança. Peça ajuda presencial e ligue para o SAMU 192. O CVV atende pelo 188, 24 horas. Você está em segurança e acompanhado neste momento?'
+      'Há risco de você se machucar agora. Afaste-se de qualquer meio que possa usar para isso e vá para perto de alguém de confiança. Peça ajuda presencial e ligue para o SAMU 192. O CVV atende pelo 188, 24 horas. Você está em segurança agora e acompanhado neste momento?'
     ],
     self_safety_ingestion: [
-      'Isso precisa de ajuda médica agora. Ligue para o SAMU 192 imediatamente ou peça a alguém que ligue por você. Não fique sozinho; vá para perto de alguém de confiança e peça que essa pessoa permaneça com você. O CVV atende pelo 188, 24 horas. Você está em segurança agora e com alguém ao seu lado?'
+      'Isso precisa de ajuda médica agora. Ligue para o SAMU 192 imediatamente ou peça a alguém que ligue por você. Não fique sozinho; vá para perto de alguém de confiança e peça que essa pessoa permaneça com você. O CVV atende pelo 188, 24 horas. Você está em segurança agora, com alguém ao seu lado?'
+    ],
+    self_safety_medication_plan: [
+      'Não tome os medicamentos. Afaste-se deles agora e vá para perto de alguém de confiança; peça que essa pessoa fique com você. Se acha que pode agir agora, ligue para o SAMU 192. O CVV atende pelo 188, 24 horas. Você está em segurança agora e longe dos medicamentos?'
     ],
     self_safety_jump: [
-      'Afaste-se da ponte e de qualquer lugar alto agora. Vá para perto de outras pessoas e peça a alguém de confiança que fique com você. Ligue para o SAMU 192 imediatamente ou peça que alguém ligue. O CVV atende pelo 188, 24 horas. Você está em um lugar seguro e acompanhado agora?'
+      'Afaste-se da ponte e de qualquer lugar alto agora. Vá para perto de outras pessoas e peça a alguém de confiança que fique com você. Ligue para o SAMU 192 imediatamente ou peça que alguém ligue. O CVV atende pelo 188, 24 horas. Você está em segurança agora, longe da ponte e acompanhado?'
     ],
 
     doing_well: [
@@ -487,8 +491,10 @@
       var normalizedMessage = normalize(message);
       var urgentIntent = /\b(?:tomei|ing[ei]ri|bebi|usei)\b.*\b(?:comprimidos?|remedios?|medicamentos?|veneno)\b/.test(normalizedMessage) ?
         'self_safety_ingestion' :
-        /\b(?:vou me jogar|me jogar da|pular da?)\b.*\b(?:ponte|predio|viaduto)\b/.test(normalizedMessage) ?
-          'self_safety_jump' : 'self_safety_immediate';
+        /\b(?:vou|pretendo|estou pensando em|to pensando em) tomar\b.*\b(?:comprimidos?|remedios?|medicamentos?)\b/.test(normalizedMessage) ?
+          'self_safety_medication_plan' :
+          /\b(?:vou me jogar|me jogar da|pular da?)\b.*\b(?:ponte|predio|viaduto)\b/.test(normalizedMessage) ?
+            'self_safety_jump' : 'self_safety_immediate';
       return { handled: true, intent: intent, text: chooseResponse(urgentIntent, messages) };
     }
     if (intent === 'financial' || intent === 'financial_followup' ||
