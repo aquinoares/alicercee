@@ -3187,3 +3187,73 @@ test('Alicia respeita negações ao confirmar natureza e flexibilidade', async f
     confidence: { nature: 'low', context: 'high' }
   });
 });
+
+
+test('Alicia conversa com acolhimento e mantém somente contexto temporário', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-brain-natural-test';
+    Store.lang = 'pt';
+    Store.settings = Object.assign({}, Store.settings, { displayName: 'Ewerton' });
+    Store.movements = [];
+    Store.installments = [];
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+    window.__aliciaBrainStorageBefore = Object.keys(localStorage)
+      .filter(function (key) { return /alicia-brain|alicia-chat|conversation-history/i.test(key); })
+      .sort();
+  });
+
+  await page.locator('#alicerce-assistant-input').fill('Oi, Alicia');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Que bom ter você por aqui');
+
+  await page.locator('#alicerce-assistant-input').fill('Estou desanimado hoje');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Sinto muito que hoje esteja sendo difícil');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Quer me contar o que mais está pesando?');
+
+  await page.locator('#alicerce-assistant-input').fill('Sim');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Pode me contar no seu ritmo');
+
+  const memoryState = await page.evaluate(function () {
+    return {
+      messageCount: AlicerceIA._messages.length,
+      roles: AlicerceIA._messages.map(function (item) { return item.role; }),
+      storedConversationKeys: Object.keys(localStorage)
+        .filter(function (key) { return /alicia-brain|alicia-chat|conversation-history/i.test(key); })
+        .sort(),
+      brainVersion: window.AliciaBrain && window.AliciaBrain.version
+    };
+  });
+
+  expect(memoryState.brainVersion).toBe('1.0.0');
+  expect(memoryState.messageCount).toBe(4);
+  expect(memoryState.roles).toEqual(['user', 'assistant', 'user', 'assistant']);
+  expect(memoryState.storedConversationKeys).toEqual([]);
+
+  await page.locator('#alicerce-assistant-clear').click();
+  const cleared = await page.evaluate(function () {
+    return AlicerceIA._messages.length;
+  });
+  expect(cleared).toBe(0);
+});
+
+test('Alicia preserva as perguntas financeiras no interpretador local existente', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-brain-finance-fallback';
+    Store.lang = 'pt';
+    Store.movements = [
+      { id: 'brain-finance-1', tipo: 'despesa', categoria: 'alimentacao', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 32.50, data: Clock.today(), status: 'pago' }
+    ];
+    Store.installments = [];
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await page.locator('#alicerce-assistant-input').fill('Quanto gastei com lanche este mês?');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('32,50');
+});
