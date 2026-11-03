@@ -5567,10 +5567,49 @@ AlicerceIA.abrir=function(){
   }
   if(!Array.isArray(this._messages)||!this._messages.length)this._welcomeTypingStarted=false;
   go('assistente');
+  this.carregarHistoricoRemoto();
+};
+
+AlicerceIA._historyLoadedForUser='';
+AlicerceIA.carregarHistoricoRemoto=async function(){
+  var userId=String(Store.userId||'');
+  if(!userId||this._historyLoadedForUser===userId)return;
+  var consentKey='alicia_ai_consent_v1_'+userId;
+  var consent='';
+  try{consent=window.localStorage.getItem(consentKey)||''}catch(error){}
+  if(consent!=='yes')return;
+  var client=window.alicerceSupabase;
+  if(!client||!client.functions||typeof client.functions.invoke!=='function')return;
+  this._historyLoadedForUser=userId;
+  try{
+    var result=await client.functions.invoke('alicia-chat',{body:{action:'history',consent:true}});
+    if(String(Store.userId||'')!==userId)return;
+    if(result&&result.error)throw result.error;
+    var rows=result&&result.data&&Array.isArray(result.data.messages)?result.data.messages:[];
+    if(rows.length){
+      this._messages=rows.map(function(item){return {role:item.role==='user'?'user':'assistant',text:String(item.text||'')}});
+      while(this._messages.length>40)this._messages.shift();
+      render();
+    }
+  }catch(error){
+    this._historyLoadedForUser='';
+    console.warn('Alicia: não foi possível recuperar o histórico remoto.',error);
+  }
 };
 
 AlicerceIA.limparConversa=function(){
   this.pararAudio();
+  var userId=String(Store.userId||'');
+  var consentKey='alicia_ai_consent_v1_'+userId;
+  var consent='';
+  try{consent=window.localStorage.getItem(consentKey)||''}catch(error){}
+  var client=window.alicerceSupabase;
+  if(userId&&consent==='yes'&&client&&client.functions&&typeof client.functions.invoke==='function'){
+    client.functions.invoke('alicia-chat',{body:{action:'clear',consent:true}}).catch(function(error){
+      console.warn('Alicia: não foi possível limpar o histórico remoto.',error);
+    });
+  }
+  this._historyLoadedForUser=userId;
   this._messages=[];
   this._pendingExpenseDraft=null;
   this._pendingFinancialReview=null;
@@ -6113,11 +6152,51 @@ AlicerceIA.enviarMensagem=async function(question){
   }
 
   var answer='';
+  var localAnswer='';
   try{
-    answer=String(this.responder(questionForEngine)||'');
+    localAnswer=String(this.responder(questionForEngine)||'');
   }catch(error){
-    answer=this._label('help');
+    localAnswer=this._label('help');
   }
+  answer=localAnswer;
+
+  var userId=String(Store.userId||'');
+  var client=window.alicerceSupabase;
+  if(userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
+    var consentKey='alicia_ai_consent_v1_'+userId;
+    var consent='';
+    try{consent=window.localStorage.getItem(consentKey)||''}catch(error){}
+    if(consent!=='yes'){
+      var notice=Store.lang==='en'
+        ? 'Alicia can use an external AI provider (OpenRouter) to answer naturally. Your message, recent conversation history and, when relevant, a summary calculated by Alicerce may be sent to that provider. Conversation text is saved to your private Alicerce account. Audio recordings are not sent by this chat. Do you agree?'
+        : Store.lang==='es'
+          ? 'Alicia puede usar un proveedor externo de IA (OpenRouter) para responder de forma natural. Tu mensaje, el historial reciente y, cuando sea relevante, un resumen calculado por Alicerce pueden enviarse a ese proveedor. El texto de la conversación se guarda en tu cuenta privada de Alicerce. Este chat no envía grabaciones de audio. ¿Aceptas?'
+          : 'Alicia pode usar um provedor externo de IA (OpenRouter) para responder com naturalidade. Sua mensagem, o histórico recente e, quando relevante, um resumo calculado pelo Alicerce podem ser enviados a esse provedor. O texto da conversa fica salvo na sua conta privada do Alicerce. Este chat não envia gravações de áudio. Você autoriza?';
+      try{
+        consent=window.confirm(notice)?'yes':'no';
+        if(consent==='yes')window.localStorage.setItem(consentKey,'yes');
+      }catch(error){consent='no';}
+    }
+    if(consent==='yes'){
+      var financeIntent=/(gasto|gastei|compra|comprei|paguei|saldo|cart[aã]o|fatura|despesa|receita|dinheiro|parcela|financeir|mes passado|m[eê]s passado|m[eê]s anterior|compar)/i.test(questionForEngine);
+      var financeContext=financeIntent?localAnswer:'';
+      try{
+        var aiResult=await client.functions.invoke('alicia-chat',{
+          body:{message:message,finance_context:financeContext,consent:true}
+        });
+        if(String(Store.userId||'')!==userId)return;
+        if(aiResult&&aiResult.error)throw aiResult.error;
+        var aiData=aiResult&&aiResult.data?aiResult.data:{};
+        if(!aiData.ok||!aiData.answer)throw new Error('Alicia não recebeu uma resposta válida do cérebro conversacional.');
+        answer=String(aiData.answer);
+      }catch(error){
+        console.warn('Alicia: cérebro conversacional indisponível; usando resposta local.',error);
+        var status=document.getElementById('alicerce-assistant-status');
+        if(status)status.textContent=Store.lang==='en'?'AI temporarily unavailable. Alicia answered using the local financial engine.':Store.lang==='es'?'IA temporalmente no disponible. Alicia respondió usando el motor financiero local.':'A IA está temporariamente indisponível. Alicia respondeu usando o mecanismo local do Alicerce.';
+      }
+    }
+  }
+
   this._messages.push({role:'assistant',text:answer});
   while(this._messages.length>4)this._messages.splice(0,2);
   this._question=message;
