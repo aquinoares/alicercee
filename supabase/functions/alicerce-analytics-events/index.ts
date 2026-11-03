@@ -16,6 +16,8 @@ function allowedOrigins() {
     .filter(Boolean);
   const defaults = [
     "https://alicerce-app.vercel.app",
+    "https://alicerce-app-git-feat-alicerce-growth-analytics-f3f5c3-aq-10de.vercel.app",
+    "https://alicerce-git-feat-alicerce-growth-analytics-foun-edc470-aq-10de.vercel.app",
     "https://alicerce-swart.vercel.app",
     "http://127.0.0.1:4310",
     "http://localhost:4310",
