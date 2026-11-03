@@ -50,7 +50,7 @@
 
   function normalize(value) {
     var raw = String(value || '').toLowerCase()
-      .replace(/\bnum(?=\s+(?:quero|queria|to|estou|aguento|aguentando|tenho|consigo)\b)/g, 'nao')
+      .replace(/\bnum(?=\s+(?:quero|queria|t[oô]|estou|aguento|aguentando|tenho|consigo)\b)/g, 'nao')
       .replace(/([a-z])\1{3,}/g, '$1$1')
       .replace(/\bc\s*\/\s*/g, 'com ');
     var text = raw.normalize('NFD')
