@@ -85,8 +85,8 @@ Assim, uma compra antiga deve aparecer quando uma das suas parcelas tem vencimen
 ### Mensagens não entendidas
 - Alicia acolhe e pergunta como a pessoa está; pede consentimento antes do registro.
 - O registro é local, limitado, sem envio à nuvem e sem user_id.
-- Filtros conservadores bloqueiam números, termos financeiros, URLs, identificadores explícitos e contexto comum de familiares/nomes.
-- Limitação: heurísticas locais não garantem detectar todo nome escrito integralmente em minúsculas. Não habilitar coleta para clientes sem revisão de privacidade e extração de entidades mais forte.
+- Filtros conservadores bloqueiam números, termos financeiros, URLs, identificadores explícitos e contexto familiar. Além disso, o texto só é guardado quando todos os tokens pertencem a uma lista de palavras genéricas permitidas; qualquer token desconhecido faz a frase inteira ser descartada.
+- O filtro privilegia privacidade sobre cobertura: mensagens com vocabulário fora da lista não serão aproveitadas para treino. Uma palavra permitida pode coincidir com nome usado como substantivo; por isso a coleta continua desativada para clientes e exige revisão de privacidade antes de qualquer liberação.
 
 ## Evidências e testes
 

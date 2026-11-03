@@ -563,6 +563,11 @@ test('filtro de feedback local recusa número, dado financeiro e contexto famili
   await family.ai.enviarMensagem('minha filha maria está passando por isso');
   assert.equal(family.ai.registrarNaoEntendida(true), false);
   assert.equal(family.localStorage.getItem('alicia_unknown_feedback_v1'), null);
+
+  const lowercaseName = makeHarness();
+  await lowercaseName.ai.enviarMensagem('mariana chegou cedo');
+  assert.equal(lowercaseName.ai.registrarNaoEntendida(true), false);
+  assert.equal(lowercaseName.localStorage.getItem('alicia_unknown_feedback_v1'), null);
 });
 
 test('áudio, reconhecimento e TTS ficam desativados em runtime', function () {
