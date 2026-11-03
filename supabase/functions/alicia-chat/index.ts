@@ -153,6 +153,19 @@ Deno.serve(async (req: Request) => {
 
     const conversationId = conversationResult.data.id;
 
+    if (action === "history") {
+      const historyResult = await auth.admin.from("alicia_messages")
+        .select("role,content,created_at")
+        .eq("user_id", userId)
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: false })
+        .limit(40);
+      if (historyResult.error) return reply(req, { error: "Não foi possível recuperar a conversa." }, 503);
+      const messages = (Array.isArray(historyResult.data) ? historyResult.data.slice().reverse() : [])
+        .map((item: any) => ({ role: item.role, text: String(item.content || ""), created_at: item.created_at }));
+      return reply(req, { ok: true, conversation_id: conversationId, messages });
+    }
+
     if (action === "clear") {
       const removed = await auth.admin.from("alicia_messages")
         .delete().eq("user_id", userId).eq("conversation_id", conversationId);
@@ -247,7 +260,7 @@ Deno.serve(async (req: Request) => {
       answer = await callModel({ apiKey, model, system, messages: history });
     } catch (firstError) {
       const error = firstError as any;
-      if (Number(error?.status) === 429 && model !== "openrouter/free") {
+      if ([404, 429, 503].indexOf(Number(error?.status)) >= 0 && model !== "openrouter/free") {
         answer = await callModel({ apiKey, model: "openrouter/free", system, messages: history });
       } else {
         throw firstError;
