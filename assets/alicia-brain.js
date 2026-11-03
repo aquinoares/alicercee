@@ -248,8 +248,8 @@
   function assessSelfHarmRisk(message) {
     var value = normalize(message);
     if (!value || isEverydayMetaphor(value)) return 'low';
-    if (isImmediateSelfSafetyRisk(value)) return 'high';
     if (isExplicitNegatedSelfHarmStatement(value)) return 'low';
+    if (isImmediateSelfSafetyRisk(value)) return 'high';
     if (isPastOrNegatedSelfSafetyStatement(value)) return 'low';
 
     if (hasAny(value, [
