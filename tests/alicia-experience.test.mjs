@@ -468,7 +468,7 @@ test('primeiro retorno às finanças após crise pergunta uma vez e depois atend
   const second = await env.ai.enviarMensagem('me mostra o saldo');
   assert.equal(second, 'Resposta financeira do motor.');
   assert.equal(env.ai._aliciaCareState, null);
-  assert.equal(env.calls.filter(x => /saldo|gastei/i.test(x)).length, 2);
+  assert.equal(env.calls.filter(x => /saldo|gastei/i.test(x)).length, 1);
 });
 
 test('confirmação positiva retoma a pergunta financeira que estava pendente', async function () {
