@@ -446,7 +446,7 @@
 
     AlicerceIA.responder = function (question) {
       if (this._aliciaBrainChatMode) {
-        var currentMessage = lastMessage(this._messages, 'user') || question;
+        var currentMessage = question || lastMessage(this._messages, 'user');
         var language = (typeof Store !== 'undefined' && Store.lang) ? Store.lang : 'pt';
         var result = root.AliciaBrain.respond(currentMessage, this._messages, language);
         if (result && result.handled) {
