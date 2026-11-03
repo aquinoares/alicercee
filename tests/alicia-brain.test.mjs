@@ -473,9 +473,9 @@ test('o botão fixo de ajuda é instalado independentemente do classificador', f
   assert.equal(button.textContent, 'Preciso de ajuda agora');
   assert.ok(panel);
   const hrefs = nodes.filter(function (element) { return element.href; }).map(function (element) { return element.href; });
-  assert.ok(hrefs.includes('tel:188'));
-  assert.ok(hrefs.includes('tel:192'));
-  assert.ok(hrefs.includes('https://cvv.org.br'));
+  assert.ok(hrefs.some(function (href) { return href === 'tel:188'; }));
+  assert.ok(hrefs.some(function (href) { return href === 'tel:192'; }));
+  assert.ok(hrefs.some(function (href) { return href === 'https://cvv.org.br'; }));
 });
 
 

@@ -4,6 +4,9 @@ on:
   pull_request:
     paths:
       - "assets/alicia-brain.js"
+      - "assets/alicia-chat-experience.js"
+      - "index.html"
+      - "tests/alicia-experience.test.mjs"
       - "tests/alicia-brain.test.mjs"
       - "supabase/functions/alicia-safety-alert/index.ts"
       - "package.json"
