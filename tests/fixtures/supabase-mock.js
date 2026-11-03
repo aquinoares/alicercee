@@ -9,6 +9,8 @@
   window.__alicerceMockSessionUserId = null;
   window.__alicerceMockCloudRows = [];
   window.__alicerceMockUpsertError = null;
+  window.__alicerceMockFunctionInvocations = [];
+  window.__alicerceMockFunctionThrow = false;
 
   window.supabase = {
     createClient: function () {
@@ -144,6 +146,16 @@
             }
           };
           return query;
+        },
+        functions: {
+          invoke: async function (functionName, options) {
+            window.__alicerceMockFunctionInvocations.push({
+              name: String(functionName || ''),
+              options: options ? JSON.parse(JSON.stringify(options)) : null
+            });
+            if (window.__alicerceMockFunctionThrow) throw new Error('Simulated Edge Function failure');
+            return { data: { ok: true }, error: null };
+          }
         },
         rpc: async function () {
           return { data: null, error: { message: 'RPC disabled in UI tests' } };

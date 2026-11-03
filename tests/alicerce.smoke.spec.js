@@ -6,6 +6,8 @@ const supabaseMock = readFileSync(new URL('./fixtures/supabase-mock.js', import.
 const classificationBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-benchmark-ptbr.json', import.meta.url), 'utf8'));
 const classificationContextBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-context-40-ptbr.json', import.meta.url), 'utf8'));
 const bankDescriptionBenchmark = JSON.parse(readFileSync(new URL('./fixtures/bank-description-benchmark-ptbr.json', import.meta.url), 'utf8'));
+const analyticsMigration = readFileSync(new URL('../supabase/migrations/20261102231731_create_alicerce_product_events.sql', import.meta.url), 'utf8');
+const analyticsEdgeFunction = readFileSync(new URL('../supabase/functions/alicerce-analytics-events/index.ts', import.meta.url), 'utf8');
 const supabaseCdn = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js';
 const supabaseProject = 'https://hwmpwvbvgiqotdzkmgwh.supabase.co';
 
@@ -295,6 +297,215 @@ test('gera prévias dos PDFs de Gastos e Visão Financeira sem abrir janela exte
   expect(page.context().pages().length).toBe(popupInicial);
 });
 
+
+test('eventos de uso permanecem desativados por padrão e exigem consentimento explícito', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: false };
+    window.__alicerceMockSessionUserId = 'analytics-user';
+    await alicerceTrackEvent('app_opened');
+    return window.__alicerceMockFunctionInvocations.slice();
+  });
+  expect(result).toEqual([]);
+});
+
+test('eventos autorizados enviam apenas nome do evento e identificador aleatório, nunca dados financeiros', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    Store.movements = [{ valor: 999.99, categoria: 'saude', descricao: 'Dado que não pode sair' }];
+    window.__alicerceMockSessionUserId = 'analytics-user';
+    await alicerceTrackEvent('app_opened');
+    await alicerceTrackEvent('not-an-allowed-event');
+    return window.__alicerceMockFunctionInvocations.slice();
+  });
+  expect(result).toHaveLength(1);
+  expect(result[0].name).toBe('alicerce-analytics-events');
+  expect(Object.keys(result[0].options.body).sort()).toEqual(['action', 'event_id', 'event_name']);
+  expect(result[0].options.body.action).toBe('track');
+  expect(result[0].options.body.event_name).toBe('app_opened');
+  expect(result[0].options.body.event_id).toMatch(/^[0-9a-f-]{36}$/i);
+  expect(JSON.stringify(result)).not.toContain('999.99');
+  expect(JSON.stringify(result)).not.toContain('Dado que não pode sair');
+});
+
+test('eventos não são enviados quando a sessão Supabase não pertence à conta ativa', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    window.__alicerceMockSessionUserId = 'another-user';
+    await alicerceTrackEvent('app_opened');
+    return window.__alicerceMockFunctionInvocations.slice();
+  });
+  expect(result).toEqual([]);
+});
+
+test('desativar compartilhamento persiste a preferência e solicita exclusão de eventos anteriores', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'config');
+  await page.evaluate(function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    window.__alicerceMockSessionUserId = 'analytics-user';
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+  await expect(page.locator('#alicerce-analytics-consent')).toBeChecked();
+  await page.locator('#alicerce-analytics-consent').evaluate(function (checkbox) {
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForFunction(function () {
+    return Store.settings.analyticsConsent === false &&
+      window.__alicerceMockFunctionInvocations.length === 1;
+  });
+  const result = await page.evaluate(function () {
+    return {
+      consent: Store.settings.analyticsConsent,
+      invocations: window.__alicerceMockFunctionInvocations,
+      settingsUpsert: window.__alicerceMockUpserts.find(function (row) {
+        return row.table === 'alicerce_data' && row.payload && row.payload.store_name === 'settings';
+      })
+    };
+  });
+  expect(result.consent).toBe(false);
+  expect(result.settingsUpsert.payload.data.analyticsConsent).toBe(false);
+  expect(result.invocations).toHaveLength(1);
+  expect(result.invocations[0].name).toBe('alicerce-analytics-events');
+  expect(result.invocations[0].options.body).toEqual({ action: 'revoke' });
+});
+
+test('falha ao apagar eventos não reativa o consentimento após a pessoa desativá-lo', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'config');
+  await page.evaluate(function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    window.__alicerceMockSessionUserId = 'analytics-user';
+    window.__alicerceMockFunctionThrow = true;
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+  await page.locator('#alicerce-analytics-consent').evaluate(function (checkbox) {
+    checkbox.checked = false;
+    checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await page.waitForFunction(function () {
+    return Store.settings.analyticsConsent === false &&
+      window.__alicerceMockFunctionInvocations.length === 1;
+  });
+  const result = await page.evaluate(function () {
+    return {
+      consent: Store.settings.analyticsConsent,
+      settingsUpsert: window.__alicerceMockUpserts.find(function (row) {
+        return row.table === 'alicerce_data' && row.payload && row.payload.store_name === 'settings';
+      })
+    };
+  });
+  expect(result.consent).toBe(false);
+  expect(result.settingsUpsert.payload.data.analyticsConsent).toBe(false);
+});
+
+test('a configuração de analytics descreve o consentimento opcional em três idiomas', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'config');
+  const initial = await page.locator('#alicerce-analytics-consent').count();
+  expect(initial).toBe(1);
+  const translations = await page.evaluate(function () {
+    const original = Store.lang;
+    const values = {};
+    ['pt', 'en', 'es'].forEach(function (lang) {
+      Store.lang = lang;
+      document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+      values[lang] = document.getElementById('app').textContent;
+    });
+    Store.lang = original;
+    return values;
+  });
+  expect(translations.pt).toContain('Compartilhar eventos de uso');
+  expect(translations.en).toContain('Share usage events');
+  expect(translations.es).toContain('Compartir eventos de uso');
+});
+
+test('a criação de movimento registra apenas eventos genéricos após consentimento', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'analytics-user';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    Store.movements = [];
+    window.__alicerceMockFunctionInvocations = [];
+    window.__alicerceMockSessionUserId = 'analytics-user';
+    Store.addMovement({
+      tipo: 'despesa',
+      status: 'pago',
+      categoria: 'saude',
+      subcategoria: 'farmacia',
+      descricao: 'Medicamento de exemplo',
+      valor: 234.56,
+      data: '2026-11-02'
+    });
+  });
+  await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 2; });
+  const result = await page.evaluate(function () { return window.__alicerceMockFunctionInvocations; });
+  expect(result.map(function (item) { return item.options.body.event_name; }).sort())
+    .toEqual(['first_movement_created', 'movement_created']);
+  for (const item of result) {
+    expect(Object.keys(item.options.body).sort()).toEqual(['action', 'event_id', 'event_name']);
+    expect(JSON.stringify(item)).not.toContain('234.56');
+    expect(JSON.stringify(item)).not.toContain('Medicamento de exemplo');
+    expect(JSON.stringify(item)).not.toContain('farmacia');
+  }
+});
+
+test('a primeira compra no cartão também conta como primeira movimentação financeira', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.userId = 'analytics-user-installment';
+    Store.settings = { lang: 'pt', theme: 'azul', analyticsConsent: true };
+    Store.movements = [];
+    Store.installments = [];
+    window.__alicerceMockFunctionInvocations = [];
+    window.__alicerceMockSessionUserId = 'analytics-user-installment';
+    Store.addInstallment({
+      id: 'analytics-card-purchase-1',
+      compraId: 'analytics-card-purchase',
+      cardId: 'card-test',
+      tipo: 'cartao',
+      categoria: 'comida',
+      subcategoria: 'mercado',
+      descricao: 'Compra de mercado no cartão',
+      valor: 120,
+      data: '2026-11-27',
+      status: 'pendente',
+      parcelaAtual: 1,
+      parcelas: 3
+    });
+  });
+  await page.waitForFunction(function () { return window.__alicerceMockFunctionInvocations.length === 2; });
+  const result = await page.evaluate(function () {
+    return {
+      events: window.__alicerceMockFunctionInvocations,
+      installments: Store.installments
+    };
+  });
+  expect(result.installments).toHaveLength(1);
+  expect(result.events.map(function (item) { return item.options.body.event_name; }).sort())
+    .toEqual(['first_movement_created', 'movement_created']);
+  for (const item of result.events) {
+    expect(Object.keys(item.options.body).sort()).toEqual(['action', 'event_id', 'event_name']);
+    expect(JSON.stringify(item)).not.toContain('Compra de mercado no cartão');
+  }
+});
+
+test('a Edge Function e a tabela limitam coleta, exigem consentimento e não expõem a tabela pela Data API', function () {
+  expect(analyticsEdgeFunction).toContain('auth.getUser(token)');
+  expect(analyticsEdgeFunction).toContain('settings.analyticsConsent !== true');
+  expect(analyticsEdgeFunction).toContain('Object.keys(body).sort().join(",") !== "action,event_id,event_name"');
+  expect(analyticsEdgeFunction).toContain('.delete()');
+  expect(analyticsEdgeFunction).toContain('ALLOWED_EVENTS');
+  expect(analyticsMigration).toContain('enable row level security');
+  expect(analyticsMigration).toContain('from public, anon, authenticated');
+  expect(analyticsMigration).toContain('to service_role');
+  expect(analyticsMigration).not.toMatch(/^\\s*(amount|description|category|payload)\\s+/im);
+});
 
 test('envia cadastro com sucesso usando autenticação simulada', async function ({ page }) {
   await abrirAbertura(page);
@@ -1358,7 +1569,7 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
     greetingAt(9);
     Store.loans = [];
     Store.movements = [
-      { id: 'ia-1', tipo: 'despesa', categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 48.50, data: Clock.today(), status: 'pago' },
+      { id: 'ia-1', tipo: 'despesa', categoria: 'comida', subcategoria: 'lanchonete', descricao: 'Lanche', estabelecimento: 'Lanchonete Central', valor: 48.50, data: Clock.today(), status: 'pago', analysis: { expenseProfile: { source: 'user_confirmed', nature: 'discretionary', commitment: 'non_contractual', recurrence: 'occasional', behavior: 'variable', flexibility: 'high', context: 'leisure' } } },
       { id: 'ia-2', tipo: 'despesa', categoria: 'moradia', subcategoria: 'energia', descricao: 'Conta de luz', estabelecimento: 'Neoenergia', valor: 20, data: Clock.today(), status: 'pago' }
     ];
     Store.installments = [];

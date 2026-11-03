@@ -3523,16 +3523,33 @@ const Store={
 
   addMovement(mv){
     if(!mv||typeof mv!=='object'||Array.isArray(mv))return null;
+    var firstMovement = (!Array.isArray(this.movements) || this.movements.length === 0) &&
+      (!Array.isArray(this.installments) || this.installments.length === 0);
     var analysis=normalizeAlicerMovementAnalysis(mv.analysis);
     if(analysis)mv.analysis=analysis;
     else if(mv.analysis)delete mv.analysis;
     mv.id=mv.id||this._uid();mv.userId=this.userId;mv.createdAt=mv.createdAt||new Date().toISOString();
-    this.movements.push(mv);this.save();return mv;
+    this.movements.push(mv);this.save();
+    alicerceTrackEvent('movement_created');
+    if(firstMovement)alicerceTrackEvent('first_movement_created');
+    return mv;
   },
   removeMovement(id){this.movements=this.movements.filter(m=>String(m.id)!==String(id));this.save()},
   addCard(c){c.id=c.id||this._uid();c.userId=this.userId;this.cards.push(c);this.save();return c},
   addLoan(l){l.id=l.id||this._uid();l.userId=this.userId;this.loans.push(l);this.save();return l},
-  addInstallment(i){if(!i||!travarSalvar('inst',i))return null;var analysis=normalizeAlicerMovementAnalysis(i.analysis);if(analysis)i.analysis=analysis;else if(i.analysis)delete i.analysis;i.id=i.id||this._uid();this.installments.push(i);this.save();return i},
+  addInstallment(i){
+    if(!i||!travarSalvar('inst',i))return null;
+    var firstMovement = (!Array.isArray(this.movements) || this.movements.length === 0) &&
+      (!Array.isArray(this.installments) || this.installments.length === 0);
+    var analysis=normalizeAlicerMovementAnalysis(i.analysis);
+    if(analysis)i.analysis=analysis;else if(i.analysis)delete i.analysis;
+    i.id=i.id||this._uid();
+    this.installments.push(i);
+    this.save();
+    alicerceTrackEvent('movement_created');
+    if(firstMovement)alicerceTrackEvent('first_movement_created');
+    return i;
+  },
   addCommitment(c){if(!c||!travarSalvar('comp',c))return null;c.id=c.id||this._uid();c.userId=this.userId;this.commitments.push(c);this.save();return c},
   addDoctor(d){d.id=d.id||this._uid();d.userId=this.userId;this.doctors.push(d);this.save();return d},
   addMedication(m){m.id=m.id||this._uid();m.userId=this.userId;this.medications.push(m);this.save();return m},
@@ -9468,6 +9485,7 @@ async function doLogin(){
     if(!data.user)throw new Error('Não foi possível identificar a conta. Tente novamente.');
 
     await Store.init(data.user.id);
+    alicerceTrackAppOpen();
     Store.userEmail=String(data.user.email||'');
     Store.screen='home';
     Store.screenData=null;
@@ -13221,6 +13239,9 @@ function renderConfig(){
   html+='<div class="form-group"><label class="form-label" for="alicerce-config-theme">'+t('aparência')+'</label><select id="alicerce-config-theme" onchange="changeTheme(this.value)"><option value="azul"'+(Store.theme==='azul'?' selected':'')+'>'+t('temaAzul')+'</option><option value="claro"'+(Store.theme==='claro'?' selected':'')+'>'+t('temaClaro')+'</option><option value="marinho"'+(Store.theme==='marinho'?' selected':'')+'>'+t('temaMarinho')+'</option><option value="moderno"'+(Store.theme==='moderno'?' selected':'')+'>Moderno</option></select></div>';
   html+='<div class="form-group"><label class="form-label" for="alicerce-config-lang">'+t('idioma')+'</label><select id="alicerce-config-lang" onchange="changeLang(this.value)"><option value="pt"'+(Store.lang==='pt'?' selected':'')+'>Portugues</option><option value="en"'+(Store.lang==='en'?' selected':'')+'>English</option><option value="es"'+(Store.lang==='es'?' selected':'')+'>Espanol</option></select></div>';
   html+='<div class="form-group"><label class="form-label"><input type="checkbox" '+(Store.settings.hideHealthDetails?'checked':'')+' onchange="toggleHideHealth(this.checked)"> '+t('ocultarSaude')+'</label></div>';
+  var analyticsTitle=Store.lang==='en'?'Share usage events to improve Alicerce':Store.lang==='es'?'Compartir eventos de uso para mejorar Alicerce':'Compartilhar eventos de uso para melhorar o Alicerce';
+  var analyticsDescription=Store.lang==='en'?'Records general events such as app opening and movement creation, linked to your account for aggregate metrics. It never sends amounts, categories, descriptions, merchants, cards or financial details. Turning it off deletes your previously stored events. Optional; off by default.':Store.lang==='es'?'Registra eventos generales, como abrir la aplicación y crear movimientos, vinculados a tu cuenta para métricas agregadas. Nunca envía importes, categorías, descripciones, comercios, tarjetas ni detalles financieros. Al desactivarlo, se eliminan los eventos anteriores vinculados a tu cuenta. Es opcional y está desactivado por defecto.':'Registra eventos gerais, como abertura do aplicativo e criação de movimentações, vinculados à sua conta para gerar métricas agregadas. Não envia valores, categorias, descrições, estabelecimentos, cartões ou detalhes financeiros. Ao desativar, os eventos anteriores vinculados à sua conta serão apagados. É opcional e vem desativado.';
+  html+='<div class="form-group" style="padding:14px;border:1px solid var(--line);border-radius:12px;margin-top:14px"><label class="form-label" for="alicerce-analytics-consent" style="display:flex;align-items:flex-start;gap:10px"><input id="alicerce-analytics-consent" type="checkbox" '+(Store.settings.analyticsConsent===true?'checked':'')+' onchange="alicerceSetAnalyticsConsent(this.checked)" style="margin-top:3px"> <span>'+analyticsTitle+'</span></label><p class="text-muted text-sm" style="margin:7px 0 0 27px;line-height:1.5">'+analyticsDescription+'</p></div>';
   html+='<div class="section-divider"></div>';
   html+='<div class="list-item"><div class="li-left">'+icon('whatsapp','ico-sm')+'<div class="li-info"><div class="li-name">'+t('whats')+'</div></div></div>'+icon('arrowRight','ico-sm')+'</div>';
   html+='<div class="list-item" onclick="generateMonthlyPDF()" style="cursor:pointer"><div class="li-left">'+icon('file','ico-sm')+'<div class="li-info"><div class="li-name">'+t('pdf')+'</div><div class="li-sub">'+t('pdfDesc')+'</div></div></div>'+icon('arrowRight','ico-sm')+'</div>';
@@ -13238,6 +13259,89 @@ function changeTheme(theme){
 }
 function changeLang(lang){Store.lang=lang;Store.settings.lang=lang;Store.save();render()}
 function toggleHideHealth(val){Store.settings.hideHealthDetails=val;Store.save()}
+
+function alicerceAnalyticsAllowedEvent(eventName){
+  return ['app_opened','movement_created','first_movement_created'].indexOf(String(eventName||''))>=0;
+}
+
+async function alicerceTrackEvent(eventName){
+  if(!Store || !Store.userId || !Store.settings || Store.settings.analyticsConsent!==true) return false;
+  if(!alicerceAnalyticsAllowedEvent(eventName)) return false;
+  var client=window.alicerceSupabase;
+  if(!client || !client.auth || !client.functions || typeof client.functions.invoke!=='function') return false;
+  try{
+    var sessionResult=await client.auth.getSession();
+    var session=sessionResult&&sessionResult.data?sessionResult.data.session:null;
+    if(!session || !session.user || String(session.user.id)!==String(Store.userId)) return false;
+    var eventId='';
+    try{
+      if(window.crypto && typeof window.crypto.randomUUID==='function') eventId=window.crypto.randomUUID();
+    }catch(ignoreUuid){}
+    if(!eventId) return false;
+    var result=await client.functions.invoke('alicerce-analytics-events',{
+      body:{action:'track',event_id:eventId,event_name:String(eventName)}
+    });
+    if(result && result.error) throw result.error;
+    return true;
+  }catch(error){
+    console.warn('[Alicerce] Evento de uso não enviado:',String(error&&error.message||'falha de rede'));
+    return false;
+  }
+}
+
+function alicerceTrackAppOpen(){
+  var userId=String(Store && Store.userId || '');
+  if(!userId || !Store.settings || Store.settings.analyticsConsent!==true) return;
+  if(window.__alicerceAnalyticsOpenedUser===userId) return;
+  window.__alicerceAnalyticsOpenedUser=userId;
+  alicerceTrackEvent('app_opened').then(function(ok){
+    if(!ok && window.__alicerceAnalyticsOpenedUser===userId) window.__alicerceAnalyticsOpenedUser='';
+  });
+}
+
+async function alicerceSetAnalyticsConsent(enabled){
+  if(!Store.userId || !window.alicerceSupabase){
+    showToast(Store.lang==='en'?'Sign in to save this preference.':Store.lang==='es'?'Inicia sesión para guardar esta preferencia.':'Entre na sua conta para salvar essa preferência.');
+    render();
+    return;
+  }
+  var previous=Store.settings.analyticsConsent===true;
+  var next=enabled===true;
+  Store.settings.analyticsConsent=next;
+  try{
+    var saved=await Repository.cloudSet(Store.userId,'settings',Store.settings);
+    if(!saved || saved.ok!==true || saved.semNuvem===true){
+      Store.settings.analyticsConsent=previous;
+      try{localStorage.setItem(Repository._key(Store.userId,'settings'),JSON.stringify(Store.settings))}catch(ignoreStorage){}
+      throw new Error('Não foi possível salvar a preferência com segurança.');
+    }
+    try{localStorage.setItem(Repository._key(Store.userId,'settings'),JSON.stringify(Store.settings))}catch(ignoreStorage2){}
+    if(next){
+      var message=Store.lang==='en'?'Usage sharing enabled. You can turn it off at any time.':Store.lang==='es'?'Compartir uso está activado. Puedes desactivarlo cuando quieras.':'Compartilhamento de uso ativado. Você pode desativar quando quiser.';
+      showToast(message);
+      alicerceTrackAppOpen();
+    }else{
+      var client=window.alicerceSupabase;
+      try{
+        var revoked=await client.functions.invoke('alicerce-analytics-events',{body:{action:'revoke'}});
+        if(revoked && revoked.error){
+          showToast(Store.lang==='en'?'Usage sharing is off, but previous events could not be deleted. Try again.':Store.lang==='es'?'El envío está desactivado, pero no se pudieron borrar los eventos anteriores. Inténtalo de nuevo.':'O compartilhamento foi desativado, mas não foi possível apagar os eventos anteriores. Tente novamente.');
+        }else{
+          showToast(Store.lang==='en'?'Usage sharing disabled and previous events deleted.':Store.lang==='es'?'El envío está desactivado y los eventos anteriores fueron borrados.':'Compartilhamento desativado e eventos anteriores apagados.');
+        }
+      }catch(revokeError){
+        showToast(Store.lang==='en'?'Usage sharing is off, but deletion of previous events is pending. Retry by enabling and disabling again.':Store.lang==='es'?'El envío está desactivado, pero la eliminación de eventos anteriores está pendiente. Vuelve a intentarlo.':'O compartilhamento está desativado, mas a exclusão dos eventos anteriores está pendente. Tente novamente.');
+      }
+      window.__alicerceAnalyticsOpenedUser='';
+    }
+  }catch(error){
+    Store.settings.analyticsConsent=previous;
+    try{localStorage.setItem(Repository._key(Store.userId,'settings'),JSON.stringify(Store.settings))}catch(ignoreStorage3){}
+    showToast(error&&error.message?error.message:'Não foi possível atualizar a preferência.');
+  }
+  render();
+}
+
 async function doLogout(){
   try{
     const sb=window.alicerceSupabase;
@@ -13251,6 +13355,7 @@ async function doLogout(){
     return;
   }
   tfInvalidarCacheAdmin();
+  window.__alicerceAnalyticsOpenedUser='';
   Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
   ['movements','cards','loans','installments','commitments','financing','consortium','extraIncome','insurance','familyPeople','familyCategories','doctors','medications','doseLogs','learning'].forEach(k=>{Store[k]=Array.isArray(Store[k])?[]:{}});
   clearAllTimers();render();
@@ -16807,6 +16912,7 @@ async function alicerceInicializarSessaoPersistida(){
     const sessao=resposta&&resposta.data?resposta.data.session:null;
     if(sessao&&sessao.user&&sessao.user.id){
       await Store.init(sessao.user.id);
+      alicerceTrackAppOpen();
       Store.userEmail=String(sessao.user.email||'');
       Store.screen=window.__alicerceRecoveryActive?'passwordRecovery':'home';
       Store.screenData=null;
