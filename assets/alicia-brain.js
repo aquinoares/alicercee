@@ -172,6 +172,7 @@
 
   function isPastOrNegatedSelfSafetyStatement(value) {
     if (/\b(?:estou|to) em seguranca\b.*\bnao (?:vou|penso em|tenho intencao de) me (?:machucar|ferir|matar)\b/.test(value)) return true;
+    if (isExplicitNegatedSelfHarmStatement(value)) return true;
     if (/\bnao e que eu queira me matar\b/.test(value) &&
         /\b(?:so|apenas)\b.*\b(?:cansad[oa]|esgotad[oa]|contas|dificil)\b/.test(value)) return true;
     if (/\b(?:ano passado|no ano passado|naquele ano|naquela epoca)\b/.test(value) &&
@@ -179,10 +180,35 @@
     return false;
   }
 
+  function isExplicitNegatedSelfHarmStatement(value) {
+    return /\bnao (?:vou|quero|pretendo) me (?:matar|machucar|ferir)\b/.test(value) &&
+      /\b(?:so|apenas)\b.*\b(?:triste|cansad[oa]|desanimad[oa]|queria sumir|queria desaparecer|queria descansar|sem animo)\b/.test(value);
+  }
+
+  function hasHeavyNegativeTone(value) {
+    return hasAny(value, [
+      /\bnao tenho forcas\b/,
+      /\bto no limite\b/,
+      /\bnao da mais\b/,
+      /\bnao consigo fazer mais nada\b/,
+      /\bnao sei por que continuo tentando\b/,
+      /\bme sinto um lixo\b/,
+      /\bnao tenho animo\b/,
+      /\bsem vontade de fazer nada\b/,
+      /\b(?:to|estou) numa fase muito ruim\b/,
+      /\b(?:to|estou) muito mal\b/,
+      /\btudo parece pesado\b/,
+      /\bnao tenho vontade de nada\b/,
+      /\bnao tenho vontade de fazer nada\b/,
+      /\bnao consigo mais\b/,
+      /\bsem forcas para continuar\b/
+    ]);
+  }
+
   function isThirdPartySelfSafetyConcern(value) {
     return hasAny(value, [
       /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:disse|falou|contou|escreveu|mandou)\b.*\b(?:nao quer mais viver|nao quer viver|nao quer continuar|nao quer estar aqui|quer morrer|quer sumir|pensa em se matar|desistir de tudo)\b/,
-      /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:postou|publicou|escreveu|mandou)\b.*\b(?:despedida|adeus|tchau|nao aguento mais|sumir)\b/
+      /\b(?:meu|minha)\s+(?:irmao|irma|amigo|amiga|mae|pai|filho|filha|companheiro|companheira|namorado|namorada)\b.*\b(?:postou|publicou|escreveu|mandou)\b.*\b(?:despedida|adeus|tchau|nao aguento mais|nao aguenta mais|nao quer mais viver|sumir)\b/
     ]);
   }
 
@@ -200,6 +226,9 @@
     return hasAny(value, [
       /\b(?:tomei|ing[ei]ri|bebi|usei)\b.*\b(?:comprimidos?|remedios?|medicamentos?|veneno)\b/,
       /\b(?:peguei|separei|abri|tirei|estou com|to com|tenho)\b.*\b(?:a )?cartela\b.*\b(?:remedios?|comprimidos?|medicamentos?)\b/,
+      /\b(?:peguei|abri|separei|estou com|to com|tenho)\b.*\b(?:o )?(?:vidro|frasco|pote)\b.*\b(?:remedios?|comprimidos?|medicamentos?)\b/,
+      /\b(?:to|estou) na beirada (?:do|da)\b.*\b(?:viaduto|ponte|predio|varanda)\b/,
+      /\b(?:vou|pretendo) partir dessa pra melhor\b/,
       /\b(?:vou|pretendo|estou pensando em) tomar (?:todos os )?(?:os )?(?:comprimidos?|remedios?|medicamentos?)\b/,
       /\b(?:vou|pretendo|decidi|ja escolhi|planejei|tenho um plano)\b.*\b(?:me jogar|pular|saltar|me matar|me suicidar|tirar (?:a )?minha vida|acabar com tudo)\b/,
       /\b(?:ja escolhi como vou fazer|so falta coragem)\b/,
@@ -220,6 +249,7 @@
     var value = normalize(message);
     if (!value || isEverydayMetaphor(value)) return 'low';
     if (isImmediateSelfSafetyRisk(value)) return 'high';
+    if (isExplicitNegatedSelfHarmStatement(value)) return 'low';
     if (isPastOrNegatedSelfSafetyStatement(value)) return 'low';
 
     if (hasAny(value, [
@@ -298,6 +328,7 @@
     /* Segurança é avaliada antes de finanças, memória e conversa. */
     if (isThirdPartyDanger(value)) return 'third_party_danger';
     if (isThirdPartySelfSafetyConcern(value)) return 'third_party_self_safety';
+    if (isExplicitNegatedSelfHarmStatement(value)) return 'care_check';
     var riskLevel = assessSelfHarmRisk(message);
     if (riskLevel === 'high' || riskLevel === 'medium') return 'self_safety_crisis';
     if (hasSensitiveData(message)) return 'sensitive_data';
@@ -334,6 +365,7 @@
       return 'forecast_without_data';
     }
     if (isFinancialQuestion(value)) return 'financial';
+    if (hasHeavyNegativeTone(value)) return 'care_check';
 
     if (/\b(?:devo|deveria|vale a pena|melhor comprar|compro)\b.*\b(?:bitcoin|cripto|criptomoeda|acao|acoes|fundo|investimento)\b/.test(value) ||
         /\b(?:bitcoin|criptomoeda|investir em)\b/.test(value)) return 'investment';
