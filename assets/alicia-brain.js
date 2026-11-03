@@ -289,6 +289,7 @@
       /\b(?:queria|quero) dormir (?:para|pra) sempre\b/,
       /\bseria melhor se eu sumisse\b/,
       /\bnao consigo continuar\b/,
+      /\bnao consigo mais acordar\b/,
       /\b(?:cansei de tudo|cansado de tudo)\b.*\b(?:quero sumir|sumir de vez)\b/,
       /\bnao (?:to |estou )?aguentando mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/,
       /\bnao aguento mais nada\b.*\b(?:deixar tudo pra tras|sumir)\b/,
