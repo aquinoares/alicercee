@@ -68,8 +68,8 @@
   }
 
   function isFinancialQuestion(value) {
-    var topics = /\b(?:gasto|gastos|gastei|despesa|despesas|saldo|fatura|cartao|conta|dinheiro|orcamento|economia|economizar|parcelas|receita|renda|uber|mercado|farmacia)\b/;
-    var question = /\b(?:quanto|onde|qual|quais|compare|comparar|compara|analise|analisa|aumentou|diminuiu|sobrou|posso pagar|consigo pagar|gastei)\b/;
+    var topics = /\b(?:gasto|gastos|gastei|despesa|despesas|saldo|fatura|cartao|conta|dinheiro|grana|orcamento|economia|economizar|parcelas|parcelar|receita|renda|uber|mercado|farmacia|extrato)\b/;
+    var question = /\b(?:quanto|onde|qual|quais|compare|comparar|compara|analise|analisa|aumentou|diminuiu|sobrou|posso pagar|consigo pagar|posso parcelar|parcelar|mostra|mostre|exibe|exibir|consulta|consultar|ver|veja|kd|cade|gastei)\b/;
     return topics.test(value) && question.test(value);
   }
 
@@ -98,17 +98,33 @@
       /\b(?:essa|a) fatura vai me matar(?: kkk+| haha+| rs+)?\b/,
       /\bmorri de rir\b/,
       /\bmorrendo de rir\b/,
-      /\bmorri de tanto rir\b/
+      /\bmorri de tanto rir\b/,
+      /\b(?:essa|a) fatura me mata\b/,
+      /\b(?:fiquei|estou|to) mort[oa] de vergonha\b/,
+      /\b(?:estou|to) morrendo de preguica\b/,
+      /\bme mato de rir\b/
+    ]);
+  }
+
+  function isImmediateSelfSafetyRisk(value) {
+    return hasAny(value, [
+      /\b(?:vou|pretendo|estou pensando em) tomar (?:todos os )?(?:os )?(?:remedios|comprimidos)(?: de uma vez)?\b/
     ]);
   }
 
   function isSelfSafetyRisk(value) {
     if (isEverydayMetaphor(value)) return false;
+    if (isImmediateSelfSafetyRisk(value)) return true;
     return hasAny(value, [
       /\b(?:quero|queria|vou|penso em|estou pensando em|tenho vontade de|pretendo)\s+(?:me\s+)?(?:matar|suicidar)\b/,
       /\b(?:tirar|acabar com)\s+a minha vida\b/,
       /\b(?:quero|queria|vou|penso em|tenho vontade de)\s+(?:me\s+)?(?:machucar|ferir)\b/,
       /\b(?:quero|queria|vou|penso em|tenho vontade de)\s+(?:sumir|desaparecer)\b/,
+      /\b(?:quero|queria|vou) dormir (?:para|pra) sempre\b/,
+      /\bninguem (?:ia|iria|vai) sentir (?:a )?minha falta\b/,
+      /\bnao vejo saida\b.*\bmelhor acabar(?: logo)?\b/,
+      /\bnao quero mais estar aqui\b/,
+      /\bsinto que(?: eu)? (?:to|estou) sumindo\b/,
       /\b(?:seria melhor|era melhor|melhor) (?:se )?eu nao existisse\b/,
       /\b(?:seria melhor|era melhor) sem mim\b/,
       /\b(?:nao aguento mais|nao da mais|nao consigo continuar)\b/,
@@ -137,6 +153,12 @@
     return cpf || email || password || cardNumber || explicitSecret;
   }
 
+  function isSensitiveDataRequest(value) {
+    return hasAny(value, [
+      /\b(?:me manda|manda|me passa|passa|me diga|diga|me informa|informa|me mostra|mostra|qual e)\b.*\bcpf\b.*\b(?:do|da)\s+(?:meu|minha|seu|sua)\s+(?:marido|esposa|esposo|mulher|namorado|namorada|pai|mae|filho|filha|irmao|irma)\b/
+    ]);
+  }
+
   function classify(message, messages, language) {
     var value = normalize(message);
     if (!value) return 'empty';
@@ -145,18 +167,23 @@
     if (isThirdPartyDanger(value)) return 'third_party_danger';
     if (isSelfSafetyRisk(value)) return 'self_safety_crisis';
     if (hasSensitiveData(message)) return 'sensitive_data';
+    if (isSensitiveDataRequest(value)) return 'sensitive_data_request';
+    if (isEverydayMetaphor(value)) return 'figurative_expression';
 
-    if (/\b(?:esquece|esqueca|apaga|apague|limpa|limpe)\b.*\b(?:o que eu falei|essa conversa|minhas mensagens|o que eu disse|isso)\b/.test(value)) {
+    if (/\b(?:esquece|esqueca)\s+(?:o que eu falei|o que eu disse|essa conversa|minhas mensagens)\b/.test(value) ||
+        /\b(?:apaga|apague|limpa|limpe)\b.*\b(?:o que eu falei|essa conversa|minhas mensagens|o que eu disse)\b/.test(value)) {
       return 'forget';
     }
     if (/\b(?:o que voce sabe sobre mim|o que sabe de mim|quais dados voce guarda|o que voce guardou|minhas memorias)\b/.test(value)) {
       return 'privacy_summary';
     }
-    if (/^(?:deixa pra la|deixa|esquece|nao quero falar|prefiro nao falar|vamos mudar de assunto)$/.test(value)) {
+    if (/^(?:deixa pra la|deixa|esquece|nao quero falar|prefiro nao falar|vamos mudar de assunto)$/.test(value) ||
+        /\b(?:esquece|deixa)\b.*\bdepois\b.*\ba gente ve\b/.test(value)) {
       return 'leave_it';
     }
     if (language && language !== 'pt') return 'unsupported_language';
 
+    if (/\b(?:to|estou) sem grana\b.*\bate (?:o )?dia \d{1,2}\b/.test(value)) return 'cashflow_support';
     if (isFinancialFollowup(value, messages)) return 'financial_followup';
     if (/\b(?:quanto|qual|que valor)\b.*\b(?:vou ter|terei|vai sobrar|sobrara|vou juntar|vou acumular)\b.*\b(?:ano que vem|proximo ano|ano seguinte)\b/.test(value)) {
       return 'forecast_without_data';
@@ -312,6 +339,9 @@
       'Tudo bem não ter certeza agora. Podemos começar por uma parte pequena: o que você sabe até aqui?',
       'Não precisa decidir neste momento. Podemos olhar com calma para o que já está claro.'
     ],
+    cashflow_support: [
+      'Vamos priorizar o essencial até o dia 10 e adiar o que puder esperar, sem assumir novas parcelas antes de conferir o orçamento. O que precisa ser pago antes do dia 10?'
+    ],
     savings_support: [
       'Claro. Economizar fica mais fácil quando sabemos o que você quer priorizar, sem sair cortando tudo. Seu foco é aliviar o mês, quitar uma dívida ou juntar para algum objetivo?',
       'Vamos pensar em algo que caiba na sua rotina. O que você quer alcançar primeiro: mais folga no mês, quitar uma dívida ou guardar para um plano?'
@@ -349,6 +379,9 @@
     sensitive_data: [
       'Por segurança, você não precisa compartilhar CPF, senhas ou números completos de cartão. Não vou reutilizar esse dado; envie apenas a informação necessária, sem identificadores.'
     ],
+    sensitive_data_request: [
+      'Não posso fornecer nem buscar o CPF do seu marido ou de outra pessoa. Peça o dado diretamente à própria pessoa e use um canal seguro; não envie o número aqui.'
+    ],
     leave_it: [
       'Tudo bem. Não precisa continuar agora. Quando quiser retomar, estou por aqui.',
       'Sem problema. Respeito seu tempo; podemos deixar esse assunto para depois.'
@@ -361,6 +394,9 @@
     ],
     self_safety_crisis: [
       'Estou levando o que você disse a sério. Sua segurança importa. Você está em segurança agora? O CVV atende gratuitamente pelo 188, 24 horas, e também em cvv.org.br; se houver risco imediato, ligue para o SAMU 192. Procure agora alguém de confiança para ficar com você; posso continuar aqui enquanto você busca apoio.'
+    ],
+    self_safety_immediate: [
+      'Isso é uma emergência. Não tome os remédios. Afaste-se deles, vá para perto de alguém de confiança e peça que essa pessoa fique com você. Se já tomou algum ou acha que pode tomar, ligue para o SAMU 192 agora ou peça que alguém ligue. O CVV atende pelo 188, 24 horas. Você está em segurança agora e longe dos remédios?'
     ],
     doing_well: [
       'Que bom saber disso. Tem algo específico em que você queira minha ajuda hoje?'
@@ -381,6 +417,9 @@
 
   function respond(message, messages, language) {
     var intent = classify(message, messages, language);
+    if (intent === 'self_safety_crisis' && isImmediateSelfSafetyRisk(normalize(message))) {
+      return { handled: true, intent: intent, text: chooseResponse('self_safety_immediate', messages) };
+    }
     if (intent === 'financial' || intent === 'financial_followup' ||
         intent === 'unsupported_language' || intent === 'empty') {
       return { handled: false, intent: intent, text: '' };
@@ -475,16 +514,19 @@
       if (intent === 'self_safety_crisis' || intent === 'third_party_danger') {
         this._pendingExpenseDraft = null;
         this._pendingFinancialReview = null;
-        appendLocalReply(this, '[mensagem de segurança recebida]', chooseResponse(intent, this._messages));
+        var safetyResult = root.AliciaBrain.respond(rawMessage, this._messages, language);
+        appendLocalReply(this, '[mensagem de segurança recebida]', safetyResult.text || chooseResponse(intent, this._messages));
         registerSafetyAlert(intent === 'self_safety_crisis' ? 'self_safety' : 'third_party_safety');
         if (input) input.value = '';
         return;
       }
 
-      if (intent === 'sensitive_data') {
+      if (intent === 'sensitive_data' || intent === 'sensitive_data_request') {
         this._pendingExpenseDraft = null;
         this._pendingFinancialReview = null;
-        appendLocalReply(this, '[conteúdo sensível omitido]', chooseResponse(intent, this._messages));
+        var sensitiveLabel = intent === 'sensitive_data_request' ?
+          '[solicitação de dado pessoal bloqueada]' : '[conteúdo sensível omitido]';
+        appendLocalReply(this, sensitiveLabel, chooseResponse(intent, this._messages));
         if (input) input.value = '';
         return;
       }
