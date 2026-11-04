@@ -6298,7 +6298,7 @@ AlicerceIA.toggleMicrofone=function(){
   var input=document.getElementById('alicerce-assistant-input');
   var status=document.getElementById('alicerce-assistant-status');
   if(status)status.textContent='Para falar com a Alicia, toque no microfone do teclado do seu celular. O texto reconhecido aparecerá aqui; depois, toque em Enviar.';
-  if(input){input.placeholder='Fale pelo microfone do teclado...';input.focus();}
+  if(input){input.placeholder=Store.lang==='en'?'Speak using your keyboard microphone...':Store.lang==='es'?'Habla usando el micrófono del teclado...':'Fale pelo microfone do teclado...';input.focus();}
 };
 AlicerceIA.solicitarMicrofone=function(){
   if(this._recognition||this._recognitionStarting)return;
@@ -6495,15 +6495,11 @@ AlicerceIA.pedirAudio=function(index,button){
     if(languageStatus)languageStatus.textContent=this._mensagemVozSomentePt();
     return;
   }
-  if(this._speechButton===button&&(this._ttsBusy||this._ttsAudio)){
+  if(button&&this._speechButton===button&&(this._ttsBusy||this._ttsAudio)){
     this.pararAudio();
     return;
   }
-  this._pendingPrivacyAction='speech';
-  this._pendingSpeechIndex=index;
-  this._pendingSpeechButton=button;
-  var labels=this._textoPrivacidade();
-  this._mostrarAvisoPrivacidade(labels.voice,labels.listenNow);
+  this.ouvirMensagem(index,button||null);
 };
 AlicerceIA.cancelarAvisoPrivacidade=function(){
   this._pendingPrivacyAction='';
@@ -6558,7 +6554,7 @@ AlicerceIA.pararAudio=function(){
 };
 AlicerceIA._speechPersona={tone:'calma, jovem, acolhedora, simpática e natural',rate:1.0};
 AlicerceIA._voiceEnabled=function(){var userId=String(Store.userId||'anon');try{return window.localStorage.getItem('alicia_voice_enabled_v1_'+userId)!=='no'}catch(error){return true;}};
-AlicerceIA.toggleVoz=function(){var userId=String(Store.userId||'anon');var enabled=!this._voiceEnabled();try{window.localStorage.setItem('alicia_voice_enabled_v1_'+userId,enabled?'yes':'no')}catch(error){}if(!enabled)this.pararAudio();var button=document.getElementById('alicerce-assistant-voice-toggle');if(button){button.textContent=enabled?'Voz ligada':'Ativar voz';button.setAttribute('aria-pressed',enabled?'true':'false');}var status=document.getElementById('alicerce-assistant-status');if(status)status.textContent=enabled?'A Alicia falará automaticamente.':'Voz desativada. Alicia continuará respondendo por texto.';};
+AlicerceIA.toggleVoz=function(){var userId=String(Store.userId||'anon');var enabled=!this._voiceEnabled();try{window.localStorage.setItem('alicia_voice_enabled_v1_'+userId,enabled?'yes':'no')}catch(error){}if(!enabled)this.pararAudio();var button=document.getElementById('alicerce-assistant-voice-toggle');if(button){var voiceLabels=Store.lang==='en'?{on:'Voice on',off:'Enable voice'}:Store.lang==='es'?{on:'Voz activada',off:'Activar voz'}:{on:'Voz ligada',off:'Ativar voz'};button.textContent=enabled?voiceLabels.on:voiceLabels.off;button.setAttribute('aria-pressed',enabled?'true':'false');}var status=document.getElementById('alicerce-assistant-status');if(status)status.textContent=enabled?'A Alicia falará automaticamente.':'Voz desativada. Alicia continuará respondendo por texto.';};
 AlicerceIA.prepararFala=function(value){
   var text=String(value||'');
   if((Store.lang||'pt')!=='pt')return text;
