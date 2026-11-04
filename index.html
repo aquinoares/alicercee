@@ -2668,20 +2668,10 @@ function migrateData(userId,raw){
   raw.schemaVersion=raw.schemaVersion||1;
   if(raw.schemaVersion<2){
     /* v1 -> v2: preencher campos novos */
-    if(!raw.familyPeople)raw.familyPeople=[];
-    if(!raw.familyCategories)raw.familyCategories=[
-      {id:'d1',nome:'Consultas'},{id:'d2',nome:'Terapias'},{id:'d3',nome:'Escola'},{id:'d4',nome:'Exames'}
-    ];
-    if(!raw.doctors)raw.doctors=[];
-    if(!raw.medications)raw.medications=[];
-    if(!raw.doseLogs)raw.doseLogs=[];
     if(!raw.insurance)raw.insurance=[];
     if(!raw.settings)raw.settings={};
     if(!raw.settings.theme)raw.settings.theme='azul';
     if(!raw.settings.lang)raw.settings.lang='pt';
-    if(!raw.settings.hideHealthDetails)raw.settings.hideHealthDetails=false;
-    if(!raw.settings.familyTitle)raw.settings.familyTitle='Mae Atipica';
-    if(!raw.settings.familySubtitle)raw.settings.familySubtitle='';
     raw.schemaVersion=2;
   }
   if(raw.schemaVersion<3){
@@ -2808,14 +2798,16 @@ const Repository={
     }
   },
 
-  async cloudLoadAll(uid){
+  async cloudLoadAll(uid,allowedStores){
     try{
-      if(!window.alicerceSupabase||!uid)return {};
-
+      if(!window.alicerceSupabase||!uid||!Array.isArray(allowedStores)||!allowedStores.length)return {};
+      const allowed=allowedStores.filter(function(name){return typeof name==='string'&&name.length>0});
+      if(!allowed.length)return {};
       const {data,error}=await window.alicerceSupabase
         .from('alicerce_data')
         .select('store_name,data')
-        .eq('user_id',uid);
+        .eq('user_id',uid)
+        .in('store_name',allowed);
 
       if(error){
         console.error('Alicerce Supabase load:',error);
@@ -3407,8 +3399,7 @@ const Store={
   userId:null,lang:'pt',theme:'azul',screen:'login',screenData:null,
   movements:[],cards:[],loans:[],installments:[],commitments:[],
   financing:[],consortium:[],extraIncome:[],insurance:[],
-  familyPeople:[],familyCategories:[],doctors:[],medications:[],doseLogs:[],
-  learning:{},settings:{},
+  plans:[],learning:{},settings:{},
 
   async init(userId){
     this.userId=userId;
@@ -3422,11 +3413,7 @@ const Store={
       consortium:Repository.get(userId,'consortium',[]),
       extraIncome:Repository.get(userId,'extra_income',[]),
       insurance:Repository.get(userId,'insurance',[]),
-      familyPeople:Repository.get(userId,'family_people',[]),
-      familyCategories:Repository.get(userId,'family_categories',[]),
-      doctors:Repository.get(userId,'doctors',[]),
-      medications:Repository.get(userId,'medications',[]),
-      doseLogs:Repository.get(userId,'dose_logs',[]),
+      plans:Repository.get(userId,'plans',[]),
       learning:Repository.get(userId,'learning',{}),
       settings:Repository.get(userId,'settings',{})
     };
@@ -3449,11 +3436,7 @@ const Store={
       consortium:[],
       extraIncome:[],
       insurance:[],
-      familyPeople:[],
-      familyCategories:[],
-      doctors:[],
-      medications:[],
-      doseLogs:[],
+      plans:[],
       learning:{},
       settings:{}
     };
@@ -3468,16 +3451,12 @@ const Store={
       consortium:'consortium',
       extraIncome:'extra_income',
       insurance:'insurance',
-      familyPeople:'family_people',
-      familyCategories:'family_categories',
-      doctors:'doctors',
-      medications:'medications',
-      doseLogs:'dose_logs',
+      plans:'plans',
       learning:'learning',
       settings:'settings'
     };
 
-    const cloudData=await Repository.cloudLoadAll(userId);
+    const cloudData=await Repository.cloudLoadAll(userId,Object.keys(cloudNames).map(function(key){return cloudNames[key]}));
 
     for(const key of Object.keys(cloudStores)){
       const cloudName=cloudNames[key];
@@ -3515,8 +3494,8 @@ const Store={
     }  },
   save(){
     if(!this.userId)return;
-    const stores=['movements','cards','loans','installments','commitments','financing','consortium','extra_income','insurance','family_people','family_categories','doctors','medications','dose_logs','learning','settings'];
-    const keys=['movements','cards','loans','installments','commitments','financing','consortium','extraIncome','insurance','familyPeople','familyCategories','doctors','medications','doseLogs','learning','settings'];
+    const stores=['movements','cards','loans','installments','commitments','financing','consortium','extra_income','insurance','plans','learning','settings'];
+    const keys=['movements','cards','loans','installments','commitments','financing','consortium','extraIncome','insurance','plans','learning','settings'];
     stores.forEach((s,i)=>{Repository.set(this.userId,s,this[keys[i]])});
     Repository.set(this.userId,'settings',this.settings);
   },
@@ -3551,10 +3530,6 @@ const Store={
     return i;
   },
   addCommitment(c){if(!c||!travarSalvar('comp',c))return null;c.id=c.id||this._uid();c.userId=this.userId;this.commitments.push(c);this.save();return c},
-  addDoctor(d){d.id=d.id||this._uid();d.userId=this.userId;this.doctors.push(d);this.save();return d},
-  addMedication(m){m.id=m.id||this._uid();m.userId=this.userId;this.medications.push(m);this.save();return m},
-  addDoseLog(dl){dl.id=dl.id||this._uid();dl.userId=this.userId;this.doseLogs.push(dl);this.save();return dl},
-
   /* =========================================================
      BALANCE LAYERS —œ 2.1/2.2 Corrigido
      aReceber INCLUI parcelas de loan (mesmo fromCard)
@@ -3712,6 +3687,7 @@ const Store={
   (this.commitments||[]).forEach(c=>{
     if(
       !c||
+      c.personId||
       c.status==='concluido'||
       !c.data||
       String(c.data).slice(0,7)!==key
@@ -4880,7 +4856,7 @@ const detalhes={
      * 3. COMPROMISSOS E LEMBRETES
      */
     (this.commitments||[]).forEach(c=>{
-      if(!c)return;
+      if(!c||c.personId)return;
 
       if(
         c.tipo==='lembrete' &&
@@ -4990,7 +4966,6 @@ const detalhes={
     blk(()=>{const c=(this.commitments||[]).find(x=>x&&!x.personId&&x.tipo==='lembrete'&&occursOn(x,todayStr)&&!reminderDone(x,todayStr));if(!c)return;add(2,'lembrete',t('cardLembHoje',{desc:c.descricao||''}),t('hoje'),"go('calendario');selectDay('"+todayStr+"')",t('verCalendario'))});
     blk(()=>{if(this.getBalances().disponivelApos<0)add(3,'alerta',t('atencao'),t('saldoNegativo',{dias:'5'}),"go('visao')",t('visaoFinanceira'))});
     blk(()=>{const mv=(this.movements||[]).filter(m=>m);const tem=mv.length>0;const temEntrada=mv.some(m=>(m.status==='pago'||m.status==='recebido')&&((m.tipo==='receita')||(m.tipo==='transferencia'&&m.direction==='entrada')));if(tem&&!temEntrada)add(8,'semEntradas',t('semEntradas'),t('semEntradasText'),"go('addEntrada')",t('registrarEntrada'))});
-    blk(()=>{const hh=this.settings.hideHealthDetails;(this.commitments||[]).filter(c=>c&&c.personId&&c.data===todayStr&&c.status!=='concluido').forEach(c=>{const person=(this.familyPeople||[]).find(p=>p.id===c.personId);add(4,'family',t('familia'),hh?t('acompanhamento'):(person?person.nome:'')+' - '+(c.descricao||''),'','')})});
     cards.sort((a,b)=>a.pr-b.pr);
     return cards.slice(0,5);
     }catch(e){return cards.slice(0,5)}
@@ -6246,6 +6221,15 @@ AlicerceIA.enviarMensagem=async function(question){
     }
     if(consent==='yes'){
       var financeIntent=/(gasto|gastei|compra|comprei|paguei|saldo|cart[aã]o|fatura|despesa|receita|dinheiro|parcela|financeir|mes passado|m[eê]s passado|m[eê]s anterior|compar)/i.test(questionForEngine);
+       var planIntent=/(plano|planos|desafio|meta|guardar|guardado|economizar|economia)/i.test(questionForEngine);
+       var financeContext=financeIntent&&inputSource!=='ocr'?localAnswer:'';
+       if(planIntent&&inputSource!=='ocr'){
+         var listPlans=Array.isArray(Store.plans)?Store.plans:[];
+         var totalPlanTarget=0,totalPlanSaved=0,activePlanCount=0;
+         listPlans.forEach(function(plan){var summary=planosResumo(plan);totalPlanTarget+=summary.total;totalPlanSaved+=summary.acumulado;if(!summary.concluido)activePlanCount++});
+         var planFacts='PLANOS DO ALICERCE: '+activePlanCount+' desafio(s) em andamento; '+listPlans.length+' plano(s) no total; '+fmtMoney(totalPlanSaved)+' marcado(s) de '+fmtMoney(totalPlanTarget)+'. As marcações são declaradas e não alteram saldo, receitas, despesas ou transferências.';
+         financeContext=[financeContext,planFacts].filter(Boolean).join('\n\n');
+       }
       var financeContext=financeIntent&&inputSource!=='ocr'?localAnswer:'';
       try{
         var aiResult=await client.functions.invoke('alicia-chat',{
@@ -7590,6 +7574,21 @@ AlicerceIA.insight=function(){
 AlicerceIA.responder=function(question){
   this._resetUser();
   var q=this._norm(question);
+  var asksFamilyModule=/\b(adicionar|adiciona|cadastrar|cadastre|incluir|inclui|criar|cria)\b/.test(q)&&/\b(pessoa|membro|dependente)\b/.test(q)&&/\bfamilia\b/.test(q);
+  if(asksFamilyModule){
+    if(Store.lang==='en')return 'The old family-member registration feature is no longer part of Alicerce. The Plans area is for personal savings goals. The existing Family expense category remains only to describe the purpose of a purchase.';
+    if(Store.lang==='es')return 'El antiguo registro de familiares ya no forma parte de Alicerce. El área Planes sirve para objetivos personales de ahorro. La categoría financiera Familia se mantiene únicamente para indicar el motivo de una compra.';
+    return 'O cadastro de pessoas da antiga área Família não existe mais no Alicerce. A nova área Planos acompanha objetivos e desafios de economia. A categoria financeira Família continua disponível somente para indicar a finalidade de uma compra, sem cadastrar ou identificar pessoas.';
+  }
+  var planQuestion=/\b(planos?|desafio|meta de economia|tabuleiro|valor marcado)\b/.test(q);
+  if(planQuestion){
+    var currentPlans=Array.isArray(Store.plans)?Store.plans:[];
+    var activePlans=currentPlans.filter(function(plan){return !planosResumo(plan).concluido});
+    var planTotals=currentPlans.reduce(function(sum,plan){var summary=planosResumo(plan);sum.meta+=summary.total;sum.saved+=summary.acumulado;sum.count+=summary.marcados;return sum;},{meta:0,saved:0,count:0});
+    if(/\b(marcar|registre|registra|salva|salvar|guardei)\b/.test(q))return Store.lang==='en'?'Open Plans, tap the amount you saved, choose the date and review it. I will not mark it as saved until you confirm it in the Plans screen.':Store.lang==='es'?'Abre Planes, toca el valor que ahorraste, elige la fecha y revisa la marca. No lo marcaré como ahorrado hasta que lo confirmes en la pantalla Planes.':'Abra Planos, toque o valor que você guardou, escolha a data e revise a marcação. Não vou considerar o valor guardado até você confirmar na tela Planos.';
+    if(!currentPlans.length)return Store.lang==='en'?'You do not have a savings plan yet. Open Plans to create a challenge and choose your target.':'Você ainda não tem um plano de economia. Abra Planos para criar um desafio e escolher sua meta.';
+    return Store.lang==='en'?'You have '+activePlans.length+' active savings plan(s). The tracked amount is '+fmtMoney(planTotals.saved)+' out of '+fmtMoney(planTotals.meta)+'. These are declared savings marks, not bank balance or available cash.':'Você tem '+activePlans.length+' plano(s) de economia em andamento. O total marcado é '+fmtMoney(planTotals.saved)+' de '+fmtMoney(planTotals.meta)+'. Essas marcações são um acompanhamento declarado, não representam saldo bancário nem dinheiro disponível.';
+  }
   var asksBalance=/(?:saldo|disponivel|caixa|dinheiro na conta)/.test(q) &&
     /(?:quanto|qual|tem|tenho|apareceu|positivo|negativo|atual|agora|meu|minha|porque|sobrou|restou)/.test(q);
   if(asksBalance){
@@ -7760,6 +7759,7 @@ const ALICERCE_CATEGORIES = {
     name: 'Vestuário',
     subs: ['roupas','calcados','acessorios','bolsas','joias','relogios','roupa_intima','roupa_infantil','outros']
   },
+  /* Categoria financeira histórica: motivo/finalidade da compra, não cadastro de pessoas. Manter. */
   familia: {
     name: 'Família',
     subs: ['filhos','esposa_marido','pais','irmaos','ajuda_familiar','presentes','mesada','pensao','outros']
@@ -8676,7 +8676,7 @@ function renderMenu(){
       {id:'home',label:t('home'),icon:'home'},{id:'gastos',label:t('gastos'),icon:'gastos'},
       {id:'cartoes',label:t('cartoes'),icon:'cartoes'},{id:'emprestimos',label:t('emprestimos'),icon:'emprestimos'},
       {id:'calendario',label:t('calendario'),icon:'calendario'},{id:'visao',label:t('visaoFinanceira'),icon:'visao'},
-      {id:'family',label:t('familia'),icon:'family'},
+      {id:'planos',label:Store.lang==='en'?'Plans':Store.lang==='es'?'Planes':'Planos',icon:'trend'},
       {id:'indicacoes',label:'Indique e ganhe',icon:'whatsapp'},
       {divider:true},{id:'config',label:t('config'),icon:'config'},{id:'conta',label:t('minhaConta'),icon:'conta'},
       {divider:true},{id:'trafego',label:t('trafegoClientes'),icon:'megafone',trafego:true},
@@ -9285,18 +9285,10 @@ function renderScreen(){
       case 'novaCompra':return renderNovaCompra();
       case 'compraExistente':return renderCompraExistente();
       case 'alerts':return renderAlerts();
-      case 'family':return renderFamily();
-      case 'familyAddPerson':return renderFamilyAddPerson();
-      case 'familyEditPerson':return renderFamilyEditPerson();
-      case 'familyNewAppt':return renderFamilyNewAppt();
-      case 'familyCategories':return renderFamilyCategories();
-      case 'familyNewCategory':return renderFamilyNewCategory();
-      case 'familyHistory':return renderFamilyHistory();
-      case 'familyApptDetail':return renderFamilyApptDetail();
-      case 'familySettings':return renderFamilySettings();
-      case 'familyDoctorDetail':return renderFamilyDoctorDetail();
-      case 'familyMedDetail':return renderFamilyMedDetail();
-      case 'familyToday':return renderFamilyToday();
+      case 'planos':return renderPlanos();
+      case 'planoNovo':return renderPlanoNovo();
+      case 'planoPreview':return renderPlanoPreview();
+      case 'planoDetalhe':return renderPlanoDetalhe();
       case 'insurance':return renderInsurance();
       case 'insuranceAdd':return renderInsuranceAdd();
       case 'insuranceDetail':return renderInsuranceDetail();
@@ -9937,7 +9929,7 @@ function homeRenderComunicados() {
   const greeting=hour<12?t('greeting'):hour<18?t('goodAfternoon'):t('goodEvening');
   const _hojeCompromissos=Clock.today();
   const upcoming=dedupLista(Store.installments.filter(i=>i&&/^\d{4}-\d{2}-\d{2}$/.test(String(i.data||''))&&i.data>=_hojeCompromissos&&i.status!=='pago'&&i.status!=='recebido').sort((a,b)=>String(a.data).localeCompare(String(b.data)))).slice(0,3);
-  const commitments=dedupLista(Store.commitments.filter(c=>c&&/^\d{4}-\d{2}-\d{2}$/.test(String(c.data||''))&&c.data>=_hojeCompromissos&&c.status!=='concluido').sort((a,b)=>String(a.data).localeCompare(String(b.data)))).slice(0,3);
+  const commitments=dedupLista(Store.commitments.filter(c=>c&&!c.personId&&/^\d{4}-\d{2}-\d{2}$/.test(String(c.data||''))&&c.data>=_hojeCompromissos&&c.status!=='concluido').sort((a,b)=>String(a.data).localeCompare(String(b.data)))).slice(0,3);
   let html='<div class="content">';
   html+='<div class="mt-4"><p class="text-muted text-sm">'+greeting+'</p></div>';
   if(smartCards.length>0){html+='<div class="dynamic-card-wrap mt-2"><div class="dynamic-card-track" id="dc-track" tabindex="0" role="region" aria-label="'+esc(Store.lang==='en'?'Smart cards':Store.lang==='es'?'Tarjetas inteligentes':'Cartões inteligentes')+'">';
@@ -13438,7 +13430,7 @@ function renderConfig(){
   html+='<div class="list-item" onclick="generateMonthlyPDF()" style="cursor:pointer"><div class="li-left">'+icon('file','ico-sm')+'<div class="li-info"><div class="li-name">'+t('pdf')+'</div><div class="li-sub">'+t('pdfDesc')+'</div></div></div>'+icon('arrowRight','ico-sm')+'</div>';
   html+='<div class="section-divider"></div>';
   html+='<div class="section-title">'+t('limparInformacoes')+'</div>';
-  html+='<button class="btn btn-danger btn-block" onclick="deleteFamilyData()">'+icon('trash','ico-sm')+' '+t('apagarDados')+'</button>';
+  html+='<button class="btn btn-danger btn-block" onclick="deleteAccountData()">'+icon('trash','ico-sm')+' '+t('apagarDados')+'</button>';
   html+='<button class="btn btn-secondary btn-block mt-4" onclick="doLogout()">'+icon('logout','ico-sm')+' '+t('logout')+'</button></div>';
   return html;
 }
@@ -13548,7 +13540,7 @@ async function doLogout(){
   tfInvalidarCacheAdmin();
   window.__alicerceAnalyticsOpenedUser='';
   Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
-  ['movements','cards','loans','installments','commitments','financing','consortium','extraIncome','insurance','familyPeople','familyCategories','doctors','medications','doseLogs','learning'].forEach(k=>{Store[k]=Array.isArray(Store[k])?[]:{}});
+  ['movements','cards','loans','installments','commitments','financing','consortium','extraIncome','insurance','plans','learning'].forEach(k=>{Store[k]=Array.isArray(Store[k])?[]:{}});
   clearAllTimers();render();
 }
 let _referralInfo=null;
@@ -13914,7 +13906,8 @@ async function trocarSenhaExec(){
   }
 }
 let _apagando=false,_modalEl=null;function apagarConfirmarPalavra(p){return String(p||'').trim().toUpperCase()==='APAGAR'}
-function colecoesUsuario(){return ['movements','cards','loans','installments','commitments','financing','consortium','extraIncome','insurance','familyPeople','familyCategories','doctors','medications','doseLogs','learning','trafego_ads']}
+function colecoesUsuario(){return ['movements','cards','loans','installments','commitments','financing','consortium','extraIncome','insurance','plans','learning','trafego_ads']}
+function colecoesLegadasParaLimpeza(){return ['familyPeople','familyCategories','doctors','medications','doseLogs']}
 const LOJA_CLOUD={extraIncome:'extra_income',familyPeople:'family_people',familyCategories:'family_categories',doseLogs:'dose_logs'};
 function baixarCopiaJSON(){
   const uid=Store.userId||'local',dados={};
@@ -13957,17 +13950,17 @@ function apagarDadosFluxo(op){
   return (async function(){
     try{
       const uid=Store.userId;if(!uid)return {ok:false,motivo:'usuario'};
-      const cols=colecoesUsuario();
+      const cols=colecoesUsuario().concat(colecoesLegadasParaLimpeza());
       if(op&&op.copia){try{baixarCopiaJSON()}catch(e){}}
       let nuvem=window.alicerceSupabase?'ok':'sem';if(nuvem==='ok'){
         for(let i=0;i<cols.length;i++){
-          const r=await Repository.cloudSet(uid,LOJA_CLOUD[cols[i]]||cols[i],Array.isArray(Store[cols[i]])?[]:{});
+          const r=await Repository.cloudSet(uid,LOJA_CLOUD[cols[i]]||cols[i],Array.isArray(Store[cols[i]])?[]:(Store[cols[i]]&&typeof Store[cols[i]]==='object'?{}:[]));
           if(r&&r.semNuvem){nuvem='sem';break}
           if(!r||r.ok===false){nuvem='erro';break}
         }
       }
       if(nuvem==='erro')return {ok:false,motivo:'nuvem'};
-      cols.forEach(k=>{Store[k]=Array.isArray(Store[k])?[]:{}});
+      cols.forEach(k=>{if(Object.prototype.hasOwnProperty.call(Store,k))Store[k]=Array.isArray(Store[k])?[]:{}});
       Store.save();removerChavesLocais(uid);
       go('home');render();
       return {ok:true,nuvem:nuvem};
@@ -13975,7 +13968,7 @@ function apagarDadosFluxo(op){
     finally{_apagando=false}
   })();
 }
-function deleteFamilyData(){
+function deleteAccountData(){
   appConfirm({titulo:t('apagarDados'),msg:t('apagarConfirmarMsg'),palavra:true,copia:true,acao:t('apagarDados'),onOk:function(op){apagarDadosFluxo(op).then(function(r){
     appConfirmClose();
     if(!r||r.motivo==='ocupado')return;
@@ -15087,7 +15080,7 @@ function getAlerts(){
   Store.installments.forEach(i=>{if(i.status!=='pago'&&i.status!=='recebido'){if(i.data===todayStr)alerts.push({text:(i.descricao||'')+' - '+fmtMoney(i.valor),label:t('hoje')});else if(i.data===tomorrowStr)alerts.push({text:(i.descricao||'')+' - '+fmtMoney(i.valor),label:t('amanha')})}});
   const bal=Store.getBalances();if(bal.disponivelApos<0)alerts.push({text:t('saldoNegativo',{dias:'5'}),label:t('atencao')});
   Store.commitments.filter(c=>c.personId&&c.status!=='concluido'&&c.data===todayStr).forEach(c=>{const p=Store.familyPeople.find(x=>x.id===c.personId);alerts.push({text:Store.settings.hideHealthDetails?t('acompanhamento'):(p?p.nome:'')+' - '+(c.descricao||''),label:t('hoje')})});
-  Store.commitments.filter(c=>c.tipo==='lembrete').forEach(c=>{
+  Store.commitments.filter(c=>c&&!c.personId&&c.tipo==='lembrete').forEach(c=>{
     const mins=c.avisos||[],h=c.hora?Number(c.hora.slice(0,2)):8,m=c.hora?Number(c.hora.slice(3,5)):0;
     for(let day=c.data;day<todayStr;day=dateShift(day,1)){if(occursOn(c,day)&&!reminderDone(c,day)){const p=day.split('-').map(Number),diff=Math.floor((new Date(p[0],p[1]-1,p[2],h,m)-Clock.now())/60000);if(mins.some(x=>diff<=x)){alerts.push({text:c.descricao||'',label:t('avisoAgora'),reminderId:c.id,date:day});return}}}
     for(let n=0;n<=7;n++){const day=dateShift(todayStr,n);if(!occursOn(c,day)||reminderDone(c,day))continue;const p=day.split('-').map(Number),diff=Math.floor((new Date(p[0],p[1]-1,p[2],h,m)-Clock.now())/60000),hit=mins.filter(x=>diff<=x).sort((a,b)=>a-b)[0];if(mins.length?hit!==undefined:n<2){let label=n===0?t('hoje'):n===1?t('amanha'):t('avisoSemana');if(hit!==undefined)label=hit===0?t('avisoAgora'):hit===10?t('aviso10'):hit===60?t('avisoHora'):hit===1440?t('avisoAmanha'):t('avisoSemana');alerts.push({text:c.descricao||'',label:label,reminderId:c.id,date:day});break}}
@@ -15103,217 +15096,162 @@ function renderAlerts(){
   html+='</div>';return html;
 }
 
-/* FAMILY (mae atipica) - compacto */
-function renderFamily(){
-  const title=Store.settings.familyTitle||'Mae Atipica';
-  const subtitle=Store.settings.familySubtitle||t('familiaSub');
-  const people=Store.familyPeople;
-  const upcoming=Store.commitments.filter(c=>c.personId&&c.status!=='concluido').sort((a,b)=>(a.data||'').localeCompare(b.data||'')).slice(0,4);
-  const cats=Store.familyCategories;
-  const now=Clock.now();const monthStr=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const history=Store.commitments.filter(c=>c.personId&&c.status==='concluido'&&c.data&&c.data.startsWith(monthStr)).slice(0,4);
-  let html='<div class="content">';
-  html+='<div class="flex justify-between items-center mt-4"><button class="btn btn-secondary btn-sm" onclick="go(\'home\')">'+icon('back','ico-sm')+' '+t('home')+'</button>';
-  html+='<button class="header-btn" onclick="toggleFamilyMenu()">'+icon('more')+'</button></div>';
-  html+='<div class="three-dot-menu" id="family-menu"><div class="menu-item" onclick="go(\'familySettings\');toggleFamilyMenu()">'+t('renomearModulo')+'</div><div class="menu-item" onclick="go(\'familyCategories\');toggleFamilyMenu()">'+t('gerenciarCategorias')+'</div></div>';
-  html+='<h2 class="mt-2">'+esc(title)+'</h2><p class="text-muted text-sm">'+esc(subtitle)+'</p>';
-  html+='<div class="section-title">'+t('familia')+'</div><div class="person-scroll">';
-  people.forEach(p=>{
-    const ini=p.nome.split(' ').map(w=>w[0]).join('').substr(0,2).toUpperCase();
-    html+='<div class="person-card" onclick="go(\'familyEditPerson\','+JSON.stringify({id:p.id})+')"><div class="person-avatar">'+esc(ini)+'</div><div class="person-name">'+esc(p.nome)+'</div><div class="person-rel">'+esc(p.relacao||'')+'</div></div>';
-  });
-  html+='<div class="person-card" onclick="go(\'familyAddPerson\')"><div class="person-avatar" style="background:var(--surface2);color:var(--text2)">'+icon('plus','ico-sm')+'</div><div class="person-name text-muted">'+t('adicionarPessoa')+'</div></div></div>';
-  html+='<div class="section-title">'+t('proximos')+'</div>';
-  if(upcoming.length===0)html+='<p class="text-muted text-sm">'+t('semDados')+'</p>';
-  upcoming.forEach(c=>{
-    const person=Store.familyPeople.find(p=>p.id===c.personId);
-    html+='<div class="list-item" onclick="go(\'familyApptDetail\','+JSON.stringify({id:c.id})+')"><div class="li-left"><div class="li-info"><div class="li-name">'+(c.data?fmtDate(c.data):'')+(c.horario?' / '+c.horario:'')+'</div><div class="li-sub">'+esc(person?person.nome:'')+' / '+esc(c.descricao||'')+'</div></div></div>'+icon('arrowRight','ico-sm')+'</div>';
-  });
-  html+='<div class="section-title">'+t('categorias')+'</div>';
-  cats.forEach(cat=>{
-    const count=Store.commitments.filter(c=>c.familyCategoryId===cat.id).length;
-    html+='<div class="list-item"><div class="li-left"><div class="li-info"><div class="li-name">'+esc(cat.nome)+'</div></div></div><div class="li-right"><div class="li-amount text-accent">'+count+'</div></div></div>';
-  });
-  html+='<div class="section-title">'+t('historico')+'</div>';
-  if(history.length===0)html+='<p class="text-muted text-sm">'+t('semDados')+'</p>';
-  history.forEach(c=>{
-    const person=Store.familyPeople.find(p=>p.id===c.personId);
-    html+='<div class="list-item"><div class="li-left"><div class="check-box checked">'+icon('check','ico-sm')+'</div><div class="li-info"><div class="li-name">'+esc(person?person.nome:'')+' - '+esc(c.descricao||'')+'</div><div class="li-sub">'+fmtDate(c.data)+'</div></div></div></div>';
-  });
-  html+='<button class="btn btn-primary btn-block mt-4" onclick="go(\'familyNewAppt\')">'+icon('plus','ico-sm')+' '+t('novoLembrete')+'</button></div>';
-  return html;
-}
-function toggleFamilyMenu(){try{document.getElementById('family-menu').classList.toggle('open')}catch(e){}}
 
-function renderFamilyAddPerson(){
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'family\')">'+icon('back','ico-sm')+' '+t('familia')+'</button>';
-  html+='<h2 class="mt-4">'+t('adicionarPessoa')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('pessoa')+'</label><input id="fp-nome"></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('relacao')+'</label><select id="fp-relacao"><option value="Filho">'+t('filho')+'</option><option value="Filha">'+t('filha')+'</option><option value="Mae">'+t('mae')+'</option><option value="Pai">'+t('pai')+'</option><option value="Conjuge">'+t('conjuge')+'</option><option value="Outro">'+t('outros')+'</option></select></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('dataNascimento')+'</label><input id="fp-nasc" type="date"></div>';
-  html+='<button class="btn btn-primary btn-block" onclick="saveFamilyPerson()">'+t('salvar')+'</button></div>';
-  return html;
+/* PLANOS — desafios e objetivos financeiros declarados pela pessoa.
+   As marcações não criam receitas, despesas, transferências nem saldo no motor. */
+function planosTexto(key){
+  var lang=Store.lang==='en'?'en':Store.lang==='es'?'es':'pt';
+  var dict={
+    pt:{title:'Planos',sub:'Seus objetivos e desafios de economia, no seu ritmo.',new:'Criar novo plano',empty:'Seu próximo objetivo começa com um pequeno passo.',emptySub:'Crie um desafio, escolha a meta e acompanhe cada valor que conseguir guardar.',target:'Valor da meta',name:'Nome do plano',category:'Categoria',date:'Data desejada',count:'Quantidade de casas',create:'Continuar',back:'Voltar',preview:'Prévia do plano',save:'Salvar plano',correct:'Corrigir',cancel:'Cancelar',board:'Tabuleiro de economia',saved:'Já guardado',remaining:'Falta',steps:'casas marcadas',active:'Em andamento',done:'Concluído',choose:'Toque em um valor para marcar',available:'Disponível',marked:'Guardado',mark:'Marcar valor',dateQuestion:'Em que dia você guardou esse valor?',dateSaved:'Data salva',editDate:'Editar data',reviewMark:'Revisar marcação',reviewEdit:'Revisar alteração',saveMark:'Salvar marcação',saveEdit:'Salvar nova data',before:'Data atual',after:'Nova data',markedOk:'Valor marcado com sucesso.',editedOk:'Data atualizada.',invalid:'Confira o nome, o valor e a quantidade de casas.',invalidDate:'Escolha uma data válida, hoje ou anterior.',notFound:'Não encontrei esse plano.',categoryTrip:'Viagens e experiências',categoryHome:'Moradia',categoryMobility:'Mobilidade',categoryReserve:'Reserva financeira',categoryStudy:'Educação',categoryPurchase:'Compras importantes',categoryOther:'Outros',targetDate:'Meta até',dateHint:'A data é registrada separadamente em cada valor.',boardTotal:'Total do desafio',previewHint:'Revise os valores antes de salvar.',declared:'Valores declarados pela pessoa; não representam saldo bancário.'},
+    en:{title:'Plans',sub:'Your goals and savings challenges, at your own pace.',new:'Create a plan',empty:'Your next goal starts with a small step.',emptySub:'Create a challenge, choose a target and track each amount you save.',target:'Target amount',name:'Plan name',category:'Category',date:'Target date',count:'Number of spaces',create:'Continue',back:'Back',preview:'Plan preview',save:'Save plan',correct:'Edit',cancel:'Cancel',board:'Savings board',saved:'Saved',remaining:'Remaining',steps:'spaces marked',active:'In progress',done:'Completed',choose:'Tap an amount to mark it',available:'Available',marked:'Saved',mark:'Mark amount',dateQuestion:'On which date did you save this amount?',dateSaved:'Saved date',editDate:'Edit date',reviewMark:'Review mark',reviewEdit:'Review change',saveMark:'Save mark',saveEdit:'Save new date',before:'Current date',after:'New date',markedOk:'Amount marked successfully.',editedOk:'Date updated.',invalid:'Check the plan name, target and number of spaces.',invalidDate:'Choose a valid date no later than today.',notFound:'Plan not found.',categoryTrip:'Travel and experiences',categoryHome:'Housing',categoryMobility:'Mobility',categoryReserve:'Emergency savings',categoryStudy:'Education',categoryPurchase:'Important purchases',categoryOther:'Other',targetDate:'Target date',dateHint:'Each saved amount has its own date.',boardTotal:'Challenge total',previewHint:'Review the values before saving.',declared:'Amounts declared by the user; not a bank balance.'},
+    es:{title:'Planes',sub:'Tus objetivos y retos de ahorro, a tu ritmo.',new:'Crear un plan',empty:'Tu próximo objetivo comienza con un pequeño paso.',emptySub:'Crea un reto, elige una meta y acompaña cada cantidad que ahorres.',target:'Valor de la meta',name:'Nombre del plan',category:'Categoría',date:'Fecha deseada',count:'Cantidad de casillas',create:'Continuar',back:'Volver',preview:'Vista previa del plan',save:'Guardar plan',correct:'Corregir',cancel:'Cancelar',board:'Tablero de ahorro',saved:'Ahorrado',remaining:'Falta',steps:'casillas marcadas',active:'En curso',done:'Completado',choose:'Toca un valor para marcarlo',available:'Disponible',marked:'Ahorrado',mark:'Marcar valor',dateQuestion:'¿En qué fecha guardaste este valor?',dateSaved:'Fecha guardada',editDate:'Editar fecha',reviewMark:'Revisar marca',reviewEdit:'Revisar cambio',saveMark:'Guardar marca',saveEdit:'Guardar nueva fecha',before:'Fecha actual',after:'Nueva fecha',markedOk:'Valor marcado correctamente.',editedOk:'Fecha actualizada.',invalid:'Revisa el nombre, el valor y la cantidad de casillas.',invalidDate:'Elige una fecha válida, hoy o anterior.',notFound:'No encontré ese plan.',categoryTrip:'Viajes y experiencias',categoryHome:'Vivienda',categoryMobility:'Movilidad',categoryReserve:'Reserva financiera',categoryStudy:'Educación',categoryPurchase:'Compras importantes',categoryOther:'Otros',targetDate:'Fecha deseada',dateHint:'Cada valor guardado tiene su propia fecha.',boardTotal:'Total del reto',previewHint:'Revisa los valores antes de guardar.',declared:'Valores declarados por la persona; no representan saldo bancario.'}
+  };
+  return (dict[lang]&&dict[lang][key])||dict.pt[key]||key;
 }
-function saveFamilyPerson(){
-  const nome=document.getElementById('fp-nome').value.trim();if(!nome)return;
-  const relacao=document.getElementById('fp-relacao').value;
-  const nasc=document.getElementById('fp-nasc').value||'';
-  Store.familyPeople.push({id:Store._uid(),nome,relacao,nascimento:nasc,userId:Store.userId});
-  Store.save();showToast(t('salvoDireto'));go('family');
+function planosCategorias(){return [['viagens',planosTexto('categoryTrip')],['moradia',planosTexto('categoryHome')],['mobilidade',planosTexto('categoryMobility')],['reserva',planosTexto('categoryReserve')],['educacao',planosTexto('categoryStudy')],['compras',planosTexto('categoryPurchase')],['outros',planosTexto('categoryOther')]]}
+function planosNomeCategoria(value){var list=planosCategorias();for(var i=0;i<list.length;i++)if(list[i][0]===value)return list[i][1];return planosTexto('categoryOther')}
+function planosDataValida(value){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(value||'')))return false;
+  var p=String(value).split('-').map(Number),d=new Date(p[0],p[1]-1,p[2]);
+  return d.getFullYear()===p[0]&&d.getMonth()===p[1]-1&&d.getDate()===p[2]&&value<=today();
 }
-function renderFamilyEditPerson(){
-  const id=Store.screenData&&Store.screenData.id;
-  const person=Store.familyPeople.find(p=>p.id===id);
-  if(!person)return '<div class="content"><p class="text-muted">'+t('semDados')+'</p></div>';
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'family\')">'+icon('back','ico-sm')+' '+t('familia')+'</button>';
-  html+='<h2 class="mt-4">'+t('editar')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('pessoa')+'</label><input id="fpe-nome" value="'+esc(person.nome)+'"></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('relacao')+'</label><input id="fpe-relacao" value="'+esc(person.relacao||'')+'"></div>';
-  html+='<button class="btn btn-primary btn-block" onclick="updateFamilyPerson(\''+id+'\')">'+t('salvar')+'</button>';
-  html+='<button class="btn btn-danger btn-block mt-2" onclick="deleteFamilyPerson(\''+id+'\')">'+icon('trash','ico-sm')+' '+t('excluir')+'</button></div>';
-  return html;
-}
-function updateFamilyPerson(id){
-  const p=Store.familyPeople.find(x=>x.id===id);if(!p)return;
-  p.nome=document.getElementById('fpe-nome').value.trim();
-  p.relacao=document.getElementById('fpe-relacao').value.trim();
-  Store.save();showToast(t('salvoDireto'));go('family');
-}
-function deleteFamilyPerson(id){
-  if(!confirm(t('excluir')+'?'))return;
-  const hasAppts=Store.commitments.some(c=>c.personId===id);
-  if(hasAppts&&!confirm(t('acompanhamento')+'?'))return;
-  Store.familyPeople=Store.familyPeople.filter(p=>p.id!==id);
-  if(hasAppts)Store.commitments=Store.commitments.filter(c=>c.personId!==id);
-  Store.save();showToast(t('salvoDireto'));go('family');
-}
-
-function renderFamilyNewAppt(){
-  const people=Store.familyPeople;const cats=Store.familyCategories;
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'family\')">'+icon('back','ico-sm')+' '+t('familia')+'</button>';
-  html+='<h2 class="mt-4">'+t('novoAcompanhamento')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('pessoa')+'</label><select id="fa-pessoa">'+people.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('categoria')+'</label><select id="fa-categoria">'+cats.map(c=>'<option value="'+c.id+'">'+esc(c.nome)+'</option>').join('')+'</select></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('tipo')+'</label><input id="fa-tipo"></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('data')+'</label><input id="fa-data" type="date"></div><div class="form-group"><label class="form-label">'+t('horario')+'</label><input id="fa-horario" type="time"></div></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('local')+'</label><input id="fa-local"></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('observacao')+'</label><textarea id="fa-obs" rows="2"></textarea></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('lembrete')+'</label><div class="radio-group">'+
-    '<div class="radio-item" onclick="selectLembrete(this,0)"><div class="radio-circle"></div><span>'+t('semLembrete')+'</span></div>'+
-    '<div class="radio-item active" onclick="selectLembrete(this,120)"><div class="radio-circle"></div><span>'+t('duasHorasAntes')+'</span></div>'+
-    '<div class="radio-item" onclick="selectLembrete(this,1440)"><div class="radio-circle"></div><span>'+t('umDiaAntes')+'</span></div></div></div>';
-  html+='<input type="hidden" id="fa-lembrete-min" value="120">';
-  html+='<button class="btn btn-primary btn-block" onclick="saveFamilyAppt()">'+t('salvar')+'</button></div>';
-  return html;
-}
-function selectLembrete(el,minutes){el.parentElement.querySelectorAll('.radio-item').forEach(r=>r.classList.remove('active'));el.classList.add('active');document.getElementById('fa-lembrete-min').value=minutes}
-function saveFamilyAppt(){
-  const personId=document.getElementById('fa-pessoa').value;
-  const categoryId=document.getElementById('fa-categoria').value;
-  const tipo=document.getElementById('fa-tipo').value.trim();
-  const data=document.getElementById('fa-data').value||today();
-  const horario=document.getElementById('fa-horario').value||'';
-  const local=document.getElementById('fa-local').value.trim();
-  const obs=document.getElementById('fa-obs').value.trim();
-  const lembreteMin=parseInt(document.getElementById('fa-lembrete-min').value)||0;
-  Store.addCommitment({tipo:'lembrete',descricao:tipo||t('acompanhamento'),data,horario,status:'pendente',personId,categoryId,tipoAppt:tipo,local,observacao:obs,lembreteMin});
-  showToast(t('salvoDireto'));go('family');
-}
-
-function renderFamilyCategories(){
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'family\')">'+icon('back','ico-sm')+' '+t('familia')+'</button>';
-  html+='<h2 class="mt-4">'+t('gerenciarCategorias')+'</h2>';
-  Store.familyCategories.forEach(cat=>{
-    const count=Store.commitments.filter(c=>c.familyCategoryId===cat.id).length;
-    html+='<div class="list-item"><div class="li-left"><div class="li-info"><div class="li-name">'+esc(cat.nome)+'</div><div class="li-sub">'+count+'</div></div></div><button class="btn btn-sm btn-secondary" onclick="renameCategory(\''+cat.id+'\')">'+icon('edit','ico-xs')+'</button><button class="btn btn-sm btn-danger" onclick="deleteCategory(\''+cat.id+'\')">'+icon('trash','ico-xs')+'</button></div>';
-  });
-  html+='<button class="btn btn-primary btn-block mt-4" onclick="go(\'familyNewCategory\')">'+icon('plus','ico-sm')+' '+t('novaCategoria')+'</button></div>';
-  return html;
-}
-function renameCategory(id){const cat=Store.familyCategories.find(c=>c.id===id);if(!cat)return;const n=prompt(t('renomear'),cat.nome);if(n){cat.nome=n;Store.save();render()}}
-function deleteCategory(id){const count=Store.commitments.filter(c=>c.familyCategoryId===id).length;if(count>0&&!confirm(t('excluir')+'? '+count+' '+t('acompanhamento')+'?'))return;Store.familyCategories=Store.familyCategories.filter(c=>c.id!==id);Store.save();render()}
-function renderFamilyNewCategory(){
-  let html='<div class="content"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'familyCategories\')">'+icon('back','ico-sm')+' '+t('categorias')+'</button><h2 class="mt-4">'+t('novaCategoria')+'</h2><div class="form-group mt-4"><label class="form-label">'+t('categoria')+'</label><input id="fc-nome"></div><button class="btn btn-primary btn-block" onclick="saveFamilyCategory()">'+t('salvar')+'</button></div>';
-  return html;
-}
-function saveFamilyCategory(){const nome=document.getElementById('fc-nome').value.trim();if(!nome)return;Store.familyCategories.push({id:Store._uid(),nome});Store.save();showToast(t('salvoDireto'));go('familyCategories')}
-
-function renderFamilyHistory(){
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'family\')">'+icon('back','ico-sm')+' '+t('familia')+'</button>';
-  html+='<h2 class="mt-4">'+t('historico')+'</h2>';
-  html+='<div class="form-row mt-4"><div class="form-group"><label class="form-label">'+t('pessoa')+'</label><select id="fh-person" onchange="renderFamilyHistoryFilter()"><option value="">'+t('total')+'</option>'+Store.familyPeople.map(p=>'<option value="'+p.id+'">'+esc(p.nome)+'</option>').join('')+'</select></div><div class="form-group"><label class="form-label">'+t('categoria')+'</label><select id="fh-cat" onchange="renderFamilyHistoryFilter()"><option value="">'+t('total')+'</option>'+Store.familyCategories.map(c=>'<option value="'+c.id+'">'+esc(c.nome)+'</option>').join('')+'</select></div></div>';
-  html+='<div id="fh-results"></div></div>';
-  return html;
-}
-function renderFamilyHistoryFilter(){
-  try{
-    const personId=(document.getElementById('fh-person')||{}).value||'';
-    const catId=(document.getElementById('fh-cat')||{}).value||'';
-    let items=Store.commitments.filter(c=>c.personId);
-    if(personId)items=items.filter(c=>c.personId===personId);
-    if(catId)items=items.filter(c=>c.familyCategoryId===catId);
-    items=items.sort((a,b)=>(b.data||'').localeCompare(a.data||''));
-    const results=document.getElementById('fh-results');if(!results)return;
-    if(items.length===0){results.innerHTML='<p class="text-muted text-sm">'+t('semDados')+'</p>';return}
-    const mn=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-    const groups={};items.forEach(c=>{const key=(c.data||'').substr(0,7);if(!groups[key])groups[key]=[];groups[key].push(c)});
-    let html='';Object.keys(groups).sort().reverse().forEach(key=>{
-      const m=parseInt(key.substr(5,2))-1;
-      html+='<div class="section-title">'+t(mn[m]||'')+' '+key.substr(0,4)+'</div>';
-      groups[key].forEach(c=>{
-        const person=Store.familyPeople.find(p=>p.id===c.personId);
-        const done=c.status==='concluido';
-        html+='<div class="list-item" onclick="go(\'familyApptDetail\','+JSON.stringify({id:c.id})+')"><div class="li-left"><div class="check-box'+(done?' checked':'')+'">'+icon('check','ico-sm')+'</div><div class="li-info"><div class="li-name">'+esc(person?person.nome:'')+'</div><div class="li-sub">'+esc(c.descricao||'')+' / '+fmtDate(c.data)+'</div></div></div></div>';
-      });
-    });
-    results.innerHTML=html;
-  }catch(e){}
-}
-
-function renderFamilyApptDetail(){
-  const id=Store.screenData&&Store.screenData.id;
-  const appt=Store.commitments.find(c=>c.id===id);
-  if(!appt)return '<div class="content"><p class="text-muted">'+t('semDados')+'</p></div>';
-  const person=Store.familyPeople.find(p=>p.id===appt.personId);
-  const now=Clock.now();const apptDate=new Date((appt.data||today())+'T'+(appt.horario||'00:00'));
-  const isPast=apptDate<now;
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'family\')">'+icon('back','ico-sm')+' '+t('familia')+'</button>';
-  html+='<h2 class="mt-4">'+esc(appt.descricao||t('acompanhamento'))+'</h2>';
-  html+='<div class="card mt-4"><div class="card-row"><span class="card-row-label">'+t('pessoa')+'</span><span class="card-row-value">'+esc(person?person.nome:'')+'</span></div><div class="card-row"><span class="card-row-label">'+t('data')+'</span><span class="card-row-value">'+fmtDate(appt.data)+'</span></div>';
-  if(appt.horario)html+='<div class="card-row"><span class="card-row-label">'+t('horario')+'</span><span class="card-row-value">'+esc(appt.horario)+'</span></div>';
-  if(appt.local)html+='<div class="card-row"><span class="card-row-label">'+t('local')+'</span><span class="card-row-value">'+esc(appt.local)+'</span></div>';
-  html+='</div>';
-  /* 2.5: rotulos "Concluido", "Nao realizado", "Remarcar" */
-  if(isPast&&appt.status==='pendente'){
-    html+='<button class="btn btn-primary btn-block mt-4" onclick="completeAppt(\''+id+'\')">'+icon('check','ico-sm')+' '+t('concluido')+'</button>';
-    html+='<button class="btn btn-secondary btn-block mt-2" onclick="markNotDone(\''+id+'\')">'+t('naoRealizado')+'</button>';
-    html+='<button class="btn btn-secondary btn-block mt-2" onclick="rescheduleAppt(\''+id+'\')">'+t('remarcar')+'</button>';
+function planosDataExibicao(value){var p=String(value||'').split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:''}
+function planosConstruirValores(total,count){
+  var totalCents=Math.round(Number(total)*100),weights=[1,2,1,3,2,4,1,2,3,1,4,2],sumWeights=0,result=[],assigned=0;
+  for(var i=0;i<count;i++)sumWeights+=weights[i%weights.length];
+  for(var j=0;j<count;j++){
+    var amount;
+    if(j===count-1)amount=totalCents-assigned;
+    else{amount=Math.round(totalCents*weights[j%weights.length]/sumWeights);amount=Math.max(1,Math.min(amount,totalCents-assigned-(count-j-1)))}
+    assigned+=amount;result.push({id:Store._uid(),valor:amount/100,data:'',confirmadoEm:'',historico:[]});
   }
-  html+='</div>';return html;
+  return result;
 }
-function completeAppt(id){const a=Store.commitments.find(c=>c.id===id);if(a){a.status='concluido';Store.save()}render()}
-function markNotDone(id){const a=Store.commitments.find(c=>c.id===id);if(a){a.status='nao_realizado';Store.save()}render()}
-function rescheduleAppt(id){const a=Store.commitments.find(c=>c.id===id);if(a){const d=prompt(t('data'),a.data||'');if(d){a.data=d;a.status='pendente';Store.save()}}render()}
-
-function renderFamilySettings(){
-  let html='<div class="content"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'family\')">'+icon('back','ico-sm')+' '+t('familia')+'</button><h2 class="mt-4">'+t('renomearModulo')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('tituloModulo')+'</label><input id="fs-title" value="'+esc(Store.settings.familyTitle||'Mae Atipica')+'"></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('subtituloModulo')+'</label><input id="fs-subtitle" value="'+esc(Store.settings.familySubtitle||'')+'"></div>';
-  html+='<button class="btn btn-primary btn-block" onclick="saveFamilySettings()">'+t('salvar')+'</button></div>';
+function planosLocalizar(id){var plans=Array.isArray(Store.plans)?Store.plans:[];for(var i=0;i<plans.length;i++)if(String(plans[i].id)===String(id))return plans[i];return null}
+function planosResumo(plan){
+  var values=Array.isArray(plan&&plan.valores)?plan.valores:[];
+  var total=values.reduce(function(sum,item){return sum+(Number(item.valor)||0)},0);
+  var saved=values.filter(function(item){return !!item.data;});
+  var accumulated=saved.reduce(function(sum,item){return sum+(Number(item.valor)||0)},0);
+  return {total:total,acumulado:accumulated,faltante:Math.max(0,total-accumulated),marcados:saved.length,quantidade:values.length,percentual:total>0?Math.min(100,Math.round(accumulated/total*100)):0,concluido:values.length>0&&saved.length===values.length};
+}
+function renderPlanos(){
+  var plans=Array.isArray(Store.plans)?Store.plans:[];
+  var html='<div class="content" style="max-width:760px;margin:0 auto;padding-bottom:36px"><div class="flex justify-between items-center mt-4"><div><h2 style="margin:0">'+planosTexto('title')+'</h2><p class="text-muted text-sm">'+planosTexto('sub')+'</p></div>'+icon('trend','ico-lg')+'</div>';
+  if(!plans.length)html+='<div class="card mt-4" style="padding:22px;text-align:center"><div style="font-size:2rem;margin-bottom:10px">'+icon('trend','ico-lg')+'</div><h3>'+planosTexto('empty')+'</h3><p class="text-muted text-sm">'+planosTexto('emptySub')+'</p></div>';
+  plans.slice().sort(function(a,b){return String(b.createdAt||'').localeCompare(String(a.createdAt||''))}).forEach(function(plan){
+    var summary=planosResumo(plan);
+    html+='<button type="button" class="card mt-3" style="width:100%;text-align:left;padding:16px;border:1px solid var(--line);background:var(--surface);border-radius:16px" onclick="go(\'planoDetalhe\',{id:'+JSON.stringify(plan.id)+'})">';
+    html+='<div class="flex justify-between items-center"><div style="min-width:0"><div style="font-weight:800">'+esc(plan.titulo||planosTexto('title'))+'</div><div class="text-muted text-sm">'+esc(planosNomeCategoria(plan.categoria))+'</div></div><span class="badge">'+(summary.concluido?planosTexto('done'):planosTexto('active'))+'</span></div>';
+    html+='<div style="display:flex;justify-content:space-between;gap:12px;margin-top:15px"><div><div class="text-muted text-xs">'+planosTexto('saved')+'</div><div style="font-size:1.35rem;font-weight:800;color:var(--accent)">'+fmtMoney(summary.acumulado)+'</div></div><div style="text-align:right"><div class="text-muted text-xs">'+planosTexto('target')+'</div><div style="font-weight:750">'+fmtMoney(summary.total)+'</div></div></div>';
+    html+='<div style="height:8px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-top:12px"><div style="height:8px;width:'+summary.percentual+'%;background:var(--accent);border-radius:99px"></div></div><div class="flex justify-between items-center mt-2"><span class="text-muted text-xs">'+summary.marcados+'/'+summary.quantidade+' '+planosTexto('steps')+'</span><span class="text-muted text-xs">'+summary.percentual+'%</span></div></button>';
+  });
+  html+='<button type="button" id="btn-create-plan" class="btn btn-primary btn-block mt-4" onclick="go(\'planoNovo\')">'+icon('plus','ico-sm')+' '+planosTexto('new')+'</button><p class="text-muted text-xs mt-3">'+planosTexto('declared')+'</p></div>';
   return html;
 }
-function saveFamilySettings(){Store.settings.familyTitle=document.getElementById('fs-title').value.trim()||'Mae Atipica';Store.settings.familySubtitle=document.getElementById('fs-subtitle').value.trim();Store.save();showToast(t('salvoDireto'));go('family')}
-
-/* Doctor/Medication stubs - adequate for scope */
-function renderFamilyDoctorDetail(){return '<div class="content"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'family\')">'+icon('back','ico-sm')+' '+t('familia')+'</button><h2 class="mt-4">'+t('medico')+'</h2><p class="text-muted">'+t('semDados')+'</p></div>'}
-function renderFamilyMedDetail(){return '<div class="content"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'family\')">'+icon('back','ico-sm')+' '+t('familia')+'</button><h2 class="mt-4">'+t('medicacao')+'</h2><p class="text-muted">'+t('semDados')+'</p></div>'}
-function renderFamilyToday(){return '<div class="content"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'family\')">'+icon('back','ico-sm')+' '+t('familia')+'</button><h2 class="mt-4">'+t('hoje')+'</h2><p class="text-muted">'+t('semDados')+'</p></div>'}
+function renderPlanoNovo(){
+  var draft=Store.screenData&&Store.screenData.draft?Store.screenData.draft:{};
+  var html='<div class="content" style="max-width:560px;margin:0 auto;padding-bottom:36px"><button type="button" class="btn btn-secondary btn-sm mt-4" onclick="go(\'planos\')">'+icon('back','ico-sm')+' '+planosTexto('back')+'</button><h2 class="mt-4">'+planosTexto('new')+'</h2>';
+  html+='<div class="form-group mt-4"><label class="form-label" for="plan-title">'+planosTexto('name')+'</label><input id="plan-title" maxlength="60" value="'+esc(draft.titulo||'')+'" placeholder="Ex.: Minha viagem"></div>';
+  html+='<div class="form-group"><label class="form-label" for="plan-target">'+planosTexto('target')+'</label><input id="plan-target" type="number" min="0.01" step="0.01" inputmode="decimal" value="'+esc(draft.meta||'')+'" placeholder="0,00"></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="plan-count">'+planosTexto('count')+'</label><select id="plan-count">';
+  [12,20,30,50].forEach(function(n){html+='<option value="'+n+'"'+(Number(draft.quantidade||20)===n?' selected':'')+'>'+n+'</option>'});
+  html+='</select></div><div class="form-group"><label class="form-label" for="plan-category">'+planosTexto('category')+'</label><select id="plan-category">';
+  planosCategorias().forEach(function(item){html+='<option value="'+item[0]+'"'+((draft.categoria||'outros')===item[0]?' selected':'')+'>'+esc(item[1])+'</option>'});
+  html+='</select></div></div><div class="form-group"><label class="form-label" for="plan-date">'+planosTexto('date')+'</label><input id="plan-date" type="date" min="'+today()+'" value="'+esc(draft.dataAlvo||'')+'"></div><div class="card mt-3"><p class="text-sm text-muted">'+planosTexto('dateHint')+'</p></div><button type="button" id="btn-preview-plan" class="btn btn-primary btn-block mt-4" onclick="planosRevisarCriacao()">'+planosTexto('create')+'</button></div>';
+  return html;
+}
+function planosRevisarCriacao(){
+  var title=((document.getElementById('plan-title')||{}).value||'').trim(),target=Number((document.getElementById('plan-target')||{}).value),count=Number((document.getElementById('plan-count')||{}).value);
+  var category=(document.getElementById('plan-category')||{}).value||'outros',targetDate=(document.getElementById('plan-date')||{}).value||'';
+  if(!title||title.length>60||!isFinite(target)||target<=0||[12,20,30,50].indexOf(count)<0||target*100<count){showToast(planosTexto('invalid'));return}
+  if(targetDate&&(!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)||targetDate<today())){showToast(planosTexto('invalid'));return}
+  var draft={titulo:title,meta:Math.round(target*100)/100,quantidade:count,categoria:category,dataAlvo:targetDate,valores:planosConstruirValores(target,count)};
+  go('planoPreview',{draft:draft});
+}
+function planosCorrigirCriacao(){var draft=Store.screenData&&Store.screenData.draft;Store.screen='planoNovo';Store.screenData={draft:draft||{}};render()}
+function renderPlanoPreview(){
+  var draft=Store.screenData&&Store.screenData.draft;
+  if(!draft)return '<div class="content"><p class="text-muted">'+planosTexto('notFound')+'</p></div>';
+  var sum=(draft.valores||[]).reduce(function(total,item){return total+Number(item.valor||0)},0);
+  var html='<div class="content" style="max-width:620px;margin:0 auto;padding-bottom:36px"><button type="button" class="btn btn-secondary btn-sm mt-4" onclick="planosCorrigirCriacao()">'+icon('back','ico-sm')+' '+planosTexto('correct')+'</button><h2 class="mt-4">'+planosTexto('preview')+'</h2>';
+  html+='<div class="card mt-3"><div class="text-muted text-xs">'+planosTexto('name')+'</div><h3>'+esc(draft.titulo)+'</h3><div class="card-row"><span>'+planosTexto('target')+'</span><strong>'+fmtMoney(draft.meta)+'</strong></div><div class="card-row"><span>'+planosTexto('category')+'</span><strong>'+esc(planosNomeCategoria(draft.categoria))+'</strong></div><div class="card-row"><span>'+planosTexto('count')+'</span><strong>'+draft.valores.length+'</strong></div>'+(draft.dataAlvo?'<div class="card-row"><span>'+planosTexto('targetDate')+'</span><strong>'+planosDataExibicao(draft.dataAlvo)+'</strong></div>':'')+'<div class="card-row"><span>'+planosTexto('boardTotal')+'</span><strong>'+fmtMoney(sum)+'</strong></div></div>';
+  html+='<p class="text-muted text-sm">'+planosTexto('previewHint')+'</p><div class="grid mt-3" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">';
+  (draft.valores||[]).slice(0,20).forEach(function(item){html+='<div class="card" style="padding:10px;text-align:center;font-weight:750">'+fmtMoney(item.valor)+'</div>'});
+  if(draft.valores.length>20)html+='<div class="card" style="padding:10px;text-align:center">+'+(draft.valores.length-20)+'</div>';
+  html+='</div><div class="flex mt-4" style="gap:10px"><button type="button" id="btn-save-plan" class="btn btn-primary" style="flex:1" onclick="planosSalvarCriacao()">'+planosTexto('save')+'</button><button type="button" class="btn btn-secondary" style="flex:1" onclick="planosCorrigirCriacao()">'+planosTexto('correct')+'</button><button type="button" class="btn btn-secondary" style="flex:1" onclick="go(\'planos\')">'+planosTexto('cancel')+'</button></div></div>';
+  return html;
+}
+function planosSalvarCriacao(){
+  var draft=Store.screenData&&Store.screenData.draft;if(!draft||!Array.isArray(draft.valores)||!draft.valores.length)return;
+  var plan={id:Store._uid(),userId:Store.userId||null,titulo:draft.titulo,categoria:draft.categoria,meta:draft.meta,dataAlvo:draft.dataAlvo||'',valores:draft.valores.map(function(item){return {id:item.id||Store._uid(),valor:Number(item.valor)||0,data:'',confirmadoEm:'',historico:[]}}),createdAt:new Date().toISOString(),status:'ativo'};
+  Store.plans=Array.isArray(Store.plans)?Store.plans:[];Store.plans.push(plan);Store.save();
+  go('planoDetalhe',{id:plan.id});
+  showToast(planosTexto('save')+'!',function(){Store.plans=Store.plans.filter(function(item){return String(item.id)!==String(plan.id)});Store.save();go('planos')});
+}
+function selectPlanValue(planId,valueId){
+  var plan=planosLocalizar(planId);if(!plan)return;
+  var cell=(plan.valores||[]).find(function(item){return String(item.id)===String(valueId)});if(!cell)return;
+  Store.screenData={id:plan.id,cellId:cell.id,mode:cell.data?'view':'select',wasMarked:!!cell.data,draftDate:cell.data||today()};render();
+}
+function editPlanValueDate(){if(!Store.screenData)return;Store.screenData.mode='edit';Store.screenData.wasMarked=true;render()}
+function reviewPlanValueDate(){
+  var input=document.getElementById('plan-cell-date'),date=input?input.value:'';
+  if(!planosDataValida(date)){showToast(planosTexto('invalidDate'));return}
+  Store.screenData=Store.screenData||{};Store.screenData.draftDate=date;Store.screenData.mode='preview';render();
+}
+function correctPlanValueDate(){if(!Store.screenData)return;Store.screenData.mode=Store.screenData.wasMarked?'edit':'select';render()}
+function cancelPlanValueDate(){
+  if(!Store.screenData)return;
+  if(Store.screenData.wasMarked){Store.screenData.mode='view';Store.screenData.draftDate=''}
+  else{var id=Store.screenData.id;Store.screenData={id:id}}
+  render();
+}
+function undoPlanValueDate(planId,valueId,snapshot){
+  var plan=planosLocalizar(planId);if(!plan)return;
+  var cell=(plan.valores||[]).find(function(item){return String(item.id)===String(valueId)});if(!cell)return;
+  plan.valores[plan.valores.indexOf(cell)]=JSON.parse(JSON.stringify(snapshot));Store.save();render();
+}
+function savePlanValueDate(){
+  var state=Store.screenData;if(!state||state.mode!=='preview')return;
+  var plan=planosLocalizar(state.id);if(!plan)return;
+  var cell=(plan.valores||[]).find(function(item){return String(item.id)===String(state.cellId)});
+  if(!cell||!planosDataValida(state.draftDate)){showToast(planosTexto('invalidDate'));return}
+  var snapshot=JSON.parse(JSON.stringify(cell)),now=new Date().toISOString();
+  if(!Array.isArray(cell.historico))cell.historico=[];
+  cell.historico.push({acao:cell.data?'edicao_data':'marcacao',dataAnterior:cell.data||'',dataNova:state.draftDate,alteradoEm:now});
+  cell.data=state.draftDate;if(!cell.confirmadoEm)cell.confirmadoEm=now;Store.save();
+  Store.screenData={id:plan.id};render();
+  showToast(snapshot.data?planosTexto('editedOk'):planosTexto('markedOk'),function(){undoPlanValueDate(plan.id,cell.id,snapshot)});
+}
+function renderPlanoDetalhe(){
+  var plan=planosLocalizar(Store.screenData&&Store.screenData.id);
+  if(!plan)return '<div class="content"><p class="text-muted">'+planosTexto('notFound')+'</p><button class="btn btn-secondary" onclick="go(\'planos\')">'+planosTexto('back')+'</button></div>';
+  var summary=planosResumo(plan);
+  var html='<div class="content" style="max-width:760px;margin:0 auto;padding-bottom:36px"><button type="button" class="btn btn-secondary btn-sm mt-4" onclick="go(\'planos\')">'+icon('back','ico-sm')+' '+planosTexto('back')+'</button>';
+  html+='<div class="flex justify-between items-center mt-3"><div><h2 style="margin:0">'+esc(plan.titulo||planosTexto('title'))+'</h2><div class="text-muted text-sm">'+esc(planosNomeCategoria(plan.categoria))+'</div></div><span class="badge">'+(summary.concluido?planosTexto('done'):planosTexto('active'))+'</span></div>';
+  if(plan.dataAlvo)html+='<div class="text-muted text-xs mt-2">'+planosTexto('targetDate')+': '+planosDataExibicao(plan.dataAlvo)+'</div>';
+  html+='<div class="card mt-3" style="padding:16px"><div class="flex justify-between items-end"><div><div class="text-muted text-xs">'+planosTexto('saved')+'</div><div style="font-size:1.7rem;font-weight:850;color:var(--accent)">'+fmtMoney(summary.acumulado)+'</div></div><div style="text-align:right"><div class="text-muted text-xs">'+planosTexto('remaining')+'</div><strong>'+fmtMoney(summary.faltante)+'</strong></div></div><div style="height:9px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-top:12px"><div style="height:9px;width:'+summary.percentual+'%;background:var(--accent);border-radius:99px"></div></div><div class="text-muted text-xs mt-2">'+summary.percentual+'% · '+summary.marcados+'/'+summary.quantidade+' '+planosTexto('steps')+'</div></div>';
+  html+='<div class="flex justify-between items-center mt-4"><strong>'+planosTexto('board')+'</strong><span class="text-muted text-xs">'+planosTexto('choose')+'</span></div><div class="grid mt-2" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px">';
+  (plan.valores||[]).forEach(function(cell){
+    var marked=!!cell.data,style=marked?'background:#E3F2E8;border:1px solid #91C9A3;color:#205E37;':'background:var(--surface);border:1px solid var(--line);color:var(--text);';
+    html+='<button type="button" class="plan-board-cell" style="'+style+'border-radius:13px;min-width:0;min-height:74px;padding:9px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px" onclick="selectPlanValue('+JSON.stringify(plan.id)+','+JSON.stringify(cell.id)+')"><span style="font-weight:800">'+(marked?icon('check','ico-sm'):'')+fmtMoney(cell.valor)+'</span><span style="font-size:.68rem;'+(marked?'color:#205E37;':'color:var(--text2);')+'">'+(marked?planosDataExibicao(cell.data):planosTexto('available'))+'</span></button>';
+  });
+  html+='</div>';
+  var state=Store.screenData||{};
+  if(state.cellId){
+    var selected=(plan.valores||[]).find(function(item){return String(item.id)===String(state.cellId)});
+    if(selected){
+      html+='<div class="card mt-4" style="padding:16px" id="plan-value-panel"><div class="text-muted text-xs">'+(selected.data?planosTexto('marked'):planosTexto('mark'))+'</div><h3 style="margin:6px 0 12px">'+fmtMoney(selected.valor)+'</h3>';
+      if(state.mode==='view')html+='<div class="card-row"><span>'+planosTexto('dateSaved')+'</span><strong>'+planosDataExibicao(selected.data)+'</strong></div><button type="button" id="btn-edit-plan-date" class="btn btn-secondary btn-block mt-3" onclick="editPlanValueDate()">'+icon('calendar','ico-sm')+' '+planosTexto('editDate')+'</button><button type="button" class="btn btn-secondary btn-block mt-2" onclick="cancelPlanValueDate()">'+planosTexto('cancel')+'</button>';
+      else if(state.mode==='select'||state.mode==='edit')html+='<label class="form-label" for="plan-cell-date">'+planosTexto('dateQuestion')+'</label><input id="plan-cell-date" type="date" max="'+today()+'" value="'+esc(state.draftDate||today())+'"><button type="button" class="btn btn-primary btn-block mt-3" id="btn-review-plan-date" onclick="reviewPlanValueDate()">'+(state.wasMarked?planosTexto('reviewEdit'):planosTexto('reviewMark'))+'</button><button type="button" class="btn btn-secondary btn-block mt-2" onclick="cancelPlanValueDate()">'+planosTexto('cancel')+'</button>';
+      else if(state.mode==='preview')html+='<div class="card-row"><span>'+planosTexto('dateSaved')+'</span><strong>'+(selected.data?planosDataExibicao(selected.data):'—')+'</strong></div><div class="card-row"><span>'+planosTexto('after')+'</span><strong>'+planosDataExibicao(state.draftDate)+'</strong></div><p class="text-muted text-xs mt-2">'+planosTexto('declared')+'</p><div class="flex mt-3" style="gap:8px"><button type="button" id="btn-save-plan-date" class="btn btn-primary" style="flex:1" onclick="savePlanValueDate()">'+(state.wasMarked?planosTexto('saveEdit'):planosTexto('saveMark'))+'</button><button type="button" class="btn btn-secondary" style="flex:1" onclick="correctPlanValueDate()">'+planosTexto('correct')+'</button><button type="button" class="btn btn-secondary" style="flex:1" onclick="cancelPlanValueDate()">'+planosTexto('cancel')+'</button></div>';
+      html+='</div>';
+    }
+  }
+  html+='<p class="text-muted text-xs mt-3">'+planosTexto('declared')+'</p></div>';
+  return html;
+}
 
 /* INSURANCE */
 function renderInsurance(){
@@ -15520,7 +15458,7 @@ function renderDiagnostico(){
   return '<div class="content"><h2 class="mt-4">'+t('diagnostico')+'</h2><div class="card mt-4"><p class="text-muted text-sm">Diagnostics.run() - percorre todas as rotas nos 3 idiomas e 4 temas.</p><button class="btn btn-primary btn-block mt-2" onclick="runDiagnostics()">Run</button><div id="diag-results"></div></div>'+renderDiagRepetidos()+renderDiagComposicao()+'</div>';
 }
 function runDiagnostics(){
-  const routes=['home','gastos','cartoes','emprestimos','calendario','visao','config','conta','trocarSenha','add','addGasto','addEntrada','addEmprestimo','addCompromisso','addLembrete','alerts','family','insurance','rendaExtra','financiamento','consorcio','trafego','trafegoMetricas','trafegoForm','trafegoModerar','politicas','politicasAceite','trafegoRegras','login'];
+  const routes=['home','gastos','cartoes','emprestimos','calendario','visao','config','conta','trocarSenha','add','addGasto','addEntrada','addEmprestimo','addCompromisso','addLembrete','alerts','planos','planoNovo','planoPreview','planoDetalhe','insurance','rendaExtra','financiamento','consorcio','trafego','trafegoMetricas','trafegoForm','trafegoModerar','politicas','politicasAceite','trafegoRegras','login'];
   const langs=['pt','en','es'];const themes=['azul','claro','marinho','moderno'];
   let results=[];
   const origLang=Store.lang;const origTheme=Store.theme;const origScreen=Store.screen;const origData=Store.screenData;
