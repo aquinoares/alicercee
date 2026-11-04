@@ -3204,7 +3204,7 @@ test('Alicia aplica aviso de 30 minutos ao compromisso recente sem alterar data 
       avisos: [0],
       status: 'pendente'
     }];
-    Store.save = function () {};
+    Repository.set = function () {};
     AlicerceIA._resetUser();
     AlicerceIA._messages = [
       { role: 'assistant', text: 'Pronto. Marquei ‘vou no dentista oras me lembra’ para 05 de nov. de 2026 às 14:00. Ele já está no seu calendário.' },
