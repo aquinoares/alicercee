@@ -325,13 +325,13 @@
     }
 
     if (item.source === 'commitment') {
+      var existingMovement = null;
       if (record.expenseMovementId) {
-        var existing = (Store.movements || []).find(function (movement) {
+        existingMovement = (Store.movements || []).find(function (movement) {
           return movement && String(movement.id) === String(record.expenseMovementId);
-        });
-        if (!existing) record.expenseMovementId = '';
+        }) || null;
       }
-      if (!record.expenseMovementId) {
+      if (!existingMovement) {
         var movement = Store.addMovement({
           tipo: 'despesa',
           descricao: item.description,
@@ -347,6 +347,15 @@
         });
         if (!movement || !movement.id) throw new Error('O Alicerce não confirmou o registro do pagamento.');
         record.expenseMovementId = movement.id;
+      } else {
+        existingMovement.tipo = 'despesa';
+        existingMovement.descricao = item.description;
+        existingMovement.estabelecimento = existingMovement.estabelecimento || item.description;
+        existingMovement.valor = item.amount;
+        existingMovement.data = paidDate;
+        existingMovement.dataPagamento = paidDate;
+        existingMovement.status = 'pago';
+        existingMovement.naturezaFinanceira = 'divida';
       }
       record.status = 'concluido';
       record.paymentStatus = 'pago';
@@ -658,22 +667,22 @@
     var wrapped = function () {
       var cards = original.apply(this, arguments) || [];
       var view = getOverview();
-      var candidate = view.dueToday.filter(function (item) {
+      var candidates = view.dueToday.concat(view.overdue).filter(function (item) {
         return !item.record.paymentCheck || item.record.paymentCheck.askedAt !== today();
-      })[0] || view.overdue.filter(function (item) {
-        return !item.record.paymentCheck || item.record.paymentCheck.askedAt !== today();
-      })[0];
-      if (candidate) {
-        var label = candidate.dueToday
-          ? 'Hoje era o dia do pagamento'
-          : 'Conta em atraso desde ' + formatDate(candidate.dueDate);
-        cards.push({
-          pr: 0,
-          type: 'alicia-payment-check',
-          title: 'Alicia quer confirmar',
-          text: label + ': ' + candidate.description + ' · ' + formatMoney(candidate.amount) + '. A casa conseguiu pagar?',
-          go: "AliciaDebtFollowup.openPaymentCheck('" + encodeURIComponent(candidate.key) + "')",
-          lbl: 'Responder à Alicia'
+      }).slice(0, 3);
+      if (candidates.length) {
+        candidates.forEach(function (candidate, index) {
+          var label = candidate.dueToday
+            ? 'Hoje é o dia do pagamento'
+            : 'Conta em atraso desde ' + formatDate(candidate.dueDate);
+          cards.push({
+            pr: index,
+            type: 'alicia-payment-check',
+            title: 'Alicia quer confirmar',
+            text: label + ': ' + candidate.description + ' · ' + formatMoney(candidate.amount) + '. A casa conseguiu pagar?',
+            go: "AliciaDebtFollowup.openPaymentCheck('" + encodeURIComponent(candidate.key) + "')",
+            lbl: 'Responder à Alicia'
+          });
         });
       } else if (view.paidLate.length) {
         cards.push({
