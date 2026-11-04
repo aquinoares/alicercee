@@ -396,8 +396,7 @@
         });
       } catch (ignore) {}
       if (!movement || !movement.id) {
-        item.paymentNotRegistered = true;
-        return item;
+        return {paymentNotRegistered: true, descricao: item.descricao};
       }
       item.expenseMovementId = movement.id;
       item.status = 'concluido';
