@@ -5793,20 +5793,26 @@ AlicerceIA._expenseClarificationMessage=function(field,item){
   var purposeEs=isMaterial
     ?'Para clasificar '+itemLabel+' sin adivinar, ¿para qué era este material: obra o reforma, estudio, trabajo u otro uso?'
     :'Para clasificar '+itemLabel+' sin adivinar, ¿cuál era la finalidad de esta compra? Cuéntame con tus palabras cómo usaste el artículo o qué resolvió esta compra.';
+  var localPt='Para não adivinhar o local, onde você comprou '+itemLabel+': na padaria, no mercado ou em um app de entrega?';
+  var localEn='To avoid guessing the place, where did you buy '+itemLabel+': at a bakery, a market, or through a delivery app?';
+  var localEs='Para no adivinar el lugar, ¿dónde compraste '+itemLabel+': en una panadería, en un mercado o por una aplicación de entrega?';
   var copy={
     pt:{
       item:'O que você comprou ou qual serviço pagou?',
       amount:'Qual foi o valor? Pode informar em reais, por exemplo: vinte e cinco reais e cinquenta centavos.',
+      local:localPt,
       purpose:purposePt
     },
     en:{
       item:'What did you buy or which service did you pay for?',
       amount:'How much was it? You can say an amount, for example: twenty-five reais and fifty centavos.',
+      local:localEn,
       purpose:purposeEn
     },
     es:{
       item:'¿Qué compraste o qué servicio pagaste?',
       amount:'¿Cuál fue el importe? Puedes indicar el valor en reales.',
+      local:localEs,
       purpose:purposeEs
     }
   };
@@ -6087,6 +6093,14 @@ AlicerceIA.enviarMensagem=async function(question){
       var itemReplyCommand=this._parseExpenseCommand('Comprei '+message);
       var replyHasAmount=!!(itemReplyCommand&&itemReplyCommand.amount!==null&&itemReplyCommand.amount!==undefined);
       followText='Comprei '+message+(!replyHasAmount&&draft.amount!==null&&draft.amount!==undefined?' por R$ '+Number(draft.amount).toFixed(2).replace('.',','):'');
+    }else if(draft.awaiting==='local'&&!hasOwnIntent){
+      var localReply=message.trim();
+      var localReplyNorm=this._norm(localReply);
+      if(localReplyNorm==='padaria')localReply='na padaria';
+      else if(/^(?:mercado|supermercado|mercadinho|mercearia)$/.test(localReplyNorm))localReply='no '+localReply;
+      else if(/^(?:delivery|entrega|ifood|rappi)$/.test(localReplyNorm))localReply='em um app de entrega';
+      else if(!/\b(?:no|na|nos|nas|em|pelo|pela)\b/i.test(localReply))localReply='em '+localReply;
+      followText='Comprei '+(draft.item||'item')+' por R$ '+Number(draft.amount||0).toFixed(2).replace('.',',')+' '+localReply;
     }else if(draft.awaiting==='purpose'&&!hasOwnIntent){
       var purposeReply=message.replace(/^\s*(?:é\s+)?(?:para|pra)\s+/i,'').trim();
       followText='Comprei '+(draft.item||'item')+' por R$ '+Number(draft.amount||0).toFixed(2).replace('.',',')+(draft.local?' em '+draft.local:'')+' para '+purposeReply;
@@ -6173,6 +6187,25 @@ AlicerceIA.enviarMensagem=async function(question){
         var confidenceLabel=String(interpretation.confidence||'').toLowerCase();
         var confidenceScore=Number(interpretation.confidenceScore||interpretation.confidence_score);
         if(!isFinite(confidenceScore))confidenceScore=confidenceLabel==='high'?0.9:(confidenceLabel==='medium'?0.65:0.35);
+        var itemNeedsLocalContext=/\b(pao|paes)\b/.test(normalizeAlicerClassificationText(expenseCommand.item||''));
+        if(itemNeedsLocalContext&&!String(expenseCommand.local||'').trim()){
+          this._pendingExpenseDraft={
+            amount:expenseCommand.amount,
+            item:expenseCommand.item,
+            local:'',
+            paymentMethod:expenseCommand.paymentMethod||'',
+            purpose:expenseCommand.purpose||'',
+            date:expenseCommand.date||today(),
+            awaiting:'local'
+          };
+          actionAnswer=this._expenseClarificationMessage('local',expenseCommand.item);
+          this._messages.push({role:'assistant',text:actionAnswer});
+          while(this._messages.length>4)this._messages.splice(0,2);
+          this._question=message;
+          this._answer=actionAnswer;
+          render();
+          return;
+        }
         var needsPurposeContext=(ALICIA_INTERPRETER_ENABLED||ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED)&&(!classificationValid||confidenceScore<0.78||(interpretation.source==='dictionary'&&!expenseCommand.purpose));
         if(needsPurposeContext&&!expenseCommand.purpose){
           this._pendingExpenseDraft={
