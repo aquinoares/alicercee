@@ -1,0 +1,25 @@
+name: Alicia debt and appointment follow-up checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "assets/alicia-debt-followup.js"
+      - "tests/alicia-debt-followup.test.mjs"
+      - ".github/workflows/alicia-followup-checks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  alicia-followup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Alicia follow-up tests
+        run: node --test tests/alicia-debt-followup.test.mjs

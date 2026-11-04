@@ -90,6 +90,7 @@
               if (!row || String(row.user_id || '') !== sessionUserId) return false;
               if (filters.user_id && String(row.user_id || '') !== String(filters.user_id)) return false;
               if (filters.store_name && String(row.store_name || '') !== String(filters.store_name)) return false;
+              if (filters.store_name_in && filters.store_name_in.indexOf(String(row.store_name || '')) < 0) return false;
               return true;
             }).map(function (row) {
               return JSON.parse(JSON.stringify(row));
@@ -100,6 +101,10 @@
             select: function () { return query; },
             eq: function (column, value) {
               filters[String(column)] = value;
+              return query;
+            },
+            in: function (column, values) {
+              filters[String(column) + '_in'] = Array.isArray(values) ? values.map(function (value) { return String(value); }) : [];
               return query;
             },
             order: function () { return query; },

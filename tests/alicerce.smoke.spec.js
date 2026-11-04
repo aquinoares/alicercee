@@ -6,7 +6,7 @@ const supabaseMock = readFileSync(new URL('./fixtures/supabase-mock.js', import.
 const classificationBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-benchmark-ptbr.json', import.meta.url), 'utf8'));
 const classificationContextBenchmark = JSON.parse(readFileSync(new URL('./fixtures/classification-context-40-ptbr.json', import.meta.url), 'utf8'));
 const bankDescriptionBenchmark = JSON.parse(readFileSync(new URL('./fixtures/bank-description-benchmark-ptbr.json', import.meta.url), 'utf8'));
-const analyticsMigration = readFileSync(new URL('../supabase/migrations/20261102231731_create_alicerce_product_events.sql', import.meta.url), 'utf8');
+const analyticsMigration = readFileSync(new URL('../supabase/migrations/20261103000434_create_alicerce_product_events.sql', import.meta.url), 'utf8');
 const analyticsEdgeFunction = readFileSync(new URL('../supabase/functions/alicerce-analytics-events/index.ts', import.meta.url), 'utf8');
 const supabaseCdn = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js';
 const supabaseProject = 'https://hwmpwvbvgiqotdzkmgwh.supabase.co';
@@ -58,11 +58,7 @@ async function prepararTelaSemNuvem(page, screen) {
     Store.consortium = [];
     Store.extraIncome = [];
     Store.insurance = [];
-    Store.familyPeople = [];
-    Store.familyCategories = [];
-    Store.doctors = [];
-    Store.medications = [];
-    Store.doseLogs = [];
+    Store.plans = [];
     Store.learning = {};
     Store.screen = screenName;
     document.body.setAttribute('data-theme', 'azul');
@@ -1604,7 +1600,8 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('Oi, Maria! Tudo bem com você?');
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('Estou aqui para ajudar a entender seu dinheiro.');
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('O que vamos olhar hoje?');
-  await expect(page.locator('.alicerce-assistant-speak')).toBeVisible();
+  await expect(page.locator('#alicerce-assistant-voice-toggle')).toHaveText('Desativar voz');
+  await expect(page.locator('.alicerce-assistant-speak')).toHaveCount(0);
   await expect(page.locator('.alicerce-assistant-chat-panel')).toBeVisible();
   await expect(page.locator('#alicerce-assistant-camera')).toBeVisible();
   await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
@@ -2220,7 +2217,7 @@ test('não oferece instalação novamente quando a Alicerce já está instalada'
   await expect(page.locator('#menu-panel .al-install-menu-item')).toHaveCount(0);
 });
 
-test('Alicia usa voz remota fixa Francisca e só envia o texto após consentimento', async function ({ page }) {
+test('Alicia fala automaticamente as respostas e permite desligar a voz sem confirmação repetida', async function ({ page }) {
   await page.addInitScript(function () {
     window.__alicerceRemoteVoiceTest = { calls: [], plays: 0, pauses: 0 };
     window.Audio = function (url) {
@@ -2234,7 +2231,6 @@ test('Alicia usa voz remota fixa Francisca e só envia o texto após consentimen
 
   await prepararTelaSemNuvem(page, 'assistente');
   await page.evaluate(function () {
-    Store.userId = 'tts-remote-pt-test';
     Store.lang = 'pt';
     Store.settings = { lang: 'pt', theme: 'azul' };
     window.alicerceSupabase = {
@@ -2249,43 +2245,46 @@ test('Alicia usa voz remota fixa Francisca e só envia o texto após consentimen
         };
       } }
     };
-    AlicerceIA._resetUser();
-    AlicerceIA._messages.push({
-      role: 'assistant',
-      text: 'Você gastou R$ 300,00 com alimentação e sua variação foi de 25%.'
-    });
-    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
   });
 
-  const speakButton = page.locator('.alicerce-assistant-speak');
-  await expect(speakButton).toBeVisible();
-  expect(await page.evaluate(function () { return AlicerceIA._ttsVoiceId; })).toBe('pt-BR-FranciscaNeural');
+  const voiceToggle = page.locator('#alicerce-assistant-voice-toggle');
+  await expect(voiceToggle).toHaveText('Desativar voz');
+  await expect(voiceToggle).toHaveAttribute('aria-pressed', 'true');
 
-  await speakButton.click();
-  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('somente o texto desta resposta');
-  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('Microsoft Edge');
-  expect(await page.evaluate(function () { return window.__alicerceRemoteVoiceTest.calls.length; })).toBe(0);
-
-  await page.locator('.alicerce-assistant-privacy-confirm').click();
+  await page.locator('#alicerce-assistant-input').fill('Quanto gastei com alimentação?');
+  await page.locator('#alicerce-assistant-send').click();
   await expect.poll(function () {
     return page.evaluate(function () { return window.__alicerceRemoteVoiceTest.calls.length; });
   }).toBe(1);
 
-  const request = await page.evaluate(function () { return window.__alicerceRemoteVoiceTest.calls[0]; });
-  expect(request.name).toBe('alicia-tts');
-  expect(request.body.text).toBe('Você gastou 300 reais com alimentação e sua variação foi de 25 por cento.');
-  await expect(speakButton).toContainText('Parar');
-  await expect(speakButton).toHaveAttribute('aria-pressed', 'true');
+  const result = await page.evaluate(function () {
+    return {
+      request: window.__alicerceRemoteVoiceTest.calls[0],
+      expected: AlicerceIA.prepararFala(AlicerceIA._messages[AlicerceIA._messages.length - 1].text),
+      visible: document.querySelector('.alicerce-assistant-message.assistant') !== null,
+      voiceConsentKey: window.localStorage.getItem('alicia_tts_consent_v1_anon'),
+      noticeHidden: document.getElementById('alicerce-assistant-privacy').hidden
+    };
+  });
+  expect(result.request.name).toBe('alicia-tts');
+  expect(result.request.body).toEqual({ text: result.expected });
+  expect(result.visible).toBe(true);
+  expect(result.voiceConsentKey).toBeNull();
+  expect(result.noticeHidden).toBe(true);
   await expect.poll(function () {
     return page.evaluate(function () { return window.__alicerceRemoteVoiceTest.plays; });
   }).toBe(1);
 
-  await speakButton.click();
-  await expect(speakButton).toContainText('Ouvir resposta');
-  await expect(speakButton).toHaveAttribute('aria-pressed', 'false');
+  await voiceToggle.click();
+  await expect(voiceToggle).toHaveText('Ativar voz');
+  await expect(voiceToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('#alicerce-assistant-status')).toContainText('Voz desativada');
   await expect.poll(function () {
     return page.evaluate(function () { return window.__alicerceRemoteVoiceTest.pauses; });
   }).toBe(1);
+  expect(await page.evaluate(function () {
+    return window.localStorage.getItem('alicia_voice_enabled_v1_anon');
+  })).toBe('no');
 });
 
 test('Alicia prepara valores financeiros para fala sem mudar o texto exibido', async function ({ page }) {
@@ -2305,7 +2304,7 @@ test('Alicia prepara valores financeiros para fala sem mudar o texto exibido', a
   expect(prepared.source).toBe('Você gastou R$ 3.000,00.');
 });
 
-test('Alicia mantém o texto e não usa voz do aparelho quando o serviço remoto falha', async function ({ page }) {
+test('Alicia mantém o texto quando o serviço remoto de voz falha', async function ({ page }) {
   await page.addInitScript(function () {
     window.__alicerceRemoteVoiceFailure = { nativeSpoken: 0, calls: 0 };
     window.SpeechSynthesisUtterance = function (text) { this.text = text; };
@@ -2325,7 +2324,6 @@ test('Alicia mantém o texto e não usa voz do aparelho quando o serviço remoto
 
   await prepararTelaSemNuvem(page, 'assistente');
   await page.evaluate(function () {
-    Store.userId = 'tts-remote-failure-test';
     Store.lang = 'pt';
     Store.settings = { lang: 'pt', theme: 'azul' };
     window.alicerceSupabase = {
@@ -2337,33 +2335,26 @@ test('Alicia mantém o texto e não usa voz do aparelho quando o serviço remoto
         return { data: null, error: new Error('Falha simulada no serviço remoto.') };
       } }
     };
-    AlicerceIA._resetUser();
-    AlicerceIA._messages.push({
-      role: 'assistant',
-      text: 'Você gastou R$ 75,00 com transporte.'
-    });
-    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
   });
 
-  await page.locator('.alicerce-assistant-speak').click();
-  await expect(page.locator('#alicerce-assistant-privacy')).toContainText('serviço de voz online');
-  await page.locator('.alicerce-assistant-privacy-confirm').click();
+  await page.locator('#alicerce-assistant-input').fill('Quanto gastei com transporte?');
+  await page.locator('#alicerce-assistant-send').click();
   await expect(page.locator('#alicerce-assistant-status')).toContainText('Não foi possível gerar a voz da Alicia');
   const result = await page.evaluate(function () {
     return {
       nativeSpoken: window.__alicerceRemoteVoiceFailure.nativeSpoken,
       calls: window.__alicerceRemoteVoiceFailure.calls,
-      textStillVisible: document.querySelector('.alicerce-assistant-message.assistant').textContent.indexOf('75,00')>=0,
-      pressed: document.querySelector('.alicerce-assistant-speak').getAttribute('aria-pressed')
+      textStillVisible: document.querySelector('.alicerce-assistant-message.assistant').textContent.length > 0,
+      privacyHidden: document.getElementById('alicerce-assistant-privacy').hidden
     };
   });
   expect(result.nativeSpoken).toBe(0);
   expect(result.calls).toBe(1);
   expect(result.textStillVisible).toBe(true);
-  expect(result.pressed).toBe('false');
+  expect(result.privacyHidden).toBe(true);
 });
 
-test('Alicia oferece voz somente em português brasileiro', async function ({ page }) {
+test('Alicia respeita o idioma e só usa a voz fixa em português brasileiro', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'assistente');
   await page.evaluate(function () {
     Store.lang = 'en';
@@ -2378,15 +2369,14 @@ test('Alicia oferece voz somente em português brasileiro', async function ({ pa
         return { data: new Blob(['x']), error: null };
       } }
     };
-    AlicerceIA._resetUser();
     AlicerceIA._messages.push({ role: 'assistant', text: 'Your spending increased this month.' });
-    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+    AlicerceIA.ouvirMensagem(0, null);
   });
-  await page.locator('.alicerce-assistant-speak').click();
   await expect(page.locator('#alicerce-assistant-status')).toContainText('only in Brazilian Portuguese');
   await expect(page.locator('#alicerce-assistant-privacy')).toBeHidden();
   expect(await page.evaluate(function () { return window.__alicerceRemoteLanguageCalls; })).toBe(0);
 });
+
 test('Alicia prepara uma despesa pelo chat e só grava após a confirmação financeira existente', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'assistente');
   await page.evaluate(function () {
@@ -2629,32 +2619,33 @@ test('Alicia limita a conversa a duas interações, permite limpar e leva aos re
   await expect(page.locator('.visao-financeira')).toBeVisible();
 });
 
-test('Alicia exibe avisos de privacidade somente quando a pessoa aciona ditado, foto ou leitura em voz', async function ({ page }) {
+test('Alicia orienta o uso do microfone do teclado sem pedir acesso ao microfone do navegador', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'assistente');
   await page.evaluate(function () {
-    Store.userId = 'alicia-privacy-notices';
+    Store.userId = 'alicia-keyboard-mic-test';
     Store.lang = 'pt';
     Store.settings = { lang: 'pt', theme: 'azul', displayName: 'Ewerton' };
+    window.__speechRecognitionStarts = 0;
+    window.SpeechRecognition = function () { window.__speechRecognitionStarts += 1; };
+    window.webkitSpeechRecognition = window.SpeechRecognition;
     AlicerceIA._resetUser();
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
   });
 
   const notice = page.locator('#alicerce-assistant-privacy');
   await expect(notice).toBeHidden();
-
   await page.locator('#alicerce-assistant-input').focus();
-  await expect(notice).toContainText('Você também pode usar o microfone do teclado para ditar no campo de mensagem.');
-
-  await page.locator('#alicerce-assistant-camera').click();
-  await expect(notice).toContainText('as fotos são lidas no próprio aparelho');
-  await expect(notice).toContainText('não são enviadas nem armazenadas');
-  await page.locator('.alicerce-assistant-privacy-cancel').click();
   await expect(notice).toBeHidden();
 
-  await page.locator('.alicerce-assistant-speak').click();
-  await expect(notice).toContainText('somente o texto desta resposta');
-  await expect(notice).toContainText('serviço de voz online');
-  await expect(notice).toContainText('valores financeiros');
+  await page.locator('#alicerce-assistant-mic').click();
+  await expect(notice).toContainText('Fale usando o microfone do teclado do seu celular.');
+  await expect(notice.locator('button')).toHaveCount(0);
+  await expect(page.locator('#alicerce-assistant-input')).toBeFocused();
+  expect(await page.evaluate(function () { return window.__speechRecognitionStarts; })).toBe(0);
+
+  await page.locator('#alicerce-assistant-camera').click();
+  await expect(notice).toContainText('leitura de fotos e documentos está temporariamente desativada');
+  await expect(notice).toContainText('nenhum texto reconhecido é enviado ou registrado');
   await page.locator('.alicerce-assistant-privacy-cancel').click();
   await expect(notice).toBeHidden();
 });
@@ -3187,3 +3178,347 @@ test('Alicia respeita negações ao confirmar natureza e flexibilidade', async f
     confidence: { nature: 'low', context: 'high' }
   });
 });
+
+
+test('o saldo da Home usa o caixa líquido, não a soma histórica de entradas', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    Store.userId = null;
+    Store.movements = [
+      { id: 'saldo-income', tipo: 'receita', status: 'pago', valor: 500, data: Clock.today() },
+      { id: 'saldo-expense', tipo: 'despesa', status: 'pago', valor: 900, data: Clock.today() }
+    ];
+    Store.installments = [];
+    Store.cards = [];
+    Store.loans = [];
+    Store.commitments = [];
+    Store.financing = [];
+    Store.consortium = [];
+    Store.insurance = [];
+
+    var available = Store.getMotorFinanceiro().disponivel;
+    document.getElementById('app').innerHTML = renderHeader() + renderHome() + renderBottomNav();
+    var items = Array.prototype.slice.call(document.querySelectorAll('.balance-grid .balance-item'));
+    var availableItem = items.find(function (item) {
+      var label = item.querySelector('.bi-label');
+      return label && /disponivel agora/i.test(label.textContent);
+    });
+    return {
+      available: available,
+      expected: fmtMoney(available),
+      label: availableItem && availableItem.querySelector('.bi-label').textContent,
+      value: availableItem && availableItem.querySelector('.bi-value').textContent
+    };
+  });
+
+  expect(result.available).toBe(-400);
+  expect(result.label).toMatch(/disponivel agora/i);
+  expect(result.value).toBe(result.expected);
+});
+
+test('parcelas antigas de cartão entram na competência de novembro pela data de vencimento', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    Store.userId = null;
+    Store.movements = [];
+    Store.loans = [];
+    Store.commitments = [];
+    Store.financing = [];
+    Store.consortium = [];
+    Store.insurance = [];
+    Store.cards = [
+      { id: 'card-due-before-close', nome: 'Cartão A', fechamento: 10, vencimento: 5 },
+      { id: 'card-due-after-close', nome: 'Cartão B', fechamento: 10, vencimento: 15 }
+    ];
+    Store.installments = [
+      {
+        id: 'old-purchase-nov-a',
+        tipo: 'cartao',
+        cardId: 'card-due-before-close',
+        compraId: 'old-purchase-a',
+        descricao: 'Compra antiga A',
+        dataCompra: '2026-08-05',
+        data: '2026-11-05',
+        parcelaAtual: 4,
+        parcelas: 6,
+        valor: 129.21,
+        status: 'pendente'
+      },
+      {
+        id: 'old-purchase-dec-a',
+        tipo: 'cartao',
+        cardId: 'card-due-before-close',
+        compraId: 'old-purchase-a',
+        descricao: 'Compra antiga A',
+        dataCompra: '2026-08-05',
+        data: '2026-12-05',
+        parcelaAtual: 5,
+        parcelas: 6,
+        valor: 129.21,
+        status: 'pendente'
+      },
+      {
+        id: 'old-purchase-nov-b',
+        tipo: 'cartao',
+        cardId: 'card-due-after-close',
+        compraId: 'old-purchase-b',
+        descricao: 'Compra antiga B',
+        dataCompra: '2026-07-15',
+        data: '2026-11-15',
+        parcelaAtual: 5,
+        parcelas: 8,
+        valor: 88.40,
+        status: 'pendente'
+      },
+      {
+        id: 'old-purchase-dec-b',
+        tipo: 'cartao',
+        cardId: 'card-due-after-close',
+        compraId: 'old-purchase-b',
+        descricao: 'Compra antiga B',
+        dataCompra: '2026-07-15',
+        data: '2026-12-15',
+        parcelaAtual: 6,
+        parcelas: 8,
+        valor: 88.40,
+        status: 'pendente'
+      }
+    ];
+
+    Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
+    var invoiceBeforeClose = Store.getCardCurrentInvoice('card-due-before-close');
+    var invoiceAfterCloseBeforeDue;
+
+    Clock.now = function () { return new Date(2026, 10, 11, 12, 0, 0); };
+    invoiceAfterCloseBeforeDue = Store.getCardCurrentInvoice('card-due-after-close');
+
+    var projection = Store.getMonthlyProjection(2026, 11);
+    var novemberTotals = Store.getCardMonthTotals('2026-11');
+    var decemberTotals = Store.getCardMonthTotals('2026-12');
+
+    return {
+      invoiceBeforeCloseIds: invoiceBeforeClose.installments.map(function (item) { return item.id; }),
+      invoiceAfterCloseBeforeDueIds: invoiceAfterCloseBeforeDue.installments.map(function (item) { return item.id; }),
+      targetMonthBeforeClose: invoiceBeforeClose.targetMonth,
+      targetMonthAfterCloseBeforeDue: invoiceAfterCloseBeforeDue.targetMonth,
+      projectionTotal: projection.total,
+      projectionCard: projection.cartao,
+      novemberCardTotal: novemberTotals.total,
+      decemberCardTotal: decemberTotals.total
+    };
+  });
+
+  expect(result.invoiceBeforeCloseIds).toContain('old-purchase-nov-a');
+  expect(result.invoiceAfterCloseBeforeDueIds).toContain('old-purchase-nov-b');
+  expect(result.targetMonthBeforeClose).toBe(10);
+  expect(result.targetMonthAfterCloseBeforeDue).toBe(10);
+  expect(result.projectionTotal).toBeCloseTo(217.61, 2);
+  expect(result.projectionCard).toBeCloseTo(217.61, 2);
+  expect(result.novemberCardTotal).toBeCloseTo(217.61, 2);
+  expect(result.decemberCardTotal).toBeCloseTo(217.61, 2);
+});
+
+
+test('Alicia explica a diferença entre entradas acumuladas e caixa disponível', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(function () {
+    Store.userId = null;
+    Store.lang = 'pt';
+    Store.movements = [
+      { id: 'alicia-balance-income', tipo: 'receita', status: 'pago', valor: 463.55, data: Clock.today() },
+      { id: 'alicia-balance-expense', tipo: 'despesa', status: 'pago', valor: 1770.00, data: Clock.today() }
+    ];
+    Store.installments = [];
+    Store.cards = [];
+    Store.loans = [];
+    Store.commitments = [];
+    Store.financing = [];
+    Store.consortium = [];
+    Store.insurance = [];
+    AlicerceIA._resetUser();
+
+    var motor = Store.getMotorFinanceiro();
+    var received = Store.getEntradasRealizadas();
+    var answer = AlicerceIA.responder('Por que apareceu saldo positivo se não adicionei entrada?');
+    return {
+      available: motor.disponivel,
+      received: received,
+      availableText: fmtMoney(motor.disponivel),
+      receivedText: fmtMoney(received),
+      answer: answer
+    };
+  });
+
+  expect(result.available).toBe(-1306.45);
+  expect(result.received).toBe(463.55);
+  expect(result.answer).toContain(result.availableText);
+  expect(result.answer).toContain(result.receivedText);
+  expect(result.answer).toContain('Não vou criar um saldo inicial');
+});
+
+test('Planos substitui a tela antiga e preserva Família como finalidade financeira', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'planos');
+  const result = await page.evaluate(function () {
+    Store.movements = [{
+      id: 'historic-family-purpose',
+      tipo: 'despesa',
+      categoria: 'familia',
+      subcategoria: 'filhos',
+      descricao: 'Compra classificada pela finalidade',
+      valor: 80,
+      data: today(),
+      status: 'pago'
+    }];
+    const inferred = Interpreter.inferItemCategory('fralda', 'fralda');
+    Store.commitments = [{ id: 'legacy-person-event', tipo: 'compromisso', personId: 'legacy-person', descricao: 'Evento pessoal legado', valor: 400, data: today(), status: 'pendente' }];
+    const blockedPersonWrite = Store.addCommitment({ tipo: 'compromisso', personId: 'new-person', descricao: 'Não criar', data: today(), status: 'pendente' });
+    const financeView = getVisaoFinanceira();
+    const calendarEvents = Store.getDayEvents(today());
+    Store.screen = 'family';
+    const retiredScreen = renderScreen();
+    return {
+      blockedPersonWrite: blockedPersonWrite,
+      legacyCalendarEvents: calendarEvents.filter(function (event) { return event.tipo === 'compromisso'; }).length,
+      legacyFixedCosts: financeView.custosFixos,
+      familyCategoryName: ALICERCE_CATEGORIES.familia.name,
+      familySubcategories: ALICERCE_CATEGORIES.familia.subs.slice(),
+      planCategoryKeys: planosCategorias().map(function (item) { return item[0]; }),
+      inferredCategory: inferred && inferred.c,
+      inferredSubcategory: inferred && inferred.s,
+      historicalCategory: Store.movements[0].categoria,
+      retiredScreenHasPersonForm: /Adicionar pessoa|Adicionar pessoa/.test(retiredScreen),
+      plansRouteExists: typeof renderPlanos === 'function',
+      oldFamilyStoreLoaded: typeof Store.familyPeople !== 'undefined'
+    };
+  });
+
+  expect(result.familyCategoryName).toBe('Família');
+  expect(result.familySubcategories).toContain('filhos');
+  expect(result.planCategoryKeys).not.toContain('familia');
+  expect(result.inferredCategory).toBe('familia');
+  expect(result.inferredSubcategory).toBe('filhos');
+  expect(result.historicalCategory).toBe('familia');
+  expect(result.retiredScreenHasPersonForm).toBe(false);
+  expect(result.plansRouteExists).toBe(true);
+  expect(result.oldFamilyStoreLoaded).toBe(false);
+  expect(result.blockedPersonWrite).toBe(null);
+  expect(result.legacyCalendarEvents).toBe(0);
+  expect(result.legacyFixedCosts).toBe(0);
+});
+
+test('Alicia explica que o cadastro de pessoas foi retirado sem confundir a categoria de compra', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const answer = await page.evaluate(function () {
+    Store.lang = 'pt';
+    return AlicerceIA.responder('me adiciona uma pessoa da família');
+  });
+  expect(answer).toContain('não existe mais');
+  expect(answer).toContain('finalidade de uma compra');
+  expect(answer).not.toContain('vou cadastrar');
+});
+
+test('Planos cria tabuleiro com prévia, marca datas individualmente, edita e desfaz sem alterar o caixa', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'planos');
+
+  await page.locator('#btn-create-plan').click();
+  await page.locator('#plan-title').fill('Meu desafio de economia');
+  await page.locator('#plan-target').fill('500');
+  await page.locator('#plan-count').selectOption('12');
+  await page.locator('#plan-category').selectOption('viagens');
+  await page.locator('#btn-preview-plan').click();
+
+  await expect(page.locator('#btn-save-plan')).toBeVisible();
+  const preview = await page.evaluate(function () {
+    const draft = Store.screenData && Store.screenData.draft;
+    return {
+      savedPlans: Store.plans.length,
+      count: draft && draft.valores ? draft.valores.length : 0,
+      sum: draft && draft.valores ? draft.valores.reduce(function (total, item) { return total + item.valor; }, 0) : 0
+    };
+  });
+  expect(preview.savedPlans).toBe(0);
+  expect(preview.count).toBe(12);
+  expect(preview.sum).toBeCloseTo(500, 2);
+
+  await page.locator('#btn-save-plan').click();
+  await expect(page.locator('.plan-board-cell')).toHaveCount(12);
+
+  const dates = await page.evaluate(function () {
+    return { first: dateShift(today(), -1), second: dateShift(today(), -2) };
+  });
+  const initialCash = await page.evaluate(function () {
+    return Store.getMotorFinanceiro().disponivel;
+  });
+
+  await page.locator('.plan-board-cell').first().click();
+  await page.locator('#plan-cell-date').fill(dates.first);
+  await page.locator('#btn-review-plan-date').click();
+
+  const beforeMarkSave = await page.evaluate(function () {
+    const plan = Store.plans[0];
+    return {
+      markedDate: plan.valores[0].data,
+      movementCount: Store.movements.length,
+      available: Store.getMotorFinanceiro().disponivel
+    };
+  });
+  expect(beforeMarkSave.markedDate).toBe('');
+  expect(beforeMarkSave.movementCount).toBe(0);
+  expect(beforeMarkSave.available).toBe(initialCash);
+
+  await page.locator('#btn-save-plan-date').click();
+  const firstMark = await page.evaluate(function () {
+    const cell = Store.plans[0].valores[0];
+    return {
+      date: cell.data,
+      amount: cell.valor,
+      history: cell.historico.length,
+      movements: Store.movements.length,
+      available: Store.getMotorFinanceiro().disponivel
+    };
+  });
+  expect(firstMark.date).toBe(dates.first);
+  expect(firstMark.history).toBe(1);
+  await expect(page.locator('.plan-board-cell').first()).toContainText(dates.first.split('-').reverse().join('/'));
+  expect(firstMark.movements).toBe(0);
+  expect(firstMark.available).toBe(initialCash);
+
+  await page.locator('.plan-board-cell').first().click();
+  await page.locator('#btn-edit-plan-date').click();
+  await page.locator('#plan-cell-date').fill(dates.second);
+  await page.locator('#btn-review-plan-date').click();
+
+  const beforeEditSave = await page.evaluate(function () {
+    return Store.plans[0].valores[0].data;
+  });
+  expect(beforeEditSave).toBe(dates.first);
+
+  await page.locator('#btn-save-plan-date').click();
+  const edited = await page.evaluate(function () {
+    const cell = Store.plans[0].valores[0];
+    return { date: cell.data, amount: cell.valor, history: cell.historico.length };
+  });
+  expect(edited.date).toBe(dates.second);
+  expect(edited.history).toBe(2);
+  expect(edited.amount).toBe(firstMark.amount);
+
+  await expect(page.locator('#toast .toast-btn')).toBeVisible();
+  await page.locator('#toast .toast-btn').click();
+
+  const afterUndo = await page.evaluate(function () {
+    const cell = Store.plans[0].valores[0];
+    return {
+      date: cell.data,
+      amount: cell.valor,
+      history: cell.historico.length,
+      movements: Store.movements.length,
+      available: Store.getMotorFinanceiro().disponivel
+    };
+  });
+  expect(afterUndo.date).toBe(dates.first);
+  expect(afterUndo.amount).toBe(firstMark.amount);
+  expect(afterUndo.history).toBe(1);
+  expect(afterUndo.movements).toBe(0);
+  expect(afterUndo.available).toBe(initialCash);
+});
+
