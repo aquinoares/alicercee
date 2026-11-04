@@ -3187,3 +3187,142 @@ test('Alicia respeita negações ao confirmar natureza e flexibilidade', async f
     confidence: { nature: 'low', context: 'high' }
   });
 });
+
+
+test('o saldo da Home usa o caixa líquido, não a soma histórica de entradas', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    Store.userId = null;
+    Store.movements = [
+      { id: 'saldo-income', tipo: 'receita', status: 'pago', valor: 500, data: Clock.today() },
+      { id: 'saldo-expense', tipo: 'despesa', status: 'pago', valor: 900, data: Clock.today() }
+    ];
+    Store.installments = [];
+    Store.cards = [];
+    Store.loans = [];
+    Store.commitments = [];
+    Store.financing = [];
+    Store.consortium = [];
+    Store.insurance = [];
+
+    var available = Store.getMotorFinanceiro().disponivel;
+    document.getElementById('app').innerHTML = renderHeader() + renderHome() + renderBottomNav();
+    var items = Array.prototype.slice.call(document.querySelectorAll('.balance-grid .balance-item'));
+    var availableItem = items.find(function (item) {
+      var label = item.querySelector('.bi-label');
+      return label && /disponivel agora/i.test(label.textContent);
+    });
+    return {
+      available: available,
+      expected: fmtMoney(available),
+      label: availableItem && availableItem.querySelector('.bi-label').textContent,
+      value: availableItem && availableItem.querySelector('.bi-value').textContent
+    };
+  });
+
+  expect(result.available).toBe(-400);
+  expect(result.label).toMatch(/disponivel agora/i);
+  expect(result.value).toBe(result.expected);
+});
+
+test('parcelas antigas de cartão entram na competência de novembro pela data de vencimento', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result = await page.evaluate(function () {
+    Store.userId = null;
+    Store.movements = [];
+    Store.loans = [];
+    Store.commitments = [];
+    Store.financing = [];
+    Store.consortium = [];
+    Store.insurance = [];
+    Store.cards = [
+      { id: 'card-due-before-close', nome: 'Cartão A', fechamento: 10, vencimento: 5 },
+      { id: 'card-due-after-close', nome: 'Cartão B', fechamento: 10, vencimento: 15 }
+    ];
+    Store.installments = [
+      {
+        id: 'old-purchase-nov-a',
+        tipo: 'cartao',
+        cardId: 'card-due-before-close',
+        compraId: 'old-purchase-a',
+        descricao: 'Compra antiga A',
+        dataCompra: '2026-08-05',
+        data: '2026-11-05',
+        parcelaAtual: 4,
+        parcelas: 6,
+        valor: 129.21,
+        status: 'pendente'
+      },
+      {
+        id: 'old-purchase-dec-a',
+        tipo: 'cartao',
+        cardId: 'card-due-before-close',
+        compraId: 'old-purchase-a',
+        descricao: 'Compra antiga A',
+        dataCompra: '2026-08-05',
+        data: '2026-12-05',
+        parcelaAtual: 5,
+        parcelas: 6,
+        valor: 129.21,
+        status: 'pendente'
+      },
+      {
+        id: 'old-purchase-nov-b',
+        tipo: 'cartao',
+        cardId: 'card-due-after-close',
+        compraId: 'old-purchase-b',
+        descricao: 'Compra antiga B',
+        dataCompra: '2026-07-15',
+        data: '2026-11-15',
+        parcelaAtual: 5,
+        parcelas: 8,
+        valor: 88.40,
+        status: 'pendente'
+      },
+      {
+        id: 'old-purchase-dec-b',
+        tipo: 'cartao',
+        cardId: 'card-due-after-close',
+        compraId: 'old-purchase-b',
+        descricao: 'Compra antiga B',
+        dataCompra: '2026-07-15',
+        data: '2026-12-15',
+        parcelaAtual: 6,
+        parcelas: 8,
+        valor: 88.40,
+        status: 'pendente'
+      }
+    ];
+
+    Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
+    var invoiceBeforeClose = Store.getCardCurrentInvoice('card-due-before-close');
+    var invoiceAfterCloseBeforeDue;
+
+    Clock.now = function () { return new Date(2026, 10, 11, 12, 0, 0); };
+    invoiceAfterCloseBeforeDue = Store.getCardCurrentInvoice('card-due-after-close');
+
+    var projection = Store.getMonthlyProjection(2026, 11);
+    var novemberTotals = Store.getCardMonthTotals('2026-11');
+    var decemberTotals = Store.getCardMonthTotals('2026-12');
+
+    return {
+      invoiceBeforeCloseIds: invoiceBeforeClose.installments.map(function (item) { return item.id; }),
+      invoiceAfterCloseBeforeDueIds: invoiceAfterCloseBeforeDue.installments.map(function (item) { return item.id; }),
+      targetMonthBeforeClose: invoiceBeforeClose.targetMonth,
+      targetMonthAfterCloseBeforeDue: invoiceAfterCloseBeforeDue.targetMonth,
+      projectionTotal: projection.total,
+      projectionCard: projection.cartao,
+      novemberCardTotal: novemberTotals.total,
+      decemberCardTotal: decemberTotals.total
+    };
+  });
+
+  expect(result.invoiceBeforeCloseIds).toContain('old-purchase-nov-a');
+  expect(result.invoiceAfterCloseBeforeDueIds).toContain('old-purchase-nov-b');
+  expect(result.targetMonthBeforeClose).toBe(10);
+  expect(result.targetMonthAfterCloseBeforeDue).toBe(10);
+  expect(result.projectionTotal).toBeCloseTo(217.61, 2);
+  expect(result.projectionCard).toBeCloseTo(217.61, 2);
+  expect(result.novemberCardTotal).toBeCloseTo(217.61, 2);
+  expect(result.decemberCardTotal).toBeCloseTo(217.61, 2);
+});
