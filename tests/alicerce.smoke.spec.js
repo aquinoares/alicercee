@@ -58,11 +58,7 @@ async function prepararTelaSemNuvem(page, screen) {
     Store.consortium = [];
     Store.extraIncome = [];
     Store.insurance = [];
-    Store.familyPeople = [];
-    Store.familyCategories = [];
-    Store.doctors = [];
-    Store.medications = [];
-    Store.doseLogs = [];
+    Store.plans = [];
     Store.learning = {};
     Store.screen = screenName;
     document.body.setAttribute('data-theme', 'azul');
@@ -3364,3 +3360,157 @@ test('Alicia explica a diferença entre entradas acumuladas e caixa disponível'
   expect(result.answer).toContain(result.receivedText);
   expect(result.answer).toContain('Não vou criar um saldo inicial');
 });
+
+test('Planos substitui a tela antiga e preserva Família como finalidade financeira', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'planos');
+  const result = await page.evaluate(function () {
+    Store.movements = [{
+      id: 'historic-family-purpose',
+      tipo: 'despesa',
+      categoria: 'familia',
+      subcategoria: 'filhos',
+      descricao: 'Compra classificada pela finalidade',
+      valor: 80,
+      data: today(),
+      status: 'pago'
+    }];
+    const inferred = Interpreter.inferItemCategory('fralda', 'fralda');
+    Store.screen = 'family';
+    const retiredScreen = renderScreen();
+    return {
+      familyCategoryName: ALICERCE_CATEGORIES.familia.name,
+      familySubcategories: ALICERCE_CATEGORIES.familia.subs.slice(),
+      inferredCategory: inferred && inferred.c,
+      inferredSubcategory: inferred && inferred.s,
+      historicalCategory: Store.movements[0].categoria,
+      retiredScreenHasPersonForm: /Adicionar pessoa|Adicionar pessoa/.test(retiredScreen),
+      plansRouteExists: typeof renderPlanos === 'function',
+      oldFamilyStoreLoaded: typeof Store.familyPeople !== 'undefined'
+    };
+  });
+
+  expect(result.familyCategoryName).toBe('Família');
+  expect(result.familySubcategories).toContain('filhos');
+  expect(result.inferredCategory).toBe('familia');
+  expect(result.inferredSubcategory).toBe('filhos');
+  expect(result.historicalCategory).toBe('familia');
+  expect(result.retiredScreenHasPersonForm).toBe(false);
+  expect(result.plansRouteExists).toBe(true);
+  expect(result.oldFamilyStoreLoaded).toBe(false);
+});
+
+test('Alicia explica que o cadastro de pessoas foi retirado sem confundir a categoria de compra', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const answer = await page.evaluate(function () {
+    Store.lang = 'pt';
+    return AlicerceIA.responder('me adiciona uma pessoa da família');
+  });
+  expect(answer).toContain('não existe mais');
+  expect(answer).toContain('finalidade de uma compra');
+  expect(answer).not.toContain('vou cadastrar');
+});
+
+test('Planos cria tabuleiro com prévia, marca datas individualmente, edita e desfaz sem alterar o caixa', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'planos');
+
+  await page.locator('#btn-create-plan').click();
+  await page.locator('#plan-title').fill('Meu desafio de economia');
+  await page.locator('#plan-target').fill('500');
+  await page.locator('#plan-count').selectOption('12');
+  await page.locator('#plan-category').selectOption('viagens');
+  await page.locator('#btn-preview-plan').click();
+
+  await expect(page.locator('#btn-save-plan')).toBeVisible();
+  const preview = await page.evaluate(function () {
+    const draft = Store.screenData && Store.screenData.draft;
+    return {
+      savedPlans: Store.plans.length,
+      count: draft && draft.valores ? draft.valores.length : 0,
+      sum: draft && draft.valores ? draft.valores.reduce(function (total, item) { return total + item.valor; }, 0) : 0
+    };
+  });
+  expect(preview.savedPlans).toBe(0);
+  expect(preview.count).toBe(12);
+  expect(preview.sum).toBeCloseTo(500, 2);
+
+  await page.locator('#btn-save-plan').click();
+  await expect(page.locator('.plan-board-cell')).toHaveCount(12);
+
+  const dates = await page.evaluate(function () {
+    return { first: dateShift(today(), -1), second: dateShift(today(), -2) };
+  });
+  const initialCash = await page.evaluate(function () {
+    return Store.getMotorFinanceiro().disponivel;
+  });
+
+  await page.locator('.plan-board-cell').first().click();
+  await page.locator('#plan-cell-date').fill(dates.first);
+  await page.locator('#btn-review-plan-date').click();
+
+  const beforeMarkSave = await page.evaluate(function () {
+    const plan = Store.plans[0];
+    return {
+      markedDate: plan.valores[0].data,
+      movementCount: Store.movements.length,
+      available: Store.getMotorFinanceiro().disponivel
+    };
+  });
+  expect(beforeMarkSave.markedDate).toBe('');
+  expect(beforeMarkSave.movementCount).toBe(0);
+  expect(beforeMarkSave.available).toBe(initialCash);
+
+  await page.locator('#btn-save-plan-date').click();
+  const firstMark = await page.evaluate(function () {
+    const cell = Store.plans[0].valores[0];
+    return {
+      date: cell.data,
+      amount: cell.valor,
+      history: cell.historico.length,
+      movements: Store.movements.length,
+      available: Store.getMotorFinanceiro().disponivel
+    };
+  });
+  expect(firstMark.date).toBe(dates.first);
+  expect(firstMark.history).toBe(1);
+  expect(firstMark.movements).toBe(0);
+  expect(firstMark.available).toBe(initialCash);
+
+  await page.locator('.plan-board-cell').first().click();
+  await page.locator('#btn-edit-plan-date').click();
+  await page.locator('#plan-cell-date').fill(dates.second);
+  await page.locator('#btn-review-plan-date').click();
+
+  const beforeEditSave = await page.evaluate(function () {
+    return Store.plans[0].valores[0].data;
+  });
+  expect(beforeEditSave).toBe(dates.first);
+
+  await page.locator('#btn-save-plan-date').click();
+  const edited = await page.evaluate(function () {
+    const cell = Store.plans[0].valores[0];
+    return { date: cell.data, amount: cell.valor, history: cell.historico.length };
+  });
+  expect(edited.date).toBe(dates.second);
+  expect(edited.history).toBe(2);
+  expect(edited.amount).toBe(firstMark.amount);
+
+  await expect(page.locator('#toast .toast-btn')).toBeVisible();
+  await page.locator('#toast .toast-btn').click();
+
+  const afterUndo = await page.evaluate(function () {
+    const cell = Store.plans[0].valores[0];
+    return {
+      date: cell.data,
+      amount: cell.valor,
+      history: cell.historico.length,
+      movements: Store.movements.length,
+      available: Store.getMotorFinanceiro().disponivel
+    };
+  });
+  expect(afterUndo.date).toBe(dates.first);
+  expect(afterUndo.amount).toBe(firstMark.amount);
+  expect(afterUndo.history).toBe(1);
+  expect(afterUndo.movements).toBe(0);
+  expect(afterUndo.available).toBe(initialCash);
+});
+
