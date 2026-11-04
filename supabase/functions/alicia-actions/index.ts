@@ -225,6 +225,21 @@ Deno.serve(async (req: Request) => {
       if (!confirmed) return reply(req, { error: "A exclusão precisa de confirmação explícita." }, 409);
     }
 
+    const fingerprintInput = JSON.stringify({
+      action: action,
+      reminder: reminder,
+      reminder_id: reminderId || null,
+      occurrence_date: occurrenceDate,
+      confirmed: confirmed
+    });
+    const fingerprintBuffer = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(fingerprintInput)
+    );
+    const requestFingerprint = Array.from(new Uint8Array(fingerprintBuffer))
+      .map(function(value: number) { return value.toString(16).padStart(2, "0"); })
+      .join("");
+
     const mutation = await auth.admin.rpc("alicia_mutate_commitments", {
       p_user_id: userId,
       p_action: action,
@@ -232,6 +247,7 @@ Deno.serve(async (req: Request) => {
       p_reminder_id: reminderId || null,
       p_occurrence_date: occurrenceDate,
       p_idempotency_key: idempotencyKey,
+      p_request_fingerprint: requestFingerprint,
       p_confirmed: confirmed
     });
     if (mutation.error || !mutation.data || mutation.data.ok !== true) {
