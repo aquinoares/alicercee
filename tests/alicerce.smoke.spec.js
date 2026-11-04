@@ -3387,6 +3387,7 @@ test('Planos substitui a tela antiga e preserva Família como finalidade finance
       legacyFixedCosts: financeView.custosFixos,
       familyCategoryName: ALICERCE_CATEGORIES.familia.name,
       familySubcategories: ALICERCE_CATEGORIES.familia.subs.slice(),
+      planCategoryKeys: planosCategorias().map(function (item) { return item[0]; }),
       inferredCategory: inferred && inferred.c,
       inferredSubcategory: inferred && inferred.s,
       historicalCategory: Store.movements[0].categoria,
@@ -3398,6 +3399,7 @@ test('Planos substitui a tela antiga e preserva Família como finalidade finance
 
   expect(result.familyCategoryName).toBe('Família');
   expect(result.familySubcategories).toContain('filhos');
+  expect(result.planCategoryKeys).not.toContain('familia');
   expect(result.inferredCategory).toBe('familia');
   expect(result.inferredSubcategory).toBe('filhos');
   expect(result.historicalCategory).toBe('familia');
@@ -3482,6 +3484,7 @@ test('Planos cria tabuleiro com prévia, marca datas individualmente, edita e de
   });
   expect(firstMark.date).toBe(dates.first);
   expect(firstMark.history).toBe(1);
+  await expect(page.locator('.plan-board-cell').first()).toContainText(dates.first.split('-').reverse().join('/'));
   expect(firstMark.movements).toBe(0);
   expect(firstMark.available).toBe(initialCash);
 
