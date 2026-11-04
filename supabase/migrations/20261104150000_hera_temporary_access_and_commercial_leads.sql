@@ -23,6 +23,7 @@ CREATE INDEX IF NOT EXISTS temporary_access_grants_user_expiry_idx
 ALTER TABLE public.temporary_access_grants ENABLE ROW LEVEL SECURITY;
 REVOKE ALL PRIVILEGES ON TABLE public.temporary_access_grants FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON TABLE public.temporary_access_grants TO authenticated;
+GRANT ALL PRIVILEGES ON TABLE public.temporary_access_grants TO service_role;
 
 DROP POLICY IF EXISTS temporary_access_grants_read_own
   ON public.temporary_access_grants;
@@ -137,5 +138,6 @@ CREATE INDEX IF NOT EXISTS commercial_leads_updated_at_idx
 
 ALTER TABLE public.commercial_leads ENABLE ROW LEVEL SECURITY;
 REVOKE ALL PRIVILEGES ON TABLE public.commercial_leads FROM PUBLIC, anon, authenticated;
+GRANT ALL PRIVILEGES ON TABLE public.commercial_leads TO service_role;
 
 COMMIT;
