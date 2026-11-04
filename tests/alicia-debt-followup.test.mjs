@@ -206,3 +206,61 @@ testCase('cancela o cadastro pendente sem salvar nada', () => {
   assert.match(answer, /Cancelei/);
   assert.equal(Store.commitments.length, 0);
 });
+
+
+testCase('conta antiga explicitamente paga usa a data do pagamento, não o vencimento original', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  const answer = api.handleMessage(AlicerceIA, 'Alicia, tenho uma conta antiga de energia de R$ 150,00 que venceu em 20/10 e já paguei ontem');
+  assert.match(answer, /paga em 2026-11-03/);
+  assert.equal(Store.commitments[0].data, '2026-10-20');
+  assert.equal(Store.commitments[0].dataPagamento, '2026-11-03');
+  assert.equal(Store.movements[0].data, '2026-11-03');
+  assert.equal(api.getOverview().paidLate.length, 1);
+});
+
+testCase('pergunta todos os vencimentos do dia na Home, sem misturar com lembretes pessoais', () => {
+  const { Store } = createContext();
+  Store.installments.push(
+    { id: 'home-1', tipo: 'pagar', descricao: 'Parcela da casa', valor: 500, data: '2026-11-04', status: 'pendente' },
+    { id: 'home-2', tipo: 'financiamento', descricao: 'Financiamento', valor: 800, data: '2026-11-04', status: 'pendente' }
+  );
+  Store.commitments.push(
+    { id: 'reminder', tipo: 'lembrete', descricao: 'Comprar leite', valor: null, data: '2026-11-04', status: 'pendente' }
+  );
+  const cards = Store.getSmartCards();
+  const paymentCards = cards.filter(item => item.type === 'alicia-payment-check');
+  assert.equal(paymentCards.length, 2);
+  assert.ok(paymentCards.every(item => /A casa conseguiu pagar/.test(item.text)));
+  assert.ok(paymentCards.every(item => item.go.indexOf('openPaymentCheck') >= 0));
+});
+
+testCase('confirma pagamento de compromisso atualizando movimentação já vinculada sem duplicar saída', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.movements.push({
+    id: 'already-linked',
+    tipo: 'despesa',
+    descricao: 'Internet',
+    valor: 100,
+    data: '2026-11-04',
+    status: 'pendente',
+    commitmentId: 'debt-existing'
+  });
+  Store.commitments.push({
+    id: 'debt-existing',
+    tipo: 'compromisso',
+    naturezaFinanceira: 'divida',
+    descricao: 'Internet',
+    valor: 100,
+    data: '2026-11-03',
+    status: 'pendente',
+    paymentStatus: 'pendente',
+    expenseMovementId: 'already-linked'
+  });
+  AlicerceIA._pendingPaymentCheck = { key: 'commitment:debt-existing' };
+  api.handleMessage(AlicerceIA, 'Sim, paguei hoje');
+  assert.equal(Store.movements.length, 1);
+  assert.equal(Store.movements[0].status, 'pago');
+  assert.equal(Store.movements[0].data, '2026-11-04');
+  assert.equal(Store.commitments[0].status, 'concluido');
+  assert.equal(api.getOverview().paidLate.length, 1);
+});
