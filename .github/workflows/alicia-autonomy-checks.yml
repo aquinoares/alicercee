@@ -44,12 +44,12 @@ jobs:
           const fs = require('node:fs');
           const vm = require('node:vm');
           const html = fs.readFileSync('index.html', 'utf8');
-          const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+          const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
           let checked = 0;
           for (const match of scripts) {
-            if (/\\bsrc\\s*=/.test(match[1])) continue;
+            if (/\bsrc\s*=/.test(match[1])) continue;
             const code = match[2].trim();
-            if (!code || /application\\/(?:ld\\+)?json/i.test(match[1])) continue;
+            if (!code || /application\/(?:ld\+)?json/i.test(match[1])) continue;
             new vm.Script(code, { filename: 'index.html:inline-script-' + (++checked) });
           }
           if (!checked) throw new Error('No inline JavaScript blocks were checked.');
