@@ -81,8 +81,23 @@ assert.match(followUpReply, /Criei/);
 assert.equal(call.reminder.data, '2026-11-04');
 assert.equal(call.reminder.hora, '08:00');
 
-A._pendingReminderDelete = null;
 context.Store.commitments.push({ id: 'r-luz', tipo: 'lembrete', descricao: 'pagar luz', data: '2026-11-04', repeticao: 'nenhuma', feitos: [] });
+call = null;
+const movedReply = await A._handleReminderAction('Reagende o lembrete de pagar luz para 06/11 às 10');
+assert.match(movedReply, /Reagendei/);
+assert.equal(call.action, 'reminder.update');
+assert.equal(call.reminder_id, 'r-luz');
+assert.equal(call.reminder.data, '2026-11-06');
+assert.equal(call.reminder.hora, '10:00');
+
+call = null;
+const completedReply = await A._handleReminderAction('Marque o lembrete de pagar luz como concluído');
+assert.match(completedReply, /concluído/);
+assert.equal(call.action, 'reminder.complete');
+assert.equal(call.reminder_id, 'r-luz');
+assert.equal(call.occurrence_date, '2026-11-06');
+
+A._pendingReminderDelete = null;
 call = null;
 const deletePrompt = await A._handleReminderAction('Apague o lembrete de pagar luz');
 assert.match(deletePrompt, /Responda sim/);
