@@ -5690,11 +5690,11 @@ AlicerceIA._extractExpenseDate=function(value){
 };
 AlicerceIA._removeExpenseDateText=function(value){
   return String(value||'')
-    .replace(/\b20\d{2}-(?:0?[1-9]|1[0-2])-(?:0?[1-9]|[12]\d|3[01])\b/gi,' ')
     .replace(/\bdepois\s+de\s+amanh[aã]\b/gi,' ')
     .replace(/\b(?:anteontem|ontem|hoje|amanh[aã])\b/gi,' ')
-    .replace(/\b(?:dia\s+)?[0-3]?\d[\/.-][01]?\d(?:[\/.-]\d{2,4})?\b/gi,' ')
-    .replace(/\b(?:dia\s+)?\d{1,2}\s+de\s+(?:janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?:\s+de\s+\d{4})?\b/gi,' ')
+    .replace(/\b(?:em|no|na)?\s*(?:dia\s+)?20\d{2}-(?:0?[1-9]|1[0-2])-(?:0?[1-9]|[12]\d|3[01])\b/gi,' ')
+    .replace(/\b(?:no\s+)?(?:dia\s+)?[0-3]?\d[\/.-][01]?\d(?:[\/.-]\d{2,4})?\b/gi,' ')
+    .replace(/\b(?:no\s+)?(?:dia\s+)?\d{1,2}\s+de\s+(?:janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?:\s+de\s+\d{4})?\b/gi,' ')
     .replace(/\b(?:no|na|em|dia)\s*$/i,' ')
     .replace(/\s+/g,' ').trim();
 };
@@ -5753,6 +5753,7 @@ AlicerceIA._parseExpenseCommand=function(value){
   if(amountRaw)details=details.replace(amountRaw,' ');
   details=this._removeExpenseDateText(details);
   details=details.replace(/\b(quero|preciso|adicionar|adiciona|comprar|comprei|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|uma|um|uns|umas|despesa|gasto|valor|de|por|foi|custou|reais?)\b/gi,' ');
+  details=details.replace(/\b(?:no|na|em|dia)\s*$/i,' ');
   var purpose='';
   var purposeMatch=details.match(/\b(?:para|pra)\s+(.+)$/i);
   if(purposeMatch){
