@@ -63,7 +63,11 @@ assert.equal(explicit.repetition, 'semanal');
 let call = null;
 A._invokeReminderAction = async function(payload) {
   call = payload;
-  return { reminder: payload.reminder ? { id: 'r-new', descricao: payload.reminder.descricao, data: payload.reminder.data, hora: payload.reminder.hora } : null };
+  const target = context.Store.commitments.find(function(item) { return item.id === payload.reminder_id; });
+  if (payload.action === 'reminder.update' && target) Object.assign(target, payload.reminder);
+  if (payload.action === 'reminder.complete' && target) target.feitos = (target.feitos || []).concat([payload.occurrence_date]);
+  if (payload.action === 'reminder.delete' && target) context.Store.commitments = context.Store.commitments.filter(function(item) { return item.id !== payload.reminder_id; });
+  return { reminder: payload.reminder ? { id: payload.reminder_id || 'r-new', descricao: payload.reminder.descricao, data: payload.reminder.data, hora: payload.reminder.hora } : null };
 };
 const createdReply = await A._handleReminderAction('Me lembra de pagar a conta de luz amanhã às 9');
 assert.match(createdReply, /Criei/);
