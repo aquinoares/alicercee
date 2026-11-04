@@ -193,8 +193,9 @@
       var key = source + ':' + String(id || record.id || '');
       if (seen[key]) return;
       seen[key] = true;
-      var isPaid = status === 'pago' || status === 'recebido' || status === 'concluido' ||
-        record.paymentStatus === 'pago' || record.status === 'pago';
+      var paymentStatus = normalize(record.paymentStatus || '');
+      var isPaid = paymentStatus === 'pago' || status === 'pago' || status === 'recebido' ||
+        (status === 'concluido' && paymentStatus !== 'pendente');
       var paidDate = isPaid ? paymentDateFor(record, source) : '';
       var due = String(dueDate);
       result.push({
