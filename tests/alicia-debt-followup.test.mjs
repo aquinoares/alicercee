@@ -99,7 +99,7 @@ testCase('não inventa dados ausentes ao cadastrar dívida antiga', () => {
   const answer = api.handleMessage(AlicerceIA, 'Alicia, anota uma conta antiga');
   assert.match(answer, /De qual conta antiga/);
   assert.equal(Store.commitments.length, 0);
-  assert.equal(Alicia._pendingDebtDraft.amount, null);
+  assert.equal(AlicerceIA._pendingDebtDraft.amount, null);
 });
 
 testCase('cria compromisso e pede os campos que faltam, um por vez', () => {
