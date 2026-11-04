@@ -1,0 +1,57 @@
+name: Alicia autonomy checks
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "supabase/functions/alicia-actions/**"
+      - "supabase/migrations/*alicia_action_dispatch*"
+      - "docs/alicia-autonomy-security.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  edge-typecheck:
+    name: Type-check Alicia action dispatcher
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Check Alicia action dispatcher
+        working-directory: supabase/functions/alicia-actions
+        run: deno check index.ts
+
+  frontend-syntax:
+    name: Check inline application scripts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse inline JavaScript
+        run: |
+          node --input-type=commonjs <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const html = fs.readFileSync('index.html', 'utf8');
+          const scripts = [...html.matchAll(/<script\\b([^>]*)>([\\s\\S]*?)<\\/script>/gi)];
+          let checked = 0;
+          for (const match of scripts) {
+            if (/\\bsrc\\s*=/.test(match[1])) continue;
+            const code = match[2].trim();
+            if (!code || /application\\/(?:ld\\+)?json/i.test(match[1])) continue;
+            new vm.Script(code, { filename: 'index.html:inline-script-' + (++checked) });
+          }
+          if (!checked) throw new Error('No inline JavaScript blocks were checked.');
+          console.log('Validated ' + checked + ' inline script blocks.');
+          NODE
