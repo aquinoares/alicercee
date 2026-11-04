@@ -10015,7 +10015,7 @@ function homeRenderComunicados() {
   html+='<div class="balance-grid">'+
     '<div class="balance-item bi-saldo"><div class="bi-label">'+_miniMonthName+'</div><div class="bi-value text-red">'+fmtMoney(_miniCurrentDebts)+'</div></div>'+
     '<div class="balance-item"><div class="bi-label">'+_miniNextMonthName+'</div><div class="bi-value text-red">'+fmtMoney(_miniNextCommitted)+'</div></div>'+
-    '<div class="balance-item"><div class="bi-label">Saldo</div><div class="bi-value '+(_miniSaldo<0?'text-red':'text-green')+'">'+fmtMoney(_miniSaldo)+'</div></div>'+
+    '<div class="balance-item"><div class="bi-label">'+t('disponivel')+'</div><div class="bi-value '+(_miniSaldo<0?'text-red':'text-green')+'">'+fmtMoney(_miniSaldo)+'</div></div>'+
     '<div class="balance-item"><div class="bi-label">Cartões</div><div class="bi-value text-yellow">'+fmtMoney(_miniCardsCurrent)+'</div></div></div>';
 html+='';
   html+='<div class="section-title">'+t('proximosCompromissos')+'</div>';
