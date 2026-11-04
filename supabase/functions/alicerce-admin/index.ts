@@ -28,15 +28,15 @@ function normalizeCommercialEmail(value: unknown): string {
 function isValidCommercialEmail(email: string): boolean {
   const at = email.indexOf("@");
   const finalDot = email.lastIndexOf(".");
-  return email.length <= 254 &&
-    at > 0 &&
-    at === email.lastIndexOf("@") &&
-    at < finalDot - 1 &&
-    finalDot < email.length - 1 &&
-    email.indexOf(" ") < 0 &&
-    email.indexOf("\\t") < 0 &&
-    email.indexOf("\\n") < 0 &&
-    email.indexOf("\\r") < 0;
+  if (email.length > 254 || at <= 0 ||
+      at !== email.lastIndexOf("@") ||
+      at >= finalDot - 1 ||
+      finalDot >= email.length - 1) return false;
+  for (let i = 0; i < email.length; i += 1) {
+    const code = email.charCodeAt(i);
+    if (code <= 32 || code === 127) return false;
+  }
+  return true;
 }
 
 async function findAuthUserByEmail(adminClient: any, email: string) {
