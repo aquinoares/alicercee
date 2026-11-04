@@ -248,15 +248,17 @@
 
   function getOverview() {
     var list = getObligations();
-    var output = {overdue: [], dueToday: [], upcoming: [], paidLate: [], all: list};
+    var output = {overdue: [], dueToday: [], upcoming: [], paid: [], paidLate: [], all: list};
     list.forEach(function (item) {
       if (item.overdue) output.overdue.push(item);
       if (item.dueToday) output.dueToday.push(item);
+      if (item.status === 'pago') output.paid.push(item);
       if (item.paidLate) output.paidLate.push(item);
       if (item.status === 'pendente' && item.dueDate > today() && item.dueDate <= shiftDate(today(), 30)) output.upcoming.push(item);
     });
     output.overdueTotal = output.overdue.reduce(function (sum, item) { return sum + item.amount; }, 0);
     output.dueTodayTotal = output.dueToday.reduce(function (sum, item) { return sum + item.amount; }, 0);
+    output.paidTotal = output.paid.reduce(function (sum, item) { return sum + item.amount; }, 0);
     output.paidLateTotal = output.paidLate.reduce(function (sum, item) { return sum + item.amount; }, 0);
     return output;
   }
@@ -615,6 +617,9 @@
     if (view.dueToday.length) {
       lines.push('Vencem hoje: ' + view.dueToday.length + ' conta(s), total de ' + formatMoney(view.dueTodayTotal) + '.');
     }
+    if (view.paid.length) {
+      lines.push('Quitadas (pagamento confirmado): ' + view.paid.length + ' conta(s), total de ' + formatMoney(view.paidTotal) + '.');
+    } else lines.push('Não encontrei contas quitadas no histórico acompanhado.');
     if (view.paidLate.length) {
       lines.push('Pagas após o vencimento: ' + view.paidLate.length + ' conta(s), total de ' + formatMoney(view.paidLateTotal) + '.');
       view.paidLate.slice(0, 5).forEach(function (x) {
@@ -657,6 +662,7 @@
     html += '<div style="font-weight:750;margin-bottom:10px">Contas e dívidas acompanhadas pela Alicia</div>';
     html += '<div class="list-item"><div class="li-info"><div class="li-name">Em atraso</div><div class="li-sub">' + view.overdue.length + ' conta(s)</div></div><div class="li-amount text-red">' + formatMoney(view.overdueTotal) + '</div></div>';
     html += '<div class="list-item"><div class="li-info"><div class="li-name">Vencem hoje</div><div class="li-sub">' + view.dueToday.length + ' conta(s)</div></div><div class="li-amount">' + formatMoney(view.dueTodayTotal) + '</div></div>';
+    html += '<div class="list-item"><div class="li-info"><div class="li-name">Quitadas</div><div class="li-sub">' + view.paid.length + ' conta(s)</div></div><div class="li-amount">' + formatMoney(view.paidTotal) + '</div></div>';
     html += '<div class="list-item"><div class="li-info"><div class="li-name">Pagas após o vencimento</div><div class="li-sub">' + view.paidLate.length + ' conta(s)</div></div><div class="li-amount">' + formatMoney(view.paidLateTotal) + '</div></div>';
     if (view.overdue.length) {
       html += '<div class="text-sm mt-2">';
