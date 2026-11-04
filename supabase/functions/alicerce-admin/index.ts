@@ -26,7 +26,17 @@ function normalizeCommercialEmail(value: unknown): string {
 }
 
 function isValidCommercialEmail(email: string): boolean {
-  return email.length <= 254 && email.indexOf("@") > 0 && email.indexOf(" ") < 0 && email.lastIndexOf(".") > email.indexOf("@") + 1 && email.lastIndexOf(".") < email.length - 1;
+  const at = email.indexOf("@");
+  const finalDot = email.lastIndexOf(".");
+  return email.length <= 254 &&
+    at > 0 &&
+    at === email.lastIndexOf("@") &&
+    at < finalDot - 1 &&
+    finalDot < email.length - 1 &&
+    email.indexOf(" ") < 0 &&
+    email.indexOf("\\t") < 0 &&
+    email.indexOf("\\n") < 0 &&
+    email.indexOf("\\r") < 0;
 }
 
 async function findAuthUserByEmail(adminClient: any, email: string) {
