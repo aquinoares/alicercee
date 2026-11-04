@@ -2800,8 +2800,10 @@ const Repository={
 
   async cloudLoadAll(uid,allowedStores){
     try{
-      if(!window.alicerceSupabase||!uid||!Array.isArray(allowedStores)||!allowedStores.length)return {};
-      const allowed=allowedStores.filter(function(name){return typeof name==='string'&&name.length>0});
+      const defaultAllowedStores=['movements','cards','loans','installments','commitments','financing','consortium','extra_income','insurance','plans','learning','settings'];
+      const requestedStores=Array.isArray(allowedStores)?allowedStores:defaultAllowedStores;
+      if(!window.alicerceSupabase||!uid||!requestedStores.length)return {};
+      const allowed=requestedStores.filter(function(name){return typeof name==='string'&&name.length>0});
       if(!allowed.length)return {};
       const {data,error}=await window.alicerceSupabase
         .from('alicerce_data')
@@ -6092,6 +6094,19 @@ AlicerceIA.enviarMensagem=async function(question){
             interpretation.source='alicia_knowledge';
           }
         }
+        if(!(interpretation.categoria&&interpretation.subcategoria&&alicerClassificationPairIsValid(interpretation.categoria,interpretation.subcategoria))&&
+           typeof Interpreter!=='undefined'&&Interpreter&&typeof Interpreter.inferItemCategory==='function'){
+          var localClassification=Interpreter.inferItemCategory(
+            expenseCommand.item,
+            'contexto '+String(expenseCommand.purpose||'')+' '+String(expenseCommand.local||'')
+          );
+          if(localClassification&&alicerClassificationPairIsValid(localClassification.c,localClassification.s)){
+            interpretation.categoria=localClassification.c;
+            interpretation.subcategoria=localClassification.s;
+            interpretation.confidence='high';
+            interpretation.source='local_context';
+          }
+        }
         interpretation.amount=expenseCommand.amount;
         interpretation.purpose=expenseCommand.purpose||'';
         if(!interpretation.item)interpretation.item=expenseCommand.item;
@@ -6343,10 +6358,11 @@ AlicerceIA._setMicButtonState=function(active){
   button.title=label;
 };
 AlicerceIA.toggleMicrofone=function(){
-  var input=document.getElementById('alicerce-assistant-input');
-  var status=document.getElementById('alicerce-assistant-status');
-  if(status)status.textContent='Para falar com a Alicia, toque no microfone do teclado do seu celular. O texto reconhecido aparecerá aqui; depois, toque em Enviar.';
-  if(input){input.placeholder=Store.lang==='en'?'Speak using your keyboard microphone...':Store.lang==='es'?'Habla usando el micrófono del teclado...':'Fale pelo microfone do teclado...';input.focus();}
+  if(this._recognition||this._recognitionStarting){
+    this.pararReconhecimento(false);
+    return;
+  }
+  this.solicitarMicrofone();
 };
 AlicerceIA.solicitarMicrofone=function(){
   if(this._recognition||this._recognitionStarting)return;
@@ -6570,8 +6586,9 @@ AlicerceIA.confirmarAvisoPrivacidade=function(){
     this.iniciarMicrofone(recognitionMode);
   }else if(action==='microphone-remote'){
     this.iniciarMicrofone('browser');
-  }else if(action==='speech'&&button&&button.isConnected){
-    this.ouvirMensagem(index,button);
+  }else if(action==='speech'){
+    try{window.localStorage.setItem('alicia_tts_consent_v1_'+String(Store.userId||'anon'),'yes')}catch(error){}
+    this.ouvirMensagem(index,button,true);
   }
 };
 AlicerceIA._setSpeechButtonState=function(button,playing){
@@ -6619,19 +6636,30 @@ AlicerceIA.prepararFala=function(value){
   text=text.replace(/(-?\d+(?:,\d+)?)\s*%/g,'$1 por cento');
   return text;
 };
-AlicerceIA.ouvirMensagem=async function(index,button){
+AlicerceIA.ouvirMensagem=async function(index,button,privacyConfirmed){
   this._resetUser();
   var messages=Array.isArray(this._messages)?this._messages:[];
   var item=messages[index];
   var text=String(index===-1?this.mensagemAbertura():(item&&item.role==='assistant'?item.text||'':'')).trim();
   text=this.prepararFala(text);
   if(!text)return;
-  if(!button)button={isConnected:true,getAttribute:function(){return '';},setAttribute:function(){},querySelector:function(){return null;}};
   var status=document.getElementById('alicerce-assistant-status');
   if((Store.lang||'pt')!=='pt'){
     if(status)status.textContent=this._mensagemVozSomentePt();
     return;
   }
+  var voiceConsentKey='alicia_tts_consent_v1_'+String(Store.userId||'anon');
+  var voiceConsent=false;
+  try{voiceConsent=window.localStorage.getItem(voiceConsentKey)==='yes'}catch(ignore){}
+  if(!privacyConfirmed&&!voiceConsent){
+    this._pendingPrivacyAction='speech';
+    this._pendingSpeechIndex=index;
+    this._pendingSpeechButton=button||null;
+    var voiceCopy=this._textoPrivacidade();
+    this._mostrarAvisoPrivacidade(voiceCopy.voice,voiceCopy.listenNow);
+    return;
+  }
+  if(!button)button={isConnected:true,getAttribute:function(){return '';},setAttribute:function(){},querySelector:function(){return null;}};
   var client=window.alicerceSupabase;
   if(!client||!client.functions||typeof client.functions.invoke!=='function'){
     if(status)status.textContent=button.getAttribute('data-label-error')||'A voz remota ainda não está configurada. O texto continua disponível.';
@@ -6784,14 +6812,17 @@ function renderAssistente(){
   AlicerceIA._resetUser();
   var lang=Store.lang||'pt';
   var copy={
-    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Usar microfone do teclado',micStop:'Usar microfone do teclado',voiceOn:'Voz ligada',voiceOff:'Ativar voz',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?','Quais gastos ainda precisam de contexto?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
-    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Use keyboard microphone',micStop:'Use keyboard microphone',voiceOn:'Voice on',voiceOff:'Enable voice',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?','Which expenses still need context?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
-    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Usar el micrófono del teclado',micStop:'Usar el micrófono del teclado',voiceOn:'Voz activada',voiceOff:'Activar voz',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?','¿Qué gastos aún necesitan contexto?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
+    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Falar com Alicia',micStop:'Parar gravação',voiceOn:'Voz ligada',voiceOff:'Ativar voz',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?','Quais gastos ainda precisam de contexto?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
+    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Speak to Alicia',micStop:'Stop recording',voiceOn:'Voice on',voiceOff:'Enable voice',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?','Which expenses still need context?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
+    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Hablar con Alicia',micStop:'Detener grabación',voiceOn:'Voz activada',voiceOff:'Activar voz',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?','¿Qué gastos aún necesitan contexto?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
   };
   var ui=copy[lang]||copy.pt;
   var messages=Array.isArray(AlicerceIA._messages)?AlicerceIA._messages:[];
   var welcomeText=AlicerceIA.mensagemAbertura();
   var animateWelcome=!messages.length&&!AlicerceIA._welcomeTypingStarted;
+  function speakButtonHtml(index){
+    return '<button type="button" class="alicerce-assistant-speak" data-label-play="'+esc(ui.listen)+'" data-label-stop="'+esc(ui.stop)+'" data-label-error="'+esc(ui.voiceError)+'" aria-label="'+esc(ui.listen)+'" aria-pressed="false" onclick="AlicerceIA.pedirAudio('+index+',this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6l-5 4H4z"></path><path d="M16 9a5 5 0 0 1 0 6M18.5 6.5a8.5 8.5 0 0 1 0 11"></path></svg><span class="alicerce-assistant-speak-label">'+esc(ui.listen)+'</span></button>';
+  }
   var html='<style id="alicerce-assistant-screen-styles">';
   html+='.alicerce-assistant-page{box-sizing:border-box;width:100%;max-width:720px;margin:0 auto;padding:0 14px 118px}';
   html+='.alicerce-assistant-chat-panel{display:flex;flex-direction:column;min-height:360px;padding:13px 12px 8px;border:1px solid var(--line);border-radius:20px;background:var(--surface2);box-shadow:0 8px 24px rgba(0,0,0,.07);min-width:0}';
@@ -6851,14 +6882,14 @@ function renderAssistente(){
   html+='<section class="alicerce-assistant-chat-panel">';
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
-    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span></div>';
+    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span>'+speakButtonHtml(-1)+'</div>';
     if(animateWelcome)window.requestAnimationFrame(function(){AlicerceIA.iniciarDigitacaoAbertura(welcomeText);});
   }else{
     messages.forEach(function(item,index){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span></div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+speakButtonHtml(index)+'</div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }
@@ -15145,7 +15176,8 @@ function renderPlanos(){
   if(!plans.length)html+='<div class="card mt-4" style="padding:22px;text-align:center"><div style="font-size:2rem;margin-bottom:10px">'+icon('trend','ico-lg')+'</div><h3>'+planosTexto('empty')+'</h3><p class="text-muted text-sm">'+planosTexto('emptySub')+'</p></div>';
   plans.slice().sort(function(a,b){return String(b.createdAt||'').localeCompare(String(a.createdAt||''))}).forEach(function(plan){
     var summary=planosResumo(plan);
-    html+='<button type="button" class="card mt-3" style="width:100%;text-align:left;padding:16px;border:1px solid var(--line);background:var(--surface);border-radius:16px" onclick="go(\'planoDetalhe\',{id:'+JSON.stringify(plan.id)+'})">';
+    var safePlanId=JSON.stringify(String(plan.id)).replace(/"/g,'&quot;');
+    html+='<button type="button" class="card mt-3" style="width:100%;text-align:left;padding:16px;border:1px solid var(--line);background:var(--surface);border-radius:16px" onclick="go(\'planoDetalhe\',{id:'+safePlanId+'})">';
     html+='<div class="flex justify-between items-center"><div style="min-width:0"><div style="font-weight:800">'+esc(plan.titulo||planosTexto('title'))+'</div><div class="text-muted text-sm">'+esc(planosNomeCategoria(plan.categoria))+'</div></div><span class="badge">'+(summary.concluido?planosTexto('done'):planosTexto('active'))+'</span></div>';
     html+='<div style="display:flex;justify-content:space-between;gap:12px;margin-top:15px"><div><div class="text-muted text-xs">'+planosTexto('saved')+'</div><div style="font-size:1.35rem;font-weight:800;color:var(--accent)">'+fmtMoney(summary.acumulado)+'</div></div><div style="text-align:right"><div class="text-muted text-xs">'+planosTexto('target')+'</div><div style="font-weight:750">'+fmtMoney(summary.total)+'</div></div></div>';
     html+='<div style="height:8px;background:var(--surface2);border-radius:99px;overflow:hidden;margin-top:12px"><div style="height:8px;width:'+summary.percentual+'%;background:var(--accent);border-radius:99px"></div></div><div class="flex justify-between items-center mt-2"><span class="text-muted text-xs">'+summary.marcados+'/'+summary.quantidade+' '+planosTexto('steps')+'</span><span class="text-muted text-xs">'+summary.percentual+'%</span></div></button>';
@@ -15232,6 +15264,7 @@ function renderPlanoDetalhe(){
   var plan=planosLocalizar(Store.screenData&&Store.screenData.id);
   if(!plan)return '<div class="content"><p class="text-muted">'+planosTexto('notFound')+'</p><button class="btn btn-secondary" onclick="go(\'planos\')">'+planosTexto('back')+'</button></div>';
   var summary=planosResumo(plan);
+  var safePlanId=JSON.stringify(String(plan.id)).replace(/"/g,'&quot;');
   var html='<div class="content" style="max-width:760px;margin:0 auto;padding-bottom:36px"><button type="button" class="btn btn-secondary btn-sm mt-4" onclick="go(\'planos\')">'+icon('back','ico-sm')+' '+planosTexto('back')+'</button>';
   html+='<div class="flex justify-between items-center mt-3"><div><h2 style="margin:0">'+esc(plan.titulo||planosTexto('title'))+'</h2><div class="text-muted text-sm">'+esc(planosNomeCategoria(plan.categoria))+'</div></div><span class="badge">'+(summary.concluido?planosTexto('done'):planosTexto('active'))+'</span></div>';
   if(plan.dataAlvo)html+='<div class="text-muted text-xs mt-2">'+planosTexto('targetDate')+': '+planosDataExibicao(plan.dataAlvo)+'</div>';
@@ -15239,7 +15272,8 @@ function renderPlanoDetalhe(){
   html+='<div class="flex justify-between items-center mt-4"><strong>'+planosTexto('board')+'</strong><span class="text-muted text-xs">'+planosTexto('choose')+'</span></div><div class="grid mt-2" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px">';
   (plan.valores||[]).forEach(function(cell){
     var marked=!!cell.data,style=marked?'background:#E3F2E8;border:1px solid #91C9A3;color:#205E37;':'background:var(--surface);border:1px solid var(--line);color:var(--text);';
-    html+='<button type="button" class="plan-board-cell" style="'+style+'border-radius:13px;min-width:0;min-height:74px;padding:9px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px" onclick="selectPlanValue('+JSON.stringify(plan.id)+','+JSON.stringify(cell.id)+')"><span style="font-weight:800">'+(marked?icon('check','ico-sm'):'')+fmtMoney(cell.valor)+'</span><span style="font-size:.68rem;'+(marked?'color:#205E37;':'color:var(--text2);')+'">'+(marked?planosDataExibicao(cell.data):planosTexto('available'))+'</span></button>';
+    var safeCellId=JSON.stringify(String(cell.id)).replace(/"/g,'&quot;');
+    html+='<button type="button" class="plan-board-cell" style="'+style+'border-radius:13px;min-width:0;min-height:74px;padding:9px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px" onclick="selectPlanValue('+safePlanId+','+safeCellId+')"><span style="font-weight:800">'+(marked?icon('check','ico-sm'):'')+fmtMoney(cell.valor)+'</span><span style="font-size:.68rem;'+(marked?'color:#205E37;':'color:var(--text2);')+'">'+(marked?planosDataExibicao(cell.data):planosTexto('available'))+'</span></button>';
   });
   html+='</div>';
   var state=Store.screenData||{};
