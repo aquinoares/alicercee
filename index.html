@@ -6096,9 +6096,10 @@ AlicerceIA.enviarMensagem=async function(question){
         }
         if(!(interpretation.categoria&&interpretation.subcategoria&&alicerClassificationPairIsValid(interpretation.categoria,interpretation.subcategoria))&&
            typeof Interpreter!=='undefined'&&Interpreter&&typeof Interpreter.inferItemCategory==='function'){
+          var localPurpose=String(expenseCommand.purpose||'').replace(/\\bpara\\s+/i,'').trim();
           var localClassification=Interpreter.inferItemCategory(
             expenseCommand.item,
-            'contexto '+String(expenseCommand.purpose||'')+' '+String(expenseCommand.local||'')
+            'contexto '+localPurpose+' '+String(expenseCommand.local||'')
           );
           if(localClassification&&alicerClassificationPairIsValid(localClassification.c,localClassification.s)){
             interpretation.categoria=localClassification.c;
