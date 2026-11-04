@@ -6202,6 +6202,8 @@ AlicerceIA.enviarMensagem=async function(question){
   this._question=message;
   this._answer=answer;
   render();
+  var autoSpeakIndex=this._messages.length-1;
+  if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(autoSpeakIndex,null);},0);
   setTimeout(function(){
     var last=document.querySelector('.alicerce-assistant-message:last-child');
     if(last&&last.scrollIntoView)last.scrollIntoView({block:'nearest'});
@@ -6289,12 +6291,10 @@ AlicerceIA._setMicButtonState=function(active){
   button.title=label;
 };
 AlicerceIA.toggleMicrofone=function(){
-  if(this._recognition){
-    this.pararReconhecimento(false);
-    return;
-  }
-  if(this._recognitionStarting)return;
-  this.solicitarMicrofone();
+  var input=document.getElementById('alicerce-assistant-input');
+  var status=document.getElementById('alicerce-assistant-status');
+  if(status)status.textContent='Para falar com a Alicia, toque no microfone do teclado do seu celular. O texto reconhecido aparecerá aqui; depois, toque em Enviar.';
+  if(input){input.placeholder='Fale pelo microfone do teclado...';input.focus();}
 };
 AlicerceIA.solicitarMicrofone=function(){
   if(this._recognition||this._recognitionStarting)return;
@@ -6553,6 +6553,8 @@ AlicerceIA.pararAudio=function(){
   this._speechUtterance=null;
 };
 AlicerceIA._speechPersona={tone:'calma, jovem, acolhedora, simpática e natural',rate:1.0};
+AlicerceIA._voiceEnabled=function(){var userId=String(Store.userId||'anon');try{return window.localStorage.getItem('alicia_voice_enabled_v1_'+userId)!=='no'}catch(error){return true;}};
+AlicerceIA.toggleVoz=function(){var userId=String(Store.userId||'anon');var enabled=!this._voiceEnabled();try{window.localStorage.setItem('alicia_voice_enabled_v1_'+userId,enabled?'yes':'no')}catch(error){}if(!enabled)this.pararAudio();var button=document.getElementById('alicerce-assistant-voice-toggle');if(button){button.textContent=enabled?'Voz ligada':'Ativar voz';button.setAttribute('aria-pressed',enabled?'true':'false');}var status=document.getElementById('alicerce-assistant-status');if(status)status.textContent=enabled?'A Alicia falará automaticamente.':'Voz desativada. Alicia continuará respondendo por texto.';};
 AlicerceIA.prepararFala=function(value){
   var text=String(value||'');
   if((Store.lang||'pt')!=='pt')return text;
@@ -6575,7 +6577,8 @@ AlicerceIA.ouvirMensagem=async function(index,button){
   var item=messages[index];
   var text=String(index===-1?this.mensagemAbertura():(item&&item.role==='assistant'?item.text||'':'')).trim();
   text=this.prepararFala(text);
-  if(!text||!button)return;
+  if(!text)return;
+  if(!button)button={isConnected:true,getAttribute:function(){return '';},setAttribute:function(){},querySelector:function(){return null;}};
   var status=document.getElementById('alicerce-assistant-status');
   if((Store.lang||'pt')!=='pt'){
     if(status)status.textContent=this._mensagemVozSomentePt();
@@ -6592,7 +6595,7 @@ AlicerceIA.ouvirMensagem=async function(index,button){
   this._speechButton=button;
   this._setSpeechButtonState(button,true);
   try{
-    if(status)status.textContent='Alicia está gerando o áudio...';
+    if(status)status.textContent='Alicia está preparando sua resposta em voz alta...';
     var sessionResult=await client.auth.getSession();
     var session=sessionResult&&sessionResult.data&&sessionResult.data.session;
     if(!session||!session.access_token)throw new Error('Entre na sua conta para ouvir a Alicia.');
@@ -6730,9 +6733,9 @@ function renderAssistente(){
   AlicerceIA._resetUser();
   var lang=Store.lang||'pt';
   var copy={
-    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Falar com Alicia',micStop:'Parar gravação',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?','Quais gastos ainda precisam de contexto?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
-    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Speak to Alicia',micStop:'Stop recording',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?','Which expenses still need context?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
-    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Hablar con Alicia',micStop:'Detener grabación',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?','¿Qué gastos aún necesitan contexto?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
+    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Usar microfone do teclado',micStop:'Usar microfone do teclado',voiceOn:'Voz ligada',voiceOff:'Ativar voz',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?','Quais gastos ainda precisam de contexto?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
+    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Use keyboard microphone',micStop:'Use keyboard microphone',voiceOn:'Voice on',voiceOff:'Enable voice',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?','Which expenses still need context?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
+    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Usar el micrófono del teclado',micStop:'Usar el micrófono del teclado',voiceOn:'Voz activada',voiceOff:'Activar voz',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?','¿Qué gastos aún necesitan contexto?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
   };
   var ui=copy[lang]||copy.pt;
   var messages=Array.isArray(AlicerceIA._messages)?AlicerceIA._messages:[];
@@ -6790,21 +6793,21 @@ function renderAssistente(){
   html+='@supports (padding: max(0px)){.alicerce-assistant-page{padding-bottom:max(118px,calc(90px + env(safe-area-inset-bottom)))}.alicerce-assistant-composer{bottom:calc(62px + env(safe-area-inset-bottom))}}';
   html+='</style>';
   html+='<div class="content alicerce-assistant-page" id="alicerce-assistant-page">';
-  html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back','ico-xs')+esc(ui.back)+'</button><div class="alicerce-assistant-top-actions"><button type="button" class="alicerce-assistant-financial" id="alicerce-assistant-financial" title="'+esc(ui.financialTitle)+'" onclick="go(\'visao\')">'+esc(ui.financial)+'</button>';
+  html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back','ico-xs')+esc(ui.back)+'</button><div class="alicerce-assistant-top-actions"><button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-voice-toggle" aria-pressed="'+(AlicerceIA._voiceEnabled()?'true':'false')+'" onclick="AlicerceIA.toggleVoz()">'+(AlicerceIA._voiceEnabled()?esc(ui.voiceOn):esc(ui.voiceOff))+'</button><button type="button" class="alicerce-assistant-financial" id="alicerce-assistant-financial" title="'+esc(ui.financialTitle)+'" onclick="go(\'visao\')">'+esc(ui.financial)+'</button>';
   if(messages.length)html+='<button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-clear" aria-label="'+esc(ui.clear)+'" title="'+esc(ui.clear)+'" onclick="AlicerceIA.limparConversa()">'+esc(ui.clear)+'</button>';
   html+='</div></div>';
   html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/alicia-assistente.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>Alicia</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
   html+='<section class="alicerce-assistant-chat-panel">';
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
-    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span><button type="button" class="alicerce-assistant-speak" data-label-play="'+esc(ui.listen)+'" data-label-stop="'+esc(ui.stop)+'" data-label-unavailable="'+esc(ui.voiceUnavailable)+'" data-label-error="'+esc(ui.voiceError)+'" aria-label="'+esc(ui.listen)+'" aria-pressed="false" onclick="AlicerceIA.pedirAudio(-1,this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3z"></path><path d="M16 9a4 4 0 010 6"></path><path d="M19 5a10 10 0 010 14"></path></svg><span class="alicerce-assistant-speak-label">'+esc(ui.listen)+'</span></button></div>';
+    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span></div>;
     if(animateWelcome)window.requestAnimationFrame(function(){AlicerceIA.iniciarDigitacaoAbertura(welcomeText);});
   }else{
     messages.forEach(function(item,index){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span><button type="button" class="alicerce-assistant-speak" data-label-play="'+esc(ui.listen)+'" data-label-stop="'+esc(ui.stop)+'" data-label-unavailable="'+esc(ui.voiceUnavailable)+'" data-label-error="'+esc(ui.voiceError)+'" aria-label="'+esc(ui.listen)+'" aria-pressed="false" onclick="AlicerceIA.pedirAudio('+index+',this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9v6h4l5 4V5L7 9H3z"></path><path d="M16 9a4 4 0 010 6"></path><path d="M19 5a10 10 0 010 14"></path></svg><span class="alicerce-assistant-speak-label">'+esc(ui.listen)+'</span></button></div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span></div></div>;
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }
