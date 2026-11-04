@@ -2639,11 +2639,11 @@ test('Alicia exibe avisos de privacidade somente quando a pessoa aciona ditado, 
   await expect(notice).toBeHidden();
 
   await page.locator('#alicerce-assistant-input').focus();
-  await expect(notice).toContainText('Você também pode usar o microfone do teclado para ditar no campo de mensagem.');
+  await expect(notice).toContainText('Para falar com a Alicia, toque no microfone do teclado do seu celular.');
 
   await page.locator('#alicerce-assistant-camera').click();
-  await expect(notice).toContainText('as fotos são lidas no próprio aparelho');
-  await expect(notice).toContainText('não são enviadas nem armazenadas');
+  await expect(notice).toContainText('leitura de fotos e documentos está temporariamente desativada');
+  await expect(notice).toContainText('nenhum texto reconhecido é enviado ou registrado');
   await page.locator('.alicerce-assistant-privacy-cancel').click();
   await expect(notice).toBeHidden();
 
@@ -3383,7 +3383,7 @@ test('Planos substitui a tela antiga e preserva Família como finalidade finance
     const retiredScreen = renderScreen();
     return {
       blockedPersonWrite: blockedPersonWrite,
-      legacyCalendarEvents: calendarEvents.length,
+      legacyCalendarEvents: calendarEvents.filter(function (event) { return event.tipo === 'compromisso'; }).length,
       legacyFixedCosts: financeView.custosFixos,
       familyCategoryName: ALICERCE_CATEGORIES.familia.name,
       familySubcategories: ALICERCE_CATEGORIES.familia.subs.slice(),
