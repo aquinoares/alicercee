@@ -6135,7 +6135,10 @@ AlicerceIA.enviarMensagem=async function(question){
           gastoEdits:null,
           aliciaOrigin:true
         };
-        actionAnswer='Preparei o lançamento de '+fmtMoney(expenseCommand.amount)+'. Confira a descrição e a classificação; nada será salvo até você tocar em “Confirmar e salvar gasto”.';
+        var classificationMessage=classificationValid
+          ? ' Categoria sugerida: '+Interpreter.catDisplay(interpretation.categoria)+'. Subcategoria: '+Interpreter.subDisplay(interpretation.subcategoria)+'.'
+          : ' Ainda não consegui identificar categoria e subcategoria com segurança; você poderá escolhê-las na conferência.';
+        actionAnswer='Preparei o lançamento de '+fmtMoney(expenseCommand.amount)+'.'+classificationMessage+' Confira os dados; nada será salvo até você tocar em “Confirmar e salvar gasto”.';
         this._messages.push({role:'assistant',text:actionAnswer});
         while(this._messages.length>4)this._messages.splice(0,2);
         this._question=message;
@@ -14290,8 +14293,13 @@ function renderAddGastoDoubt(){
   }
   html+='<div class="gr-line"><span>Data da compra</span><span class="gr-value">'+esc(dateLabel)+'</span></div></div>';
 
-  html+='<div class="gr-panel"><div style="font-size:16px;font-weight:800">Classificação inteligente</div>';
-  html+='<div class="gr-hint">Confira a sugestão do interpretador. Você pode pesquisar e escolher outra categoria ou subcategoria antes de salvar.</div>';
+  html+='<div class="gr-panel"><div style="font-size:16px;font-weight:800">Sugestão da Alicia</div>';
+  if(categoryValue&&subcategoryValue){
+    html+='<div class="gr-line"><span>Categoria e subcategoria</span><span class="gr-value">'+esc(categoryName)+' › '+esc(subName)+'</span></div>';
+    html+='<div class="gr-hint">A Alicia classificou este gasto. Confira ou altere a sugestão antes de salvar.</div>';
+  }else{
+    html+='<div class="gr-hint">A Alicia ainda não identificou uma classificação segura. Pesquise a categoria e a subcategoria corretas antes de salvar.</div>';
+  }
   html+='<label class="gr-label" for="edit-gasto-category-search">Categoria</label>';
   html+='<input class="gr-input" id="edit-gasto-category-search" type="text" autocomplete="off" placeholder="Pesquisar categoria" value="'+esc(categoryName)+'" oninput="filterGastoCategories();cacheGastoDoubtEdits()" onfocus="filterGastoCategories()">';
   html+='<input id="edit-gasto-category" type="hidden" value="'+esc(categoryValue)+'">';
