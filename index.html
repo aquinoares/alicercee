@@ -6037,8 +6037,10 @@ AlicerceIA._parseReminderTarget=function(raw){
   var text=String(raw||'').replace(/^\s*(?:por favor[, ]*)?/i,'');
   text=text.replace(/^\s*(?:apague|apaga|exclua|exclui|remova|remover|delete|cancele|cancelar|conclua|conclui|concluir|terminei|marque|marcar|reagende|reagendar|mude|mudar|altere|alterar|adie|adiar)\s+/i,'');
   text=text.replace(/^\s*(?:o|a|os|as)?\s*(?:lembrete|tarefa)s?\s*(?:de|do|da|sobre)?\s*/i,'');
+  text=text.replace(/(?:amanhã|depois de amanhã)/gi,' ');
   text=text.replace(/\b(?:como\s+concluido|como\s+feito|concluido|feito|hoje|amanha|depois de amanha)\b/gi,' ');
   text=text.replace(/\b(?:para|pra)\s+(?:hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo)\b/gi,' ');
+  text=text.replace(/às\s*\d{1,2}(?::\d{2}|h\d{0,2})?/gi,' ');
   text=text.replace(/\b(?:as|às)\s*\d{1,2}(?::\d{2}|h\d{0,2})?/gi,' ');
   text=text.replace(/\b([0-3]?\d)[\/.-]([01]?\d)(?:[\/.-](\d{2,4}))?\b/g,' ');
   return AlicerceIA._norm(text).replace(/\b(lembrete|tarefa)s?\b/g,'').trim();
