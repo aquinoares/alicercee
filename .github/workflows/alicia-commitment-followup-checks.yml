@@ -1,0 +1,53 @@
+name: Alicia commitment follow-up checks
+
+on:
+  push:
+    branches:
+      - fix/alicia-commitment-followup-updates-20261104
+  pull_request:
+    branches:
+      - feat/alicia-compras-compromissos-dividas-20261104
+    paths:
+      - "index.html"
+      - "tests/**"
+      - ".github/workflows/alicia-commitment-followup-checks.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-and-regressions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Check inline JavaScript syntax
+        run: |
+          node --input-type=commonjs <<'NODE'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          const html = fs.readFileSync('index.html', 'utf8');
+          const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+          let checked = 0;
+          for (const match of scripts) {
+            if (/\bsrc\s*=/.test(match[1])) continue;
+            const code = match[2].trim();
+            if (!code || /application\/(?:ld\+)?json/i.test(match[1])) continue;
+            new vm.Script(code, { filename: 'index.html:inline-script-' + (++checked) });
+          }
+          if (!checked) throw new Error('No inline JavaScript blocks were checked.');
+          console.log('Validated ' + checked + ' inline script blocks.');
+          NODE
+      - name: Test commitment follow-up routing
+        run: node tests/alicia-commitment-followup.test.mjs
+      - name: Run browser regression suite
+        run: npm test
