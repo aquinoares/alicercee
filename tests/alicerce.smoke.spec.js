@@ -3522,3 +3522,72 @@ test('Planos cria tabuleiro com prévia, marca datas individualmente, edita e de
   expect(afterUndo.available).toBe(initialCash);
 });
 
+
+test('Alicia atualiza aviso do compromisso recente para 30 minutos antes', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(function () {
+    Store.userId = 'alicia-commitment-alert-30-test';
+    Store.lang = 'pt';
+    Store.commitments = [{
+      id: 'commitment-dentista',
+      userId: Store.userId,
+      tipo: 'compromisso',
+      descricao: 'vou no dentista oras me lembra',
+      data: '2026-11-05',
+      hora: '14:00',
+      avisos: [0],
+      status: 'pendente'
+    }];
+    Repository.set = function () {};
+    AlicerceIA._resetUser();
+    AlicerceIA._messages = [
+      { role: 'assistant', text: 'Pronto. Marquei ‘vou no dentista oras me lembra’ para 05 de nov. de 2026 às 14:00. Ele já está no seu calendário.' },
+      { role: 'user', text: 'me avisa 30 minutos antes' }
+    ];
+    return AlicerceIA._handleCommitmentAlertFollowUp('me avisa 30 minutos antes').then(function (answer) {
+      return {
+        answer: answer,
+        avisos: Store.commitments[0].avisos,
+        data: Store.commitments[0].data,
+        hora: Store.commitments[0].hora
+      };
+    });
+  });
+  expect(result.answer).toContain('30 minutos antes');
+  expect(result.avisos).toEqual([30]);
+  expect(result.data).toBe('2026-11-05');
+  expect(result.hora).toBe('14:00');
+});
+
+test('Mais apresenta a tela de Atualizações', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    Store.lang = 'pt';
+    renderMenu();
+  });
+  await expect(page.locator('#menu-panel')).toContainText('Atualizações');
+  await page.evaluate(function () { go('atualizacoes'); });
+  await expect(page.locator('h2').filter({ hasText: 'Atualizações do Alicerce' })).toBeVisible();
+  await expect(page.locator('.content')).toContainText('Avisos antecipados');
+});
+
+test('central de alertas identifica compromisso com aviso de 30 minutos', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const alerts = await page.evaluate(function () {
+    Store.lang = 'pt';
+    Store.installments = [];
+    Store.commitments = [{
+      id: 'commitment-alert-window',
+      tipo: 'compromisso',
+      descricao: 'Dentista',
+      data: '2026-11-05',
+      hora: '14:00',
+      avisos: [30],
+      status: 'pendente',
+      feitos: []
+    }];
+    Clock.now = function () { return new Date(2026, 10, 5, 13, 30, 0); };
+    return getAlerts();
+  });
+  expect(alerts.some(function (item) { return item.text === 'Dentista' && item.label === 'Em 30 minutos'; })).toBe(true);
+});
