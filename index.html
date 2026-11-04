@@ -8548,7 +8548,7 @@ function renderAtualizacoes(){
     note:'Notificações push com o aplicativo fechado dependem de um serviço separado e ainda não estão ativas.'
   };
   let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\\'home\\')">'+icon('back','ico-sm')+' '+copy.back+'</button>';
+  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'home\')">'+icon('back','ico-sm')+' '+copy.back+'</button>';
   html+='<h2 class="mt-4">'+copy.title+'</h2><p class="text-muted text-sm">'+copy.sub+'</p>';
   copy.items.forEach(function(item){
     html+='<div class="card mt-3"><div class="flex items-center gap-2"><span class="text-accent">'+icon('check','ico-sm')+'</span><strong>'+esc(item[0])+'</strong></div><p class="text-sm text-muted mt-2">'+esc(item[1])+'</p></div>';
@@ -14978,11 +14978,11 @@ function getAlerts(){
 }
 function renderAlerts(){
   let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\\'home\\')">'+icon('back','ico-sm')+' '+t('home')+'</button>';
+  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'home\')">'+icon('back','ico-sm')+' '+t('home')+'</button>';
   html+='<h2 class="mt-4">'+t('alerta')+'</h2>';
   const alerts=getAlerts();
   if(alerts.length===0)html+='<div class="card"><p class="text-muted">'+t('semDados')+'</p></div>';
-  else alerts.forEach(a=>{html+='<div class="list-item"'+(a.reminderId?' onclick="go(\\'lembreteDetail\\',{id:\\''+a.reminderId+'\\',date:\\''+a.date+'\\'})"':a.commitmentId?' onclick="go(\\'calendario\\');selectDay(\\''+a.date+'\\')"':'')+'><div class="li-left">'+icon('alert','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(a.text)+'</div><div class="li-sub">'+esc(a.label||'')+'</div></div></div></div>'});
+  else alerts.forEach(a=>{html+='<div class="list-item"'+(a.reminderId?' onclick="go(\'lembreteDetail\',{id:\''+a.reminderId+'\',date:\''+a.date+'\'})"':a.commitmentId?' onclick="go(\'calendario\');selectDay(\''+a.date+'\')"':'')+'><div class="li-left">'+icon('alert','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(a.text)+'</div><div class="li-sub">'+esc(a.label||'')+'</div></div></div></div>'});
   html+='</div>';return html;
 }
 
