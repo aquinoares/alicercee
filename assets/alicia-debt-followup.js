@@ -180,7 +180,6 @@
       });
       if (related) return related.data;
     }
-    if (source === 'commitment' && record.paymentStatus === 'pago' && validIso(record.data)) return record.data;
     return '';
   }
 
@@ -407,7 +406,7 @@
     description = description.replace(/\b(?:que\s+)?(?:venceu|vencia|vencimento|vencida|atrasou|atrasada|com vencimento)\s*(?:no dia|dia|em|para)?\s*\d{1,2}(?:[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?| de [a-z]+(?: de \d{4})?)?/gi, ' ');
     description = description.replace(/\b(?:hoje|ontem|anteontem|amanha|depois de amanha|semana passada)\b/gi, ' ');
     description = description.replace(/\s+/g, ' ').replace(/^[,.:;\/\s-]+|[,.:;\/\s-]+$/g, '').trim();
-    description = description.replace(/^(?:de|do|da|dos|das|para|pra)\s+/i, '').trim();
+    description = description.replace(/^(?:de|do|da|dos|das|para|pra)\s+/i, '').replace(/\s+(?:de|do|da|dos|das|para|pra)$/i, '').trim();
     if (/^(?:de|do|da|dos|das|para|pra)$/i.test(description)) description = '';
     return {description: description, amount: amount, dueDate: dueDate, paymentStatus: paid ? 'pago' : 'pendente', paidDate: paid ? (parseDate(raw) || today()) : ''};
   }
@@ -432,7 +431,9 @@
     description = description.replace(/\b(?:as|às)\s*\d{1,2}(?::\d{2}|h\d{0,2})?\b/gi, ' ');
     description = description.replace(/\b\d{1,2}h\d{0,2}\b/gi, ' ');
     description = description.replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g, ' ');
+    description = description.replace(/\b(?:mim|para mim|pra mim)\b/gi, ' ');
     description = description.replace(/\s+/g, ' ').replace(/^[,.:;\/\s-]+|[,.:;\/\s-]+$/g, '').trim();
+    description = description.replace(/^(?:com|de|do|da|para|pra)\s+/i, '').trim();
     return {description: description, date: date, time: time};
   }
 
@@ -544,8 +545,8 @@
     var partial = /\b(parcial|uma parte|metade|sinal)\b/.test(n);
     var no = /^(nao|nao consegui|ainda nao|nao paguei|continua pendente|vou pagar|vou tentar|nao foi possivel|nao deu)$/.test(n) ||
       /\b(ainda nao paguei|nao consegui pagar|nao foi paga|nao foi pago)\b/.test(n);
-    var yes = /^(sim|sim paguei|paguei|conseguimos|consegui|foi pago|foi paga|ja paguei|quitado|quitada|pago|paga)$/.test(n) ||
-      /\b(paguei|conseguimos pagar|consegui pagar|foi pago|foi paga|ja quitamos|ja quitei)\b/.test(n);
+    var yes = /^(sim|sim paguei|paguei|pagamos|pagou|conseguimos|consegui|foi pago|foi paga|ja paguei|quitado|quitada|pago|paga)$/.test(n) ||
+      /\b(paguei|pagamos|a casa pagou|conseguimos pagar|consegui pagar|foi pago|foi paga|ja quitamos|ja quitei)\b/.test(n);
     if (partial) {
       recordPaymentCheck(item, 'parcial');
       assistant._pendingPaymentCheck = null;
@@ -572,7 +573,7 @@
   function financialAnswer(message) {
     var n = normalize(message);
     if (!/\b(divida|dividas|conta|contas|boleto|boletos|fatura|faturas|atraso|atrasada|atrasadas|vencida|vencidas|pagas|pagamentos)\b/.test(n)) return null;
-    if (!/\b(quais|quantas|quanto|como|mostra|mostre|listar|liste|ver|tem|tenho|estao|esta|foram|paguei|atrasad|vencid|vencem|situacao|situacao)\b/.test(n)) return null;
+    if (!/\b(quais|minhas|meus|quantas|quanto|como|mostra|mostre|listar|liste|ver|tem|tenho|estao|esta|foram|pagas|pagos|paguei|atrasad|vencid|vencem|historico|situacao)\b/.test(n)) return null;
     var view = getOverview();
     var lines = [];
     if (view.overdue.length) {
@@ -651,7 +652,9 @@
     var wrapped = function () {
       var cards = original.apply(this, arguments) || [];
       var view = getOverview();
-      var candidate = view.dueToday[0] || view.overdue.filter(function (item) {
+      var candidate = view.dueToday.filter(function (item) {
+        return !item.record.paymentCheck || item.record.paymentCheck.askedAt !== today();
+      })[0] || view.overdue.filter(function (item) {
         return !item.record.paymentCheck || item.record.paymentCheck.askedAt !== today();
       })[0];
       if (candidate) {
