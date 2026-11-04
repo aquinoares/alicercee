@@ -6109,7 +6109,10 @@ AlicerceIA.enviarMensagem=async function(question){
         if(!interpretation.item)interpretation.item=expenseCommand.item;
         if(!interpretation.merchant)interpretation.merchant=expenseCommand.local;
         var classificationValid=!!(interpretation.categoria&&interpretation.subcategoria&&alicerClassificationPairIsValid(interpretation.categoria,interpretation.subcategoria));
-        var confidenceLabel=String(interpretation.confidence||'').toLowerCase();\n        var confidenceScore=Number(interpretation.confidenceScore||interpretation.confidence_score);\n        if(!isFinite(confidenceScore))confidenceScore=confidenceLabel==='high'?0.9:(confidenceLabel==='medium'?0.65:0.35);\n        var needsPurposeContext=(ALICIA_INTERPRETER_ENABLED||ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED)&&(!classificationValid||confidenceScore<0.78||(interpretation.source==='dictionary'&&!expenseCommand.purpose));
+        var confidenceLabel=String(interpretation.confidence||'').toLowerCase();
+        var confidenceScore=Number(interpretation.confidenceScore||interpretation.confidence_score);
+        if(!isFinite(confidenceScore))confidenceScore=confidenceLabel==='high'?0.9:(confidenceLabel==='medium'?0.65:0.35);
+        var needsPurposeContext=(ALICIA_INTERPRETER_ENABLED||ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED)&&(!classificationValid||confidenceScore<0.78||(interpretation.source==='dictionary'&&!expenseCommand.purpose));
         if(needsPurposeContext&&!expenseCommand.purpose){
           this._pendingExpenseDraft={
             amount:expenseCommand.amount,
@@ -17463,4 +17466,5 @@ try{
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
-<script src="/assets/alicia-debt-followup.js"></script>\n</body></html>
+<script src="/assets/alicia-debt-followup.js"></script>
+</body></html>
