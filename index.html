@@ -5990,6 +5990,7 @@ AlicerceIA.enviarMensagem=async function(question){
     this._question=message;
     this._answer=cancelledReview;
     render();
+    if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
     return;
   }
   if(this._pendingFinancialReview&&!pendingQuestion){
@@ -5999,6 +6000,7 @@ AlicerceIA.enviarMensagem=async function(question){
     this._question=message;
     this._answer=reviewAnswer;
     render();
+    if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
     return;
   }
   if(!this._pendingFinancialReview&&!this._pendingExpenseDraft&&this._isFinancialReviewRequest(messageNorm)){
@@ -6014,6 +6016,7 @@ AlicerceIA.enviarMensagem=async function(question){
     this._question=message;
     this._answer=reviewStartAnswer;
     render();
+    if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
     return;
   }
   if(this._pendingExpenseDraft&&pendingQuestion){
@@ -6148,6 +6151,7 @@ AlicerceIA.enviarMensagem=async function(question){
     this._question=message;
     this._answer=actionAnswer;
     render();
+    if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
     return;
   }
 
@@ -6232,7 +6236,7 @@ AlicerceIA._recognitionOwnerId='';
 AlicerceIA._pendingRecognitionMode='';
 AlicerceIA._privacyCopy={
   pt:{
-    dictation:'Você também pode usar o microfone do teclado para ditar no campo de mensagem.',
+    dictation:'Para falar com a Alicia, toque no microfone do teclado do seu celular. O texto reconhecido aparecerá no campo de mensagem.',
     microphoneLocal:'Alicia tentará reconhecer sua fala no próprio aparelho. Se o navegador não tiver o pacote local de português, ela pedirá sua autorização separadamente antes de usar o serviço de reconhecimento online do navegador. A gravação não é enviada ao Alicerce nem ao Render.',
     microphoneRemote:'Para ouvir você neste aparelho, o navegador usará seu serviço de reconhecimento de voz. Isso pode transmitir o áudio ao provedor do navegador para gerar o texto. O Alicerce não recebe nem armazena a gravação; recebe apenas o texto reconhecido. A política de retenção do provedor depende do navegador e das suas configurações.',
     photo:'Privacidade: as fotos são lidas no próprio aparelho e não são enviadas nem armazenadas pelo Alicerce. O texto identificado aparece para você revisar antes do envio.',
