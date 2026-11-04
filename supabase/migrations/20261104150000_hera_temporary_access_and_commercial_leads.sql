@@ -30,7 +30,7 @@ DROP POLICY IF EXISTS temporary_access_grants_read_own
 CREATE POLICY temporary_access_grants_read_own
   ON public.temporary_access_grants
   FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((select auth.uid()) = user_id);
 
 -- Serialize grants per user; refuse active paid plans and overlapping promotions.
 CREATE OR REPLACE FUNCTION public.grant_temporary_pro_access(
@@ -47,7 +47,7 @@ RETURNS TABLE (
   expires_at timestamptz
 )
 LANGUAGE plpgsql
-SECURITY DEFINER
+SECURITY INVOKER
 SET search_path = ''
 AS $$
 DECLARE
