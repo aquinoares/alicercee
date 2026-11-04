@@ -5974,6 +5974,48 @@ AlicerceIA._applyFinancialReviewReply=function(message){
 
 
 
+AlicerceIA._handleCommitmentQuery=async function(message){
+  var normalized=this._norm(message);
+  var mentionsCommitment=/\b(compromisso|compromissos)\b/.test(normalized);
+  var asksForList=/\b(quais|meus|minhas|mostrar|mostre|listar|liste|ver|consulta|consultar|tenho|quanto|total|proximos|pendentes|agenda|vencem)\b/.test(normalized);
+  if(!mentionsCommitment||(!asksForList&&!/^(meus )?compromissos$/.test(normalized)))return null;
+  if(!Store.userId)return 'Entre na sua conta para eu consultar os compromissos vinculados ao seu cadastro.';
+  var client=window.alicerceSupabase;
+  if(!client||!client.functions||typeof client.functions.invoke!=='function')return 'O serviço seguro para consultar seus compromissos não está disponível agora.';
+  var response=await client.functions.invoke('alicia-actions',{body:{action:'commitment.list'}});
+  if(response&&response.error)throw response.error;
+  var data=response&&response.data?response.data:{};
+  if(!data.ok||!Array.isArray(data.commitments))throw new Error('A consulta não foi confirmada pelo Alicerce.');
+  var items=data.commitments.slice().sort(function(a,b){
+    return String(a.data||'9999-12-31').localeCompare(String(b.data||'9999-12-31'));
+  });
+  var includeClosed=/\b(todos|todas|historico|historico completo|concluidos|pagos)\b/.test(normalized);
+  if(!includeClosed)items=items.filter(function(item){
+    var status=AlicerceIA._norm(item.status||'pendente');
+    return ['pago','paga','recebido','recebida','concluido','concluida','cancelado','cancelada'].indexOf(status)<0;
+  });
+  if(!items.length)return includeClosed
+    ?'Não encontrei compromissos cadastrados na sua conta.'
+    :'Você não tem compromissos pendentes cadastrados.';
+  var total=items.reduce(function(sum,item){
+    var value=Number(item.valor);
+    return isFinite(value)?sum+value:sum;
+  },0);
+  var lines=items.slice(0,12).map(function(item,index){
+    var line=(index+1)+'. '+String(item.descricao||'Compromisso');
+    if(item.data)line+=' — '+fmtDate(item.data);
+    if(item.hora)line+=' às '+item.hora;
+    if(item.valor!==null&&isFinite(Number(item.valor)))line+=' — '+fmtMoney(Number(item.valor));
+    var status=AlicerceIA._norm(item.status||'pendente');
+    if(status&&status!=='pendente')line+=' ('+status+')';
+    return line;
+  });
+  var answer='Encontrei '+items.length+' compromisso(s)'+(includeClosed?' cadastrados':' em aberto')+':\n'+lines.join('\n');
+  if(items.some(function(item){return item.valor!==null&&isFinite(Number(item.valor));}))answer+='\nTotal dos valores cadastrados: '+fmtMoney(total)+'.';
+  if(items.length>12)answer+='\nMostrei os 12 primeiros por data.';
+  return answer;
+};
+
 AlicerceIA._parseReminderDateTime=function(raw){
   var text=String(raw||''), normalized=this._norm(text), base=today(), date='', dateFound=false;
   var match=text.match(/\b([0-3]?\d)[\/.-]([01]?\d)(?:[\/.-](\d{2,4}))?\b/);
@@ -6115,12 +6157,16 @@ AlicerceIA._handleReminderAction=async function(message){
     return 'Encontrei '+items.length+' lembrete(s) pendente(s):\n'+items.slice(0,10).map(function(item,i){return (i+1)+'. '+item.descricao+' — '+item.data+(item.hora?' às '+item.hora:'');}).join('\n');
   }
   if(/\b(apague|apaga|exclua|exclui|remova|remover|delete|cancele|cancelar)\b/.test(normalized)&&/\b(lembrete|tarefa)s?\b/.test(normalized)){
+    var freshDelete=await this._invokeReminderAction({action:'reminder.list'});
+    if(!Array.isArray(freshDelete.reminders))return 'Não consegui atualizar sua lista de lembretes antes da exclusão. Nada foi removido.';
     var del=this._matchReminder(this._parseReminderTarget(raw)).matches;
     if(del.length!==1)return del.length?'Encontrei mais de um lembrete parecido: '+del.slice(0,5).map(function(x){return x.descricao;}).join('; ')+'. Diga qual deseja excluir.':'Não encontrei esse lembrete. Peça para listar seus lembretes e escolha um.';
     this._pendingReminderDelete={id:del[0].id,descricao:del[0].descricao};
     return 'Encontrei "'+del[0].descricao+'". Quer que eu exclua? Responda sim para confirmar ou não para manter.';
   }
   if(/\b(conclua|conclui|concluir|terminei|feito|resolvi|marque|marcar)\b/.test(normalized)&&/\b(lembrete|tarefa)s?\b/.test(normalized)){
+    var freshComplete=await this._invokeReminderAction({action:'reminder.list'});
+    if(!Array.isArray(freshComplete.reminders))return 'Não consegui atualizar sua lista de lembretes antes de concluir. Nada foi alterado.';
     var done=this._matchReminder(this._parseReminderTarget(raw)).matches;
     if(done.length!==1)return done.length?'Encontrei mais de um lembrete parecido. Diga o nome exato.':'Não encontrei esse lembrete na sua conta.';
     var target=done[0],occurrence=today(),found=false;
@@ -6131,6 +6177,8 @@ AlicerceIA._handleReminderAction=async function(message){
     return 'Marquei "'+target.descricao+'" como concluído para '+occurrence+'.';
   }
   if(/\b(reagende|reagendar|adie|adiar|mude|mudar|altere|alterar)\b/.test(normalized)&&/\b(lembrete|tarefa)s?\b/.test(normalized)){
+    var freshMove=await this._invokeReminderAction({action:'reminder.list'});
+    if(!Array.isArray(freshMove.reminders))return 'Não consegui atualizar sua lista antes do reagendamento. Nada foi alterado.';
     var move=this._matchReminder(this._parseReminderTarget(raw)).matches,when=this._parseReminderDateTime(raw);
     if(move.length!==1)return move.length?'Encontrei mais de um lembrete parecido. Diga o nome exato.':'Não encontrei o lembrete que você quer reagendar.';
     if(!when.dateFound)return 'Para qual dia devo reagendar "'+move[0].descricao+'"?';
@@ -6166,6 +6214,20 @@ AlicerceIA.enviarMensagem=async function(question){
   if(!Array.isArray(this._messages))this._messages=[];
   var questionForEngine=this._resolveFollowUp(message);
   this._messages.push({role:'user',text:message});
+
+  var commitmentReply=null;
+  try{commitmentReply=await this._handleCommitmentQuery(message);}
+  catch(commitmentError){
+    console.error('Alicia: consulta de compromissos não concluída:',commitmentError);
+    commitmentReply='Não consegui consultar seus compromissos agora. Não houve alteração nos seus dados.';
+  }
+  if(commitmentReply){
+    this._messages.push({role:'assistant',text:commitmentReply});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._question=message;this._answer=commitmentReply;render();
+    if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
+    return;
+  }
 
   var reminderReply=null;
   try{reminderReply=await this._handleReminderAction(message);}
@@ -6385,7 +6447,7 @@ AlicerceIA.enviarMensagem=async function(question){
       }catch(error){consent='no';}
     }
     if(consent==='yes'){
-      var financeIntent=/(gasto|gastei|compra|comprei|paguei|saldo|cart[aã]o|fatura|despesa|receita|dinheiro|parcela|financeir|mes passado|m[eê]s passado|m[eê]s anterior|compar)/i.test(questionForEngine);
+      var financeIntent=/(gasto|gastei|compra|comprei|paguei|saldo|cart[aã]o|fatura|despesa|receita|dinheiro|parcela|financeir|compromiss|lembret|vencimento|mes passado|m[eê]s passado|m[eê]s anterior|compar)/i.test(questionForEngine);
       var financeContext=financeIntent?localAnswer:'';
       try{
         var aiResult=await client.functions.invoke('alicia-chat',{
