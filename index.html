@@ -7590,6 +7590,23 @@ AlicerceIA.insight=function(){
 AlicerceIA.responder=function(question){
   this._resetUser();
   var q=this._norm(question);
+  var asksBalance=/(?:saldo|disponivel|caixa|dinheiro na conta)/.test(q) &&
+    /(?:quanto|qual|tem|tenho|apareceu|positivo|negativo|atual|agora|meu|minha|porque|sobrou|restou)/.test(q);
+  if(asksBalance){
+    var balanceMotor=Store.getMotorFinanceiro();
+    var receivedTotal=Store.getEntradasRealizadas();
+    var available=fmtMoney(balanceMotor.disponivel);
+    var received=fmtMoney(receivedTotal);
+    var commitments=fmtMoney(balanceMotor.totalComprometido);
+    var afterCommitments=fmtMoney(balanceMotor.disponivelApos);
+    if(Store.lang==='en'){
+      return 'The positive amount previously labeled as balance was the accumulated total of received income and incoming transfers ('+received+'), not money currently available. Your actual available cash is '+available+', calculated from confirmed inflows minus confirmed expenses and outgoing transfers. Future commitments total '+commitments+'; after them, the projected amount is '+afterCommitments+'. I will not create an opening balance or income that you have not recorded.';
+    }
+    if(Store.lang==='es'){
+      return 'El importe positivo que antes aparecía como saldo era la suma acumulada de ingresos y transferencias recibidas ('+received+'), no dinero disponible ahora. El efectivo realmente disponible es '+available+', calculado con entradas confirmadas menos gastos y transferencias de salida confirmadas. Los compromisos futuros suman '+commitments+'; después de ellos, el importe proyectado es '+afterCommitments+'. No crearé un saldo inicial ni un ingreso que no hayas registrado.';
+    }
+    return 'O valor positivo que aparecia como "Saldo" era a soma acumulada das entradas recebidas ('+received+'), não dinheiro disponível agora. O caixa realmente disponível é '+available+', calculado pelas entradas confirmadas menos despesas e transferências de saída confirmadas. Os compromissos futuros somam '+commitments+'; depois deles, o disponível projetado é '+afterCommitments+'. Não vou criar um saldo inicial nem uma entrada que você não registrou.';
+  }
   if(/pdf|relatorio|imprimir|exportar/.test(q)){
     if(Store.lang==='en')return 'Of course. To view your report and print or export a PDF, open Financial view using the button above. Alicia’s financial analysis is there too.';
     if(Store.lang==='es')return 'Claro. Para ver tu informe e imprimir o exportar el PDF, abre Vista financiera con el botón de arriba. Allí también está el análisis financiero de Alicia.';
