@@ -96,7 +96,7 @@
 
   function parseTime(value) {
     var raw = String(value || '');
-    var match = raw.match(/\b(?:as|às)\s*(\d{1,2})(?::([0-5]\d)|h([0-5]\d)?)?/i);
+    var match = raw.match(/(?:às|\bas)\s*(\d{1,2})(?::([0-5]\d)|h([0-5]\d)?)?/i);
     if (!match) match = raw.match(/\b(\d{1,2})h([0-5]\d)?\b/i);
     if (!match) return '';
     var hour = Number(match[1]);
@@ -444,7 +444,7 @@
     description = description.replace(/^\s*(?:compromisso|consulta|reuniao|encontro|visita)\s*(?:com|de|para|sobre)?\s*/i, '');
     description = description.replace(/\b(?:compromisso|consulta|reuniao|encontro|visita)\b/gi, ' ');
     description = description.replace(/\b(?:para mim|pra mim|por favor|hoje|ontem|amanha|depois de amanha|segunda(?:\s+feira)?|terca(?:\s+feira)?|quarta(?:\s+feira)?|quinta(?:\s+feira)?|sexta(?:\s+feira)?|sabado|domingo)\b/gi, ' ');
-    description = description.replace(/\b(?:as|às)\s*\d{1,2}(?::\d{2}|h\d{0,2})?\b/gi, ' ');
+    description = description.replace(/(?:às|\bas)\s*\d{1,2}(?::\d{2}|h\d{0,2})?/gi, ' ');
     description = description.replace(/\b\d{1,2}h\d{0,2}\b/gi, ' ');
     description = description.replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g, ' ');
     description = description.replace(/\b(?:mim|para mim|pra mim)\b/gi, ' ');
