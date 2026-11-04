@@ -5035,6 +5035,8 @@ const AlicerceIA = {
   _messages:[],
   _pendingExpenseDraft:null,
   _pendingFinancialReview:null,
+  _pendingReminderDraft:null,
+  _pendingReminderDelete:null,
   _welcomeTypingStarted:false,
   _proactiveConsumed:false,
   _launcherAnimationStarted:false,
@@ -5050,6 +5052,8 @@ const AlicerceIA = {
       this._messages=[];
       this._pendingExpenseDraft=null;
       this._pendingFinancialReview=null;
+       this._pendingReminderDraft=null;
+       this._pendingReminderDelete=null;
       this._welcomeTypingStarted=false;
       this._proactiveConsumed=false;
       this.pararDigitacaoLauncher();
@@ -5967,6 +5971,180 @@ AlicerceIA._applyFinancialReviewReply=function(message){
 };
 
 
+
+AlicerceIA._parseReminderDateTime=function(raw){
+  var text=String(raw||''), normalized=this._norm(text), base=today(), date='', dateFound=false;
+  var match=text.match(/\b([0-3]?\d)[\/.-]([01]?\d)(?:[\/.-](\d{2,4}))?\b/);
+  if(match){
+    var day=Number(match[1]),month=Number(match[2]),year=match[3]?Number(match[3]):Number(base.slice(0,4));
+    if(year<100)year+=2000;
+    var d=new Date(year,month-1,day);
+    if(d.getFullYear()===year&&d.getMonth()===month-1&&d.getDate()===day){date=year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');dateFound=true;}
+  }
+  if(!dateFound){
+    if(/\bdepois de amanha\b/.test(normalized)){date=dateShift(base,2);dateFound=true;}
+    else if(/\bamanha\b/.test(normalized)){date=dateShift(base,1);dateFound=true;}
+    else if(/\bhoje\b/.test(normalized)){date=base;dateFound=true;}
+    else{
+      var rel=normalized.match(/\bem\s+(\d{1,3})\s+dias?\b/);
+      if(rel&&Number(rel[1])<=365){date=dateShift(base,Number(rel[1]));dateFound=true;}
+    }
+  }
+  if(!dateFound){
+    var weekdays=['domingo','segunda','terca','quarta','quinta','sexta','sabado'];
+    for(var w=0;w<weekdays.length;w++){
+      if(normalized.indexOf(weekdays[w])>=0){
+        var p=base.split('-').map(Number),todayDay=new Date(p[0],p[1]-1,p[2]).getDay(),delta=(w-todayDay+7)%7;
+        if(delta===0)delta=7;
+        date=dateShift(base,delta);dateFound=true;break;
+      }
+    }
+  }
+  var time='',tm=text.match(/\b(?:as|às)\s*(\d{1,2})(?::([0-5]\d)|h([0-5]\d)?)?/i);
+  if(!tm)tm=text.match(/\b(\d{1,2})h([0-5]\d)?\b/i);
+  if(tm){
+    var hour=Number(tm[1]),minute=Number(tm[2]||tm[3]||0);
+    if(/\bda noite\b/i.test(text)&&hour>=1&&hour<=11)hour+=12;
+    else if(/\bda tarde\b/i.test(text)&&hour>=1&&hour<=5)hour+=12;
+    if(hour<=23&&minute<=59)time=String(hour).padStart(2,'0')+':'+String(minute).padStart(2,'0');
+  }
+  var repetition='nenhuma';
+  if(/\b(todo dia|todos os dias|diariamente)\b/.test(normalized))repetition='diaria';
+  else if(/\b(toda semana|todas as semanas|semanalmente)\b/.test(normalized))repetition='semanal';
+  else if(/\b(todo mes|todos os meses|mensalmente)\b/.test(normalized))repetition='mensal';
+  else if(/\b(todo ano|todos os anos|anualmente)\b/.test(normalized))repetition='anual';
+  var alerts=[0];
+  if(/\b10 minutos antes\b/.test(normalized))alerts=[10];
+  else if(/\b(uma hora antes|1 hora antes)\b/.test(normalized))alerts=[60];
+  else if(/\b(um dia antes|1 dia antes)\b/.test(normalized))alerts=[1440];
+  else if(/\b(uma semana antes|1 semana antes)\b/.test(normalized))alerts=[10080];
+  var description=text.replace(/^\s*(?:por favor[, ]*)?/i,'');
+  description=description.replace(/^\s*(?:me\s+)?(?:lembra(?:r)?|lembre)\s+(?:de|que)\s*/i,'');
+  description=description.replace(/^\s*(?:crie|criar|cria|adicione|adicionar|anote|anotar|registre|registrar|agende|agendar|programe|programar)\s+(?:um|uma)?\s*(?:lembrete|tarefa)\s*(?:para|de|sobre|:)?\s*/i,'');
+  description=description.replace(/^\s*(?:lembrete|tarefa)\s*(?:para|de|sobre|:)?\s*/i,'');
+  description=description.replace(/\b([0-3]?\d)[\/.-]([01]?\d)(?:[\/.-](\d{2,4}))?\b/g,' ');
+  description=description.replace(/\b(?:depois de amanha|amanha|hoje|em\s+\d{1,3}\s+dias?)\b/gi,' ');
+  description=description.replace(/\b(?:as|às)\s*\d{1,2}(?::\d{2}|h\d{0,2})?(?:\s+da\s+(?:manha|tarde|noite))?/gi,' ');
+  description=description.replace(/\b\d{1,2}h\d{0,2}\b/gi,' ');
+  description=description.replace(/\b(?:todo dia|todos os dias|diariamente|toda semana|todas as semanas|semanalmente|todo mes|todos os meses|mensalmente|todo ano|todos os anos|anualmente)\b/gi,' ');
+  description=description.replace(/\b(?:domingo|segunda(?:-feira)?|terca(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|sabado)\b/gi,' ');
+  description=description.replace(/\s+/g,' ').replace(/^[,.:;\s-]+|[,.:;\s-]+$/g,'').trim();
+  return {date:date,dateFound:dateFound,time:time,repetition:repetition,alerts:alerts,description:description};
+};
+AlicerceIA._parseReminderTarget=function(raw){
+  var text=String(raw||'').replace(/^\s*(?:por favor[, ]*)?/i,'');
+  text=text.replace(/^\s*(?:apague|apaga|exclua|exclui|remova|remover|delete|cancele|cancelar|conclua|conclui|concluir|terminei|marque|marcar|reagende|reagendar|mude|mudar|altere|alterar|adie|adiar)\s+/i,'');
+  text=text.replace(/^\s*(?:o|a|os|as)?\s*(?:lembrete|tarefa)s?\s*(?:de|do|da|sobre)?\s*/i,'');
+  text=text.replace(/\b(?:como\s+concluido|como\s+feito|concluido|feito|hoje|amanha|depois de amanha)\b/gi,' ');
+  text=text.replace(/\b(?:para|pra)\s+(?:hoje|amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo)\b/gi,' ');
+  text=text.replace(/\b(?:as|às)\s*\d{1,2}(?::\d{2}|h\d{0,2})?/gi,' ');
+  text=text.replace(/\b([0-3]?\d)[\/.-]([01]?\d)(?:[\/.-](\d{2,4}))?\b/g,' ');
+  return AlicerceIA._norm(text).replace(/\b(lembrete|tarefa)s?\b/g,'').trim();
+};
+AlicerceIA._matchReminder=function(description){
+  var query=this._norm(description||'');
+  var items=(Store.commitments||[]).filter(function(item){return item&&item.tipo==='lembrete';});
+  if(!query)return {matches:items};
+  var matches=items.filter(function(item){var name=AlicerceIA._norm(item.descricao||'');return name===query||name.indexOf(query)>=0||query.indexOf(name)>=0;});
+  matches.sort(function(a,b){return (AlicerceIA._norm(a.descricao||'')===query?0:1)-(AlicerceIA._norm(b.descricao||'')===query?0:1);});
+  return {matches:matches};
+};
+AlicerceIA._invokeReminderAction=async function(payload){
+  if(!Store.userId)throw new Error('Entre na sua conta para a Alicia acessar seus lembretes.');
+  var client=window.alicerceSupabase;
+  if(!client||!client.functions||typeof client.functions.invoke!=='function')throw new Error('O serviço seguro da Alicia não está disponível.');
+  var key='';
+  try{key=window.crypto&&typeof window.crypto.randomUUID==='function'?window.crypto.randomUUID():'';}catch(error){}
+  if(!key)key=String(Store._uid());
+  payload.idempotency_key=key;
+  var response=await client.functions.invoke('alicia-actions',{body:payload});
+  if(response&&response.error)throw response.error;
+  var data=response&&response.data?response.data:{};
+  if(!data.ok)throw new Error(data.error||'A ação não foi confirmada pelo Alicerce.');
+  if(Array.isArray(data.reminders)){
+    var retained=(Store.commitments||[]).filter(function(item){return !item||item.tipo!=='lembrete';});
+    var reminders=data.reminders.map(function(item){return {
+      id:String(item.id||''),userId:Store.userId,tipo:'lembrete',descricao:String(item.descricao||''),valor:null,
+      data:String(item.data||''),hora:String(item.hora||''),detalhes:String(item.detalhes||''),
+      repeticao:String(item.repeticao||'nenhuma'),avisos:Array.isArray(item.avisos)?item.avisos:[0],
+      feitos:Array.isArray(item.feitos)?item.feitos:[],status:String(item.status||'pendente')
+    };});
+    Store.commitments=retained.concat(reminders);
+    try{window.localStorage.setItem(Repository._key(Store.userId,'commitments'),JSON.stringify(Store.commitments));}catch(error){}
+  }
+  return data;
+};
+AlicerceIA._handleReminderAction=async function(message){
+  var raw=String(message||'').trim(),normalized=this._norm(raw);
+  var yes=/^(sim|sim pode|pode|confirmo|confirmar|confirmado|isso|pode excluir|pode apagar|quero)$/.test(normalized);
+  var no=/^(nao|nao quero|cancela|cancelar|deixa|deixa pra la|voltar)$/.test(normalized);
+  if(this._pendingReminderDelete){
+    var pending=this._pendingReminderDelete;
+    if(yes){this._pendingReminderDelete=null;await this._invokeReminderAction({action:'reminder.delete',reminder_id:pending.id,confirmed:true});return 'Pronto. Excluí o lembrete "'+pending.descricao+'".';}
+    if(no){this._pendingReminderDelete=null;return 'Tudo bem. Mantive o lembrete "'+pending.descricao+'".';}
+    return 'Confirma a exclusão do lembrete "'+pending.descricao+'"? Responda sim ou não.';
+  }
+  if(this._pendingReminderDraft){
+    if(no){this._pendingReminderDraft=null;return 'Tudo bem. Cancelei a criação do lembrete. Nada foi alterado.';}
+    var timing=this._parseReminderDateTime(raw);
+    if(!timing.dateFound)return 'Ainda preciso da data. Diga, por exemplo, amanhã, sexta-feira ou 12/11.';
+    var draft=this._pendingReminderDraft;this._pendingReminderDraft=null;
+    var made=await this._invokeReminderAction({action:'reminder.create',reminder:{
+      descricao:draft.description,data:timing.date,hora:timing.time||draft.time||'',
+      detalhes:draft.details||'',repeticao:timing.repetition!=='nenhuma'?timing.repetition:(draft.repetition||'nenhuma'),
+      avisos:timing.alerts||[0]
+    }});
+    if(!made.reminder)return 'O Alicerce não confirmou o lembrete. Confira sua agenda antes de tentar novamente.';
+    return 'Pronto. Criei "'+made.reminder.descricao+'" para '+made.reminder.data+(made.reminder.hora?' às '+made.reminder.hora:'')+'. Ele já está no calendário e nos alertas do app.';
+  }
+  if(/\b(lembretes|tarefas)\b/.test(normalized)&&/\b(quais|liste|listar|mostrar|mostre|ver|tenho|meus|minhas|agenda|existe)\b/.test(normalized)){
+    var list=await this._invokeReminderAction({action:'reminder.list'});
+    var items=(list.reminders||[]).filter(function(item){return item.status!=='concluido'&&!reminderDone(item,today());}).sort(function(a,b){return String(a.data||'').localeCompare(String(b.data||''));});
+    if(!items.length)return 'Você não tem lembretes pendentes cadastrados.';
+    return 'Encontrei '+items.length+' lembrete(s) pendente(s):\n'+items.slice(0,10).map(function(item,i){return (i+1)+'. '+item.descricao+' — '+item.data+(item.hora?' às '+item.hora:'');}).join('\n');
+  }
+  if(/\b(apague|apaga|exclua|exclui|remova|remover|delete|cancele|cancelar)\b/.test(normalized)&&/\b(lembrete|tarefa)s?\b/.test(normalized)){
+    var del=this._matchReminder(this._parseReminderTarget(raw)).matches;
+    if(del.length!==1)return del.length?'Encontrei mais de um lembrete parecido: '+del.slice(0,5).map(function(x){return x.descricao;}).join('; ')+'. Diga qual deseja excluir.':'Não encontrei esse lembrete. Peça para listar seus lembretes e escolha um.';
+    this._pendingReminderDelete={id:del[0].id,descricao:del[0].descricao};
+    return 'Encontrei "'+del[0].descricao+'". Quer que eu exclua? Responda sim para confirmar ou não para manter.';
+  }
+  if(/\b(conclua|conclui|concluir|terminei|feito|resolvi|marque|marcar)\b/.test(normalized)&&/\b(lembrete|tarefa)s?\b/.test(normalized)){
+    var done=this._matchReminder(this._parseReminderTarget(raw)).matches;
+    if(done.length!==1)return done.length?'Encontrei mais de um lembrete parecido. Diga o nome exato.':'Não encontrei esse lembrete na sua conta.';
+    var target=done[0],occurrence=today(),found=false;
+    for(var n=0;n<=366;n++){var candidate=dateShift(today(),n);if(occursOn(target,candidate)&&!reminderDone(target,candidate)){occurrence=candidate;found=true;break;}}
+    if(!found&&target.data<today()&&(!target.repeticao||target.repeticao==='nenhuma')){occurrence=target.data;found=true;}
+    if(!found)return 'Não encontrei uma ocorrência pendente para concluir.';
+    await this._invokeReminderAction({action:'reminder.complete',reminder_id:target.id,occurrence_date:occurrence});
+    return 'Marquei "'+target.descricao+'" como concluído para '+occurrence+'.';
+  }
+  if(/\b(reagende|reagendar|adie|adiar|mude|mudar|altere|alterar)\b/.test(normalized)&&/\b(lembrete|tarefa)s?\b/.test(normalized)){
+    var move=this._matchReminder(this._parseReminderTarget(raw)).matches,when=this._parseReminderDateTime(raw);
+    if(move.length!==1)return move.length?'Encontrei mais de um lembrete parecido. Diga o nome exato.':'Não encontrei o lembrete que você quer reagendar.';
+    if(!when.dateFound)return 'Para qual dia devo reagendar "'+move[0].descricao+'"?';
+    var old=move[0];
+    await this._invokeReminderAction({action:'reminder.update',reminder_id:old.id,reminder:{
+      descricao:old.descricao,data:when.date,hora:when.time||old.hora||'',detalhes:old.detalhes||'',
+      repeticao:when.repetition!=='nenhuma'?when.repetition:(old.repeticao||'nenhuma'),avisos:when.alerts||old.avisos||[0]
+    }});
+    return 'Reagendei "'+old.descricao+'" para '+when.date+(when.time?' às '+when.time:'')+'.';
+  }
+  var createIntent=/(?:\bme lembre\b|\bme lembra\b|\blembrete\b|\bcrie\b|\bcria\b|\badicione\b|\badiciona\b|\banote\b|\banota\b|\bagende\b|\bagenda\b|\bprograme\b|\bprograma\b)/.test(normalized)&&/\b(lembrete|lembre|lembra|tarefa|avisar|avise)\b/.test(normalized);
+  if(createIntent){
+    var parsed=this._parseReminderDateTime(raw);
+    if(!parsed.description)return 'O que você quer que eu lembre?';
+    if(!parsed.dateFound){this._pendingReminderDraft={description:parsed.description,time:parsed.time||'',repetition:parsed.repetition,details:''};return 'Claro. Para qual dia devo criar o lembrete "'+parsed.description+'"?';}
+    var created=await this._invokeReminderAction({action:'reminder.create',reminder:{
+      descricao:parsed.description,data:parsed.date,hora:parsed.time,detalhes:'',repeticao:parsed.repetition,avisos:parsed.alerts
+    }});
+    if(!created.reminder)return 'O Alicerce não confirmou a criação. Confira sua agenda antes de tentar novamente.';
+    return 'Pronto. Criei "'+created.reminder.descricao+'" para '+created.reminder.data+(created.reminder.hora?' às '+created.reminder.hora:'')+'. Ele já está no calendário e nos alertas do app.';
+  }
+  return null;
+};
+
+
 AlicerceIA.enviarMensagem=async function(question){
   this._resetUser();
   this.pararAudio();
@@ -5977,6 +6155,20 @@ AlicerceIA.enviarMensagem=async function(question){
   if(!Array.isArray(this._messages))this._messages=[];
   var questionForEngine=this._resolveFollowUp(message);
   this._messages.push({role:'user',text:message});
+
+  var reminderReply=null;
+  try{reminderReply=await this._handleReminderAction(message);}
+  catch(reminderError){
+    console.error('Alicia: ação de lembrete não concluída:',reminderError);
+    reminderReply='Não consegui concluir essa ação agora. Nenhuma alteração foi confirmada. Tente novamente em instantes.';
+  }
+  if(reminderReply){
+    this._messages.push({role:'assistant',text:reminderReply});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._question=message;this._answer=reminderReply;render();
+    if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
+    return;
+  }
 
   var expenseCommand=null;
   var messageNorm=this._norm(message);
