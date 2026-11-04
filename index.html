@@ -6089,14 +6089,18 @@ AlicerceIA.enviarMensagem=async function(question){
     }else{
       try{
         var interpreterText='Valor: '+expenseCommand.amount+' | Item: '+expenseCommand.item+' | Local: '+expenseCommand.local+(expenseCommand.purpose?' | Contexto: '+expenseCommand.purpose:'');
-        var interpretation=await Interpreter.interpret(interpreterText);
+        var interpretation={amount:expenseCommand.amount,purpose:expenseCommand.purpose||'',item:expenseCommand.item,merchant:expenseCommand.local,categoria:'',subcategoria:''};
+        if(ALICIA_INTERPRETER_ENABLED){
+          var parsedInterpretation=await Interpreter.interpret(interpreterText);
+          if(parsedInterpretation&&typeof parsedInterpretation==='object')interpretation=parsedInterpretation;
+        }
         if(!interpretation||typeof interpretation!=='object')interpretation={};
         interpretation.amount=expenseCommand.amount;
         interpretation.purpose=expenseCommand.purpose||'';
         if(!interpretation.item)interpretation.item=expenseCommand.item;
         if(!interpretation.merchant)interpretation.merchant=expenseCommand.local;
         var classificationValid=!!(interpretation.categoria&&interpretation.subcategoria&&alicerClassificationPairIsValid(interpretation.categoria,interpretation.subcategoria));
-        var needsPurposeContext=!classificationValid||interpretation.confidence==='low'||(interpretation.source==='dictionary'&&!expenseCommand.purpose);
+        var needsPurposeContext=ALICIA_INTERPRETER_ENABLED&&(!classificationValid||interpretation.confidence==='low'||(interpretation.source==='dictionary'&&!expenseCommand.purpose));
         if(needsPurposeContext&&!expenseCommand.purpose){
           this._pendingExpenseDraft={
             amount:expenseCommand.amount,
@@ -6165,16 +6169,24 @@ AlicerceIA.enviarMensagem=async function(question){
 
   var answer='';
   var localAnswer='';
-  try{
-    localAnswer=String(this.responder(questionForEngine)||'');
-  }catch(error){
-    localAnswer=this._label('help');
+  if(inputSource==='ocr'){
+    answer='A leitura de fotos e documentos está temporariamente desativada. Nenhum texto da imagem foi enviado ou registrado.';
+  }else{
+    try{
+      localAnswer=String(this.responder(questionForEngine)||'');
+    }catch(error){
+      localAnswer=this._label('help');
+    }
+    answer=localAnswer;
   }
-  answer=localAnswer;
+  if(inputSource!=='ocr'&&!ALICIA_REMOTE_MODEL_ENABLED){
+    var localStatus=document.getElementById('alicerce-assistant-status');
+    if(localStatus)localStatus.textContent='Modelo remoto temporariamente desativado. Alicia usa apenas os recursos locais do Alicerce.';
+  }
 
   var userId=String(Store.userId||'');
   var client=window.alicerceSupabase;
-  if(inputSource==='ocr'&&userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
+  if(inputSource==='ocr'&&ALICIA_INTERPRETER_ENABLED&&userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
     try{
       var ocrResult=await client.functions.invoke('alicia-chat',{
         body:{message:message,input_source:'ocr',photo_text_consent:true}
@@ -6191,8 +6203,8 @@ AlicerceIA.enviarMensagem=async function(question){
       if(ocrStatus)ocrStatus.textContent=answer;
     }
   }else if(inputSource==='ocr'){
-    answer='Entre na sua conta para usar o interpretador de fotos. A foto não será armazenada.';
-  }else if(userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
+    answer='A leitura de fotos e documentos está temporariamente desativada. Nenhum texto da imagem foi enviado ou registrado.';
+  }else if(ALICIA_REMOTE_MODEL_ENABLED&&userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
     var consentKey='alicia_ai_consent_v1_'+userId;
     var consent='';
     try{consent=window.localStorage.getItem(consentKey)||''}catch(error){}
@@ -6266,7 +6278,7 @@ AlicerceIA._privacyCopy={
     dictation:'Para falar com a Alicia, toque no microfone do teclado do seu celular. O texto reconhecido aparecerá no campo de mensagem.',
     microphoneLocal:'Alicia tentará reconhecer sua fala no próprio aparelho. Se o navegador não tiver o pacote local de português, ela pedirá sua autorização separadamente antes de usar o serviço de reconhecimento online do navegador. A gravação não é enviada ao Alicerce nem ao Render.',
     microphoneRemote:'Para ouvir você neste aparelho, o navegador usará seu serviço de reconhecimento de voz. Isso pode transmitir o áudio ao provedor do navegador para gerar o texto. O Alicerce não recebe nem armazena a gravação; recebe apenas o texto reconhecido. A política de retenção do provedor depende do navegador e das suas configurações.',
-    photo:'Privacidade: a foto é lida no próprio aparelho e não é enviada nem armazenada pelo Alicerce. Depois que você revisar e enviar, somente o texto reconhecido será enviado temporariamente ao interpretador do Alicerce para extrair os campos. Ele não será enviado ao OpenRouter nem salvo no histórico.',
+    photo:'Privacidade: a leitura de fotos e documentos está temporariamente desativada. A imagem permanece no aparelho e nenhum texto reconhecido é enviado ou registrado.',
     voice:'Ao tocar em ouvir, somente o texto desta resposta será enviado por uma conexão protegida ao serviço de voz online que utiliza a tecnologia do Microsoft Edge. A resposta pode conter valores financeiros. Não enviamos o histórico inteiro nem gravações. O áudio é reproduzido e descartado no aparelho.',
     continue:'Continuar',cancel:'Cancelar',listenNow:'Enviar texto e ouvir'
   },
@@ -6274,7 +6286,7 @@ AlicerceIA._privacyCopy={
     dictation:'You can also use your keyboard microphone to dictate into the message field.',
     microphoneLocal:'Alicia will first try to recognize your speech on this device. If the browser does not have a local English language pack, it will ask separately before using the browser’s online speech recognition service. The recording is not sent to Alicerce or Render.',
     microphoneRemote:'To hear you on this device, the browser will use its speech recognition service. This may transmit audio to the browser provider to produce text. Alicerce does not receive or store the recording; it receives only the recognized text. Provider retention depends on the browser and your settings.',
-    photo:'Privacy: the photo is read on your device and is not uploaded or stored by Alicerce. After you review and send it, only the recognized text is sent temporarily to Alicerce’s interpreter to extract fields. It is not sent to OpenRouter or saved in chat history.',
+    photo:'Privacy: photo and document reading is temporarily disabled. The image stays on your device, and no recognized text is sent or stored.',
     voice:'Alicia’s fixed voice is available only in Brazilian Portuguese.',
     continue:'Continue',cancel:'Cancel',listenNow:'Listen now'
   },
@@ -6282,7 +6294,7 @@ AlicerceIA._privacyCopy={
     dictation:'También puedes usar el micrófono del teclado para dictar en el campo de mensaje.',
     microphoneLocal:'Alicia intentará reconocer tu voz en este dispositivo. Si el navegador no tiene el paquete local de español, pedirá tu autorización por separado antes de usar el servicio de reconocimiento en línea del navegador. La grabación no se envía a Alicerce ni a Render.',
     microphoneRemote:'Para escucharte en este dispositivo, el navegador usará su servicio de reconocimiento de voz. Esto puede transmitir el audio al proveedor del navegador para generar el texto. Alicerce no recibe ni almacena la grabación; solo recibe el texto reconocido. La retención del proveedor depende del navegador y de tu configuración.',
-    photo:'Privacidad: la foto se lee en tu dispositivo y Alicerce no la envía ni la almacena. Después de revisar y enviarla, solo el texto reconocido se envía temporalmente al interpretador de Alicerce para extraer los campos. No se envía a OpenRouter ni se guarda en el historial.',
+    photo:'Privacidad: la lectura de fotos y documentos está temporalmente desactivada. La imagen permanece en tu dispositivo y no se envía ni almacena el texto reconocido.',
     voice:'La voz fija de Alicia está disponible solamente en portugués brasileño.',
     continue:'Continuar',cancel:'Cancelar',listenNow:'Escuchar ahora'
   }
@@ -7840,6 +7852,8 @@ function alicerLearningKey(merchant,item){
 
 const POSTO_RE=/postos?(?!(?:\s+(?:de\s+)?)?(?:saude|salud|policia|policial|fiscal|medico|vacinacao)\b)/;
 const VEHICLE_RE=/\b(gnv|gas\s*natural\s*veicular|gasolina|gasolinera|nafta|bencina|combustivel|combustible|etanol|diesel|abastec\w*|abasteci|filled\s*up|gas\s*station|petrol|fuel|postos?(?!(?:\s+(?:de\s+)?)?(?:saude|salud|policia|policial|fiscal|medico|vacinacao)\b))\b/i;
+var ALICIA_REMOTE_MODEL_ENABLED=false;
+var ALICIA_INTERPRETER_ENABLED=false;
 const Interpreter={
   merchantDict:{
     'carrefour':{c:'comida',s:'mercado'},
@@ -14113,7 +14127,11 @@ async function processGastoText(){
     const interpreterText='Valor: '+amount+' | Item: '+item+' | Local: '+local;
     console.log('ALICERCE GASTO CAPTURADO: Valor='+amount+' | Item='+item+' | Local='+local);
 
-    const result=await Interpreter.interpret(interpreterText);
+    const result={amount:amount,item:item,merchant:local,date:today(),categoria:'',subcategoria:''};
+    if(ALICIA_INTERPRETER_ENABLED){
+      const parsedResult=await Interpreter.interpret(interpreterText);
+      if(parsedResult&&typeof parsedResult==='object')Object.assign(result,parsedResult);
+    }
     if(result&&typeof result==='object'){
       if(selectedCategory&&ALICERCE_CATEGORIES[selectedCategory]){
         result.categoria=selectedCategory;
@@ -14293,12 +14311,12 @@ function renderAddGastoDoubt(){
   }
   html+='<div class="gr-line"><span>Data da compra</span><span class="gr-value">'+esc(dateLabel)+'</span></div></div>';
 
-  html+='<div class="gr-panel"><div style="font-size:16px;font-weight:800">Sugestão da Alicia</div>';
+  html+='<div class="gr-panel"><div style="font-size:16px;font-weight:800">Classificação manual</div>';
   if(categoryValue&&subcategoryValue){
     html+='<div class="gr-line"><span>Categoria e subcategoria</span><span class="gr-value">'+esc(categoryName)+' › '+esc(subName)+'</span></div>';
-    html+='<div class="gr-hint">A Alicia classificou este gasto. Confira ou altere a sugestão antes de salvar.</div>';
+    html+='<div class="gr-hint">Confira a categoria e a subcategoria selecionadas antes de salvar.</div>';
   }else{
-    html+='<div class="gr-hint">A Alicia ainda não identificou uma classificação segura. Pesquise a categoria e a subcategoria corretas antes de salvar.</div>';
+    html+='<div class="gr-hint">O interpretador está temporariamente desativado. Pesquise e escolha a categoria e a subcategoria antes de salvar.</div>';
   }
   html+='<label class="gr-label" for="edit-gasto-category-search">Categoria</label>';
   html+='<input class="gr-input" id="edit-gasto-category-search" type="text" autocomplete="off" placeholder="Pesquisar categoria" value="'+esc(categoryName)+'" oninput="filterGastoCategories();cacheGastoDoubtEdits()" onfocus="filterGastoCategories()">';
