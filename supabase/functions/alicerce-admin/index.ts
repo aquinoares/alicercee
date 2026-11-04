@@ -197,6 +197,7 @@ Deno.serve(async (req) => {
         .select("plan,starts_at,expires_at,revoked_at")
         .eq("user_id", targetUser.id)
         .is("revoked_at", null)
+        .lte("starts_at", now)
         .gt("expires_at", now)
         .order("expires_at", { ascending: false })
         .limit(1);
