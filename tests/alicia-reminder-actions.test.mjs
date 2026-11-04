@@ -139,7 +139,12 @@ assert.equal(call.confirmed, true);
 
 
 let commitmentSaveCount = 0;
-context.Store.save = function() { commitmentSaveCount += 1; };
+context.Repository.set = function(userId, storeName, value) {
+  commitmentSaveCount += 1;
+  assert.equal(userId, 'user-a');
+  assert.equal(storeName, 'commitments');
+  assert.equal(value[0].avisos[0], 30);
+};
 context.Store.commitments.push({
   id: 'c-dentista',
   tipo: 'compromisso',
@@ -155,7 +160,7 @@ A._messages = [
 ];
 const alertReply = await A._handleCommitmentAlertFollowUp('me avisa 30 minutos antes');
 assert.match(alertReply, /aviso ficou programado para 30 minutos antes/);
-assert.deepEqual(context.Store.commitments[0].avisos, [30]);
+assert.deepEqual(Array.from(context.Store.commitments[0].avisos), [30]);
 assert.equal(context.Store.commitments[0].data, '2026-11-05');
 assert.equal(context.Store.commitments[0].hora, '14:00');
 assert.equal(commitmentSaveCount, 1);
