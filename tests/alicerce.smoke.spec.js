@@ -3587,7 +3587,11 @@ test('central de alertas identifica compromisso com aviso de 30 minutos', async 
       feitos: []
     }];
     Clock.now = function () { return new Date(2026, 10, 5, 13, 30, 0); };
-    return getAlerts();
+    var before = getAlerts();
+    Clock.now = function () { return new Date(2026, 10, 5, 14, 1, 0); };
+    var after = getAlerts();
+    return { before: before, after: after };
   });
-  expect(alerts.some(function (item) { return item.text === 'Dentista' && item.label === 'Em 30 minutos'; })).toBe(true);
+  expect(alerts.before.some(function (item) { return item.text === 'Dentista' && item.label === 'Em 30 minutos'; })).toBe(true);
+  expect(alerts.after.some(function (item) { return item.text === 'Dentista'; })).toBe(false);
 });
