@@ -14972,8 +14972,8 @@ function getAlerts(){
 
   Store.commitments.filter(c=>c&&!c.personId&&(c.tipo==='lembrete'||(c.tipo==='compromisso'&&Array.isArray(c.avisos)&&c.avisos.length>0))).forEach(c=>{
     const mins=c.avisos||[],eventTime=c.hora||c.horario||'',h=eventTime?Number(eventTime.slice(0,2)):8,m=eventTime?Number(eventTime.slice(3,5)):0;
-    for(let day=c.data;day<todayStr;day=dateShift(day,1)){if(occursOn(c,day)&&!reminderDone(c,day)){const p=day.split('-').map(Number),diff=Math.floor((new Date(p[0],p[1]-1,p[2],h,m)-Clock.now())/60000);if(mins.some(x=>diff<=x)){alerts.push({text:c.descricao||'',label:t('avisoAgora'),reminderId:c.id,date:day});return}}}
-    for(let n=0;n<=7;n++){const day=dateShift(todayStr,n);if(!occursOn(c,day)||reminderDone(c,day))continue;const p=day.split('-').map(Number),diff=Math.floor((new Date(p[0],p[1]-1,p[2],h,m)-Clock.now())/60000),hit=mins.filter(x=>diff<=x).sort((a,b)=>a-b)[0];if(mins.length?hit!==undefined:n<2){let label=n===0?t('hoje'):n===1?t('amanha'):t('avisoSemana');if(hit!==undefined)label=hit===0?t('avisoAgora'):hit===10?t('aviso10'):hit===30?t('aviso30'):hit===60?t('avisoHora'):hit===1440?t('avisoAmanha'):t('avisoSemana');alerts.push({text:c.descricao||'',label:label,reminderId:c.id,date:day});break}}
+    for(let day=c.data;day<todayStr;day=dateShift(day,1)){if(occursOn(c,day)&&!reminderDone(c,day)){const p=day.split('-').map(Number),diff=Math.floor((new Date(p[0],p[1]-1,p[2],h,m)-Clock.now())/60000);if(mins.some(x=>diff<=x)){alerts.push(c.tipo==='compromisso'?{text:c.descricao||'',label:t('avisoAgora'),commitmentId:c.id,date:day}:{text:c.descricao||'',label:t('avisoAgora'),reminderId:c.id,date:day});return}}}
+    for(let n=0;n<=7;n++){const day=dateShift(todayStr,n);if(!occursOn(c,day)||reminderDone(c,day))continue;const p=day.split('-').map(Number),diff=Math.floor((new Date(p[0],p[1]-1,p[2],h,m)-Clock.now())/60000),hit=mins.filter(x=>diff<=x).sort((a,b)=>a-b)[0];if(mins.length?hit!==undefined:n<2){let label=n===0?t('hoje'):n===1?t('amanha'):t('avisoSemana');if(hit!==undefined)label=hit===0?t('avisoAgora'):hit===10?t('aviso10'):hit===30?t('aviso30'):hit===60?t('avisoHora'):hit===1440?t('avisoAmanha'):t('avisoSemana');alerts.push(c.tipo==='compromisso'?{text:c.descricao||'',label:label,commitmentId:c.id,date:day}:{text:c.descricao||'',label:label,reminderId:c.id,date:day});break}}
   });return alerts;
 }
 function renderAlerts(){
@@ -14982,7 +14982,7 @@ function renderAlerts(){
   html+='<h2 class="mt-4">'+t('alerta')+'</h2>';
   const alerts=getAlerts();
   if(alerts.length===0)html+='<div class="card"><p class="text-muted">'+t('semDados')+'</p></div>';
-  else alerts.forEach(a=>{html+='<div class="list-item"'+(a.reminderId?' onclick="go(\\'lembreteDetail\\',{id:\\''+a.reminderId+'\\',date:\\''+a.date+'\\'})"':'')+'><div class="li-left">'+icon('alert','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(a.text)+'</div><div class="li-sub">'+esc(a.label||'')+'</div></div></div></div>'});
+  else alerts.forEach(a=>{html+='<div class="list-item"'+(a.reminderId?' onclick="go(\\'lembreteDetail\\',{id:\\''+a.reminderId+'\\',date:\\''+a.date+'\\'})"':a.commitmentId?' onclick="go(\\'calendario\\');selectDay(\\''+a.date+'\\')"':'')+'><div class="li-left">'+icon('alert','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(a.text)+'</div><div class="li-sub">'+esc(a.label||'')+'</div></div></div></div>'});
   html+='</div>';return html;
 }
 
