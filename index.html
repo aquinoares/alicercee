@@ -6000,7 +6000,7 @@ AlicerceIA._parseReminderDateTime=function(raw){
       }
     }
   }
-  var time='',tm=text.match(/\b(?:as|às)\s*(\d{1,2})(?::([0-5]\d)|h([0-5]\d)?)?/i);
+  var time='',tm=text.match(/(?:as|às)\s*(\d{1,2})(?::([0-5]\d)|h([0-5]\d)?)?/i);
   if(!tm)tm=text.match(/\b(\d{1,2})h([0-5]\d)?\b/i);
   if(tm){
     var hour=Number(tm[1]),minute=Number(tm[2]||tm[3]||0);
