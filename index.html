@@ -5973,6 +5973,7 @@ AlicerceIA.enviarMensagem=async function(question){
   this.pararReconhecimento(true);
   var input=document.getElementById('alicerce-assistant-input');
   var inputSource=(question===undefined&&this._photoTextPending)?'ocr':'text';
+  if(inputSource!=='ocr')this._photoTextPending=false;
   var message=String(question!==undefined?question:(input?input.value:'')||'').trim();
   if(!message){if(inputSource==='ocr')this._photoTextPending=false;return;}
   if(!Array.isArray(this._messages))this._messages=[];
