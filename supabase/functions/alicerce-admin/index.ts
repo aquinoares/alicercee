@@ -26,7 +26,7 @@ function normalizeCommercialEmail(value: unknown): string {
 }
 
 function isValidCommercialEmail(email: string): boolean {
-  return email.length <= 254 && /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);
+  return email.length <= 254 && email.indexOf("@") > 0 && email.indexOf(" ") < 0 && email.lastIndexOf(".") > email.indexOf("@") + 1 && email.lastIndexOf(".") < email.length - 1;
 }
 
 async function findAuthUserByEmail(adminClient: any, email: string) {
@@ -200,6 +200,8 @@ Deno.serve(async (req) => {
       const paidPlanActive = subscriptionStatus === "active" &&
         ["pro", "vip", "infinit"].includes(currentPlan) &&
         (expiry === null || (Number.isFinite(expiry) && expiry > Date.now()));
+      const trialPlanActive = subscriptionStatus === "active" && currentPlan === "trial" &&
+        (expiry === null || (Number.isFinite(expiry) && expiry > Date.now()));
       const activeGrant = Array.isArray(grants) ? grants.find((grant: any) => {
         const starts = Date.parse(grant.starts_at);
         const ends = Date.parse(grant.expires_at);
@@ -209,7 +211,7 @@ Deno.serve(async (req) => {
       return json({
         ok: true,
         found: true,
-        accountStatus: paidPlanActive ? "paid_active" : activeGrant ? "temporary_access_active" :
+        accountStatus: paidPlanActive ? "paid_active" : trialPlanActive ? "trial_active" : activeGrant ? "temporary_access_active" :
           subscriptionStatus === "active" ? "free_or_non_paid_active" : "inactive",
         subscription: {
           plan: currentPlan,
