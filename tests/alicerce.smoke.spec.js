@@ -3522,3 +3522,231 @@ test('Planos cria tabuleiro com prévia, marca datas individualmente, edita e de
   expect(afterUndo.available).toBe(initialCash);
 });
 
+
+
+test('Alicia reconhece pão sem perguntar finalidade e usa local e data relativa', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-bread-local-date-test';
+    Store.lang = 'pt';
+    Store.cards = [];
+    Store.movements = [];
+    Store.installments = [];
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-11-04T12:00:00.000Z'
+      }
+    };
+    Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await page.locator('#alicerce-assistant-input').fill('Comprei pão ontem na padaria por R$ 7,00');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#btn-save-gasto-doubt')).toBeVisible();
+
+  const draft = await page.evaluate(function () {
+    return {
+      amount: Store.screenData && Store.screenData.amountInput,
+      item: Store.screenData && Store.screenData.itemInput,
+      local: Store.screenData && Store.screenData.localInput,
+      date: Store.screenData && Store.screenData.date,
+      category: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.categoria,
+      subcategory: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.subcategoria,
+      pending: AlicerceIA._pendingExpenseDraft
+    };
+  });
+
+  expect(draft.amount).toBe(7);
+  expect(draft.item).toBe('pão');
+  expect(draft.local).toBe('padaria');
+  expect(draft.date).toBe('2026-11-03');
+  expect(draft.category).toBe('comida');
+  expect(draft.subcategory).toBe('padaria');
+  expect(draft.pending).toBe(null);
+  expect(draft).not.toHaveProperty('purpose');
+  expect(await page.locator('.gasto-review').innerText()).not.toContain('Finalidade informada');
+});
+
+test('Alicia usa o mercado para refinar a subcategoria e respeita data explícita', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-bread-market-date-test';
+    Store.lang = 'pt';
+    Store.cards = [];
+    Store.movements = [];
+    Store.installments = [];
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-11-04T12:00:00.000Z'
+      }
+    };
+    Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  await page.locator('#alicerce-assistant-input').fill('Comprei pão no mercado dia 02/11/2026 por 7 reais');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#btn-save-gasto-doubt')).toBeVisible();
+
+  const draft = await page.evaluate(function () {
+    return {
+      amount: Store.screenData && Store.screenData.amountInput,
+      item: Store.screenData && Store.screenData.itemInput,
+      local: Store.screenData && Store.screenData.localInput,
+      date: Store.screenData && Store.screenData.date,
+      category: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.categoria,
+      subcategory: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.subcategoria
+    };
+  });
+
+  expect(draft.amount).toBe(7);
+  expect(draft.item).toBe('pão');
+  expect(draft.local).toBe('mercado');
+  expect(draft.date).toBe('2026-11-02');
+  expect(draft.category).toBe('comida');
+  expect(draft.subcategory).toBe('mercado');
+});
+
+test('Alicia preserva a data da compra enquanto pergunta a finalidade de um item ambíguo', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-purpose-date-context-test';
+    Store.lang = 'pt';
+    Store.cards = [];
+    Store.movements = [];
+    Store.installments = [];
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-11-04T12:00:00.000Z'
+      }
+    };
+    Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  const input = page.locator('#alicerce-assistant-input');
+  const send = page.locator('#alicerce-assistant-send');
+  await input.fill('Comprei material ontem por oitenta reais');
+  await send.click();
+
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('qual era a finalidade');
+  expect(await page.evaluate(function () {
+    return AlicerceIA._pendingExpenseDraft && AlicerceIA._pendingExpenseDraft.date;
+  })).toBe('2026-11-03');
+
+  await input.fill('para obra');
+  await send.click();
+  await expect(page.locator('#btn-save-gasto-doubt')).toBeVisible();
+
+  const draft = await page.evaluate(function () {
+    return {
+      date: Store.screenData && Store.screenData.date,
+      purpose: Store.screenData && Store.screenData.purpose,
+      category: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.categoria,
+      subcategory: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.subcategoria
+    };
+  });
+  expect(draft.date).toBe('2026-11-03');
+  expect(draft.purpose).toBe('obra');
+  expect(draft.category).toBe('moradia');
+  expect(draft.subcategory).toBe('manutencao');
+});
+
+
+test('Alicia lê datas ISO e por extenso sem confundi-las com o estabelecimento', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const parsed = await page.evaluate(function () {
+    Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
+    var iso = AlicerceIA._parseExpenseCommand('Comprei pão em 2026-11-02 por R$ 7,00');
+    var named = AlicerceIA._parseExpenseCommand('Comprei pão dia 3 de novembro na padaria por 7 reais');
+    return {
+      iso: { date: iso && iso.date, item: iso && iso.item, local: iso && iso.local },
+      named: { date: named && named.date, item: named && named.item, local: named && named.local }
+    };
+  });
+
+  expect(parsed.iso).toEqual({ date: '2026-11-02', item: 'pão', local: '' });
+  expect(parsed.named).toEqual({ date: '2026-11-03', item: 'pão', local: 'padaria' });
+});
+
+
+test('Alicia pergunta o local quando ele muda a subcategoria de pão e não pergunta finalidade', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'alicia-bread-ask-local-test';
+    Store.lang = 'pt';
+    Store.cards = [];
+    Store.movements = [];
+    Store.installments = [];
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-11-04T12:00:00.000Z'
+      }
+    };
+    Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
+    AlicerceIA._resetUser();
+    document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
+  });
+
+  const input = page.locator('#alicerce-assistant-input');
+  const send = page.locator('#alicerce-assistant-send');
+  await input.fill('Comprei pão por R$ 7,00');
+  await send.click();
+
+  await expect(page.locator('.alicerce-assistant-message.assistant').last())
+    .toContainText('na padaria, no mercado ou em um app de entrega');
+  expect(await page.evaluate(function () {
+    return {
+      awaiting: AlicerceIA._pendingExpenseDraft && AlicerceIA._pendingExpenseDraft.awaiting,
+      movements: Store.movements.length,
+      date: AlicerceIA._pendingExpenseDraft && AlicerceIA._pendingExpenseDraft.date
+    };
+  })).toEqual({ awaiting: 'local', movements: 0, date: '2026-11-04' });
+
+  await input.fill('no mercado');
+  await send.click();
+  await expect(page.locator('#btn-save-gasto-doubt')).toBeVisible();
+
+  const draft = await page.evaluate(function () {
+    return {
+      amount: Store.screenData && Store.screenData.amountInput,
+      item: Store.screenData && Store.screenData.itemInput,
+      local: Store.screenData && Store.screenData.localInput,
+      date: Store.screenData && Store.screenData.date,
+      category: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.categoria,
+      subcategory: Store.screenData && Store.screenData.interpretation && Store.screenData.interpretation.subcategoria,
+      purpose: Store.screenData && Store.screenData.purpose,
+      pending: AlicerceIA._pendingExpenseDraft
+    };
+  });
+  expect(draft.amount).toBe(7);
+  expect(draft.item).toBe('pão');
+  expect(draft.local).toBe('mercado');
+  expect(draft.date).toBe('2026-11-04');
+  expect(draft.category).toBe('comida');
+  expect(draft.subcategory).toBe('mercado');
+  expect(draft.purpose).toBe('');
+  expect(draft.pending).toBe(null);
+  expect(await page.locator('.gasto-review').innerText()).not.toContain('Finalidade informada');
+  expect(await page.evaluate(function () { return Store.movements.length; })).toBe(0);
+});
