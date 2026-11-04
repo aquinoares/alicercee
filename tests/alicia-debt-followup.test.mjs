@@ -5,6 +5,20 @@ import testCase from 'node:test';
 
 const source = readFileSync(new URL('../assets/alicia-debt-followup.js', import.meta.url), 'utf8');
 
+const indexHtml = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+
+testCase('o script principal do Alicerce continua sintaticamente válido após a integração da Alicia', () => {
+  const marker = "var confidenceLabel=String(interpretation.confidence||'').toLowerCase();";
+  const markerIndex = indexHtml.indexOf(marker);
+  assert.notEqual(markerIndex, -1, 'trecho de classificação financeira não encontrado');
+  assert.equal(indexHtml.includes(marker + '\\n        var confidenceScore'), false, 'quebra de linha foi gravada como texto literal');
+  const scriptStart = indexHtml.lastIndexOf('<script', markerIndex);
+  const tagEnd = indexHtml.indexOf('>', scriptStart);
+  const scriptEnd = indexHtml.indexOf('</script>', markerIndex);
+  assert.ok(scriptStart >= 0 && tagEnd > scriptStart && scriptEnd > markerIndex, 'bloco principal não encontrado');
+  assert.doesNotThrow(() => new vm.Script(indexHtml.slice(tagEnd + 1, scriptEnd), { filename: 'index.html inline script' }));
+});
+
 function createContext(overrides) {
   let nextId = 1;
   const store = {
