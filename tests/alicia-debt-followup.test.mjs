@@ -265,3 +265,79 @@ testCase('confirma pagamento de compromisso atualizando movimentação já vincu
   assert.equal(Store.commitments[0].status, 'concluido');
   assert.equal(api.getOverview().paidLate.length, 1);
 });
+
+
+testCase('a confirmação negativa some pelo restante do dia e volta a ser perguntada no dia seguinte', () => {
+  const { Store, AlicerceIA, api, sandbox } = createContext();
+  Store.installments.push({ id: 'daily-check', tipo: 'pagar', descricao: 'Conta de energia', valor: 150, data: '2026-11-04', status: 'pendente' });
+  const paymentCards = () => Store.getSmartCards().filter(item => item.type === 'alicia-payment-check');
+
+  assert.equal(paymentCards().length, 1);
+  api.openPaymentCheck(encodeURIComponent('installment:daily-check'));
+  api.handleMessage(AlicerceIA, 'Não consegui pagar');
+  assert.equal(paymentCards().length, 0);
+
+  sandbox.Clock.today = () => '2026-11-05';
+  assert.equal(paymentCards().length, 1);
+  api.openPaymentCheck(encodeURIComponent('installment:daily-check'));
+  api.handleMessage(AlicerceIA, 'Ainda não paguei');
+  assert.equal(paymentCards().length, 0);
+});
+
+testCase('não trata parcelas de cartão vinculadas a empréstimo como contas a pagar da casa', () => {
+  const { Store, api } = createContext();
+  Store.loans.push({ id: 'loan-card', tipo: 'emprestei', fromCard: true });
+  Store.installments.push({
+    id: 'card-receivable',
+    tipo: 'cartao',
+    loanId: 'loan-card',
+    descricao: 'Cartão emprestado',
+    valor: 300,
+    data: '2026-11-04',
+    status: 'pendente'
+  });
+  assert.equal(api.getOverview().dueToday.length, 0);
+});
+
+testCase('reutiliza uma saída financeira vinculada pelo commitmentId mesmo sem expenseMovementId', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.movements.push({
+    id: 'movement-by-commitment',
+    tipo: 'despesa',
+    descricao: 'Internet',
+    valor: 100,
+    data: '2026-11-04',
+    status: 'pendente',
+    commitmentId: 'debt-by-link'
+  });
+  Store.commitments.push({
+    id: 'debt-by-link',
+    tipo: 'compromisso',
+    naturezaFinanceira: 'divida',
+    descricao: 'Internet',
+    valor: 100,
+    data: '2026-11-03',
+    status: 'pendente',
+    paymentStatus: 'pendente'
+  });
+  AlicerceIA._pendingPaymentCheck = { key: 'commitment:debt-by-link' };
+  api.handleMessage(AlicerceIA, 'Sim, paguei hoje');
+  assert.equal(Store.movements.length, 1);
+  assert.equal(Store.movements[0].id, 'movement-by-commitment');
+  assert.equal(Store.movements[0].status, 'pago');
+  assert.equal(Store.commitments[0].status, 'concluido');
+});
+
+testCase('não marca conta antiga como paga quando o lançamento da saída falha', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.addMovement = () => null;
+  const answer = api.handleMessage(
+    AlicerceIA,
+    'Alicia, tenho uma conta antiga de energia de R$ 150,00 que venceu em 20/10 e já paguei ontem'
+  );
+  assert.match(answer, /Mantive a conta como pendente/i);
+  assert.equal(Store.commitments.length, 1);
+  assert.equal(Store.commitments[0].status, 'pendente');
+  assert.equal(Store.commitments[0].paymentStatus, 'pendente');
+  assert.equal(Store.movements.length, 0);
+});
