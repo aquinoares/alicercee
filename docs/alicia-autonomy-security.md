@@ -8,7 +8,7 @@ A Alicia pode agir dentro do Alicerce, mas não recebe acesso genérico ao banco
 
 | Área | Permissão | Regra |
 | --- | --- | --- |
-| Consultas financeiras | Ler saldos, gastos, cartões, parcelas e compromissos da própria conta | O Alicerce calcula os valores; a Alicia não inventa nem altera totais |
+| Consultas financeiras | Ler saldos, gastos, cartões, parcelas e compromissos da própria conta | O contexto é montado pelo Alicerce; a leitura de compromissos é limitada ao titular; a Alicia não inventa nem altera totais |
 | Organização | Sugerir classificação e registrar contexto autorizado | Não altera valor, data, status de pagamento ou saldo |
 | Despesa | Preparar lançamento | A gravação continua na tela de conferência do Alicerce |
 | Lembretes | Listar, criar, reagendar, concluir e excluir lembretes próprios | Criar/reagendar/concluir seguem o pedido; excluir exige confirmação explícita |
@@ -20,10 +20,12 @@ Pedidos ambíguos devem gerar uma pergunta objetiva. A Alicia só comunica suces
 
 1. A interface recebe a intenção e encaminha apenas uma ação conhecida.
 2. A Edge Function `alicia-actions` valida o JWT e identifica o usuário pela sessão. O cliente nunca escolhe o `user_id`.
-3. A função aceita somente as ações `reminder.*` declaradas no dispatcher.
+3. A função aceita a leitura `commitment.list` e somente as mutações `reminder.*` declaradas no dispatcher.
 4. A RPC `alicia_mutate_commitments` é executável apenas por `service_role`, valida os dados, bloqueia a linha do store de compromissos durante a alteração e grava o resultado atomicamente.
 5. `alicia_action_logs` registra usuário, ação, risco, alvo, data e chave de idempotência; não guarda o texto completo da conversa.
-6. O store `commitments` continua no modelo de dados existente do Alicerce, sob RLS por proprietário. Calendário e alertas atuais continuam consumindo esse store.
+6. O store `commitments` continua no modelo de dados existente do Alicerce, sob RLS por proprietário. A leitura `commitment.list` não grava nem altera compromissos financeiros; calendário e alertas atuais continuam consumindo esse store.
+7. O contexto financeiro é montado no front-end com os métodos oficiais do motor financeiro (`getBalances`, cálculo de fatura e limite, parcelas e empréstimos). Somente resumos limitados são enviados ao modelo, sem números completos de cartão ou IDs internos.
+8. O prompt da assistente financeira pessoal fica separado do registro `agentes_prompts.alicia`, que continua representando a orquestradora da equipe. Isso impede misturar responsabilidades e regras de privacidade empresariais com a conversa financeira individual.
 
 ## Controles obrigatórios
 
@@ -40,7 +42,7 @@ Pedidos ambíguos devem gerar uma pergunta objetiva. A Alicia só comunica suces
 
 ## Responsabilidade de segurança
 
-HARE, conforme indicado pelo responsável do produto, deve revisar os requisitos, ameaças, testes e mudanças da Alicia. A identidade técnica exata de HARE ainda precisa ser confirmada no inventário de agentes do repositório.
+HARE foi indicado pelo responsável do produto como responsável pela revisão dos requisitos de segurança da Alicia: revisar permissões, ameaças, testes, mudanças e critérios de liberação. HARE ainda não aparece como agente cadastrado em `public.agentes_prompts`; é necessário confirmar se HARE é um agente separado ou se o nome pretendido era Hera.
 
 HARE não deve ser a barreira de segurança em tempo de execução. Modelos de linguagem podem errar ou ser induzidos por conteúdo não confiável. A autorização efetiva permanece no código, no JWT, no dispatcher, nas políticas RLS e nas permissões do banco. Nenhum prompt pode ampliar essas permissões.
 
@@ -48,7 +50,7 @@ HARE não deve ser a barreira de segurança em tempo de execução. Modelos de l
 
 - Lembretes são persistidos na conta e aparecem no calendário e nos alertas do app.
 - A infraestrutura atual não tem service worker, Push API, armazenamento de inscrições push nem agendador de notificações. Portanto, não há garantia de aviso com o app fechado ou em segundo plano. Isso é uma entrega separada.
-- A lista inicial de ações do servidor contém somente lembretes. Preparação de despesas e consultas continuam usando o motor local e os fluxos de interface já existentes.
+- As mutações disponíveis no servidor limitam-se a lembretes. `commitment.list` é somente leitura. Preparação de despesas e consultas financeiras usam o motor local e o contexto resumido do Alicerce.
 - O executor `ia-executar` permanece separado: ele é uma ferramenta administrativa de missões dos agentes, não um executor pessoal de dados financeiros.
 
 ## Testes necessários antes de ampliar permissões
