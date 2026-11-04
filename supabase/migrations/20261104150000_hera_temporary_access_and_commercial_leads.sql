@@ -73,10 +73,10 @@ BEGIN
     SELECT 1 FROM public.subscriptions AS s
     WHERE s.user_id = p_user_id
       AND s.status = 'active'
-      AND s.plan IN ('pro', 'vip', 'infinit', 'trial')
+      AND s.plan IN ('normal', 'pro', 'vip', 'infinit', 'trial')
       AND (s.expires_at IS NULL OR s.expires_at > v_now)
   ) THEN
-    RAISE EXCEPTION 'ACTIVE_PAID_SUBSCRIPTION';
+    RAISE EXCEPTION 'ACTIVE_EXISTING_PLAN';
   END IF;
 
   IF EXISTS (
