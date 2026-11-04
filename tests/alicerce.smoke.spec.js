@@ -3643,3 +3643,20 @@ test('Alicia preserva a data da compra enquanto pergunta a finalidade de um item
   expect(draft.category).toBe('moradia');
   expect(draft.subcategory).toBe('manutencao');
 });
+
+
+test('Alicia lê datas ISO e por extenso sem confundi-las com o estabelecimento', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const parsed = await page.evaluate(function () {
+    Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
+    var iso = AlicerceIA._parseExpenseCommand('Comprei pão em 2026-11-02 por R$ 7,00');
+    var named = AlicerceIA._parseExpenseCommand('Comprei pão dia 3 de novembro na padaria por 7 reais');
+    return {
+      iso: { date: iso && iso.date, item: iso && iso.item, local: iso && iso.local },
+      named: { date: named && named.date, item: named && named.item, local: named && named.local }
+    };
+  });
+
+  expect(parsed.iso).toEqual({ date: '2026-11-02', item: 'pão', local: '' });
+  expect(parsed.named).toEqual({ date: '2026-11-03', item: 'pão', local: 'padaria' });
+});
