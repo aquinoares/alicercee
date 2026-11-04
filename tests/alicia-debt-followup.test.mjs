@@ -144,6 +144,8 @@ testCase('lista separadamente dívidas vencidas, vencimentos de hoje e pagamento
   assert.equal(view.overdueTotal, 150);
   assert.equal(view.dueToday.length, 1);
   assert.equal(view.dueTodayTotal, 500);
+  assert.equal(view.paid.length, 1);
+  assert.equal(view.paidTotal, 100);
   assert.equal(view.paidLate.length, 1);
   assert.equal(view.paidLateTotal, 100);
 });
@@ -160,6 +162,7 @@ testCase('não supõe pagamento tardio quando o registro antigo não tem data de
     status: 'concluido',
     paymentStatus: 'pago'
   });
+  assert.equal(api.getOverview().paid.length, 1);
   assert.equal(api.getOverview().paidLate.length, 0);
 });
 
