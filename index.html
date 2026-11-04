@@ -6266,7 +6266,7 @@ AlicerceIA._handleCommitmentAlertFollowUp=async function(message){
   target.avisos=alerts;
   Repository.set(Store.userId,'commitments',Store.commitments);
   var label=minutes===30?'30 minutos':minutes===10?'10 minutos':minutes===60?'1 hora':minutes===1440?'1 dia':'1 semana';
-  return 'Pronto. Atualizei o compromisso "'+target.descricao+'": o aviso ficou programado para '+label+' antes, sem alterar a data ou o horário. O alerta aparece no Alicerce quando o app estiver aberto.';
+  return 'Pronto. Atualizei o compromisso "'+target.descricao+'": o aviso ficou programado para '+label+' antes, sem alterar a data ou o horário. Ele foi registrado na agenda e será considerado pela central de alertas. Notificações push com o app fechado ainda não estão ativas.';
 };
 
 AlicerceIA._handleReminderAction=async function(message){
@@ -9000,7 +9000,7 @@ function renderAtualizacoes(){
   html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'home\')">'+icon('back','ico-sm')+' '+copy.back+'</button>';
   html+='<h2 class="mt-4">'+copy.title+'</h2><p class="text-muted text-sm">'+copy.sub+'</p>';
   copy.items.forEach(function(item){
-    html+='<div class="card mt-3"><div class="flex items-center gap-2"><span class="text-accent">'+icon('check-circle','ico-sm')+'</span><strong>'+esc(item[0])+'</strong></div><p class="text-sm text-muted mt-2">'+esc(item[1])+'</p></div>';
+    html+='<div class="card mt-3"><div class="flex items-center gap-2"><span class="text-accent">'+icon('check','ico-sm')+'</span><strong>'+esc(item[0])+'</strong></div><p class="text-sm text-muted mt-2">'+esc(item[1])+'</p></div>';
   });
   html+='<div class="card mt-3"><p class="text-sm text-muted">'+esc(copy.note)+'</p></div></div>';
   return html;
@@ -15350,7 +15350,7 @@ function getAlerts(){
   const bal=Store.getBalances();if(bal.disponivelApos<0)alerts.push({text:t('saldoNegativo',{dias:'5'}),label:t('atencao')});
   Store.commitments.filter(c=>c.personId&&c.status!=='concluido'&&c.data===todayStr).forEach(c=>{const p=Store.familyPeople.find(x=>x.id===c.personId);alerts.push({text:Store.settings.hideHealthDetails?t('acompanhamento'):(p?p.nome:'')+' - '+(c.descricao||''),label:t('hoje')})});
   Store.commitments.filter(c=>c.tipo==='lembrete'||(c.tipo==='compromisso'&&Array.isArray(c.avisos)&&c.avisos.length>0)).forEach(c=>{
-    const mins=c.avisos||[],h=c.hora?Number(c.hora.slice(0,2)):8,m=c.hora?Number(c.hora.slice(3,5)):0;
+    const mins=c.avisos||[],eventTime=c.hora||c.horario||'',h=eventTime?Number(eventTime.slice(0,2)):8,m=eventTime?Number(eventTime.slice(3,5)):0;
     for(let day=c.data;day<todayStr;day=dateShift(day,1)){if(occursOn(c,day)&&!reminderDone(c,day)){const p=day.split('-').map(Number),diff=Math.floor((new Date(p[0],p[1]-1,p[2],h,m)-Clock.now())/60000);if(mins.some(x=>diff<=x)){alerts.push({text:c.descricao||'',label:t('avisoAgora'),reminderId:c.id,date:day});return}}}
     for(let n=0;n<=7;n++){const day=dateShift(todayStr,n);if(!occursOn(c,day)||reminderDone(c,day))continue;const p=day.split('-').map(Number),diff=Math.floor((new Date(p[0],p[1]-1,p[2],h,m)-Clock.now())/60000),hit=mins.filter(x=>diff<=x).sort((a,b)=>a-b)[0];if(mins.length?hit!==undefined:n<2){let label=n===0?t('hoje'):n===1?t('amanha'):t('avisoSemana');if(hit!==undefined)label=hit===0?t('avisoAgora'):hit===10?t('aviso10'):hit===30?t('aviso30'):hit===60?t('avisoHora'):hit===1440?t('avisoAmanha'):t('avisoSemana');alerts.push({text:c.descricao||'',label:label,reminderId:c.id,date:day});break}}
   });return alerts;
