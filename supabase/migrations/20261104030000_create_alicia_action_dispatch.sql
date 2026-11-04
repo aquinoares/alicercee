@@ -69,7 +69,10 @@ begin
   on conflict (user_id, idempotency_key) do nothing;
   get diagnostics v_inserted = row_count;
   if v_inserted = 0 then
-    return jsonb_build_object('ok', true, 'duplicate', true, 'action', p_action);
+    select target_id into v_target_id
+      from public.alicia_action_logs
+     where user_id = p_user_id and idempotency_key = trim(p_idempotency_key);
+    return jsonb_build_object('ok', true, 'duplicate', true, 'action', p_action, 'reminder_id', v_target_id);
   end if;
 
   insert into public.alicerce_data(user_id, store_name, data, updated_at)
