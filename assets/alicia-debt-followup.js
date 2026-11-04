@@ -439,7 +439,7 @@
     var date = parseDate(raw);
     var time = parseTime(raw);
     var description = raw;
-    description = description.replace(/^\s*(?:por favor\s*)?(?:marque?|marca|agende?|agenda|crie?|criar|anote?|anotar|registre?|registrar|adicione|adiciona|programe|programar)\s+/i, '');
+    description = description.replace(/^\s*(?:por favor\s*)?(?:marcar|marque?|marca|agende?|agenda|crie?|criar|anote?|anotar|registre?|registrar|adicione|adiciona|programe|programar)\s+/i, '');
     description = description.replace(/^\s*(?:um|uma|novo|nova)\s+/i, '');
     description = description.replace(/^\s*(?:compromisso|consulta|reuniao|encontro|visita)\s*(?:com|de|para|sobre)?\s*/i, '');
     description = description.replace(/\b(?:compromisso|consulta|reuniao|encontro|visita)\b/gi, ' ');
