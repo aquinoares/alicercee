@@ -3517,7 +3517,7 @@ const Store={
       const subPlan=String(sub&&sub.plan||'').toLowerCase();
       const subStatus=String(sub&&sub.status||'').toLowerCase();
       const subExpiry=sub&&sub.expires_at?Date.parse(sub.expires_at):null;
-      const paidActive=subStatus==='active'&&['pro','vip','infinit'].includes(subPlan)&&
+      const paidActive=subStatus==='active'&&['pro','vip','infinit','trial'].includes(subPlan)&&
         (subExpiry===null||(Number.isFinite(subExpiry)&&subExpiry>now));
       if(grant&&!paidActive){
         this.temporaryAccessGrant=grant;
