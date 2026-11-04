@@ -408,7 +408,13 @@
     description = description.replace(/\s+/g, ' ').replace(/^[,.:;\/\s-]+|[,.:;\/\s-]+$/g, '').trim();
     description = description.replace(/^(?:de|do|da|dos|das|para|pra)\s+/i, '').replace(/\s+(?:de|do|da|dos|das|para|pra)$/i, '').trim();
     if (/^(?:de|do|da|dos|das|para|pra)$/i.test(description)) description = '';
-    return {description: description, amount: amount, dueDate: dueDate, paymentStatus: paid ? 'pago' : 'pendente', paidDate: paid ? (parseDate(raw) || today()) : ''};
+    var paymentMatch = normalize(raw).match(/\b(paguei|pagamos|ja paguei|foi paga|foi pago|quitei|quitamos|quitada|quitado)\b/);
+    var paidDate = today();
+    if (paid && paymentMatch) {
+      var paymentTail = normalize(raw).slice(paymentMatch.index + paymentMatch[0].length);
+      paidDate = parseDate(paymentTail) || today();
+    }
+    return {description: description, amount: amount, dueDate: dueDate, paymentStatus: paid ? 'pago' : 'pendente', paidDate: paid ? paidDate : ''};
   }
 
   function debtFollowupQuestion(draft) {
@@ -427,7 +433,7 @@
     description = description.replace(/^\s*(?:um|uma|novo|nova)\s+/i, '');
     description = description.replace(/^\s*(?:compromisso|consulta|reuniao|encontro|visita)\s*(?:com|de|para|sobre)?\s*/i, '');
     description = description.replace(/\b(?:compromisso|consulta|reuniao|encontro|visita)\b/gi, ' ');
-    description = description.replace(/\b(?:para mim|pra mim|por favor|hoje|ontem|amanha|depois de amanha|segunda|terca|quarta|quinta|sexta|sabado|domingo)\b/gi, ' ');
+    description = description.replace(/\b(?:para mim|pra mim|por favor|hoje|ontem|amanha|depois de amanha|segunda(?:\s+feira)?|terca(?:\s+feira)?|quarta(?:\s+feira)?|quinta(?:\s+feira)?|sexta(?:\s+feira)?|sabado|domingo)\b/gi, ' ');
     description = description.replace(/\b(?:as|às)\s*\d{1,2}(?::\d{2}|h\d{0,2})?\b/gi, ' ');
     description = description.replace(/\b\d{1,2}h\d{0,2}\b/gi, ' ');
     description = description.replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g, ' ');
