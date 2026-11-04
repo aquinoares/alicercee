@@ -6095,6 +6095,15 @@ AlicerceIA.enviarMensagem=async function(question){
           if(parsedInterpretation&&typeof parsedInterpretation==='object')interpretation=parsedInterpretation;
         }
         if(!interpretation||typeof interpretation!=='object')interpretation={};
+        if(ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED){
+          var aliciaClassification=await aliciaClassificarDespesa({item:expenseCommand.item,merchant:expenseCommand.local,context:expenseCommand.purpose});
+          if(aliciaClassification){
+            interpretation.categoria=aliciaClassification.category;
+            interpretation.subcategoria=aliciaClassification.subcategory;
+            interpretation.confidence=aliciaClassification.confidence||'medium';
+            interpretation.source='alicia_knowledge';
+          }
+        }
         interpretation.amount=expenseCommand.amount;
         interpretation.purpose=expenseCommand.purpose||'';
         if(!interpretation.item)interpretation.item=expenseCommand.item;
@@ -7854,6 +7863,29 @@ const POSTO_RE=/postos?(?!(?:\s+(?:de\s+)?)?(?:saude|salud|policia|policial|fisc
 const VEHICLE_RE=/\b(gnv|gas\s*natural\s*veicular|gasolina|gasolinera|nafta|bencina|combustivel|combustible|etanol|diesel|abastec\w*|abasteci|filled\s*up|gas\s*station|petrol|fuel|postos?(?!(?:\s+(?:de\s+)?)?(?:saude|salud|policia|policial|fiscal|medico|vacinacao)\b))\b/i;
 var ALICIA_REMOTE_MODEL_ENABLED=false;
 var ALICIA_INTERPRETER_ENABLED=false;
+var ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED=true;
+async function aliciaClassificarDespesa(input){
+  var values=input||{};
+  var userId=String(Store.userId||'');
+  var client=window.alicerceSupabase;
+  if(!ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED||!userId||!client||!client.functions||typeof client.functions.invoke!=='function')return null;
+  try{
+    var response=await client.functions.invoke('alicia-chat',{body:{action:'classify_expense',item:String(values.item||''),merchant:String(values.merchant||''),context:String(values.context||'')}});
+    if(String(Store.userId||'')!==userId)return null;
+    if(response&&response.error)throw response.error;
+    var payload=response&&response.data?response.data:{};
+    var classification=payload&&payload.classification?payload.classification:null;
+    if(!payload.ok||!classification)return null;
+    var category=String(classification.category||'');
+    var subcategory=String(classification.subcategory||'');
+    var categoryData=ALICERCE_CATEGORIES&&ALICERCE_CATEGORIES[category];
+    if(!categoryData||!Array.isArray(categoryData.subs)||categoryData.subs.indexOf(subcategory)<0)return null;
+    return classification;
+  }catch(error){
+    console.warn('Alicia: classificação pela base de conhecimento indisponível.',error);
+    return null;
+  }
+}
 const Interpreter={
   merchantDict:{
     'carrefour':{c:'comida',s:'mercado'},
@@ -14132,6 +14164,15 @@ async function processGastoText(){
       const parsedResult=await Interpreter.interpret(interpreterText);
       if(parsedResult&&typeof parsedResult==='object')Object.assign(result,parsedResult);
     }
+    if(!selectedCategory&&ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED){
+      const aliciaClassification=await aliciaClassificarDespesa({item:item,merchant:local,context:''});
+      if(aliciaClassification){
+        result.categoria=aliciaClassification.category;
+        result.subcategoria=aliciaClassification.subcategory;
+        result.confidence=aliciaClassification.confidence||'medium';
+        result.source='alicia_knowledge';
+      }
+    }
     if(result&&typeof result==='object'){
       if(selectedCategory&&ALICERCE_CATEGORIES[selectedCategory]){
         result.categoria=selectedCategory;
@@ -14311,12 +14352,12 @@ function renderAddGastoDoubt(){
   }
   html+='<div class="gr-line"><span>Data da compra</span><span class="gr-value">'+esc(dateLabel)+'</span></div></div>';
 
-  html+='<div class="gr-panel"><div style="font-size:16px;font-weight:800">Classificação manual</div>';
+  html+='<div class="gr-panel"><div style="font-size:16px;font-weight:800">Classificação da Alicia</div>';
   if(categoryValue&&subcategoryValue){
     html+='<div class="gr-line"><span>Categoria e subcategoria</span><span class="gr-value">'+esc(categoryName)+' › '+esc(subName)+'</span></div>';
     html+='<div class="gr-hint">Confira a categoria e a subcategoria selecionadas antes de salvar.</div>';
   }else{
-    html+='<div class="gr-hint">O interpretador está temporariamente desativado. Pesquise e escolha a categoria e a subcategoria antes de salvar.</div>';
+    html+='<div class="gr-hint">A Alicia não encontrou uma classificação segura na base de conhecimento. Escolha a categoria e a subcategoria antes de salvar.</div>';
   }
   html+='<label class="gr-label" for="edit-gasto-category-search">Categoria</label>';
   html+='<input class="gr-input" id="edit-gasto-category-search" type="text" autocomplete="off" placeholder="Pesquisar categoria" value="'+esc(categoryName)+'" oninput="filterGastoCategories();cacheGastoDoubtEdits()" onfocus="filterGastoCategories()">';
