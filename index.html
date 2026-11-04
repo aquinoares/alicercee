@@ -3529,7 +3529,7 @@ const Store={
     if(firstMovement)alicerceTrackEvent('first_movement_created');
     return i;
   },
-  addCommitment(c){if(!c||!travarSalvar('comp',c))return null;c.id=c.id||this._uid();c.userId=this.userId;this.commitments.push(c);this.save();return c},
+  addCommitment(c){if(!c||c.personId||c.familyCategoryId||!travarSalvar('comp',c))return null;c.id=c.id||this._uid();c.userId=this.userId;this.commitments.push(c);this.save();return c},
   /* =========================================================
      BALANCE LAYERS —œ 2.1/2.2 Corrigido
      aReceber INCLUI parcelas de loan (mesmo fromCard)
@@ -12918,7 +12918,7 @@ function getVisaoFinanceira(){
 
   (Store.commitments||[]).forEach(function(c){
 
-    if(!c)return;
+    if(!c||c.personId)return;
     if(c.tipo==='lembrete')return;
     if(c.status==='concluido')return;
     if(!c.data)return;
@@ -14949,7 +14949,7 @@ function saveCompromisso(){const desc=document.getElementById('ac-desc').value.t
 
 function renderAddLembrete(){
   reminderSaving=false;
-  const c=Store.screenData&&Store.screenData.id?Store.commitments.find(x=>x.id===Store.screenData.id):null;
+  const c=Store.screenData&&Store.screenData.id?Store.commitments.find(x=>x.id===Store.screenData.id&&!x.personId):null;
   const avisos=c&&c.avisos||[];
   let html='<div class="content">';
 
@@ -14978,7 +14978,7 @@ function saveLembrete(){
   if(reminderSaving)return;
 
   const id=Store.screenData&&Store.screenData.id;
-  const c=id&&Store.commitments.find(x=>x.id===id);
+  const c=id&&Store.commitments.find(x=>x.id===id&&!x.personId);
   const desc=document.getElementById('al2-desc').value.trim();
   const date=document.getElementById('al2-date').value||today();
 
@@ -15013,7 +15013,7 @@ function saveLembrete(){
 function renderLembreteDetail(){
   const id=Store.screenData&&Store.screenData.id;
   const date=Store.screenData&&Store.screenData.date?Store.screenData.date:today();
-  const c=id?Store.commitments.find(x=>x.id===id):null;
+  const c=id?Store.commitments.find(x=>x.id===id&&!x.personId):null;
 
   if(!c){
     return '<div class="content">'+
@@ -15070,9 +15070,9 @@ function renderLembreteDetail(){
 
   return html;
 }
-function completeReminder(id,date){const c=Store.commitments.find(x=>x.id===id);if(c){c.feitos=c.feitos||[];if(c.feitos.indexOf(date)<0)c.feitos.push(date);Store.save()}go('alerts')}
-function snoozeReminder(id,date,hours){const c=Store.commitments.find(x=>x.id===id);if(!c||c.repeticao&&c.repeticao!=='nenhuma')return;const p=date.split('-').map(Number),h=(c.hora?Number(c.hora.slice(0,2)):8)+(hours===1?1:0),m=c.hora?Number(c.hora.slice(3,5)):0,d=hours===24?new Date(p[0],p[1]-1,p[2]+1,h,m):new Date(p[0],p[1]-1,p[2],h,m);c.data=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');c.hora=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');Store.save();go('alerts')}
-function deleteReminder(id){if(!confirm(t('confirmarExcluirLembrete')))return;Store.commitments=Store.commitments.filter(c=>c.id!==id);Store.save();go('alerts')}
+function completeReminder(id,date){const c=Store.commitments.find(x=>x.id===id&&!x.personId);if(c){c.feitos=c.feitos||[];if(c.feitos.indexOf(date)<0)c.feitos.push(date);Store.save()}go('alerts')}
+function snoozeReminder(id,date,hours){const c=Store.commitments.find(x=>x.id===id&&!x.personId);if(!c||c.repeticao&&c.repeticao!=='nenhuma')return;const p=date.split('-').map(Number),h=(c.hora?Number(c.hora.slice(0,2)):8)+(hours===1?1:0),m=c.hora?Number(c.hora.slice(3,5)):0,d=hours===24?new Date(p[0],p[1]-1,p[2]+1,h,m):new Date(p[0],p[1]-1,p[2],h,m);c.data=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');c.hora=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');Store.save();go('alerts')}
+function deleteReminder(id){if(!confirm(t('confirmarExcluirLembrete')))return;Store.commitments=Store.commitments.filter(c=>c.id!==id&&!c.personId);Store.save();go('alerts')}
 
 /* ALERTS */
 function getAlerts(){
@@ -15401,7 +15401,7 @@ function saveConsorcio(){Store.consortium.push({administradora:document.getEleme
 /* DIAGNOSTICS */
 function chaveRepet(x){return [x&&x.tipo||'',x&&x.descricao||'',x&&x.data||'',Number(x&&x.valor)||0,x&&x.cardId||'',x&&x.loanId||'',x&&x.financingId||'',x&&x.consortiumId||'',x&&x.insuranceId||''].join('|')}function agruparRepetidos(lista){const mapa={},ordem=[];(lista||[]).forEach(function(x){if(!x)return;const k=chaveRepet(x);if(!mapa[k]){mapa[k]=[];ordem.push(k)}mapa[k].push(x)});return ordem.filter(k=>mapa[k].length>1).map(k=>mapa[k])}
 function repetidosRelatorio(){
-  const out=[];[['commitments',t('compromisso')],['installments',t('parcelas')],['movements',t('gastos')]].forEach(function(p){out.push({colecao:p[0],rotulo:p[1],grupos:agruparRepetidos(Store[p[0]])})});
+  const out=[];[['commitments',t('compromisso')],['installments',t('parcelas')],['movements',t('gastos')]].forEach(function(p){const rows=p[0]==='commitments'?(Store.commitments||[]).filter(function(item){return item&&!item.personId}):Store[p[0]];out.push({colecao:p[0],rotulo:p[1],grupos:agruparRepetidos(rows)})});
   return out;
 }let _repetidosUndo=null;
 function repetidosAplicar(){
