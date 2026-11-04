@@ -5972,12 +5972,14 @@ AlicerceIA.enviarMensagem=async function(question){
   this.pararAudio();
   this.pararReconhecimento(true);
   var input=document.getElementById('alicerce-assistant-input');
+  var inputSource=(question===undefined&&this._photoTextPending)?'ocr':'text';
   var message=String(question!==undefined?question:(input?input.value:'')||'').trim();
-  if(!message)return;
+  if(!message){if(inputSource==='ocr')this._photoTextPending=false;return;}
   if(!Array.isArray(this._messages))this._messages=[];
-  var questionForEngine=this._resolveFollowUp(message);
+  var questionForEngine=inputSource==='ocr'?message:this._resolveFollowUp(message);
   this._messages.push({role:'user',text:message});
 
+  if(inputSource!=='ocr'){
   var expenseCommand=null;
   var messageNorm=this._norm(message);
   var pendingQuestion=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque|what|which|where|when|how|compare|show|tell|why|cuanto|donde|cual|que|como|cuando|compara|muestra|dime)\b/.test(messageNorm)||/\?\s*$/.test(message);
@@ -6155,6 +6157,8 @@ AlicerceIA.enviarMensagem=async function(question){
     return;
   }
 
+  }
+
   var answer='';
   var localAnswer='';
   try{
@@ -6172,10 +6176,10 @@ AlicerceIA.enviarMensagem=async function(question){
     try{consent=window.localStorage.getItem(consentKey)||''}catch(error){}
     if(consent!=='yes'){
       var notice=Store.lang==='en'
-        ? 'Alicia can use an external AI provider (OpenRouter) to answer naturally. Your message, recent conversation history and, when relevant, a summary calculated by Alicerce may be sent to that provider. Conversation text is saved to your private Alicerce account. Audio recordings are not sent by this chat. Do you agree?'
+        ? 'Alicia can use an external AI provider (OpenRouter) for ordinary conversations. In those cases, your message, recent history and, when relevant, a summary calculated by Alicerce may be sent to the provider, and conversation text is saved to your private account. Photo reading is different: the photo is read on your device; recognized text is sent only to Alicerce’s interpreter to extract fields, not to OpenRouter and not saved in chat history. This chat does not send audio recordings. Do you agree?'
         : Store.lang==='es'
-          ? 'Alicia puede usar un proveedor externo de IA (OpenRouter) para responder de forma natural. Tu mensaje, el historial reciente y, cuando sea relevante, un resumen calculado por Alicerce pueden enviarse a ese proveedor. El texto de la conversación se guarda en tu cuenta privada de Alicerce. Este chat no envía grabaciones de audio. ¿Aceptas?'
-          : 'Alicia pode usar um provedor externo de IA (OpenRouter) para responder com naturalidade. Sua mensagem, o histórico recente e, quando relevante, um resumo calculado pelo Alicerce podem ser enviados a esse provedor. O texto da conversa fica salvo na sua conta privada do Alicerce. Este chat não envia gravações de áudio. Você autoriza?';
+          ? 'Alicia puede usar un proveedor externo de IA (OpenRouter) para conversaciones comunes. En esos casos, tu mensaje, el historial reciente y, cuando sea relevante, un resumen calculado por Alicerce pueden enviarse al proveedor y el texto se guarda en tu cuenta privada. La lectura de fotos es diferente: la foto se lee en tu dispositivo; el texto reconocido se envía solo al interpretador de Alicerce para extraer los campos, no a OpenRouter y no se guarda en el historial. Este chat no envía grabaciones de audio. ¿Aceptas?'
+          : 'Alicia pode usar um provedor externo de IA (OpenRouter) para responder conversas comuns. Nesses casos, sua mensagem, o histórico recente e, quando relevante, um resumo calculado pelo Alicerce podem ser enviados ao provedor e o texto da conversa fica salvo na sua conta privada. A leitura de foto é diferente: a foto é lida no aparelho; o texto reconhecido é enviado ao interpretador do Alicerce apenas para extrair os campos, sem envio ao OpenRouter e sem gravação no histórico. Este chat não envia gravações de áudio. Você autoriza?';
       try{
         consent=window.confirm(notice)?'yes':'no';
         if(consent==='yes')window.localStorage.setItem(consentKey,'yes');
@@ -6183,10 +6187,10 @@ AlicerceIA.enviarMensagem=async function(question){
     }
     if(consent==='yes'){
       var financeIntent=/(gasto|gastei|compra|comprei|paguei|saldo|cart[aã]o|fatura|despesa|receita|dinheiro|parcela|financeir|mes passado|m[eê]s passado|m[eê]s anterior|compar)/i.test(questionForEngine);
-      var financeContext=financeIntent?localAnswer:'';
+      var financeContext=financeIntent&&inputSource!=='ocr'?localAnswer:'';
       try{
         var aiResult=await client.functions.invoke('alicia-chat',{
-          body:{message:message,finance_context:financeContext,consent:true}
+          body:{message:message,finance_context:financeContext,consent:true,input_source:inputSource}
         });
         if(String(Store.userId||'')!==userId)return;
         if(aiResult&&aiResult.error)throw aiResult.error;
@@ -6200,6 +6204,7 @@ AlicerceIA.enviarMensagem=async function(question){
       }
     }
   }
+  if(inputSource==='ocr')this._photoTextPending=false;
 
   this._messages.push({role:'assistant',text:answer});
   while(this._messages.length>4)this._messages.splice(0,2);
@@ -6641,6 +6646,7 @@ AlicerceIA.ouvirMensagem=async function(index,button){
 
 AlicerceIA._ocrScriptPromise=null;
 AlicerceIA._photoBusy=false;
+AlicerceIA._photoTextPending=false;
 AlicerceIA._loadPhotoOcr=function(){
   if(window.Tesseract&&typeof window.Tesseract.createWorker==='function')return Promise.resolve(window.Tesseract);
   if(this._ocrScriptPromise)return this._ocrScriptPromise;
@@ -6662,6 +6668,7 @@ AlicerceIA._loadPhotoOcr=function(){
 };
 AlicerceIA.processarFoto=async function(input){
   this._resetUser();
+  this._photoTextPending=false;
   if(this._photoBusy)return;
   var file=input&&input.files&&input.files.length?input.files[0]:null;
   if(!file)return;
@@ -6722,6 +6729,7 @@ AlicerceIA.processarFoto=async function(input){
   var maxChars=5000;
   var text=extracted.slice(0,maxChars);
   if(extracted.length>maxChars)text+='\n\n[Texto parcial: a leitura excedeu o limite de 5.000 caracteres.]';
+  this._photoTextPending=true;
   if(messageInput){
     messageInput.value=text;
     messageInput.focus();
