@@ -14125,7 +14125,7 @@ function updateGastoPaymentButtons(){
 }
 
 let gastoTextBusy=false;
-async function processGastoText(){
+async async function processGastoText(){
   if(gastoTextBusy)return;
   gastoTextBusy=true;
   try{
@@ -14763,17 +14763,49 @@ function saveDoubtGasto(){
 }
 
 
+let manualGastoSuggestionBusy=false;
+let manualGastoClassificationTouched=false;
+async function sugerirClassificacaoGastoManual(){
+  if(manualGastoSuggestionBusy||manualGastoClassificationTouched||!ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED)return;
+  const desc=document.getElementById('gm-desc');
+  const estab=document.getElementById('gm-estab');
+  const category=document.getElementById('gm-cat');
+  const status=document.getElementById('gm-classification-status');
+  const item=desc?String(desc.value||'').trim():'';
+  const merchant=estab?String(estab.value||'').trim():'';
+  if(!item&&!merchant)return;
+  manualGastoSuggestionBusy=true;
+  if(status)status.textContent='A Alicia está consultando sua base de conhecimento...';
+  try{
+    const classification=await aliciaClassificarDespesa({item:item,merchant:merchant,context:''});
+    if(manualGastoClassificationTouched)return;
+    if(!classification){
+      if(status)status.textContent='A Alicia não encontrou uma classificação segura. Você pode escolher manualmente.';
+      return;
+    }
+    if(category){
+      category.value=classification.category;
+      updateSubcats(classification.category);
+      const sub=document.getElementById('gm-sub');
+      if(sub)sub.value=classification.subcategory;
+    }
+    if(status)status.textContent='Sugestão da Alicia: '+Interpreter.catDisplay(classification.category)+' › '+Interpreter.subDisplay(classification.subcategory)+'. Confira antes de salvar.';
+  }finally{
+    manualGastoSuggestionBusy=false;
+  }
+}
+function marcarClassificacaoManual(){manualGastoClassificationTouched=true;}
 function renderGastoManual(){
   let html='<div class="content">';
   html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'addGasto\')">'+icon('back','ico-sm')+' '+t('gasto')+'</button>';
   html+='<h2 class="mt-4">'+t('manual')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('descricao')+'</label><input id="gm-desc"></div>';
+  html+='<div class="form-group mt-4"><label class="form-label">'+t('descricao')+'</label><input id="gm-desc" onblur="sugerirClassificacaoGastoManual()"></div>';
   html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('valor')+'</label><input id="gm-val" type="number" step="0.01"></div><div class="form-group"><label class="form-label">'+t('data')+'</label><input id="gm-date" type="date" value="'+today()+'"></div></div>';
   const manualCategories=Object.keys(ALICERCE_CATEGORIES);
-  const manualSubs=ALICERCE_CATEGORIES.comida.subs;
-  html+='<div class="form-group"><label class="form-label">'+t('categoria')+'</label><select id="gm-cat" onchange="updateSubcats(this.value)">'+manualCategories.map(c=>'<option value="'+c+'">'+esc(t(c)===c?Interpreter.catDisplay(c):t(c))+'</option>').join('')+'</select></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('subcategoria')+'</label><select id="gm-sub">'+manualSubs.map(sub=>'<option value="'+sub+'">'+Interpreter.subDisplay(sub)+'</option>').join('')+'</select></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('estabelecimento')+'</label><input id="gm-estab"></div>';
+  html+='<div class="form-group"><label class="form-label">'+t('categoria')+'</label><select id="gm-cat" onchange="marcarClassificacaoManual();updateSubcats(this.value)"><option value="">A Alicia vai sugerir ou selecione</option>'+manualCategories.map(c=>'<option value="'+c+'">'+esc(t(c)===c?Interpreter.catDisplay(c):t(c))+'</option>').join('')+'</select></div>';
+  html+='<div class="form-group"><label class="form-label">'+t('subcategoria')+'</label><select id="gm-sub" onchange="marcarClassificacaoManual()"><option value="">Selecione uma subcategoria</option></select></div>';
+  html+='<div class="form-group"><label class="form-label">'+t('estabelecimento')+'</label><input id="gm-estab" onblur="sugerirClassificacaoGastoManual()"></div>';
+  html+='<div id="gm-classification-status" style="font-size:.8rem;color:var(--text2);margin-top:-8px;margin-bottom:14px">A Alicia sugerirá uma classificação depois que você preencher a descrição ou o estabelecimento.</div>';
   html+='<button class="btn btn-primary btn-block" onclick="saveManualGasto()">'+t('salvar')+'</button></div>';
   return html;
 }
@@ -14782,7 +14814,7 @@ function updateSubcats(cat){
   if(!sel)return;
   const config=ALICERCE_CATEGORIES[cat];
   const subs=config&&Array.isArray(config.subs)?config.subs:[];
-  sel.innerHTML=subs.map(function(sub){
+  sel.innerHTML='<option value="">Selecione uma subcategoria</option>'+subs.map(function(sub){
     return '<option value="'+esc(sub)+'">'+esc(Interpreter.subDisplay(sub))+'</option>';
   }).join('');
 }
