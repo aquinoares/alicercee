@@ -5690,10 +5690,12 @@ AlicerceIA._extractExpenseDate=function(value){
 };
 AlicerceIA._removeExpenseDateText=function(value){
   return String(value||'')
+    .replace(/\b20\d{2}-(?:0?[1-9]|1[0-2])-(?:0?[1-9]|[12]\d|3[01])\b/gi,' ')
     .replace(/\bdepois\s+de\s+amanh[aã]\b/gi,' ')
     .replace(/\b(?:anteontem|ontem|hoje|amanh[aã])\b/gi,' ')
     .replace(/\b(?:dia\s+)?[0-3]?\d[\/.-][01]?\d(?:[\/.-]\d{2,4})?\b/gi,' ')
     .replace(/\b(?:dia\s+)?\d{1,2}\s+de\s+(?:janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?:\s+de\s+\d{4})?\b/gi,' ')
+    .replace(/\b(?:no|na|em|dia)\s*$/i,' ')
     .replace(/\s+/g,' ').trim();
 };
 AlicerceIA._parseExpenseCommand=function(value){
@@ -8008,7 +8010,7 @@ const Interpreter={
        O local informado refina a subcategoria; data/horário nunca provam finalidade. */
     if(/\b(pao|paes)\b/.test(product)){
       if(/\b(ifood|rappi|delivery|entrega)\b/.test(context))return{c:'comida',s:'delivery'};
-      if(/\b(mercado|supermercado|mercadinho|atacadao|assai|carrefour|mateus|pao de acucar|supermercados bh)\b/.test(context))return{c:'comida',s:'mercado'};
+      if(/\b(mercado|supermercado|mercadinho|mercearia|atacado|atacadao|assai|carrefour|mateus|pao de acucar|supermercados bh)\b/.test(context))return{c:'comida',s:'mercado'};
       return{c:'comida',s:'padaria'};
     }
     const rules=[
