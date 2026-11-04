@@ -6057,14 +6057,19 @@ AlicerceIA._invokeReminderAction=async function(payload){
   if(!Store.userId)throw new Error('Entre na sua conta para a Alicia acessar seus lembretes.');
   var client=window.alicerceSupabase;
   if(!client||!client.functions||typeof client.functions.invoke!=='function')throw new Error('O serviço seguro da Alicia não está disponível.');
-  var key='';
-  try{key=window.crypto&&typeof window.crypto.randomUUID==='function'?window.crypto.randomUUID():'';}catch(error){}
+  var signature='';
+  try{signature=JSON.stringify(payload);}catch(error){}
+  var pending=this._pendingReminderCall;
+  var key=pending&&pending.signature===signature?pending.key:'';
+  try{key=key||((window.crypto&&typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():'');}catch(error){}
   if(!key)key=String(Store._uid());
+  this._pendingReminderCall={signature:signature,key:key};
   payload.idempotency_key=key;
   var response=await client.functions.invoke('alicia-actions',{body:payload});
   if(response&&response.error)throw response.error;
   var data=response&&response.data?response.data:{};
   if(!data.ok)throw new Error(data.error||'A ação não foi confirmada pelo Alicerce.');
+  this._pendingReminderCall=null;
   if(Array.isArray(data.reminders)){
     var retained=(Store.commitments||[]).filter(function(item){return !item||item.tipo!=='lembrete';});
     var reminders=data.reminders.map(function(item){return {
