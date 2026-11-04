@@ -384,14 +384,19 @@ Deno.serve(async (req: Request) => {
   try {
     const auth = await authenticate(req);
     const body = await req.json().catch(() => null);
-    if (!body || body.consent !== true) {
-      return reply(req, { error: "É necessário autorizar o processamento da conversa pela IA." }, 403);
+    const action = String(body && body.action || "chat");
+    const isOcrRequest = action === "chat" && cleanText(body && body.input_source, 20) === "ocr";
+    if (!body || (isOcrRequest ? body.photo_text_consent !== true : body.consent !== true)) {
+      return reply(req, {
+        error: isOcrRequest
+          ? "É necessário autorizar o envio temporário do texto reconhecido ao interpretador do Alicerce."
+          : "É necessário autorizar o processamento da conversa pela IA."
+      }, 403);
     }
 
-    const action = String(body.action || "chat");
     const userId = auth.user.id;
 
-    if (action === "chat" && cleanText(body.input_source, 20) === "ocr") {
+    if (isOcrRequest) {
       const ocrText = cleanText(body.message, 5000);
       if (!ocrText) return reply(req, { error: "Não encontrei texto legível na foto." }, 400);
       const answer = await interpretOcrText(auth.admin, userId, ocrText);
