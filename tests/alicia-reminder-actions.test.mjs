@@ -136,4 +136,37 @@ assert.equal(call.action, 'reminder.delete');
 assert.equal(call.reminder_id, 'r-luz');
 assert.equal(call.confirmed, true);
 
-console.log('Alicia reminder parsing and action-routing tests passed.');
+
+
+let commitmentSaveCount = 0;
+context.Store.save = function() { commitmentSaveCount += 1; };
+context.Store.commitments.push({
+  id: 'c-dentista',
+  tipo: 'compromisso',
+  descricao: 'vou no dentista oras me lembra',
+  data: '2026-11-05',
+  hora: '14:00',
+  avisos: [0],
+  status: 'pendente'
+});
+A._messages = [
+  { role: 'assistant', text: 'Pronto. Marquei ‘vou no dentista oras me lembra’ para 05 de nov. de 2026 às 14:00. Ele já está no seu calendário.' },
+  { role: 'user', text: 'me avisa 30 minutos antes' }
+];
+const alertReply = await A._handleCommitmentAlertFollowUp('me avisa 30 minutos antes');
+assert.match(alertReply, /aviso ficou programado para 30 minutos antes/);
+assert.deepEqual(context.Store.commitments[0].avisos, [30]);
+assert.equal(context.Store.commitments[0].data, '2026-11-05');
+assert.equal(context.Store.commitments[0].hora, '14:00');
+assert.equal(commitmentSaveCount, 1);
+
+A._messages = [
+  { role: 'assistant', text: 'Pronto. Marquei ‘consulta’ para 05 de nov. de 2026 às 14:00.' },
+  { role: 'user', text: 'me avisa 30 minutos antes' }
+];
+const missingCommitmentReply = await A._handleCommitmentAlertFollowUp('me avisa 30 minutos antes');
+assert.match(missingCommitmentReply, /não está carregado na agenda/);
+assert.deepEqual(context.Store.commitments[0].avisos, [30]);
+
+console.log('Alicia commitment alert follow-up tests passed.');
+
