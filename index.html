@@ -6858,7 +6858,7 @@ function renderAssistente(){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span></div></div>;
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span></div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }
