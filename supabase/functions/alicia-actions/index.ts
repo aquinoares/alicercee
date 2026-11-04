@@ -178,6 +178,36 @@ async function readReminders(admin: any, userId: string) {
   }).slice(-200).map(safeReminder);
 }
 
+function safeCommitment(item: any) {
+  const rawValue = item && item.valor !== null && typeof item.valor !== "undefined"
+    ? Number(item.valor)
+    : null;
+  return {
+    id: String(item.id || ""),
+    tipo: "compromisso",
+    descricao: cleanText(item.descricao, 180),
+    data: cleanText(item.data, 10),
+    hora: cleanText(item.hora || item.horario, 5),
+    valor: rawValue !== null && Number.isFinite(rawValue) ? rawValue : null,
+    status: cleanText(item.status || "pendente", 32)
+  };
+}
+
+async function readCommitments(admin: any, userId: string) {
+  const result = await admin.from("alicerce_data")
+    .select("data")
+    .eq("user_id", userId)
+    .eq("store_name", "commitments")
+    .maybeSingle();
+  if (result.error) {
+    throw Object.assign(new Error("Não foi possível consultar seus compromissos."), { status: 503 });
+  }
+  const values = result.data && Array.isArray(result.data.data) ? result.data.data : [];
+  return values.filter(function(item: any) {
+    return item && typeof item === "object" && item.tipo === "compromisso";
+  }).slice(-300).map(safeCommitment);
+}
+
 Deno.serve(async (req: Request) => {
   const origin = req.headers.get("origin") || "";
   if (origin && !allowedOrigin(origin)) return reply(req, { error: "Origem não autorizada." }, 403);
@@ -195,6 +225,9 @@ Deno.serve(async (req: Request) => {
 
     if (action === "reminder.list") {
       return reply(req, { ok: true, reminders: await readReminders(auth.admin, userId) });
+    }
+    if (action === "commitment.list") {
+      return reply(req, { ok: true, commitments: await readCommitments(auth.admin, userId) });
     }
 
     if (["reminder.create", "reminder.update", "reminder.complete", "reminder.delete"].indexOf(action) < 0) {
