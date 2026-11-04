@@ -3326,3 +3326,41 @@ test('parcelas antigas de cartão entram na competência de novembro pela data d
   expect(result.novemberCardTotal).toBeCloseTo(217.61, 2);
   expect(result.decemberCardTotal).toBeCloseTo(217.61, 2);
 });
+
+
+test('Alicia explica a diferença entre entradas acumuladas e caixa disponível', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(function () {
+    Store.userId = null;
+    Store.lang = 'pt';
+    Store.movements = [
+      { id: 'alicia-balance-income', tipo: 'receita', status: 'pago', valor: 463.55, data: Clock.today() },
+      { id: 'alicia-balance-expense', tipo: 'despesa', status: 'pago', valor: 1770.00, data: Clock.today() }
+    ];
+    Store.installments = [];
+    Store.cards = [];
+    Store.loans = [];
+    Store.commitments = [];
+    Store.financing = [];
+    Store.consortium = [];
+    Store.insurance = [];
+    AlicerceIA._resetUser();
+
+    var motor = Store.getMotorFinanceiro();
+    var received = Store.getEntradasRealizadas();
+    var answer = AlicerceIA.responder('Por que apareceu saldo positivo se não adicionei entrada?');
+    return {
+      available: motor.disponivel,
+      received: received,
+      availableText: fmtMoney(motor.disponivel),
+      receivedText: fmtMoney(received),
+      answer: answer
+    };
+  });
+
+  expect(result.available).toBe(-1306.45);
+  expect(result.received).toBe(463.55);
+  expect(result.answer).toContain(result.availableText);
+  expect(result.answer).toContain(result.receivedText);
+  expect(result.answer).toContain('Não vou criar um saldo inicial');
+});
