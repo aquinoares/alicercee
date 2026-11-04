@@ -2560,6 +2560,21 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 @keyframes alInstallIn{from{transform:translateY(14px);opacity:.5}to{transform:translateY(0);opacity:1}}
 @media(prefers-reduced-motion:reduce){.al-install-dialog{animation:none}}
 </style>
+<style id="alicerce-planos-mobile-layout-v1">
+#app .plan-form-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+#app .plan-form-options>.form-group{min-width:0}
+#app .plan-form-options select{width:100%;max-width:100%;min-width:0;box-sizing:border-box}
+#app .plan-preview-values{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;min-width:0}
+#app .plan-preview-value{box-sizing:border-box;min-width:0;overflow-wrap:anywhere;padding:10px 8px;text-align:center;font-size:.9rem;font-weight:750;line-height:1.25;font-variant-numeric:tabular-nums}
+#app .plan-preview-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:16px;min-width:0}
+#app .plan-preview-secondary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;min-width:0}
+#app .plan-preview-actions .btn{display:flex;box-sizing:border-box;width:100%;min-width:0;min-height:48px;padding:10px 12px;align-items:center;justify-content:center;line-height:1.2;text-align:center;white-space:normal}
+@media(max-width:480px){
+  #app .plan-form-options{grid-template-columns:minmax(0,1fr);gap:0}
+  #app .plan-preview-values{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  #app .plan-preview-value{font-size:.88rem;padding:10px 8px}
+}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -14966,7 +14981,7 @@ function renderPlanoNovo(){
   var html='<div class="content" style="max-width:560px;margin:0 auto;padding-bottom:36px"><button type="button" class="btn btn-secondary btn-sm mt-4" onclick="go(\'planos\')">'+icon('back','ico-sm')+' '+planosTexto('back')+'</button><h2 class="mt-4">'+planosTexto('new')+'</h2>';
   html+='<div class="form-group mt-4"><label class="form-label" for="plan-title">'+planosTexto('name')+'</label><input id="plan-title" maxlength="60" value="'+esc(draft.titulo||'')+'" placeholder="Ex.: Minha viagem"></div>';
   html+='<div class="form-group"><label class="form-label" for="plan-target">'+planosTexto('target')+'</label><input id="plan-target" type="number" min="0.01" step="0.01" inputmode="decimal" value="'+esc(draft.meta||'')+'" placeholder="0,00"></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="plan-count">'+planosTexto('count')+'</label><select id="plan-count">';
+  html+='<div class="form-row plan-form-options"><div class="form-group"><label class="form-label" for="plan-count">'+planosTexto('count')+'</label><select id="plan-count">';
   [12,20,30,50].forEach(function(n){html+='<option value="'+n+'"'+(Number(draft.quantidade||20)===n?' selected':'')+'>'+n+'</option>'});
   html+='</select></div><div class="form-group"><label class="form-label" for="plan-category">'+planosTexto('category')+'</label><select id="plan-category">';
   planosCategorias().forEach(function(item){html+='<option value="'+item[0]+'"'+((draft.categoria||'outros')===item[0]?' selected':'')+'>'+esc(item[1])+'</option>'});
@@ -14988,10 +15003,10 @@ function renderPlanoPreview(){
   var sum=(draft.valores||[]).reduce(function(total,item){return total+Number(item.valor||0)},0);
   var html='<div class="content" style="max-width:620px;margin:0 auto;padding-bottom:36px"><button type="button" class="btn btn-secondary btn-sm mt-4" onclick="planosCorrigirCriacao()">'+icon('back','ico-sm')+' '+planosTexto('correct')+'</button><h2 class="mt-4">'+planosTexto('preview')+'</h2>';
   html+='<div class="card mt-3"><div class="text-muted text-xs">'+planosTexto('name')+'</div><h3>'+esc(draft.titulo)+'</h3><div class="card-row"><span>'+planosTexto('target')+'</span><strong>'+fmtMoney(draft.meta)+'</strong></div><div class="card-row"><span>'+planosTexto('category')+'</span><strong>'+esc(planosNomeCategoria(draft.categoria))+'</strong></div><div class="card-row"><span>'+planosTexto('count')+'</span><strong>'+draft.valores.length+'</strong></div>'+(draft.dataAlvo?'<div class="card-row"><span>'+planosTexto('targetDate')+'</span><strong>'+planosDataExibicao(draft.dataAlvo)+'</strong></div>':'')+'<div class="card-row"><span>'+planosTexto('boardTotal')+'</span><strong>'+fmtMoney(sum)+'</strong></div></div>';
-  html+='<p class="text-muted text-sm">'+planosTexto('previewHint')+'</p><div class="grid mt-3" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">';
-  (draft.valores||[]).slice(0,20).forEach(function(item){html+='<div class="card" style="padding:10px;text-align:center;font-weight:750">'+fmtMoney(item.valor)+'</div>'});
-  if(draft.valores.length>20)html+='<div class="card" style="padding:10px;text-align:center">+'+(draft.valores.length-20)+'</div>';
-  html+='</div><div class="flex mt-4" style="gap:10px"><button type="button" id="btn-save-plan" class="btn btn-primary" style="flex:1" onclick="planosSalvarCriacao()">'+planosTexto('save')+'</button><button type="button" class="btn btn-secondary" style="flex:1" onclick="planosCorrigirCriacao()">'+planosTexto('correct')+'</button><button type="button" class="btn btn-secondary" style="flex:1" onclick="go(\'planos\')">'+planosTexto('cancel')+'</button></div></div>';
+  html+='<p class="text-muted text-sm">'+planosTexto('previewHint')+'</p><div class="grid mt-3 plan-preview-values">';
+  (draft.valores||[]).slice(0,20).forEach(function(item){html+='<div class="card plan-preview-value">'+fmtMoney(item.valor)+'</div>'});
+  if(draft.valores.length>20)html+='<div class="card plan-preview-value">+'+(draft.valores.length-20)+'</div>';
+  html+='</div><div class="plan-preview-actions"><button type="button" id="btn-save-plan" class="btn btn-primary" onclick="planosSalvarCriacao()">'+planosTexto('save')+'</button><div class="plan-preview-secondary"><button type="button" class="btn btn-secondary" onclick="planosCorrigirCriacao()">'+planosTexto('correct')+'</button><button type="button" class="btn btn-secondary" onclick="go(\'planos\')">'+planosTexto('cancel')+'</button></div></div></div>';
   return html;
 }
 function planosSalvarCriacao(){

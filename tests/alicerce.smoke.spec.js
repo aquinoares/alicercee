@@ -3522,3 +3522,71 @@ test('Planos cria tabuleiro com prévia, marca datas individualmente, edita e de
   expect(afterUndo.available).toBe(initialCash);
 });
 
+
+
+test('Planos mantém criação e prévia alinhadas em celular estreito', async function ({ page }) {
+  await page.setViewportSize({ width: 320, height: 844 });
+  await prepararTelaSemNuvem(page, 'planoNovo');
+
+  const formLayout = await page.evaluate(function () {
+    var row = document.querySelector('.plan-form-options');
+    var columns = getComputedStyle(row).gridTemplateColumns.split(' ').length;
+    return {
+      columns: columns,
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth
+    };
+  });
+
+  expect(formLayout.columns).toBe(1);
+  expect(formLayout.documentWidth).toBeLessThanOrEqual(formLayout.viewportWidth);
+
+  await page.locator('#plan-title').fill('Viagem');
+  await page.locator('#plan-target').fill('50000');
+  await page.locator('#plan-count').selectOption('20');
+  await page.locator('#plan-category').selectOption('viagens');
+  await page.locator('#btn-preview-plan').click();
+
+  const layout = await page.evaluate(function () {
+    var save = document.getElementById('btn-save-plan').getBoundingClientRect();
+    var secondary = document.querySelector('.plan-preview-secondary').getBoundingClientRect();
+    var correct = secondary.children[0].getBoundingClientRect();
+    var cancel = secondary.children[1].getBoundingClientRect();
+    var values = document.querySelector('.plan-preview-values');
+    var valueColumns = getComputedStyle(values).gridTemplateColumns.split(' ').length;
+    var valueCardsFit = Array.prototype.every.call(values.children, function (card) {
+      return card.scrollWidth <= card.clientWidth;
+    });
+    return {
+      valueColumns: valueColumns,
+      saveWidth: save.width,
+      secondaryWidth: secondary.width,
+      correctTop: correct.top,
+      cancelTop: cancel.top,
+      correctRight: correct.right,
+      cancelLeft: cancel.left,
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+      valueCardsFit: valueCardsFit
+    };
+  });
+
+  expect(layout.valueColumns).toBe(2);
+  expect(layout.saveWidth).toBeCloseTo(layout.secondaryWidth, 0);
+  expect(Math.abs(layout.correctTop - layout.cancelTop)).toBeLessThan(1);
+  expect(layout.correctRight).toBeLessThanOrEqual(layout.cancelLeft);
+  expect(layout.cancelLeft).toBeLessThan(layout.viewportWidth);
+  expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth);
+  expect(layout.valueCardsFit).toBe(true);
+
+  const draft = await page.evaluate(function () {
+    return {
+      count: Store.screenData.draft.valores.length,
+      total: Store.screenData.draft.valores.reduce(function (sum, item) {
+        return sum + Number(item.valor || 0);
+      }, 0)
+    };
+  });
+  expect(draft.count).toBe(20);
+  expect(draft.total).toBeCloseTo(50000, 2);
+});
