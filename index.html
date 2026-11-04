@@ -3493,6 +3493,42 @@ const Store={
     }catch(e){
       this.subscription=null;
       console.warn('[Alicerce] Não foi possível consultar a assinatura:',e);
+    }
+
+    // O acesso promocional é lido separadamente; nunca substitui uma assinatura paga ativa.
+    this.temporaryAccessGrant=null;
+    try{
+      const {data:grants,error:erroGrants}=await window.alicerceSupabase
+        .from('temporary_access_grants')
+        .select('plan,starts_at,expires_at,reason')
+        .eq('user_id',userId)
+        .is('revoked_at',null)
+        .gt('expires_at',new Date().toISOString())
+        .order('expires_at',{ascending:false})
+        .limit(1);
+      if(erroGrants)throw erroGrants;
+      const now=Date.now();
+      const grant=Array.isArray(grants)?grants.find(function(item){
+        const starts=Date.parse(item.starts_at);
+        const ends=Date.parse(item.expires_at);
+        return item.plan==='pro'&&Number.isFinite(starts)&&Number.isFinite(ends)&&starts<=now&&ends>now;
+      }):null;
+      const sub=this.subscription||null;
+      const subPlan=String(sub&&sub.plan||'').toLowerCase();
+      const subStatus=String(sub&&sub.status||'').toLowerCase();
+      const subExpiry=sub&&sub.expires_at?Date.parse(sub.expires_at):null;
+      const paidActive=subStatus==='active'&&['pro','vip','infinit'].includes(subPlan)&&
+        (subExpiry===null||(Number.isFinite(subExpiry)&&subExpiry>now));
+      if(grant&&!paidActive){
+        this.temporaryAccessGrant=grant;
+        this.subscription=Object.assign({},sub||{},{
+          plan:'pro',status:'active',started_at:grant.starts_at,expires_at:grant.expires_at,
+          provider:'hera_temporary_access',temporary:true
+        });
+      }
+    }catch(e){
+      this.temporaryAccessGrant=null;
+      console.warn('[Alicerce] Não foi possível consultar o acesso promocional:',e);
     }  },
   save(){
     if(!this.userId)return;
