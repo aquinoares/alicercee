@@ -3926,11 +3926,24 @@ getCardCurrentInvoice(cardId){
   const now=Clock.now();
   const todayDay=now.getDate();
 
-  let targetMonthOffset=1;
+  /*
+   * A parcela já possui a data real do vencimento em i.data.
+   * A fatura atual é a competência deste mês até o dia do
+   * vencimento; depois que a data passa, a próxima competência
+   * passa a ser a fatura atual. O fechamento é usado somente
+   * ao gerar novas parcelas, não para deslocar uma fatura já
+   * agendada para o mês seguinte.
+   */
+  let targetMonthOffset=0;
 
-  if(fechamento>0){
-    targetMonthOffset=(todayDay>fechamento?1:0)+
-      (vencimento>0&&vencimento<=fechamento?1:0);
+  if(vencimento>0){
+    const lastDayThisMonth=new Date(
+      now.getFullYear(),
+      now.getMonth()+1,
+      0
+    ).getDate();
+    const effectiveDueDay=Math.min(vencimento,lastDayThisMonth);
+    if(todayDay>effectiveDueDay)targetMonthOffset=1;
   }
 
   const target=new Date(
@@ -9991,7 +10004,7 @@ function homeRenderComunicados() {
     _miniNextProjection.total;
 
   const _miniSaldo =
-    Store.getEntradasRealizadas();
+    _miniMotor.disponivel;
 
   const _miniCardsCurrent =
     Store.getCardMonthTotals(
