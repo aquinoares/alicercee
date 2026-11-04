@@ -5655,9 +5655,51 @@ AlicerceIA._parsePtNumberWords=function(value){
   }
   return found?total+current:null;
 };
+AlicerceIA._extractExpenseDate=function(value){
+  var raw=String(value||'');
+  var normalized=this._norm(raw);
+  var base=today();
+  function toIso(year,month,day){
+    year=Number(year);month=Number(month);day=Number(day);
+    if(!isFinite(year)||!isFinite(month)||!isFinite(day)||year<2000||year>2100||month<1||month>12||day<1||day>31)return '';
+    var date=new Date(year,month-1,day);
+    if(date.getFullYear()!==year||date.getMonth()!==month-1||date.getDate()!==day)return '';
+    return String(year)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+  }
+  var match=raw.match(/\b(20\d{2})-(0?[1-9]|1[0-2])-([0-3]?\d)\b/);
+  if(match){var iso=toIso(match[1],match[2],match[3]);if(iso)return iso;}
+  match=raw.match(/\b(?:dia\s+)?([0-3]?\d)[\/.-]([01]?\d)(?:[\/.-](\d{2,4}))?\b/i);
+  if(match){
+    var year=match[3]?Number(match[3]):Number(base.slice(0,4));
+    if(year<100)year+=2000;
+    var localDate=toIso(year,match[2],match[1]);
+    if(localDate)return localDate;
+  }
+  var months={janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
+  match=normalized.match(/\b(?:dia\s+)?(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?\b/);
+  if(match&&months[match[2]]){
+    var monthDate=toIso(Number(match[3]||base.slice(0,4)),months[match[2]],match[1]);
+    if(monthDate)return monthDate;
+  }
+  if(/\bdepois de amanha\b/.test(normalized))return dateShift(base,2);
+  if(/\banteontem\b/.test(normalized))return dateShift(base,-2);
+  if(/\bontem\b/.test(normalized))return dateShift(base,-1);
+  if(/\bamanha\b/.test(normalized))return dateShift(base,1);
+  if(/\bhoje\b/.test(normalized))return base;
+  return base;
+};
+AlicerceIA._removeExpenseDateText=function(value){
+  return String(value||'')
+    .replace(/\bdepois\s+de\s+amanh[aã]\b/gi,' ')
+    .replace(/\b(?:anteontem|ontem|hoje|amanh[aã])\b/gi,' ')
+    .replace(/\b(?:dia\s+)?[0-3]?\d[\/.-][01]?\d(?:[\/.-]\d{2,4})?\b/gi,' ')
+    .replace(/\b(?:dia\s+)?\d{1,2}\s+de\s+(?:janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)(?:\s+de\s+\d{4})?\b/gi,' ')
+    .replace(/\s+/g,' ').trim();
+};
 AlicerceIA._parseExpenseCommand=function(value){
   var raw=String(value||'').trim();
   var normalized=this._norm(raw);
+  var purchaseDate=this._extractExpenseDate(raw);
   var questionIntent=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque)\b/.test(normalized)||/\?\s*$/.test(raw);
   if(questionIntent)return null;
   var expenseIntent=/\b(comprei|comprar|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|adiciona|adicionar)\b/.test(normalized);
@@ -5707,6 +5749,7 @@ AlicerceIA._parseExpenseCommand=function(value){
 
   var details=raw;
   if(amountRaw)details=details.replace(amountRaw,' ');
+  details=this._removeExpenseDateText(details);
   details=details.replace(/\b(quero|preciso|adicionar|adiciona|comprar|comprei|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|uma|um|uns|umas|despesa|gasto|valor|de|por|foi|custou|reais?)\b/gi,' ');
   var purpose='';
   var purposeMatch=details.match(/\b(?:para|pra)\s+(.+)$/i);
@@ -5730,27 +5773,38 @@ AlicerceIA._parseExpenseCommand=function(value){
   var missingField='';
   if(!item)missingField='item';
   else if(amount===null)missingField='amount';
-  return{amount:amount,item:item,local:local,paymentMethod:paymentMethod,purpose:purpose,date:today(),needsClarification:missingField};
+  return{amount:amount,item:item,local:local,paymentMethod:paymentMethod,purpose:purpose,date:purchaseDate,needsClarification:missingField};
 };
 
 AlicerceIA._expenseClarificationMessage=function(field,item){
   var lang=Store.lang||'pt';
   var itemLabel=String(item||'essa compra').trim();
+  var itemNorm=this._norm(itemLabel);
+  var isMaterial=/\b(material|tinta|cimento|argamassa|tijolo|ferramenta|ferramentas)\b/.test(itemNorm);
+  var purposePt=isMaterial
+    ?'Para classificar '+itemLabel+' sem adivinhar, qual era a finalidade desse material: obra ou reforma, estudo, trabalho ou outro uso?'
+    :'Para classificar '+itemLabel+' sem adivinhar, qual era a finalidade dessa compra? Me conta com suas palavras como você usou esse item ou o que essa compra resolveu.';
+  var purposeEn=isMaterial
+    ?'To classify '+itemLabel+' safely, what was this material for: home renovation, study, work, or another use?'
+    :'To classify '+itemLabel+' safely, what was this purchase for? Tell me in your own words how you used the item or what it was needed for.';
+  var purposeEs=isMaterial
+    ?'Para clasificar '+itemLabel+' sin adivinar, ¿para qué era este material: obra o reforma, estudio, trabajo u otro uso?'
+    :'Para clasificar '+itemLabel+' sin adivinar, ¿cuál era la finalidad de esta compra? Cuéntame con tus palabras cómo usaste el artículo o qué resolvió esta compra.';
   var copy={
     pt:{
       item:'O que você comprou ou qual serviço pagou?',
       amount:'Qual foi o valor? Pode informar em reais, por exemplo: vinte e cinco reais e cinquenta centavos.',
-      purpose:'Para classificar '+itemLabel+' sem adivinhar, me conta: qual era a finalidade dessa compra? Por exemplo: era para uma obra ou reforma, estudo ou escola, trabalho, saúde, família ou outra necessidade?'
+      purpose:purposePt
     },
     en:{
       item:'What did you buy or which service did you pay for?',
       amount:'How much was it? You can say an amount, for example: twenty-five reais and fifty centavos.',
-      purpose:'To classify '+itemLabel+' without guessing, what was this purchase for? For example: a renovation, school or study, work, health, family, or another need?'
+      purpose:purposeEn
     },
     es:{
       item:'¿Qué compraste o qué servicio pagaste?',
       amount:'¿Cuál fue el importe? Puedes indicar el valor en reales.',
-      purpose:'Para clasificar '+itemLabel+' sin adivinar, ¿para qué fue esta compra? Por ejemplo: una obra o reforma, estudios o escuela, trabajo, salud, familia u otra necesidad?'
+      purpose:purposeEs
     }
   };
   var labels=copy[lang]||copy.pt;
@@ -7950,6 +8004,13 @@ const Interpreter={
     /* 99 Taxi é o estabelecimento/serviço; não deve virar categoria genérica de táxi. */
     if(/\b99\s*(?:app|pop|taxi)\b/.test(context))return null;
     if(!n)return null;
+    /* Pão é um alimento identificável mesmo sem a pessoa explicar sua finalidade.
+       O local informado refina a subcategoria; data/horário nunca provam finalidade. */
+    if(/\b(pao|paes)\b/.test(product)){
+      if(/\b(ifood|rappi|delivery|entrega)\b/.test(context))return{c:'comida',s:'delivery'};
+      if(/\b(mercado|supermercado|mercadinho|atacadao|assai|carrefour|mateus|pao de acucar|supermercados bh)\b/.test(context))return{c:'comida',s:'mercado'};
+      return{c:'comida',s:'padaria'};
+    }
     const rules=[
       {p:/\b(tenis|sapato|sandalia|chinelo|bota|calcado|calcados)\b/i,c:'vestuario',s:'calcados'},
       {p:/\b(camiseta|camisa|blusa|calca|bermuda|short|vestido|saia|roupa|roupas|jaqueta|casaco)\b/i,c:'vestuario',s:'roupas'},
