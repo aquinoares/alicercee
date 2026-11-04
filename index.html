@@ -6300,7 +6300,7 @@ AlicerceIA._recognitionOwnerId='';
 AlicerceIA._pendingRecognitionMode='';
 AlicerceIA._privacyCopy={
   pt:{
-    dictation:'Para falar com a Alicia, toque no microfone do teclado do seu celular. O texto reconhecido aparecerá no campo de mensagem.',
+    dictation:'Fale usando o microfone do teclado do seu celular. O texto reconhecido aparecerá no campo de mensagem.',
     microphoneLocal:'Alicia tentará reconhecer sua fala no próprio aparelho. Se o navegador não tiver o pacote local de português, ela pedirá sua autorização separadamente antes de usar o serviço de reconhecimento online do navegador. A gravação não é enviada ao Alicerce nem ao Render.',
     microphoneRemote:'Para ouvir você neste aparelho, o navegador usará seu serviço de reconhecimento de voz. Isso pode transmitir o áudio ao provedor do navegador para gerar o texto. O Alicerce não recebe nem armazena a gravação; recebe apenas o texto reconhecido. A política de retenção do provedor depende do navegador e das suas configurações.',
     photo:'Privacidade: a leitura de fotos e documentos está temporariamente desativada. A imagem permanece no aparelho e nenhum texto reconhecido é enviado ou registrado.',
@@ -6308,7 +6308,7 @@ AlicerceIA._privacyCopy={
     continue:'Continuar',cancel:'Cancelar',listenNow:'Enviar texto e ouvir'
   },
   en:{
-    dictation:'You can also use your keyboard microphone to dictate into the message field.',
+    dictation:'Use your keyboard microphone to dictate. The recognized text will appear in the message field.',
     microphoneLocal:'Alicia will first try to recognize your speech on this device. If the browser does not have a local English language pack, it will ask separately before using the browser’s online speech recognition service. The recording is not sent to Alicerce or Render.',
     microphoneRemote:'To hear you on this device, the browser will use its speech recognition service. This may transmit audio to the browser provider to produce text. Alicerce does not receive or store the recording; it receives only the recognized text. Provider retention depends on the browser and your settings.',
     photo:'Privacy: photo and document reading is temporarily disabled. The image stays on your device, and no recognized text is sent or stored.',
@@ -6316,7 +6316,7 @@ AlicerceIA._privacyCopy={
     continue:'Continue',cancel:'Cancel',listenNow:'Listen now'
   },
   es:{
-    dictation:'También puedes usar el micrófono del teclado para dictar en el campo de mensaje.',
+    dictation:'Habla usando el micrófono del teclado. El texto reconocido aparecerá en el campo de mensaje.',
     microphoneLocal:'Alicia intentará reconocer tu voz en este dispositivo. Si el navegador no tiene el paquete local de español, pedirá tu autorización por separado antes de usar el servicio de reconocimiento en línea del navegador. La grabación no se envía a Alicerce ni a Render.',
     microphoneRemote:'Para escucharte en este dispositivo, el navegador usará su servicio de reconocimiento de voz. Esto puede transmitir el audio al proveedor del navegador para generar el texto. Alicerce no recibe ni almacena la grabación; solo recibe el texto reconocido. La retención del proveedor depende del navegador y de tu configuración.',
     photo:'Privacidad: la lectura de fotos y documentos está temporalmente desactivada. La imagen permanece en tu dispositivo y no se envía ni almacena el texto reconocido.',
@@ -6347,206 +6347,14 @@ AlicerceIA.solicitarFoto=function(){
   var labels=this._textoPrivacidade();
   this._mostrarAvisoPrivacidade(labels.photo,labels.continue);
 };
-AlicerceIA._setMicButtonState=function(active){
-  var button=document.getElementById('alicerce-assistant-mic');
-  if(!button)return;
-  var labels={pt:{mic:'Falar com Alicia',stop:'Parar gravação'},en:{mic:'Speak to Alicia',stop:'Stop recording'},es:{mic:'Hablar con Alicia',stop:'Detener grabación'}};
-  var current=labels[Store.lang]||labels.pt;
-  var label=active?current.stop:current.mic;
-  button.classList.toggle('is-recording',!!active);
-  button.setAttribute('aria-pressed',active?'true':'false');
-  button.setAttribute('aria-label',label);
-  button.title=label;
-};
 AlicerceIA.toggleMicrofone=function(){
-  if(this._recognition||this._recognitionStarting){
-    this.pararReconhecimento(false);
-    return;
-  }
-  this.solicitarMicrofone();
+  this.mostrarAvisoDitado();
+  var input=document.getElementById('alicerce-assistant-input');
+  if(input)input.focus();
 };
-AlicerceIA.solicitarMicrofone=function(){
-  if(this._recognition||this._recognitionStarting)return;
-  var Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  var localCapable=!!(Recognition&&typeof Recognition.available==='function'&&typeof Recognition.install==='function'&&Recognition.prototype&&('processLocally' in Recognition.prototype));
-  if(!Recognition){
-    var status=document.getElementById('alicerce-assistant-status');
-    if(status)status.textContent='Este navegador não oferece reconhecimento de voz para o botão da Alicia. O campo de mensagem será aberto para você usar o microfone do teclado.';
-    var fallbackInput=document.getElementById('alicerce-assistant-input');
-    if(fallbackInput)fallbackInput.focus();
-    return;
-  }
-  this._pendingPrivacyAction='microphone';
-  this._pendingRecognitionMode=localCapable?'prefer-local':'browser';
-  this._pendingSpeechIndex=-1;
-  this._pendingSpeechButton=null;
-  var copy=this._textoPrivacidade();
-  this._mostrarAvisoPrivacidade(localCapable?copy.microphoneLocal:copy.microphoneRemote,copy.continue);
-};
-AlicerceIA.solicitarMicrofoneRemoto=function(){
-  this._pendingPrivacyAction='microphone-remote';
-  this._pendingRecognitionMode='browser';
-  this._pendingSpeechIndex=-1;
-  this._pendingSpeechButton=null;
-  var copy=this._textoPrivacidade();
-  this._mostrarAvisoPrivacidade(copy.microphoneRemote,copy.continue);
-};
-AlicerceIA._iniciarSessaoReconhecimento=function(Recognition,language,ownerId,requestId,local){
-  var recognition;
-  try{
-    recognition=new Recognition();
-    recognition.lang=language;
-    recognition.continuous=true;
-    recognition.interimResults=true;
-    recognition.maxAlternatives=1;
-    if('processLocally' in recognition)recognition.processLocally=!!local;
-    this._recognition=recognition;
-    this._recognitionOwnerId=ownerId;
-    this._recognitionText='';
-    this._recognitionError='';
-    this._recognitionStarting=false;
-    var self=this;
-    var status=document.getElementById('alicerce-assistant-status');
-    this._setMicButtonState(true);
-    if(status)status.textContent=local?'Alicia está ouvindo no próprio aparelho. Fale e toque novamente no microfone para terminar.':'Alicia está ouvindo pelo reconhecimento do navegador. Fale e toque novamente no microfone para terminar.';
-    recognition.onresult=function(event){
-      if(self._recognition!==recognition)return;
-      var finalParts=[];
-      var interimParts=[];
-      for(var i=0;i<event.results.length;i++){
-        var result=event.results[i];
-        var transcript=result&&result[0]?String(result[0].transcript||'').trim():'';
-        if(!transcript)continue;
-        if(result.isFinal)finalParts.push(transcript);
-        else interimParts.push(transcript);
-      }
-      self._recognitionText=finalParts.join(' ').replace(/\s+/g,' ').trim();
-      var preview=(self._recognitionText+' '+interimParts.join(' ')).replace(/\s+/g,' ').trim();
-      if(status&&preview)status.textContent='Alicia ouviu: '+preview;
-    };
-    recognition.onerror=function(event){
-      if(self._recognition!==recognition)return;
-      var code=String(event&&event.error||'');
-      if(code==='not-allowed'||code==='service-not-allowed')self._recognitionError='Permissão de microfone negada. Libere o microfone nas permissões do navegador.';
-      else if(code==='no-speech')self._recognitionError='Não detectei fala. Toque no microfone e tente novamente.';
-      else if(code==='language-not-supported')self._recognitionError='O reconhecimento não está disponível para esse idioma neste navegador.';
-      else if(code==='audio-capture')self._recognitionError='Não encontrei um microfone disponível neste aparelho.';
-      else if(code==='network')self._recognitionError='A conexão com o serviço de reconhecimento do navegador falhou. Verifique a internet e tente novamente.';
-      else self._recognitionError='A transcrição foi interrompida. Tente novamente.';
-    };
-    recognition.onend=function(){
-      if(self._recognition!==recognition)return;
-      self._recognition=null;
-      self._recognitionStarting=false;
-      self._setMicButtonState(false);
-      var transcript=String(self._recognitionText||'').replace(/\s+/g,' ').trim().slice(0,5000);
-      var errorMessage=String(self._recognitionError||'');
-      self._recognitionText='';
-      self._recognitionError='';
-      if(String(Store.userId||'')!==ownerId){
-        if(status)status.textContent='A conta mudou durante a gravação. A transcrição foi descartada.';
-        return;
-      }
-      var micButton=document.getElementById('alicerce-assistant-mic');
-      if(!micButton||!micButton.isConnected)return;
-      if(!transcript){
-        if(status)status.textContent=errorMessage||'Não consegui reconhecer sua fala. Tente falar mais perto do microfone.';
-        return;
-      }
-      var input=document.getElementById('alicerce-assistant-input');
-      if(input)input.value=transcript;
-      if(status)status.textContent='Transcrição concluída. Alicia está analisando sua fala...';
-      self.enviarMensagem(transcript);
-    };
-    recognition.start();
-    return true;
-  }catch(error){
-    if(this._recognition===recognition)this._recognition=null;
-    this._recognitionStarting=false;
-    this._setMicButtonState(false);
-    return false;
-  }
-};
-AlicerceIA.iniciarMicrofone=async function(mode){
-  this._resetUser();
-  var status=document.getElementById('alicerce-assistant-status');
-  var Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  var language=Store.lang==='en'?'en-US':Store.lang==='es'?'es-ES':'pt-BR';
-  if(!Recognition){
-    if(status)status.textContent='Este navegador não oferece reconhecimento de voz. Use o microfone do teclado no campo de mensagem.';
-    return;
-  }
-  this.pararAudio();
-  var requestId=++this._recognitionRequestId;
-  var ownerId=String(Store.userId||'');
-  this._recognitionStarting=true;
-  if(mode!=='browser'&&typeof Recognition.available==='function'&&typeof Recognition.install==='function'&&Recognition.prototype&&('processLocally' in Recognition.prototype)){
-    if(status)status.textContent='Verificando o reconhecimento local no aparelho...';
-    try{
-      var availability=await Recognition.available({langs:[language],processLocally:true});
-      if(requestId!==this._recognitionRequestId)return;
-      if(availability==='available'){
-        if(this._iniciarSessaoReconhecimento(Recognition,language,ownerId,requestId,true))return;
-        this._recognitionStarting=false;
-        this.solicitarMicrofoneRemoto();
-        if(status)status.textContent='O reconhecimento local não iniciou. Autorize o modo online para continuar.';
-        return;
-      }
-      if(availability==='downloadable'||availability==='downloading'){
-        if(status)status.textContent='Preparando o pacote de idioma '+language+' no aparelho...';
-        var installed=await Recognition.install({langs:[language],processLocally:true});
-        if(requestId!==this._recognitionRequestId)return;
-        this._recognitionStarting=false;
-        if(installed){
-          if(status)status.textContent='Idioma instalado no aparelho. Toque no microfone novamente para começar.';
-        }else{
-          this.solicitarMicrofoneRemoto();
-        }
-        return;
-      }
-      this._recognitionStarting=false;
-      this.solicitarMicrofoneRemoto();
-      return;
-    }catch(error){
-      if(requestId!==this._recognitionRequestId)return;
-      this._recognitionStarting=false;
-      this.solicitarMicrofoneRemoto();
-      if(status)status.textContent='O reconhecimento local não está disponível. Autorize o modo online para continuar.';
-      return;
-    }
-  }
-  this._iniciarSessaoReconhecimento(Recognition,language,ownerId,requestId,false);
-};
-AlicerceIA.pararReconhecimento=function(descartar){
-  var recognition=this._recognition;
-  if(this._recognitionStarting&&!recognition){
-    this._recognitionRequestId+=1;
-    this._recognitionStarting=false;
-    this._setMicButtonState(false);
-    return;
-  }
-  if(!recognition){
-    this._setMicButtonState(false);
-    return;
-  }
-  if(descartar){
-    this._recognitionRequestId+=1;
-    this._recognition=null;
-    this._recognitionText='';
-    this._recognitionError='';
-    this._recognitionStarting=false;
-    this._setMicButtonState(false);
-    try{recognition.abort()}catch(error){try{recognition.stop()}catch(ignore){}}
-    return;
-  }
-  this._setMicButtonState(false);
-  var status=document.getElementById('alicerce-assistant-status');
-  if(status)status.textContent='Finalizando a gravação...';
-  try{recognition.stop()}catch(error){
-    this._recognition=null;
-    this._recognitionStarting=false;
-    this._setMicButtonState(false);
-  }
+AlicerceIA.pararReconhecimento=function(){
+  this._recognition=null;
+  this._recognitionStarting=false;
 };
 AlicerceIA._mensagemVozSomentePt=function(){
   var lang=Store.lang||'pt';
@@ -6576,20 +6384,10 @@ AlicerceIA.cancelarAvisoPrivacidade=function(){
 };
 AlicerceIA.confirmarAvisoPrivacidade=function(){
   var action=this._pendingPrivacyAction;
-  var index=this._pendingSpeechIndex;
-  var button=this._pendingSpeechButton;
-  var recognitionMode=this._pendingRecognitionMode;
   this.cancelarAvisoPrivacidade();
   if(action==='camera'){
     var input=document.getElementById('alicerce-assistant-photo');
     if(input)input.click();
-  }else if(action==='microphone'){
-    this.iniciarMicrofone(recognitionMode);
-  }else if(action==='microphone-remote'){
-    this.iniciarMicrofone('browser');
-  }else if(action==='speech'){
-    try{window.localStorage.setItem('alicia_tts_consent_v1_'+String(Store.userId||'anon'),'yes')}catch(error){}
-    this.ouvirMensagem(index,button,true);
   }
 };
 AlicerceIA._setSpeechButtonState=function(button,playing){
@@ -6620,7 +6418,21 @@ AlicerceIA.pararAudio=function(){
 };
 AlicerceIA._speechPersona={tone:'calma, jovem, acolhedora, simpática e natural',rate:1.0};
 AlicerceIA._voiceEnabled=function(){var userId=String(Store.userId||'anon');try{return window.localStorage.getItem('alicia_voice_enabled_v1_'+userId)!=='no'}catch(error){return true;}};
-AlicerceIA.toggleVoz=function(){var userId=String(Store.userId||'anon');var enabled=!this._voiceEnabled();try{window.localStorage.setItem('alicia_voice_enabled_v1_'+userId,enabled?'yes':'no')}catch(error){}if(!enabled)this.pararAudio();var button=document.getElementById('alicerce-assistant-voice-toggle');if(button){var voiceLabels=Store.lang==='en'?{on:'Voice on',off:'Enable voice'}:Store.lang==='es'?{on:'Voz activada',off:'Activar voz'}:{on:'Voz ligada',off:'Ativar voz'};button.textContent=enabled?voiceLabels.on:voiceLabels.off;button.setAttribute('aria-pressed',enabled?'true':'false');}var status=document.getElementById('alicerce-assistant-status');if(status)status.textContent=enabled?'A Alicia falará automaticamente.':'Voz desativada. Alicia continuará respondendo por texto.';};
+AlicerceIA.toggleVoz=function(){
+  var userId=String(Store.userId||'anon');
+  var enabled=!this._voiceEnabled();
+  try{window.localStorage.setItem('alicia_voice_enabled_v1_'+userId,enabled?'yes':'no')}catch(error){}
+  if(!enabled)this.pararAudio();
+  var button=document.getElementById('alicerce-assistant-voice-toggle');
+  if(button){
+    var voiceLabels=Store.lang==='en'?{on:'Disable voice',off:'Enable voice'}:Store.lang==='es'?{on:'Desactivar voz',off:'Activar voz'}:{on:'Desativar voz',off:'Ativar voz'};
+    button.textContent=enabled?voiceLabels.on:voiceLabels.off;
+    button.setAttribute('aria-pressed',enabled?'true':'false');
+    button.title=enabled?'A Alicia lerá suas respostas em voz alta.':'A Alicia responderá somente por texto.';
+  }
+  var status=document.getElementById('alicerce-assistant-status');
+  if(status)status.textContent=enabled?'A Alicia falará automaticamente nas próximas respostas.':'Voz desativada. Alicia continuará respondendo por texto.';
+};
 AlicerceIA.prepararFala=function(value){
   var text=String(value||'');
   if((Store.lang||'pt')!=='pt')return text;
@@ -6637,7 +6449,7 @@ AlicerceIA.prepararFala=function(value){
   text=text.replace(/(-?\d+(?:,\d+)?)\s*%/g,'$1 por cento');
   return text;
 };
-AlicerceIA.ouvirMensagem=async function(index,button,privacyConfirmed){
+AlicerceIA.ouvirMensagem=async function(index,button){
   this._resetUser();
   var messages=Array.isArray(this._messages)?this._messages:[];
   var item=messages[index];
@@ -6647,17 +6459,6 @@ AlicerceIA.ouvirMensagem=async function(index,button,privacyConfirmed){
   var status=document.getElementById('alicerce-assistant-status');
   if((Store.lang||'pt')!=='pt'){
     if(status)status.textContent=this._mensagemVozSomentePt();
-    return;
-  }
-  var voiceConsentKey='alicia_tts_consent_v1_'+String(Store.userId||'anon');
-  var voiceConsent=false;
-  try{voiceConsent=window.localStorage.getItem(voiceConsentKey)==='yes'}catch(ignore){}
-  if(!privacyConfirmed&&!voiceConsent){
-    this._pendingPrivacyAction='speech';
-    this._pendingSpeechIndex=index;
-    this._pendingSpeechButton=button||null;
-    var voiceCopy=this._textoPrivacidade();
-    this._mostrarAvisoPrivacidade(voiceCopy.voice,voiceCopy.listenNow);
     return;
   }
   if(!button)button={isConnected:true,getAttribute:function(){return '';},setAttribute:function(){},querySelector:function(){return null;}};
@@ -6813,17 +6614,14 @@ function renderAssistente(){
   AlicerceIA._resetUser();
   var lang=Store.lang||'pt';
   var copy={
-    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Falar com Alicia',micStop:'Parar gravação',voiceOn:'Voz ligada',voiceOff:'Ativar voz',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?','Quais gastos ainda precisam de contexto?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
-    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Speak to Alicia',micStop:'Stop recording',voiceOn:'Voice on',voiceOff:'Enable voice',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?','Which expenses still need context?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
-    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Hablar con Alicia',micStop:'Detener grabación',voiceOn:'Voz activada',voiceOff:'Activar voz',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?','¿Qué gastos aún necesitan contexto?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
+    pt:{subtitle:'Sua assistente financeira',placeholder:'Digite sua mensagem...',send:'Enviar',camera:'Enviar foto',mic:'Usar microfone do teclado',voiceOn:'Desativar voz',voiceOff:'Ativar voz',suggestions:'Perguntas para começar',prompts:['Quanto gastei este mês?','Onde gastei mais?','Compare com o mês passado','Quanto gastei com supermercado?','Quais gastos ainda precisam de contexto?'],listen:'Ouvir resposta',stop:'Parar',voiceUnavailable:'O serviço remoto de voz não está disponível. O texto continua disponível.',voiceError:'Não foi possível gerar a voz da Alicia. Você ainda pode ler a resposta.',back:'Início',financial:'Visão financeira',financialTitle:'Abrir relatórios e PDF',clear:'Limpar conversa'},
+    en:{subtitle:'Your financial assistant',placeholder:'Type your message...',send:'Send',camera:'Take photo',mic:'Use keyboard microphone',voiceOn:'Disable voice',voiceOff:'Enable voice',suggestions:'Questions to get started',prompts:['How much did I spend this month?','Where did I spend the most?','Compare with last month','How much did I spend at supermarkets?','Which expenses still need context?'],listen:'Listen to reply',stop:'Stop',voiceUnavailable:'Alicia’s fixed voice is available only in Brazilian Portuguese. The text remains available.',voiceError:'Could not load Alicia’s fixed voice. You can still read the reply.',back:'Home',financial:'Financial view',financialTitle:'Open reports and PDF',clear:'Clear conversation'},
+    es:{subtitle:'Tu asistente financiera',placeholder:'Escribe tu mensaje...',send:'Enviar',camera:'Tomar foto',mic:'Usar micrófono del teclado',voiceOn:'Desactivar voz',voiceOff:'Activar voz',suggestions:'Preguntas para empezar',prompts:['¿Cuánto gasté este mes?','¿Dónde gasté más?','Compara con el mes pasado','¿Cuánto gasté en supermercados?','¿Qué gastos aún necesitan contexto?'],listen:'Escuchar respuesta',stop:'Detener',voiceUnavailable:'La voz fija de Alicia está disponible solamente en portugués brasileño. El texto sigue disponible.',voiceError:'No se pudo cargar la voz fija de Alicia. Aún puedes leer la respuesta.',back:'Inicio',financial:'Vista financiera',financialTitle:'Abrir informes y PDF',clear:'Borrar conversación'}
   };
   var ui=copy[lang]||copy.pt;
   var messages=Array.isArray(AlicerceIA._messages)?AlicerceIA._messages:[];
   var welcomeText=AlicerceIA.mensagemAbertura();
   var animateWelcome=!messages.length&&!AlicerceIA._welcomeTypingStarted;
-  function speakButtonHtml(index){
-    return '<button type="button" class="alicerce-assistant-speak" data-label-play="'+esc(ui.listen)+'" data-label-stop="'+esc(ui.stop)+'" data-label-error="'+esc(ui.voiceError)+'" aria-label="'+esc(ui.listen)+'" aria-pressed="false" onclick="AlicerceIA.pedirAudio('+index+',this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h4l5 4V6l-5 4H4z"></path><path d="M16 9a5 5 0 0 1 0 6M18.5 6.5a8.5 8.5 0 0 1 0 11"></path></svg><span class="alicerce-assistant-speak-label">'+esc(ui.listen)+'</span></button>';
-  }
   var html='<style id="alicerce-assistant-screen-styles">';
   html+='.alicerce-assistant-page{box-sizing:border-box;width:100%;max-width:720px;margin:0 auto;padding:0 14px 118px}';
   html+='.alicerce-assistant-chat-panel{display:flex;flex-direction:column;min-height:360px;padding:13px 12px 8px;border:1px solid var(--line);border-radius:20px;background:var(--surface2);box-shadow:0 8px 24px rgba(0,0,0,.07);min-width:0}';
@@ -6854,9 +6652,6 @@ function renderAssistente(){
   html+='.alicerce-assistant-message.user{background:var(--tint-accent);border-color:var(--accent);border-top-right-radius:5px}';
   html+='.alicerce-assistant-message-avatar{width:32px;height:36px;object-fit:contain;object-position:center center;display:block;flex:0 0 32px;border:1px solid var(--line);border-radius:9px;background:var(--surface2);padding:1px;box-sizing:border-box}';
   html+='.alicerce-assistant-message-label{display:block;font-size:9px;font-weight:800;letter-spacing:.5px;color:var(--text2);margin-bottom:4px}';
-  html+='.alicerce-assistant-speak{display:inline-flex;align-items:center;gap:6px;min-height:30px;margin-top:9px;padding:5px 9px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);color:var(--text2);font-size:10px;font-weight:700;cursor:pointer}';
-  html+='.alicerce-assistant-speak svg{width:15px;height:15px;flex:0 0 15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}';
-  html+='.alicerce-assistant-speak[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}';
   html+='.alicerce-assistant-welcome{max-width:92%}';
   html+='.alicerce-assistant-prompts{display:flex;flex-wrap:wrap;gap:7px;margin:13px 0 15px}';
   html+='.alicerce-assistant-prompt{max-width:100%;min-height:36px;padding:8px 11px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--text);font-size:11px;text-align:left;cursor:pointer}';
@@ -6876,21 +6671,21 @@ function renderAssistente(){
   html+='@supports (padding: max(0px)){.alicerce-assistant-page{padding-bottom:max(118px,calc(90px + env(safe-area-inset-bottom)))}.alicerce-assistant-composer{bottom:calc(62px + env(safe-area-inset-bottom))}}';
   html+='</style>';
   html+='<div class="content alicerce-assistant-page" id="alicerce-assistant-page">';
-  html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back','ico-xs')+esc(ui.back)+'</button><div class="alicerce-assistant-top-actions"><button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-voice-toggle" aria-pressed="'+(AlicerceIA._voiceEnabled()?'true':'false')+'" onclick="AlicerceIA.toggleVoz()">'+(AlicerceIA._voiceEnabled()?esc(ui.voiceOn):esc(ui.voiceOff))+'</button><button type="button" class="alicerce-assistant-financial" id="alicerce-assistant-financial" title="'+esc(ui.financialTitle)+'" onclick="go(\'visao\')">'+esc(ui.financial)+'</button>';
+  html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back','ico-xs')+esc(ui.back)+'</button><div class="alicerce-assistant-top-actions"><button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-voice-toggle" title="A Alicia lerá suas respostas em voz alta. Somente o texto da resposta atual é enviado ao serviço de voz." aria-pressed="'+(AlicerceIA._voiceEnabled()?'true':'false')+'" onclick="AlicerceIA.toggleVoz()">'+(AlicerceIA._voiceEnabled()?esc(ui.voiceOn):esc(ui.voiceOff))+'</button><button type="button" class="alicerce-assistant-financial" id="alicerce-assistant-financial" title="'+esc(ui.financialTitle)+'" onclick="go(\'visao\')">'+esc(ui.financial)+'</button>';
   if(messages.length)html+='<button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-clear" aria-label="'+esc(ui.clear)+'" title="'+esc(ui.clear)+'" onclick="AlicerceIA.limparConversa()">'+esc(ui.clear)+'</button>';
   html+='</div></div>';
   html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/alicia-assistente.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>Alicia</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
   html+='<section class="alicerce-assistant-chat-panel">';
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
-    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span>'+speakButtonHtml(-1)+'</div>';
+    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span></div>';
     if(animateWelcome)window.requestAnimationFrame(function(){AlicerceIA.iniciarDigitacaoAbertura(welcomeText);});
   }else{
     messages.forEach(function(item,index){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+speakButtonHtml(index)+'</div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span></div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }
@@ -6909,7 +6704,7 @@ function renderAssistente(){
   html+='<input type="file" id="alicerce-assistant-photo" accept="image/jpeg,image/png,image/webp,image/bmp" capture="environment" style="display:none" onchange="AlicerceIA.processarFoto(this)">';
   html+='<button class="alicerce-assistant-camera" id="alicerce-assistant-camera" type="button" aria-label="'+esc(ui.camera)+'" title="'+esc(ui.camera)+'" onclick="AlicerceIA.solicitarFoto()">'+icon('camera')+'</button>';
   html+='<button class="alicerce-assistant-mic" id="alicerce-assistant-mic" type="button" aria-label="'+esc(ui.mic)+'" title="'+esc(ui.mic)+'" aria-pressed="false" onclick="AlicerceIA.toggleMicrofone()"><svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"></path></svg></button>';
-  html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="5000" inputmode="text" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onfocus="AlicerceIA.mostrarAvisoDitado()" onkeydown="if(event.key===\'Enter\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
+  html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="5000" inputmode="text" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
   html+='<button class="alicerce-assistant-send" id="alicerce-assistant-send" type="submit" aria-label="'+esc(ui.send)+'">'+icon('arrowRight')+'</button>';
   html+='</form>';
   html+='<div class="alicerce-assistant-privacy" id="alicerce-assistant-privacy" role="region" aria-live="polite" hidden></div>';
