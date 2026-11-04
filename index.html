@@ -6109,7 +6109,7 @@ AlicerceIA.enviarMensagem=async function(question){
         if(!interpretation.item)interpretation.item=expenseCommand.item;
         if(!interpretation.merchant)interpretation.merchant=expenseCommand.local;
         var classificationValid=!!(interpretation.categoria&&interpretation.subcategoria&&alicerClassificationPairIsValid(interpretation.categoria,interpretation.subcategoria));
-        var needsPurposeContext=ALICIA_INTERPRETER_ENABLED&&(!classificationValid||interpretation.confidence==='low'||(interpretation.source==='dictionary'&&!expenseCommand.purpose));
+        var confidenceLabel=String(interpretation.confidence||'').toLowerCase();\n        var confidenceScore=Number(interpretation.confidenceScore||interpretation.confidence_score);\n        if(!isFinite(confidenceScore))confidenceScore=confidenceLabel==='high'?0.9:(confidenceLabel==='medium'?0.65:0.35);\n        var needsPurposeContext=(ALICIA_INTERPRETER_ENABLED||ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED)&&(!classificationValid||confidenceScore<0.78||(interpretation.source==='dictionary'&&!expenseCommand.purpose));
         if(needsPurposeContext&&!expenseCommand.purpose){
           this._pendingExpenseDraft={
             amount:expenseCommand.amount,
@@ -6190,7 +6190,7 @@ AlicerceIA.enviarMensagem=async function(question){
   }
   if(inputSource!=='ocr'&&!ALICIA_REMOTE_MODEL_ENABLED){
     var localStatus=document.getElementById('alicerce-assistant-status');
-    if(localStatus)localStatus.textContent='Modelo remoto temporariamente desativado. Alicia usa apenas os recursos locais do Alicerce.';
+    if(localStatus)localStatus.textContent='';
   }
 
   var userId=String(Store.userId||'');
@@ -17463,4 +17463,4 @@ try{
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
-</body></html>
+<script src="/assets/alicia-debt-followup.js"></script>\n</body></html>
