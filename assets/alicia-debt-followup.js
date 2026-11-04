@@ -414,7 +414,7 @@
     description = description.replace(/\b(?:conta|divida|dividas|boleto|fatura|debito|antiga|velha|atrasada|vencida|pendente)\b/gi, ' ');
     description = description.replace(/\bR\$\s*[\d.]+(?:,[0-9]{1,2})?|\b[\d.]+(?:,[0-9]{1,2})?\s*reais?\b/gi, ' ');
     description = description.replace(/\b(?:que\s+)?(?:venceu|vencia|vencimento|vencida|atrasou|atrasada|com vencimento)\s*(?:no dia|dia|em|para)?\s*\d{1,2}(?:[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?| de [a-z]+(?: de \d{4})?)?/gi, ' ');
-    description = description.replace(/\b(?:e\s+)?(?:ja paguei|paguei|pagamos|ja quitei|quitei|quitamos|foi paga|foi pago|quitada|quitado|n[aã]o paguei|ainda n[aã]o paguei)\b.*$/i, ' ');
+    description = description.replace(/\b(?:e\s+)?(?:j[aá] paguei|paguei|pagamos|j[aá] quitei|quitei|quitamos|foi paga|foi pago|quitada|quitado|n[aã]o paguei|ainda n[aã]o paguei)\b.*$/i, ' ');
     description = description.replace(/\b(?:no dia\s+)?\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g, ' ');
     description = description.replace(/\b(?:hoje|ontem|anteontem|amanha|depois de amanha|semana passada)\b/gi, ' ');
     description = description.replace(/\s+/g, ' ').replace(/^[,.:;\/\s-]+|[,.:;\/\s-]+$/g, '').trim();
@@ -445,7 +445,8 @@
     description = description.replace(/^\s*(?:um|uma|novo|nova)\s+/i, '');
     description = description.replace(/^\s*(?:compromisso|consulta|reuniao|encontro|visita)\s*(?:\b(?:com|de|para|sobre)\b)?\s*/i, '');
     description = description.replace(/\b(?:compromisso|consulta|reuniao|encontro|visita)\b/gi, ' ');
-    description = description.replace(/\b(?:para mim|pra mim|por favor|hoje|ontem|amanh[aã]|depois de amanh[aã]|segunda(?:\s+feira)?|terca(?:\s+feira)?|quarta(?:\s+feira)?|quinta(?:\s+feira)?|sexta(?:\s+feira)?|sabado|domingo)\b/gi, ' ');
+    description = description.replace(/\b(?:para mim|pra mim|por favor|hoje|ontem|segunda(?:\s+feira)?|terca(?:\s+feira)?|quarta(?:\s+feira)?|quinta(?:\s+feira)?|sexta(?:\s+feira)?|sabado|domingo)\b/gi, ' ');
+    description = description.replace(/depois de amanh[aã]|amanh[aã]/gi, ' ');
     description = description.replace(/(?:às|\bas)\s*\d{1,2}(?::\d{2}|h\d{0,2})?/gi, ' ');
     description = description.replace(/\b\d{1,2}h\d{0,2}\b/gi, ' ');
     description = description.replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g, ' ');
