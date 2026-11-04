@@ -6171,7 +6171,25 @@ AlicerceIA.enviarMensagem=async function(question){
 
   var userId=String(Store.userId||'');
   var client=window.alicerceSupabase;
-  if(userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
+  if(inputSource==='ocr'&&userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
+    try{
+      var ocrResult=await client.functions.invoke('alicia-chat',{
+        body:{message:message,input_source:'ocr',photo_text_consent:true}
+      });
+      if(String(Store.userId||'')!==userId){this._photoTextPending=false;return;}
+      if(ocrResult&&ocrResult.error)throw ocrResult.error;
+      var ocrData=ocrResult&&ocrResult.data?ocrResult.data:{};
+      if(!ocrData.ok||!ocrData.answer)throw new Error('O interpretador não retornou uma leitura válida.');
+      answer=String(ocrData.answer);
+    }catch(error){
+      console.warn('Alicia: interpretador OCR indisponível.',error);
+      answer='Não consegui concluir a leitura agora. Nenhum lançamento foi registrado, e a foto e o texto não foram salvos. Tente novamente com uma imagem mais nítida.';
+      var ocrStatus=document.getElementById('alicerce-assistant-status');
+      if(ocrStatus)ocrStatus.textContent=answer;
+    }
+  }else if(inputSource==='ocr'){
+    answer='Entre na sua conta para usar o interpretador de fotos. A foto não será armazenada.';
+  }else if(userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
     var consentKey='alicia_ai_consent_v1_'+userId;
     var consent='';
     try{consent=window.localStorage.getItem(consentKey)||''}catch(error){}
@@ -6191,7 +6209,7 @@ AlicerceIA.enviarMensagem=async function(question){
       var financeContext=financeIntent&&inputSource!=='ocr'?localAnswer:'';
       try{
         var aiResult=await client.functions.invoke('alicia-chat',{
-          body:{message:message,finance_context:financeContext,consent:true,input_source:inputSource}
+          body:{message:message,finance_context:financeContext,consent:true,input_source:'text'}
         });
         if(String(Store.userId||'')!==userId)return;
         if(aiResult&&aiResult.error)throw aiResult.error;
@@ -6245,7 +6263,7 @@ AlicerceIA._privacyCopy={
     dictation:'Para falar com a Alicia, toque no microfone do teclado do seu celular. O texto reconhecido aparecerá no campo de mensagem.',
     microphoneLocal:'Alicia tentará reconhecer sua fala no próprio aparelho. Se o navegador não tiver o pacote local de português, ela pedirá sua autorização separadamente antes de usar o serviço de reconhecimento online do navegador. A gravação não é enviada ao Alicerce nem ao Render.',
     microphoneRemote:'Para ouvir você neste aparelho, o navegador usará seu serviço de reconhecimento de voz. Isso pode transmitir o áudio ao provedor do navegador para gerar o texto. O Alicerce não recebe nem armazena a gravação; recebe apenas o texto reconhecido. A política de retenção do provedor depende do navegador e das suas configurações.',
-    photo:'Privacidade: as fotos são lidas no próprio aparelho e não são enviadas nem armazenadas pelo Alicerce. O texto identificado aparece para você revisar antes do envio.',
+    photo:'Privacidade: a foto é lida no próprio aparelho e não é enviada nem armazenada pelo Alicerce. Depois que você revisar e enviar, somente o texto reconhecido será enviado temporariamente ao interpretador do Alicerce para extrair os campos. Ele não será enviado ao OpenRouter nem salvo no histórico.',
     voice:'Ao tocar em ouvir, somente o texto desta resposta será enviado por uma conexão protegida ao serviço de voz online que utiliza a tecnologia do Microsoft Edge. A resposta pode conter valores financeiros. Não enviamos o histórico inteiro nem gravações. O áudio é reproduzido e descartado no aparelho.',
     continue:'Continuar',cancel:'Cancelar',listenNow:'Enviar texto e ouvir'
   },
@@ -6253,7 +6271,7 @@ AlicerceIA._privacyCopy={
     dictation:'You can also use your keyboard microphone to dictate into the message field.',
     microphoneLocal:'Alicia will first try to recognize your speech on this device. If the browser does not have a local English language pack, it will ask separately before using the browser’s online speech recognition service. The recording is not sent to Alicerce or Render.',
     microphoneRemote:'To hear you on this device, the browser will use its speech recognition service. This may transmit audio to the browser provider to produce text. Alicerce does not receive or store the recording; it receives only the recognized text. Provider retention depends on the browser and your settings.',
-    photo:'Privacy: photos are read on your device and are not uploaded or stored by Alicerce. You can review the recognized text before sending it.',
+    photo:'Privacy: the photo is read on your device and is not uploaded or stored by Alicerce. After you review and send it, only the recognized text is sent temporarily to Alicerce’s interpreter to extract fields. It is not sent to OpenRouter or saved in chat history.',
     voice:'Alicia’s fixed voice is available only in Brazilian Portuguese.',
     continue:'Continue',cancel:'Cancel',listenNow:'Listen now'
   },
@@ -6261,7 +6279,7 @@ AlicerceIA._privacyCopy={
     dictation:'También puedes usar el micrófono del teclado para dictar en el campo de mensaje.',
     microphoneLocal:'Alicia intentará reconocer tu voz en este dispositivo. Si el navegador no tiene el paquete local de español, pedirá tu autorización por separado antes de usar el servicio de reconocimiento en línea del navegador. La grabación no se envía a Alicerce ni a Render.',
     microphoneRemote:'Para escucharte en este dispositivo, el navegador usará su servicio de reconocimiento de voz. Esto puede transmitir el audio al proveedor del navegador para generar el texto. Alicerce no recibe ni almacena la grabación; solo recibe el texto reconocido. La retención del proveedor depende del navegador y de tu configuración.',
-    photo:'Privacidad: las fotos se leen en tu dispositivo y Alicerce no las envía ni las almacena. Puedes revisar el texto reconocido antes de enviarlo.',
+    photo:'Privacidad: la foto se lee en tu dispositivo y Alicerce no la envía ni la almacena. Después de revisar y enviarla, solo el texto reconocido se envía temporalmente al interpretador de Alicerce para extraer los campos. No se envía a OpenRouter ni se guarda en el historial.',
     voice:'La voz fija de Alicia está disponible solamente en portugués brasileño.',
     continue:'Continuar',cancel:'Cancelar',listenNow:'Escuchar ahora'
   }
