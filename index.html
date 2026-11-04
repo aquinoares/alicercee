@@ -3503,6 +3503,7 @@ const Store={
         .select('plan,starts_at,expires_at,reason')
         .eq('user_id',userId)
         .is('revoked_at',null)
+        .lte('starts_at',new Date().toISOString())
         .gt('expires_at',new Date().toISOString())
         .order('expires_at',{ascending:false})
         .limit(1);
