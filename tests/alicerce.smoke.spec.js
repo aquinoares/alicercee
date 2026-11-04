@@ -3532,7 +3532,15 @@ test('Alicia reconhece pão sem perguntar finalidade e usa local e data relativa
     Store.cards = [];
     Store.movements = [];
     Store.installments = [];
-    Store.settings = { lang: 'pt', theme: 'azul' };
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-11-04T12:00:00.000Z'
+      }
+    };
     Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
     AlicerceIA._resetUser();
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
@@ -3573,7 +3581,15 @@ test('Alicia usa o mercado para refinar a subcategoria e respeita data explícit
     Store.cards = [];
     Store.movements = [];
     Store.installments = [];
-    Store.settings = { lang: 'pt', theme: 'azul' };
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-11-04T12:00:00.000Z'
+      }
+    };
     Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
     AlicerceIA._resetUser();
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
@@ -3610,7 +3626,15 @@ test('Alicia preserva a data da compra enquanto pergunta a finalidade de um item
     Store.cards = [];
     Store.movements = [];
     Store.installments = [];
-    Store.settings = { lang: 'pt', theme: 'azul' };
+    Store.settings = {
+      lang: 'pt',
+      theme: 'azul',
+      alicerceLegalAcceptance: {
+        termsVersion: '2026-10-20-v1',
+        privacyVersion: '2026-10-20-v1',
+        acceptedAt: '2026-11-04T12:00:00.000Z'
+      }
+    };
     Clock.now = function () { return new Date(2026, 10, 4, 12, 0, 0); };
     AlicerceIA._resetUser();
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
