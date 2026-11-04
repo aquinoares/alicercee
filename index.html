@@ -14764,24 +14764,36 @@ function saveDoubtGasto(){
 
 
 let manualGastoSuggestionBusy=false;
+let manualGastoSuggestionPromise=null;
 let manualGastoClassificationTouched=false;
 async function sugerirClassificacaoGastoManual(){
-  if(manualGastoSuggestionBusy||manualGastoClassificationTouched||!ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED)return;
-  const desc=document.getElementById('gm-desc');
-  const estab=document.getElementById('gm-estab');
-  const category=document.getElementById('gm-cat');
+  if(manualGastoClassificationTouched||!ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED)return null;
+  if(manualGastoSuggestionBusy&&manualGastoSuggestionPromise)return manualGastoSuggestionPromise;
   const status=document.getElementById('gm-classification-status');
-  const item=desc?String(desc.value||'').trim():'';
-  const merchant=estab?String(estab.value||'').trim():'';
-  if(!item&&!merchant)return;
-  manualGastoSuggestionBusy=true;
   if(status)status.textContent='A Alicia está consultando sua base de conhecimento...';
-  try{
-    const classification=await aliciaClassificarDespesa({item:item,merchant:merchant,context:''});
-    if(manualGastoClassificationTouched)return;
+  manualGastoSuggestionBusy=true;
+  manualGastoSuggestionPromise=(async function(){
+    let classification=null;
+    for(let attempt=0;attempt<2;attempt++){
+      const desc=document.getElementById('gm-desc');
+      const estab=document.getElementById('gm-estab');
+      const item=desc?String(desc.value||'').trim():'';
+      const merchant=estab?String(estab.value||'').trim():'';
+      if(!item&&!merchant)return null;
+      classification=await aliciaClassificarDespesa({item:item,merchant:merchant,context:''});
+      if(manualGastoClassificationTouched)return null;
+      const currentDesc=document.getElementById('gm-desc');
+      const currentEstab=document.getElementById('gm-estab');
+      const currentItem=currentDesc?String(currentDesc.value||'').trim():'';
+      const currentMerchant=currentEstab?String(currentEstab.value||'').trim():'';
+      if(item===currentItem&&merchant===currentMerchant)break;
+    }
+    if(manualGastoClassificationTouched)return null;
+    const category=document.getElementById('gm-cat');
+    const statusBox=document.getElementById('gm-classification-status');
     if(!classification){
-      if(status)status.textContent='A Alicia não encontrou uma classificação segura. Você pode escolher manualmente.';
-      return;
+      if(statusBox)statusBox.textContent='A Alicia não encontrou uma classificação segura. Você pode escolher manualmente.';
+      return null;
     }
     if(category){
       category.value=classification.category;
@@ -14789,13 +14801,21 @@ async function sugerirClassificacaoGastoManual(){
       const sub=document.getElementById('gm-sub');
       if(sub)sub.value=classification.subcategory;
     }
-    if(status)status.textContent='Sugestão da Alicia: '+Interpreter.catDisplay(classification.category)+' › '+Interpreter.subDisplay(classification.subcategory)+'. Confira antes de salvar.';
+    if(statusBox)statusBox.textContent='Sugestão da Alicia: '+Interpreter.catDisplay(classification.category)+' › '+Interpreter.subDisplay(classification.subcategory)+'. Confira antes de salvar.';
+    return classification;
+  })();
+  try{
+    return await manualGastoSuggestionPromise;
   }finally{
     manualGastoSuggestionBusy=false;
+    manualGastoSuggestionPromise=null;
   }
 }
 function marcarClassificacaoManual(){manualGastoClassificationTouched=true;}
 function renderGastoManual(){
+  manualGastoSuggestionBusy=false;
+  manualGastoSuggestionPromise=null;
+  manualGastoClassificationTouched=false;
   let html='<div class="content">';
   html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'addGasto\')">'+icon('back','ico-sm')+' '+t('gasto')+'</button>';
   html+='<h2 class="mt-4">'+t('manual')+'</h2>';
@@ -14818,21 +14838,28 @@ function updateSubcats(cat){
     return '<option value="'+esc(sub)+'">'+esc(Interpreter.subDisplay(sub))+'</option>';
   }).join('');
 }
-function saveManualGasto(){
+async function saveManualGasto(){
   const desc=document.getElementById('gm-desc').value.trim();
   const val=parseFloat(document.getElementById('gm-val').value)||0;
   const date=document.getElementById('gm-date').value||today();
-  const cat=document.getElementById('gm-cat').value;
-  const sub=document.getElementById('gm-sub').value;
+  const categoryInput=document.getElementById('gm-cat');
+  const subcategoryInput=document.getElementById('gm-sub');
+  let cat=categoryInput?categoryInput.value:'';
+  let sub=subcategoryInput?subcategoryInput.value:'';
   const estab=document.getElementById('gm-estab').value.trim();
   if(val<=0)return;
+  if(!alicerClassificationPairIsValid(cat,sub)&&!manualGastoClassificationTouched){
+    await sugerirClassificacaoGastoManual();
+    cat=categoryInput?categoryInput.value:'';
+    sub=subcategoryInput?subcategoryInput.value:'';
+  }
   if(!alicerClassificationPairIsValid(cat,sub)){
-    showToast('Selecione uma categoria e subcategoria válidas.');
+    showToast('A Alicia não encontrou uma classificação segura. Selecione uma categoria e subcategoria.');
     return;
   }
   const mv=Store.addMovement({tipo:'despesa',categoria:cat,subcategoria:sub,estabelecimento:estab,valor:val,data:date,forma:'pix',status:'pago',descricao:desc});
   if(estab&&desc)Store.learnCorrection(estab,cat,sub,desc);
-  showToast(t('gastoSalvo',{valor:fmtMoney(val),cat:Interpreter.catDisplay(cat),sub:Interpreter.subDisplay(sub)}),()=>{Store.removeMovement(mv.id);render()});go('home');
+  showToast(t('gastoSalvo',{valor:fmtMoney(mv.valor),cat:Interpreter.catDisplay(cat),sub:Interpreter.subDisplay(sub)}),()=>{Store.removeMovement(mv.id);render()});go('home');
 }
 
 function renderAddEntrada(){
