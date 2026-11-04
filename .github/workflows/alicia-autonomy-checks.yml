@@ -57,3 +57,5 @@ jobs:
           NODE
       - name: Test Alicia reminder actions
         run: node tests/alicia-reminder-actions.test.mjs
+      - name: Test Alicia financial context
+        run: node tests/alicia-finance-context.test.mjs
