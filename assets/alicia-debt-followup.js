@@ -215,12 +215,8 @@
     }
 
     (Array.isArray(Store.installments) ? Store.installments : []).forEach(function (item) {
-      if (!item || ['receber'].indexOf(String(item.tipo || '')) >= 0) return;
-      if (['pagar', 'financiamento', 'consorcio', 'cartao'].indexOf(String(item.tipo || '')) < 0) return;
-      if (item.loanId) {
-        var loan = (Store.loans || []).find(function (x) { return x && String(x.id) === String(item.loanId); });
-        if (loan && loan.tipo === 'emprestei' && loan.fromCard) return;
-      }
+      if (!item || ['receber', 'cartao'].indexOf(String(item.tipo || '')) >= 0) return;
+      if (['pagar', 'financiamento', 'consorcio'].indexOf(String(item.tipo || '')) < 0) return;
       push('installment', item, item.id, obligationDescription(item), item.valor, item.data, item.status);
     });
 
@@ -282,7 +278,7 @@
     var record = item && item.record;
     if (!record) return;
     record.paymentCheck = {
-      askedAt: record.paymentCheck && record.paymentCheck.askedAt || today(),
+      askedAt: today(),
       answeredAt: today(),
       answer: answer
     };
@@ -326,12 +322,12 @@
     }
 
     if (item.source === 'commitment') {
-      var existingMovement = null;
-      if (record.expenseMovementId) {
-        existingMovement = (Store.movements || []).find(function (movement) {
-          return movement && String(movement.id) === String(record.expenseMovementId);
-        }) || null;
-      }
+      var existingMovement = (Store.movements || []).find(function (movement) {
+        return movement && (
+          String(movement.id || '') === String(record.expenseMovementId || '') ||
+          String(movement.commitmentId || '') === String(record.id || '')
+        );
+      }) || null;
       if (!existingMovement) {
         var movement = Store.addMovement({
           tipo: 'despesa',
@@ -375,29 +371,38 @@
       valor: draft.amount,
       data: draft.dueDate,
       dataVencimento: draft.dueDate,
-      status: isPaid ? 'concluido' : 'pendente',
-      paymentStatus: isPaid ? 'pago' : 'pendente',
+      status: 'pendente',
+      paymentStatus: 'pendente',
       naturezaFinanceira: 'divida',
       origem: 'alicia',
-      dataPagamento: isPaid ? (draft.paidDate || today()) : ''
+      dataPagamento: ''
     });
     if (!item) throw new Error('O Alicerce não confirmou o cadastro dessa conta.');
     if (isPaid) {
-      var movement = Store.addMovement({
-        tipo: 'despesa',
-        descricao: draft.description,
-        estabelecimento: draft.description,
-        valor: draft.amount,
-        data: draft.paidDate || today(),
-        status: 'pago',
-        categoria: 'outros',
-        subcategoria: 'outros',
-        naturezaFinanceira: 'divida',
-        commitmentId: item.id,
-        source: 'alicia-debt-payment'
-      });
-      if (!movement || !movement.id) throw new Error('A conta foi cadastrada, mas o pagamento não foi confirmado. Revise a Visão Financeira.');
+      var movement = null;
+      try {
+        movement = Store.addMovement({
+          tipo: 'despesa',
+          descricao: draft.description,
+          estabelecimento: draft.description,
+          valor: draft.amount,
+          data: draft.paidDate || today(),
+          status: 'pago',
+          categoria: 'outros',
+          subcategoria: 'outros',
+          naturezaFinanceira: 'divida',
+          commitmentId: item.id,
+          source: 'alicia-debt-payment'
+        });
+      } catch (ignore) {}
+      if (!movement || !movement.id) {
+        item.paymentNotRegistered = true;
+        return item;
+      }
       item.expenseMovementId = movement.id;
+      item.status = 'concluido';
+      item.paymentStatus = 'pago';
+      item.dataPagamento = draft.paidDate || today();
       Store.save();
     }
     return item;
@@ -544,6 +549,9 @@
     if (!Store.userId) return 'Entre na sua conta para eu guardar essa conta antiga no seu histórico financeiro.';
     var created = createDebt(draft);
     assistant._pendingDebtDraft = null;
+    if (created.paymentNotRegistered) {
+      return 'Cadastrei "' + created.descricao + '", mas não consegui registrar a saída do pagamento. Mantive a conta como pendente para não alterar seu saldo nem marcá-la como quitada sem confirmação do lançamento. Confira a Visão Financeira antes de tentar novamente.';
+    }
     if (created.paymentStatus === 'pago') {
       return 'Registrei "' + created.descricao + '" como paga em ' + formatDate(created.dataPagamento) +
         (created.dataPagamento > created.data ? ', depois do vencimento. Vou mostrá-la entre as dívidas pagas em atraso.' : '.');
@@ -580,7 +588,11 @@
     }
     if (yes) {
       var paidDate = parseDate(message) || today();
-      markPaid(item, paidDate);
+      try {
+        markPaid(item, paidDate);
+      } catch (error) {
+        return 'Não consegui confirmar o lançamento do pagamento de "' + item.description + '". Mantive a confirmação pendente e não vou considerar a conta quitada até o registro financeiro ser concluído.';
+      }
       assistant._pendingPaymentCheck = null;
       var late = paidDate > item.dueDate;
       return 'Registrei "' + item.description + '" como paga em ' + formatDate(paidDate) +
