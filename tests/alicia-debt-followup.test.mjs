@@ -212,6 +212,7 @@ testCase('conta antiga explicitamente paga usa a data do pagamento, não o venci
   const { Store, AlicerceIA, api } = createContext();
   const answer = api.handleMessage(AlicerceIA, 'Alicia, tenho uma conta antiga de energia de R$ 150,00 que venceu em 20/10 e já paguei ontem');
   assert.match(answer, /paga em 2026-11-03/);
+  assert.equal(Store.commitments[0].descricao, 'energia');
   assert.equal(Store.commitments[0].data, '2026-10-20');
   assert.equal(Store.commitments[0].dataPagamento, '2026-11-03');
   assert.equal(Store.movements[0].data, '2026-11-03');
