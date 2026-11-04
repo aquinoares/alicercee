@@ -209,7 +209,7 @@ Deno.serve(async (req) => {
       const subscriptionStatus = String(subscription?.status || "inactive").toLowerCase();
       const expiry = subscription?.expires_at ? Date.parse(subscription.expires_at) : null;
       const paidPlanActive = subscriptionStatus === "active" &&
-        ["pro", "vip", "infinit"].includes(currentPlan) &&
+        ["normal", "pro", "vip", "infinit"].includes(currentPlan) &&
         (expiry === null || (Number.isFinite(expiry) && expiry > Date.now()));
       const trialPlanActive = subscriptionStatus === "active" && currentPlan === "trial" &&
         (expiry === null || (Number.isFinite(expiry) && expiry > Date.now()));
@@ -333,8 +333,8 @@ Deno.serve(async (req) => {
       );
       if (grantError) {
         const message = String(grantError.message || "");
-        if (message.includes("ACTIVE_PAID_SUBSCRIPTION")) {
-          return json({ ok: false, code: "ACTIVE_PAID_SUBSCRIPTION", error: "A conta já possui um plano pago ativo. Nenhuma alteração foi feita." }, 409);
+        if (message.includes("ACTIVE_EXISTING_PLAN")) {
+          return json({ ok: false, code: "ACTIVE_EXISTING_PLAN", error: "A conta já possui um plano ativo ou Trial. Nenhuma alteração foi feita." }, 409);
         }
         if (message.includes("ACTIVE_TEMPORARY_GRANT")) {
           return json({ ok: false, code: "ACTIVE_TEMPORARY_GRANT", error: "A conta já possui um acesso temporário vigente." }, 409);
