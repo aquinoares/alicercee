@@ -800,9 +800,9 @@
         var lang = Store.lang || 'pt';
         var name = '';
         try { name = String(Store.settings && Store.settings.displayName || '').trim().split(/\s+/)[0]; } catch (ignore) {}
-        if (lang === 'en') return 'Hi' + (name ? ', ' + name : '') + '! I am Alicia, your financial assistant. Ask about your spending, bills, due dates or reminders, or tell me what you need to organize.';
-        if (lang === 'es') return '¡Hola' + (name ? ', ' + name : '') + '! Soy Alicia, tu asistente financiera. Pregúntame por tus gastos, cuentas, vencimientos o recordatorios, o dime qué necesitas organizar.';
-        return 'Oi' + (name ? ', ' + name : '') + '! Eu sou a Alicia, sua assistente financeira. Pode falar comigo normalmente: pergunte sobre gastos, contas, vencimentos e compromissos, ou diga o que precisa organizar.';
+        if (lang === 'en') return 'Hi' + (name ? ', ' + name : '') + '! How are you? I am here to help you understand your money. What should we look at today?';
+        if (lang === 'es') return '¡Hola' + (name ? ', ' + name : '') + '! ¿Cómo estás? Estoy aquí para ayudarte a entender tu dinero. ¿Qué miramos hoy?';
+        return 'Oi' + (name ? ', ' + name : '') + '! Tudo bem com você? Estou aqui para ajudar a entender seu dinheiro. O que vamos olhar hoje?';
       };
       openingWrapped._aliciaIntroWrapped = true;
       AlicerceIA.mensagemAbertura = openingWrapped;
