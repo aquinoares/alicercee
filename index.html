@@ -15118,12 +15118,16 @@ function planosDataValida(value){
 function planosDataExibicao(value){var p=String(value||'').split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:''}
 function planosConstruirValores(total,count){
   var totalCents=Math.round(Number(total)*100),weights=[1,2,1,3,2,4,1,2,3,1,4,2],sumWeights=0,result=[],assigned=0;
+  var unit=totalCents>=count*5000?1000:(totalCents>=count*500?500:(totalCents>=count*100?100:1));
+  var totalUnits=Math.floor(totalCents/unit),remainder=totalCents-(totalUnits*unit),assignedUnits=0;
   for(var i=0;i<count;i++)sumWeights+=weights[i%weights.length];
   for(var j=0;j<count;j++){
-    var amount;
-    if(j===count-1)amount=totalCents-assigned;
-    else{amount=Math.round(totalCents*weights[j%weights.length]/sumWeights);amount=Math.max(1,Math.min(amount,totalCents-assigned-(count-j-1)))}
-    assigned+=amount;result.push({id:Store._uid(),valor:amount/100,data:'',confirmadoEm:'',historico:[]});
+    var units;
+    if(j===count-1)units=totalUnits-assignedUnits;
+    else{units=Math.round(totalUnits*weights[j%weights.length]/sumWeights);units=Math.max(1,Math.min(units,totalUnits-assignedUnits-(count-j-1)))}
+    var amount=(units*unit)+(j===count-1?remainder:0);
+    assigned+=amount;assignedUnits+=units;
+    result.push({id:Store._uid(),valor:amount/100,data:'',confirmadoEm:'',historico:[]});
   }
   return result;
 }
