@@ -55,3 +55,5 @@ jobs:
           if (!checked) throw new Error('No inline JavaScript blocks were checked.');
           console.log('Validated ' + checked + ' inline script blocks.');
           NODE
+      - name: Test Alicia reminder actions
+        run: node tests/alicia-reminder-actions.test.mjs
