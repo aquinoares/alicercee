@@ -63,7 +63,7 @@ assert.equal(explicit.repetition, 'semanal');
 let call = null;
 A._invokeReminderAction = async function(payload) {
   call = payload;
-  return { reminder: { id: 'r-new', descricao: payload.reminder.descricao, data: payload.reminder.data, hora: payload.reminder.hora } };
+  return { reminder: payload.reminder ? { id: 'r-new', descricao: payload.reminder.descricao, data: payload.reminder.data, hora: payload.reminder.hora } : null };
 };
 const createdReply = await A._handleReminderAction('Me lembra de pagar a conta de luz amanhã às 9');
 assert.match(createdReply, /Criei/);
