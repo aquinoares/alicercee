@@ -280,7 +280,12 @@ async function interpretOcrText(admin: any, userId: string, rawText: string): Pr
     classificationConfidence = "high";
   }
   if (!classification && merchantKey) {
-    const dictionaryEntry = merchantDictionary[merchantKey];
+    const marketplaceKeys = ["mercado livre", "mercadolivre", "amazon", "shopee", "magalu", "magazine luiza", "aliexpress", "temu"];
+    const isMarketplace = marketplaceKeys.some((key) =>
+      merchantKey === normalizeInterpreterMerchant(key) ||
+      merchantKey.indexOf(normalizeInterpreterMerchant(key)) >= 0
+    );
+    const dictionaryEntry = isMarketplace ? null : merchantDictionary[merchantKey];
     if (dictionaryEntry && validInterpreterPair(categories, String(dictionaryEntry.c || ""), String(dictionaryEntry.s || ""))) {
       classification = { category: dictionaryEntry.c, subcategory: dictionaryEntry.s };
       classificationConfidence = "medium";
