@@ -3375,9 +3375,16 @@ test('Planos substitui a tela antiga e preserva Família como finalidade finance
       status: 'pago'
     }];
     const inferred = Interpreter.inferItemCategory('fralda', 'fralda');
+    Store.commitments = [{ id: 'legacy-person-event', tipo: 'compromisso', personId: 'legacy-person', descricao: 'Evento pessoal legado', valor: 400, data: today(), status: 'pendente' }];
+    const blockedPersonWrite = Store.addCommitment({ tipo: 'compromisso', personId: 'new-person', descricao: 'Não criar', data: today(), status: 'pendente' });
+    const financeView = getVisaoFinanceira();
+    const calendarEvents = Store.getDayEvents(today());
     Store.screen = 'family';
     const retiredScreen = renderScreen();
     return {
+      blockedPersonWrite: blockedPersonWrite,
+      legacyCalendarEvents: calendarEvents.length,
+      legacyFixedCosts: financeView.custosFixos,
       familyCategoryName: ALICERCE_CATEGORIES.familia.name,
       familySubcategories: ALICERCE_CATEGORIES.familia.subs.slice(),
       inferredCategory: inferred && inferred.c,
@@ -3397,6 +3404,9 @@ test('Planos substitui a tela antiga e preserva Família como finalidade finance
   expect(result.retiredScreenHasPersonForm).toBe(false);
   expect(result.plansRouteExists).toBe(true);
   expect(result.oldFamilyStoreLoaded).toBe(false);
+  expect(result.blockedPersonWrite).toBe(null);
+  expect(result.legacyCalendarEvents).toBe(0);
+  expect(result.legacyFixedCosts).toBe(0);
 });
 
 test('Alicia explica que o cadastro de pessoas foi retirado sem confundir a categoria de compra', async function ({ page }) {
