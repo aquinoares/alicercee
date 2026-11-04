@@ -101,8 +101,8 @@ function sanitizeReminder(input: any, partial: boolean) {
   if (!partial || typeof input.avisos !== "undefined") {
     const alerts = Array.isArray(input.avisos) ? input.avisos : [0];
     if (alerts.length > 5) throw Object.assign(new Error("Quantidade de avisos inválida."), { status: 400 });
-    const unique = Array.from(new Set(alerts.map(function(value: unknown) { return Number(value); })));
-    if (unique.some(function(value: number) { return ALLOWED_ALERTS.indexOf(value) < 0; })) {
+    const unique: number[] = Array.from(new Set<number>(alerts.map(function(value: unknown) { return Number(value); })));
+    if (unique.some(function(value) { return ALLOWED_ALERTS.indexOf(value) < 0; })) {
       throw Object.assign(new Error("Intervalo de aviso não permitido."), { status: 400 });
     }
     result.avisos = unique;
