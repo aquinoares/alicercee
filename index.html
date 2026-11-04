@@ -6096,7 +6096,7 @@ AlicerceIA.enviarMensagem=async function(question){
         }
         if(!(interpretation.categoria&&interpretation.subcategoria&&alicerClassificationPairIsValid(interpretation.categoria,interpretation.subcategoria))&&
            typeof Interpreter!=='undefined'&&Interpreter&&typeof Interpreter.inferItemCategory==='function'){
-          var localPurpose=String(expenseCommand.purpose||'').replace(/\\bpara\\s+/i,'').trim();
+          var localPurpose=String(expenseCommand.purpose||'').replace(/\bpara\s+/i,'').trim();
           var localClassification=Interpreter.inferItemCategory(
             expenseCommand.item,
             'contexto '+localPurpose+' '+String(expenseCommand.local||'')
