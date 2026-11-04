@@ -9309,7 +9309,7 @@ function renderScreen(){
        renderAddGasto, renderAddGastoDoubt, renderGastoManual, renderAddEntrada,
        renderAddEmprestimo, renderAddCompromisso, renderAddLembrete, renderAlerts,
        renderRendaExtra, renderFinanciamento, renderConsorcio,
-       renderFamily*, renderInsurance*, renderDiagnostico
+        renderPlanos*, renderInsurance*, renderDiagnostico
        seguem o mesmo layout das rodadas anteriores com as correcoes 2.1-2.5,
        fmtMoney, tema e error handling, usando as chaves i18n atualizadas. ] ... */
 
@@ -10225,7 +10225,7 @@ function toggleGastoSub(id){
 function changeMonth(dir){const d=Store.screenData||{month:Clock.now().getMonth()+1,year:Clock.now().getFullYear()};d.month+=dir;if(d.month>12){d.month=1;d.year++}if(d.month<1){d.month=12;d.year--}Store.screenData=d;render()}
 
 /* Cartoes, Emprestimos, Calendario, Visao, Config, Add, todas as formularios,
-   Familia, Medicos, Medicacoes, Seguro, Renda extra, Financiamento, Consorcio,
+   Planos, Seguro, Renda extra, Financiamento, Consorcio,
    Alerts - mantidas com as correcoes 2.1-2.5 aplicadas.
    Cada funcao com try/catch interno. */
 
@@ -13421,7 +13421,7 @@ function renderConfig(){
   let html='<div class="content"><h2 class="mt-4">'+t('config')+'</h2><div class="section-divider"></div>';
   html+='<div class="form-group"><label class="form-label" for="alicerce-config-theme">'+t('aparência')+'</label><select id="alicerce-config-theme" onchange="changeTheme(this.value)"><option value="azul"'+(Store.theme==='azul'?' selected':'')+'>'+t('temaAzul')+'</option><option value="claro"'+(Store.theme==='claro'?' selected':'')+'>'+t('temaClaro')+'</option><option value="marinho"'+(Store.theme==='marinho'?' selected':'')+'>'+t('temaMarinho')+'</option><option value="moderno"'+(Store.theme==='moderno'?' selected':'')+'>Moderno</option></select></div>';
   html+='<div class="form-group"><label class="form-label" for="alicerce-config-lang">'+t('idioma')+'</label><select id="alicerce-config-lang" onchange="changeLang(this.value)"><option value="pt"'+(Store.lang==='pt'?' selected':'')+'>Portugues</option><option value="en"'+(Store.lang==='en'?' selected':'')+'>English</option><option value="es"'+(Store.lang==='es'?' selected':'')+'>Espanol</option></select></div>';
-  html+='<div class="form-group"><label class="form-label"><input type="checkbox" '+(Store.settings.hideHealthDetails?'checked':'')+' onchange="toggleHideHealth(this.checked)"> '+t('ocultarSaude')+'</label></div>';
+
   var analyticsTitle=Store.lang==='en'?'Share usage events to improve Alicerce':Store.lang==='es'?'Compartir eventos de uso para mejorar Alicerce':'Compartilhar eventos de uso para melhorar o Alicerce';
   var analyticsDescription=Store.lang==='en'?'Records general events such as app opening and movement creation, linked to your account for aggregate metrics. It never sends amounts, categories, descriptions, merchants, cards or financial details. Turning it off deletes your previously stored events. Optional; off by default.':Store.lang==='es'?'Registra eventos generales, como abrir la aplicación y crear movimientos, vinculados a tu cuenta para métricas agregadas. Nunca envía importes, categorías, descripciones, comercios, tarjetas ni detalles financieros. Al desactivarlo, se eliminan los eventos anteriores vinculados a tu cuenta. Es opcional y está desactivado por defecto.':'Registra eventos gerais, como abertura do aplicativo e criação de movimentações, vinculados à sua conta para gerar métricas agregadas. Não envia valores, categorias, descrições, estabelecimentos, cartões ou detalhes financeiros. Ao desativar, os eventos anteriores vinculados à sua conta serão apagados. É opcional e vem desativado.';
   html+='<div class="form-group" style="padding:14px;border:1px solid var(--line);border-radius:12px;margin-top:14px"><label class="form-label" for="alicerce-analytics-consent" style="display:flex;align-items:flex-start;gap:10px"><input id="alicerce-analytics-consent" type="checkbox" '+(Store.settings.analyticsConsent===true?'checked':'')+' onchange="alicerceSetAnalyticsConsent(this.checked)" style="margin-top:3px"> <span>'+analyticsTitle+'</span></label><p class="text-muted text-sm" style="margin:7px 0 0 27px;line-height:1.5">'+analyticsDescription+'</p></div>';
@@ -13441,7 +13441,7 @@ function changeTheme(theme){
   Store.save();render();
 }
 function changeLang(lang){Store.lang=lang;Store.settings.lang=lang;Store.save();render()}
-function toggleHideHealth(val){Store.settings.hideHealthDetails=val;Store.save()}
+
 
 function alicerceAnalyticsAllowedEvent(eventName){
   return ['app_opened','movement_created','first_movement_created'].indexOf(String(eventName||''))>=0;
@@ -15079,7 +15079,7 @@ function getAlerts(){
   const todayStr=today(),tomorrowStr=dateShift(todayStr,1),alerts=[];
   Store.installments.forEach(i=>{if(i.status!=='pago'&&i.status!=='recebido'){if(i.data===todayStr)alerts.push({text:(i.descricao||'')+' - '+fmtMoney(i.valor),label:t('hoje')});else if(i.data===tomorrowStr)alerts.push({text:(i.descricao||'')+' - '+fmtMoney(i.valor),label:t('amanha')})}});
   const bal=Store.getBalances();if(bal.disponivelApos<0)alerts.push({text:t('saldoNegativo',{dias:'5'}),label:t('atencao')});
-  Store.commitments.filter(c=>c.personId&&c.status!=='concluido'&&c.data===todayStr).forEach(c=>{const p=Store.familyPeople.find(x=>x.id===c.personId);alerts.push({text:Store.settings.hideHealthDetails?t('acompanhamento'):(p?p.nome:'')+' - '+(c.descricao||''),label:t('hoje')})});
+
   Store.commitments.filter(c=>c&&!c.personId&&c.tipo==='lembrete').forEach(c=>{
     const mins=c.avisos||[],h=c.hora?Number(c.hora.slice(0,2)):8,m=c.hora?Number(c.hora.slice(3,5)):0;
     for(let day=c.data;day<todayStr;day=dateShift(day,1)){if(occursOn(c,day)&&!reminderDone(c,day)){const p=day.split('-').map(Number),diff=Math.floor((new Date(p[0],p[1]-1,p[2],h,m)-Clock.now())/60000);if(mins.some(x=>diff<=x)){alerts.push({text:c.descricao||'',label:t('avisoAgora'),reminderId:c.id,date:day});return}}}
@@ -16087,8 +16087,7 @@ function attachListeners(){
       },30);
     }    const dc=document.getElementById('dc-track');
     if(dc){dc.addEventListener('scroll',function(){updateDynamicDots()},{passive:true});dc.addEventListener('touchstart',function(){_dcPaused=true},{passive:true});dc.addEventListener('touchend',function(){setTimeout(()=>{_dcPaused=false},8000)},{passive:true})}
-    const fhr=document.getElementById('fh-results');
-    if(fhr)renderFamilyHistoryFilter();
+
   }catch(e){}
 }
 
