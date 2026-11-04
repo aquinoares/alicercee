@@ -5974,6 +5974,105 @@ AlicerceIA._applyFinancialReviewReply=function(message){
 
 
 
+AlicerceIA._buildFinanceContext=function(question,localAnswer){
+  var normalized=this._norm(question);
+  var moneyValue=function(value){
+    var number=Number(value);
+    return isFinite(number)?number:null;
+  };
+  var context={
+    fonte:'Cálculos e registros da própria conta no Alicerce',
+    data_referencia:today()
+  };
+  try{
+    if(typeof Store.getBalances==='function'){
+      var balances=Store.getBalances()||{};
+      context.saldos={
+        disponivel:moneyValue(balances.disponivel),
+        a_receber:moneyValue(balances.aReceber),
+        a_pagar:moneyValue(balances.aPagar),
+        comprometido:moneyValue(balances.comprometido),
+        disponivel_apos_compromissos:moneyValue(balances.disponivelApos),
+        saldo_proprio:moneyValue(balances.saldoProprio),
+        patrimonio:moneyValue(balances.patrimonio)
+      };
+    }
+  }catch(error){
+    context.saldos_indisponiveis=true;
+  }
+
+  if(/\b(cartao|cartoes|fatura|limite)\b/.test(normalized)){
+    context.cartoes=(Store.cards||[]).slice(0,12).map(function(card){
+      var invoice=null,available=null,used=null;
+      try{invoice=Store.getCardCurrentInvoice(card.id)||null;}catch(error){}
+      try{available=Store.getCardAvailableLimit(card.id);}catch(error){}
+      try{used=Store.getCardUsedLimit(card.id);}catch(error){}
+      return {
+        nome:String(card.nome||card.name||card.descricao||'Cartão').slice(0,70),
+        limite:moneyValue(card.limite),
+        limite_disponivel:moneyValue(available),
+        limite_utilizado:moneyValue(used),
+        fatura_atual:moneyValue(invoice&&invoice.total),
+        parcelas_na_fatura:Number(invoice&&invoice.count)||0,
+        dia_fechamento:Number(card.fechamento)||null,
+        dia_vencimento:Number(card.vencimento)||null
+      };
+    });
+  }
+
+  if(/\b(parcela|parcelas|parcelamento|financiamento|consorcio|emprestimo|emprestimos)\b/.test(normalized)){
+    var pending=(Store.installments||[]).filter(function(item){
+      return item&&item.status!=='pago'&&item.status!=='recebido';
+    }).sort(function(a,b){
+      return String(a.data||'9999-12-31').localeCompare(String(b.data||'9999-12-31'));
+    });
+    context.parcelas_pendentes=pending.slice(0,12).map(function(item){
+      return {
+        descricao:String(item.descricao||item.local||item.tipo||'Parcela').slice(0,90),
+        tipo:String(item.tipo||'').slice(0,30),
+        numero:Number(item.parcelaAtual)||null,
+        total_parcelas:Number(item.totalParcelas)||null,
+        valor:moneyValue(item.valor),
+        vencimento:String(item.data||''),
+        status:String(item.status||'pendente').slice(0,24)
+      };
+    });
+    try{
+      if(typeof Store.calcLoanPending==='function'){
+        var loans=Store.calcLoanPending()||{};
+        context.emprestimos_pendentes={
+          a_receber:moneyValue(loans.aReceber),
+          a_pagar:moneyValue(loans.aPagar)
+        };
+      }
+    }catch(error){}
+  }
+
+  if(/\b(gasto|gastos|gastei|despesa|despesas|compra|comprei|receita|receitas)\b/.test(normalized)){
+    var movements=(Store.movements||[]).filter(function(item){
+      return item&&(item.tipo==='despesa'||item.tipo==='receita');
+    }).sort(function(a,b){
+      return String(b.data||'').localeCompare(String(a.data||''));
+    });
+    context.movimentacoes_recentes=movements.slice(0,10).map(function(item){
+      return {
+        tipo:String(item.tipo||''),
+        descricao:String(item.descricao||item.local||'Movimentação').slice(0,90),
+        categoria:String(item.categoria||'').slice(0,50),
+        subcategoria:String(item.subcategoria||'').slice(0,50),
+        valor:moneyValue(item.valor),
+        data:String(item.data||''),
+        status:String(item.status||'').slice(0,24)
+      };
+    });
+  }
+
+  if(localAnswer&&String(localAnswer).trim()){
+    context.resumo_do_interpretador=String(localAnswer).slice(0,420);
+  }
+  return JSON.stringify(context);
+};
+
 AlicerceIA._handleCommitmentQuery=async function(message){
   var normalized=this._norm(message);
   var mentionsCommitment=/\b(compromisso|compromissos)\b/.test(normalized);
@@ -6448,7 +6547,7 @@ AlicerceIA.enviarMensagem=async function(question){
     }
     if(consent==='yes'){
       var financeIntent=/(gasto|gastei|compra|comprei|paguei|saldo|cart[aã]o|fatura|despesa|receita|dinheiro|parcela|financeir|compromiss|lembret|vencimento|mes passado|m[eê]s passado|m[eê]s anterior|compar)/i.test(questionForEngine);
-      var financeContext=financeIntent?localAnswer:'';
+      var financeContext=financeIntent?this._buildFinanceContext(questionForEngine,localAnswer):'';
       try{
         var aiResult=await client.functions.invoke('alicia-chat',{
           body:{message:message,finance_context:financeContext,consent:true}
