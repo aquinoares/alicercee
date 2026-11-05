@@ -434,3 +434,14 @@ entrypoint = "./functions/alicia-tts/index.ts"
 enabled = true
 verify_jwt = true
 entrypoint = "./functions/alicerce-analytics-events/index.ts"
+
+[functions.alicerce-team-insights]
+enabled = true
+verify_jwt = true
+import_map = "./functions/alicerce-team-insights/deno.json"
+entrypoint = "./functions/alicerce-team-insights/index.ts"
+
+[functions.ia-executar]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/ia-executar/index.ts"
