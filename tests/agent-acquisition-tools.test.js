@@ -50,7 +50,7 @@ const sample = {
       limitations: ["Somente contas com consentimento."]
     },
     dataQuality: {
-      rowsRead: { customerAds: 12, adTrafficEvents: 50, referrals: 6 },
+      rowsRead: { customerAds: 12, adTrafficEvents: 50, referrals: 6, private_internal_key: 999 },
       countConfidence: "high",
       performanceInterpretationConfidence: "medium",
       limitations: ["Não há atribuição de gasto de mídia."]
@@ -74,7 +74,7 @@ test("normalizes only allowlisted aggregate fields and strips identifiers", func
   assert.equal(normalized.customers.registered, 120);
   assert.equal(normalized.acquisition.appAdTraffic.clicks, 10);
   assert.doesNotMatch(serialized, /pessoa@example\.com|private-user-id|private-viewer-id|private-contact|private-ad-id|private ad title/);
-  assert.doesNotMatch(serialized, /"source":"untrusted source text"/);
+  assert.doesNotMatch(serialized, /"source":"untrusted source text"/);\n  assert.doesNotMatch(serialized, /private_internal_key/);
 });
 
 test("does not turn missing numeric values into zero", function () {
