@@ -76,9 +76,12 @@ function safeTextList(value, maximum, maxLength) {
 
 function safeCountMap(value) {
   const source = objectOrEmpty(value);
+  const allowedKeys = ["customerAds", "adTrafficEvents", "referrals", "productUsageEvents"];
   const result = {};
-  Object.keys(source).slice(0, 12).forEach(function (key) {
-    result[key.slice(0, 40)] = numberOrNull(source[key]);
+  allowedKeys.forEach(function (key) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
+      result[key] = numberOrNull(source[key]);
+    }
   });
   return result;
 }
