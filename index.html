@@ -6669,6 +6669,50 @@ AlicerceIA._loadPhotoOcr=function(){
   });
   return this._ocrScriptPromise;
 };
+/* Leitura estruturada local de contas de energia: não cria nem altera lançamentos. */
+AlicerceIA._lerContaEnergia=function(raw){
+  var lines=String(raw||'').replace(/\r/g,'').split('\n').map(function(x){return x.trim();}).filter(Boolean);
+  var normalized=function(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();};
+  var all=normalized(lines.join(' '));
+  if(!/\b(energia eletrica|energia eletr|distribuidora|kwh|neoenergia|enel|equatorial|cpfl|cemig|energisa|light|edp|copel|celesc|celpe|fatura de energia)\b/.test(all))return null;
+  var money=function(v){var m=String(v||'').match(/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})\b/i);return m?m[1]:'';};
+  var date=function(v){var m=String(v||'').match(/\b(\d{2}[\/.-]\d{2}[\/.-]\d{4})\b/);return m?m[1].replace(/[.-]/g,'/'):'';};
+  var find=function(regex,extract,forward){
+    for(var i=0;i<lines.length;i++){
+      if(!regex.test(normalized(lines[i])))continue;
+      var value=extract(lines[i]);
+      if(!value&&forward&&i+1<lines.length)value=extract(lines[i+1]);
+      if(value)return value;
+    }
+    return '';
+  };
+  var bill={
+    empresa:find(/\b(neoenergia|enel|equatorial|cpfl|cemig|energisa|light|edp|copel|celesc|celpe)\b/,function(line){return line.match(/\b(Neoenergia|Enel|Equatorial|CPFL|Cemig|Energisa|Light|EDP|Copel|Celesc|Celpe)\b/i)?.[0]||'';},false),
+    valor:find(/(total\s*(?:a\s*)?pagar|valor\s*(?:total|a\s*pagar|da\s*fatura)|total\s*da\s*fatura|total\s*geral)/,money,true),
+    vencimento:find(/\b(vencimento|venc\.?|data\s*de\s*vencimento)\b/,date,true),
+    referencia:find(/\b(referencia|mes\s*de\s*referencia|competencia)\b/,function(line){var m=line.match(/\b(0?[1-9]|1[0-2])[\/.-](20\d{2})\b/);return m?m[1].padStart(2,'0')+'/'+m[2]:'';},true)
+  };
+  // Sem rótulo inequívoco de total, não selecionar números de impostos, consumo ou código de barras.
+  return bill;
+};
+AlicerceIA._mostrarLeituraContaEnergia=function(text){
+  var bill=this._lerContaEnergia(text);
+  if(!bill)return false;
+  var msg='Identifiquei uma conta de energia. Separei os dados que consegui ler:\n';
+  msg+='\nEmpresa: '+(bill.empresa||'não identificada');
+  msg+='\nValor total: '+(bill.valor?'R$ '+bill.valor:'não identificado');
+  msg+='\nVencimento: '+(bill.vencimento||'não identificado');
+  msg+='\nReferência: '+(bill.referencia||'não identificada');
+  msg+='\n\nConfira os dados na fatura. Não registrei nenhum gasto ou pagamento. Se a conta ainda não foi paga, ela não deve reduzir seu saldo disponível como despesa paga.';
+  if(!Array.isArray(this._messages))this._messages=[];
+  this._messages.push({role:'assistant',text:msg});
+  while(this._messages.length>4)this._messages.shift();
+  this._photoTextPending=false;
+  this._question='';
+  this._answer=msg;
+  render();
+  return true;
+};
 AlicerceIA.processarFoto=async function(input){
   this._resetUser();
   this._photoTextPending=false;
@@ -6728,6 +6772,8 @@ AlicerceIA.processarFoto=async function(input){
     if(status)status.textContent='Não consegui identificar texto suficiente. Tente fotografar com mais luz e foco.';
     return;
   }
+  // Para contas de energia, evitar colar o OCR inteiro na conversa ou salvar como descrição.
+  if(this._mostrarLeituraContaEnergia(extracted))return;
   var messageInput=document.getElementById('alicerce-assistant-input');
   var maxChars=5000;
   var text=extracted.slice(0,maxChars);
@@ -6737,7 +6783,7 @@ AlicerceIA.processarFoto=async function(input){
     messageInput.value=text;
     messageInput.focus();
   }
-  if(status)status.textContent='Texto extraído no aparelho. Revise e toque em enviar. O Alicerce não envia nem armazena a foto.';
+  if(status)status.textContent='Texto extraído no aparelho. Revise antes de enviar; documentos diferentes de contas de energia ainda não possuem separação automática.';
 };
 
 function renderAssistente(){
