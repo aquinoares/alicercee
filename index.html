@@ -6852,7 +6852,8 @@ AlicerceIA._mostrarLeituraContaEnergia=function(text){
   msg+='\nReferência: '+(bill.referencia||'não identificada');
   msg+='\n\nConfira os dados na fatura. Não registrei nenhum gasto ou pagamento. Se a conta ainda não foi paga, ela não deve reduzir seu saldo disponível como despesa paga.';
   if(!Array.isArray(this._messages))this._messages=[];
-  this._messages.push({role:'assistant',text:msg});
+  var previous=this._messages[this._messages.length-1];
+  if(!previous||previous.role!=='assistant'||previous.text!==msg)this._messages.push({role:'assistant',text:msg});
   while(this._messages.length>4)this._messages.shift();
   this._photoTextPending=false;
   this._question='';
