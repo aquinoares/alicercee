@@ -6002,7 +6002,8 @@ AlicerceIA._applyFinancialReviewReply=function(message){
   var normalizedReply=this._norm(message);
   // Interpreta respostas curtas típicas sem exigir linguagem técnica.
   // O texto original continua sendo a finalidade registrada, sem inferir natureza essencial/supérflua.
-  if(/^(uso pessoal|pessoal|meu celular|minha linha|celular pessoal|minha internet|telefonia|internet|conta de celular|plano de celular|plano de telefone)$/.test(normalizedReply))message='Uso pessoal — linha de telefone/internet';
+  if(/^(uso pessoal|pessoal)$/.test(normalizedReply))message='Uso pessoal';
+  else if(/^(meu celular|minha linha|celular pessoal|minha internet|telefonia|internet|conta de celular|plano de celular|plano de telefone)$/.test(normalizedReply))message='Uso pessoal — linha de telefone/internet';
   else if(/^(trabalho|pro trabalho|para trabalho|empresa|linha da empresa|celular do trabalho)$/.test(normalizedReply))message='Uso para trabalho';
   else if(/^(outra pessoa|de outra pessoa|familiar|familia|para minha familia)$/.test(normalizedReply))message='Uso de outra pessoa ou familiar';
   if(/^(pular|pula|proximo|proxima|skip|saltar)$/.test(normalizedReply)){
