@@ -6821,7 +6821,8 @@ AlicerceIA._mostrarLeituraCupomMercado=function(text){
   msg+='\n\nNão salvei compra, valor ou pagamento. Se um dado estiver ausente, confira-o na foto original. A Alicia não deve adivinhar valores nem registrar o texto completo como despesa.';
   this._photoTextPending=false;
   if(!Array.isArray(this._messages))this._messages=[];
-  this._messages.push({role:'assistant',text:msg});
+  var previous=this._messages[this._messages.length-1];
+  if(!previous||previous.role!=='assistant'||previous.text!==msg)this._messages.push({role:'assistant',text:msg});
   while(this._messages.length>4)this._messages.shift();
   this._question='';this._answer=msg;
   render();
