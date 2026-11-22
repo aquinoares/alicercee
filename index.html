@@ -6926,17 +6926,6 @@ AlicerceIA.processarFoto=async function(input){
   }
   // OCR não classificado: não colocar um documento bruto no campo de conversa.
   this._responderOcrIndeterminado();
-  return;
-  var messageInput=document.getElementById('alicerce-assistant-input');
-  var maxChars=5000;
-  var text=extracted.slice(0,maxChars);
-  if(extracted.length>maxChars)text+='\n\n[Texto parcial: a leitura excedeu o limite de 5.000 caracteres.]';
-  this._photoTextPending=true;
-  if(messageInput){
-    messageInput.value=text;
-    messageInput.focus();
-  }
-  if(status)status.textContent='Texto extraído no aparelho. Revise antes de enviar; documentos diferentes de contas de energia ainda não possuem separação automática.';
 };
 
 function renderAssistente(){
