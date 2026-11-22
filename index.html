@@ -5881,6 +5881,7 @@ AlicerceIA._financialReviewNextPrompt=function(first){
   var amount=fmtMoney(selected.valor);
   var date=fmtDate(selected.data);
   var perfume=/\bperfume\b/i.test(label);
+  var phonePlan=/\b(plano\s+tim|tim\s+(?:controle|pre|pos)|recarga\s+tim)\b/i.test(label);
   var displayLabel=perfume?label.replace(/\s+e\s+o\s+pagamento\s*$/i,'').trim():label;
   var count=candidates.length;
   if(Store.lang==='en'){
@@ -5894,7 +5895,7 @@ AlicerceIA._financialReviewNextPrompt=function(first){
       '\n\nTambién puedes responder "No recuerdo", "Saltar" o "Terminar revisión".';
   }
   return (first?'Encontrei '+count+' despesa(s) para revisar. Vamos por partes.\n\n':'Próxima despesa:\n\n')+
-    displayLabel+' — '+amount+'\n'+date+'\n\n'+(perfume?'Esse perfume foi para uso pessoal, presente, trabalho ou outra finalidade?':'Você lembra para que foi esse gasto?')+
+    displayLabel+' — '+amount+'\n'+date+'\n\n'+(perfume?'Esse perfume foi para uso pessoal, presente, trabalho ou outra finalidade?':phonePlan?'Esse Plano TIM era para seu celular pessoal, trabalho ou de outra pessoa?':'Você lembra para que foi esse gasto?')+
     '\n\nPode responder com suas palavras, dizer "Não lembro", "Pular" ou "Encerrar revisão".';
 };
 AlicerceIA._financialReviewProfileFromReply=function(message){
@@ -5999,6 +6000,11 @@ AlicerceIA._applyFinancialReviewReply=function(message){
     return 'Esse lançamento não está mais disponível. '+this._financialReviewNextPrompt(false);
   }
   var normalizedReply=this._norm(message);
+  // Interpreta respostas curtas típicas sem exigir linguagem técnica.
+  // O texto original continua sendo a finalidade registrada, sem inferir natureza essencial/supérflua.
+  if(/^(uso pessoal|pessoal|meu celular|minha linha|celular pessoal|minha internet|telefonia|internet|conta de celular|plano de celular|plano de telefone)$/.test(normalizedReply))message='Uso pessoal — linha de telefone/internet';
+  else if(/^(trabalho|pro trabalho|para trabalho|empresa|linha da empresa|celular do trabalho)$/.test(normalizedReply))message='Uso para trabalho';
+  else if(/^(outra pessoa|de outra pessoa|familiar|familia|para minha familia)$/.test(normalizedReply))message='Uso de outra pessoa ou familiar';
   if(/^(pular|pula|proximo|proxima|skip|saltar)$/.test(normalizedReply)){
     state.handled.push(this._financialReviewKey(row));
     return 'Tudo bem, vamos deixar essa despesa para outra hora. Nenhuma informação foi alterada.\n\n'+this._financialReviewNextPrompt(false);
@@ -6133,7 +6139,11 @@ AlicerceIA.enviarMensagem=async function(question){
     if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
     return;
   }
-  if(this._pendingFinancialReview&&!pendingQuestion){
+  // Enquanto houver revisão em andamento, respostas sobre a finalidade têm prioridade.
+  // Evita que frases como "foi para meu celular?" sejam tratadas como novas perguntas.
+  // Apenas uma consulta financeira claramente independente sai deste fluxo.
+  var independentFinancialQuestion=pendingQuestion&&/^(?:quanto|onde|qual|quais|compare|analise|me mostra|me mostre|me diga)\s+(?:gastei|gastos|despesas|saldo|fatura|receitas|dinheiro|total|devo|tenho)\b/.test(messageNorm);
+  if(this._pendingFinancialReview&&!independentFinancialQuestion){
     var reviewAnswer=this._applyFinancialReviewReply(message);
     this._messages.push({role:'assistant',text:reviewAnswer});
     while(this._messages.length>4)this._messages.splice(0,2);
