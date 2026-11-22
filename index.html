@@ -3381,6 +3381,8 @@ function normalizeAlicerMovementAnalysis(value){
       });
     }
     if(Object.keys(confidence).length)profile.confidence=confidence;
+    // Persist conversation review status without treating it as financial classification.
+    if(rawProfile.reviewedByAlicia===true)profile.reviewedByAlicia=true;
     if(String(rawProfile.source||'').trim()==='user_confirmed'&&Object.keys(profile).length>1){
       profile.source='user_confirmed';
       out.expenseProfile=profile;
