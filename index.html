@@ -6402,7 +6402,7 @@ AlicerceIA.enviarMensagem=async function(question){
   var answer='';
   var localAnswer='';
   if(inputSource==='ocr'){
-    answer='A leitura de fotos e documentos está temporariamente desativada. Nenhum texto da imagem foi enviado ou registrado.';
+    answer='A foto foi lida, mas não consegui separar seus dados com segurança. Nenhum lançamento foi criado. Confira a imagem e tente novamente com melhor nitidez.';
   }else{
     try{
       localAnswer=String(this.responder(questionForEngine)||'');
@@ -6435,7 +6435,7 @@ AlicerceIA.enviarMensagem=async function(question){
       if(ocrStatus)ocrStatus.textContent=answer;
     }
   }else if(inputSource==='ocr'){
-    answer='A leitura de fotos e documentos está temporariamente desativada. Nenhum texto da imagem foi enviado ou registrado.';
+    answer='A foto foi lida, mas não consegui separar seus dados com segurança. Nenhum lançamento foi criado. Confira a imagem e tente novamente com melhor nitidez.';
   }else if(ALICIA_REMOTE_MODEL_ENABLED&&userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
     var consentKey='alicia_ai_consent_v1_'+userId;
     var consent='';
@@ -6445,7 +6445,7 @@ AlicerceIA.enviarMensagem=async function(question){
         ? 'Alicia can use an external AI provider (OpenRouter) for ordinary conversations. In those cases, your message, recent history and, when relevant, a summary calculated by Alicerce may be sent to the provider, and conversation text is saved to your private account. Photo and document reading is temporarily disabled. No recognized text is sent or stored. This chat does not send audio recordings. Do you agree?'
         : Store.lang==='es'
           ? 'Alicia puede usar un proveedor externo de IA (OpenRouter) para conversaciones comunes. En esos casos, tu mensaje, el historial reciente y, cuando sea relevante, un resumen calculado por Alicerce pueden enviarse al proveedor y el texto se guarda en tu cuenta privada. La lectura de fotos y documentos está temporalmente desactivada. No se envía ni almacena el texto reconocido. Este chat no envía grabaciones de audio. ¿Aceptas?'
-          : 'Alicia pode usar um provedor externo de IA (OpenRouter) para responder conversas comuns. Nesses casos, sua mensagem, o histórico recente e, quando relevante, um resumo calculado pelo Alicerce podem ser enviados ao provedor e o texto da conversa fica salvo na sua conta privada. A leitura de fotos e documentos está temporariamente desativada. Nenhum texto reconhecido é enviado ou armazenado. Este chat não envia gravações de áudio. Você autoriza?';
+          : 'Alicia pode usar um provedor externo de IA (OpenRouter) para responder conversas comuns. Nesses casos, sua mensagem, o histórico recente e, quando relevante, um resumo calculado pelo Alicerce podem ser enviados ao provedor e o texto da conversa fica salvo na sua conta privada. A leitura de fotos é feita localmente para documentos reconhecidos. Nenhum texto reconhecido é enviado ao provedor remoto ou salvo no histórico. Este chat não envia gravações de áudio. Você autoriza?';
       try{
         consent=window.confirm(notice)?'yes':'no';
         if(consent==='yes')window.localStorage.setItem(consentKey,'yes');
