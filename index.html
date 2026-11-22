@@ -3506,6 +3506,10 @@ const Store={
 
   addMovement(mv){
     if(!mv||typeof mv!=='object'||Array.isArray(mv))return null;
+    if(alicerceDocumentoOCRSuspeito(mv.descricao||'')){
+      showToast('Texto de documento detectado: revise os dados antes de salvar. Nenhuma despesa foi criada.');
+      return null;
+    }
     var firstMovement = (!Array.isArray(this.movements) || this.movements.length === 0) &&
       (!Array.isArray(this.installments) || this.installments.length === 0);
     var analysis=normalizeAlicerMovementAnalysis(mv.analysis);
@@ -5878,6 +5882,9 @@ AlicerceIA._financialReviewNextPrompt=function(first){
     purchaseId:selected.purchaseId||''
   };
   var label=String(selected.descricao||selected.local||selected.subcategoria||selected.categoria||'despesa').trim();
+  if(alicerceDocumentoOCRSuspeito(label)){
+    return 'Encontrei um lançamento que parece ser o texto inteiro de uma fatura lida por foto.\n\nValor registrado: '+fmtMoney(selected.valor)+' · Data: '+fmtDate(selected.data)+'.\n\nA leitura e o valor podem estar errados. Não vou tentar adivinhar a finalidade nem corrigir o saldo automaticamente. Abra Meus gastos, escolha o mês do lançamento e confira o item "Documento com leitura incorreta". Lá você poderá excluir somente esse registro, com confirmação, e registrar os dados corretos após conferir a fatura.\n\nSe quiser seguir para os outros gastos, responda "Pular".';
+  }
   var amount=fmtMoney(selected.valor);
   var date=fmtDate(selected.data);
   var perfume=/\bperfume\b/i.test(label);
@@ -6000,6 +6007,12 @@ AlicerceIA._applyFinancialReviewReply=function(message){
     return 'Esse lançamento não está mais disponível. '+this._financialReviewNextPrompt(false);
   }
   var normalizedReply=this._norm(message);
+  var correctionIntent=/\b(errad|incorret|equivocad|nao confere|nao bate|leitura errada|valor errado|valor incorreto|ocr errado|revisar valor|corrigir valor)\b/.test(normalizedReply);
+  if(correctionIntent){
+    state.handled.push(this._financialReviewKey(row));
+    var context=alicerceDocumentoOCRSuspeito(row.descricao||'')?' Esse lançamento contém uma leitura de documento aparentemente corrompida.':'';
+    return 'Entendi: você está apontando um erro neste lançamento, não pedindo uma análise de dívidas.'+context+'\n\nValor registrado: '+fmtMoney(row.valor)+' · '+fmtDate(row.data)+'. Não alterei o valor nem marquei qualquer pagamento. Abra Meus gastos no mês do lançamento para conferir e corrigir o registro. Para documentos OCR incorretos, há uma opção de excluir com confirmação.\n\nNão vou classificar essa despesa enquanto houver dúvida.';
+  }
   // Interpreta respostas curtas típicas sem exigir linguagem técnica.
   // O texto original continua sendo a finalidade registrada, sem inferir natureza essencial/supérflua.
   if(/^(uso pessoal|pessoal)$/.test(normalizedReply))message='Uso pessoal';
@@ -6127,6 +6140,12 @@ AlicerceIA.enviarMensagem=async function(question){
     }
   var expenseCommand=null;
   var messageNorm=this._norm(message);
+  if(!this._pendingFinancialReview&&/\b(conta|fatura|lancamento|registro|valor|leitura|ocr)\b/.test(messageNorm)&&/\b(errad|incorret|nao confere|nao bate|valor errado|leitura errada)\b/.test(messageNorm)){
+    var corrective='Entendi que você identificou um erro no lançamento. Não vou tratar isso como consulta de dívidas e não alterei nenhum dado. Abra Meus gastos, confira o mês e os detalhes do registro. Se a descrição contiver uma fatura inteira lida incorretamente, você poderá excluir esse lançamento com confirmação. Verifique o valor correto na fatura antes de registrá-lo novamente.';
+    this._messages.push({role:'assistant',text:corrective});
+    while(this._messages.length>4)this._messages.splice(0,2);
+    this._answer=corrective;this._question=message;render();return;
+  }
   var pendingQuestion=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque|what|which|where|when|how|compare|show|tell|why|cuanto|donde|cual|que|como|cuando|compara|muestra|dime)\b/.test(messageNorm)||/\?\s*$/.test(message);
   var cancelPending=/^(?:cancela|cancelar|cancelar compra|desisti|desistir|deixa|deixa pra la|nao quero|esquece|encerrar revisao|parar revisao|chega de revisar|stop reviewing|terminar revision)$/i.test(messageNorm);
   if(this._pendingFinancialReview&&cancelPending){
@@ -10145,6 +10164,19 @@ function gastosIconeCategoria(categoria){
   const desenho=desenhos[chave]||desenhos.outros;
   return '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+desenho+'</svg>';
 }
+
+/* Reconhece textos brutos de documentos importados por engano como nome de despesa.
+   Conservador: exige evidências de documento e extensão incomum. */
+function alicerceDocumentoOCRSuspeito(value){
+  var text=String(value||'');
+  if(text.length<160)return false;
+  var markers=0;
+  if(/\b(DANFE|nota fiscal|NF-e|NFe|chave de acesso)\b/i.test(text))markers++;
+  if(/\b(CNPJ|CPF|consumo.te|kwh|energia eletr|distribuidora|fatura)\b/i.test(text))markers++;
+  if(/\b(qr code|data de emissao|s[eé]rie [uú]nica|ICMS|c[oó]digo de barras)\b/i.test(text))markers++;
+  return markers>=2;
+}
+
 function renderGastos(){
   const now=Clock.now();
   const month=Store.screenData&&Store.screenData.month?Store.screenData.month:now.getMonth()+1;
@@ -10270,6 +10302,7 @@ function renderGastos(){
     const categoria=Interpreter.catDisplay(m.categoria||'outros');
     const subcategoria=Interpreter.subDisplay(m.subcategoria||'outros');
     const produto=m.descricao||m.item||'Despesa';
+    const documentoSuspeito=!isCard&&alicerceDocumentoOCRSuspeito(produto);
     const local=m.local||m.estabelecimento||'';
     const pagamento=m.pagamento||m.formaPagamento||m.metodoPagamento||'';
     const responsavel=String(m.responsavel||'').trim();
@@ -10284,7 +10317,7 @@ function renderGastos(){
     html+='<summary class="gastos-item-summary">';
     html+='<span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--card-bg,#242424);border:1px solid var(--border-color,#444);font-size:13px;font-weight:800">'+gastosIconeCategoria(m.categoria||'outros')+'</span>';
     html+='<span class="gastos-item-copy">';
-    html+='<span class="gastos-item-title">'+safe(produto)+'</span>';
+    html+='<span class="gastos-item-title">'+(documentoSuspeito?'Documento com leitura incorreta':safe(produto))+'</span>';
     html+='<span class="gastos-item-subtitle">'+safe(categoria)+(subcategoria&&subcategoria.toLowerCase()!=='outros'?' · '+safe(subcategoria):'')+' · '+safe(dataLabel)+'</span>';
     html+='</span><span class="gastos-item-side"><span class="gastos-item-amount">'+money(m.valor)+'</span><span class="gastos-item-detail-hint">Detalhes⌄</span></span>';
     html+='</summary>';
@@ -10295,6 +10328,10 @@ function renderGastos(){
     if(Number(m.parcelas)>1)html+='<div><span style="opacity:.65">Parcela:</span> '+safe(m.parcelaAtual||1)+' de '+safe(m.parcelas)+'</div>';
     if(m.dataCompra)html+='<div><span style="opacity:.65">Data da compra:</span> '+safe(String(m.dataCompra).slice(0,10).split('-').reverse().join('/'))+'</div>';
     if(m.hora||m.time)html+='<div><span style="opacity:.65">Horário:</span> '+safe(m.hora||m.time)+'</div>';
+    if(documentoSuspeito){
+      html+='<div style="margin-top:10px;color:var(--negative);font-weight:750">A descrição parece conter texto OCR de uma fatura inteira. Confira valor, data e situação do pagamento: podem estar incorretos.</div>';
+      html+='<button type="button" class="btn btn-secondary btn-sm mt-2" data-id="'+safe(m.id)+'" onclick="alicerceExcluirLancamentoOcrIncorreto(this.getAttribute(\'data-id\'))">Excluir registro incorreto</button>';
+    }
     html+='</div></details>';
   });
 
@@ -10304,6 +10341,18 @@ function renderGastos(){
   return html;
 }
 
+function alicerceExcluirLancamentoOcrIncorreto(id){
+  var row=(Store.movements||[]).find(function(item){return item&&String(item.id)===String(id);});
+  if(!row||row.tipo!=='despesa'||!alicerceDocumentoOCRSuspeito(row.descricao||'')){
+    showToast('Não consegui identificar esse registro. Nenhum dado foi alterado.');
+    return;
+  }
+  var warning='Este lançamento contém uma leitura de documento aparentemente incorreta ('+fmtMoney(row.valor)+').\n\nExcluir altera seus totais e o saldo registrado. Se esse pagamento realmente ocorreu, registre novamente os dados corretos depois de conferir a fatura.\n\nDeseja excluir apenas este lançamento?';
+  if(!window.confirm(warning))return;
+  Store.removeMovement(id);
+  showToast('Lançamento incorreto excluído após sua confirmação. Confira seus totais.');
+  render();
+}
 function filtrarGastosCategoria(categoria){
   if(!Store.screenData)Store.screenData={};
   Store.screenData.gastosCategoria=categoria||'';
@@ -14354,6 +14403,10 @@ function confirmGastoInteligente(){
   const data=Store.screenData||{};
   const interp=data.interpretation||{};
 
+  if(alicerceDocumentoOCRSuspeito(interp.item||data.text||'')){
+    showToast('Documento com leitura incorreta. Nenhum lançamento foi salvo. Confira os dados manualmente.');
+    return;
+  }
   if(!interp.amount||Number(interp.amount)<=0){
     data.editingCorrection=true;
     Store.screenData=data;
