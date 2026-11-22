@@ -5844,6 +5844,8 @@ AlicerceIA._financialReviewCandidates=function(){
   var candidates=[];
   (reality.assessments||[]).forEach(function(item){
     if(!item||!item.row||!item.dimensions||item.dimensions.nature!=='undetermined')return;
+    var existingProfile=item.row.expenseProfile||(item.row.analysis&&item.row.analysis.expenseProfile)||{};
+    if(existingProfile.reviewedByAlicia===true)return;
     var key=this._financialReviewKey(item.row);
     if(!key||handled.indexOf(key)>=0||seen[key])return;
     seen[key]=true;
@@ -5873,16 +5875,25 @@ AlicerceIA._financialReviewNextPrompt=function(first){
     source:selected.source,
     purchaseId:selected.purchaseId||''
   };
-  var label=String(selected.descricao||selected.local||selected.subcategoria||selected.categoria||'despesa');
+  var label=String(selected.descricao||selected.local||selected.subcategoria||selected.categoria||'despesa').trim();
   var amount=fmtMoney(selected.valor);
   var date=fmtDate(selected.data);
+  var perfume=/\bperfume\b/i.test(label);
+  var displayLabel=perfume?label.replace(/\s+e\s+o\s+pagamento\s*$/i,'').trim():label;
+  var count=candidates.length;
   if(Store.lang==='en'){
-    return (first?'I found '+candidates.length+' expense(s) that still need context. ':'Next, let us review this item: ')+label+' ('+amount+', '+date+'). What was it for? You can answer in your own words, or say “I am not sure”.';
+    return (first?'I found '+count+' expense(s) to review. We can do them one at a time.\n\n':'Next expense:\n\n')+
+      displayLabel+' — '+amount+'\n'+date+'\n\n'+(perfume?'Was this perfume for personal use, a gift, work, or something else?':'What was this expense for?')+
+      '\n\nYou may also answer "I don’t remember", "Skip" or "Stop reviewing".';
   }
   if(Store.lang==='es'){
-    return (first?'Encontré '+candidates.length+' gasto(s) que todavía necesitan contexto. ':'Ahora revisemos este elemento: ')+label+' ('+amount+', '+date+'). ¿Para qué fue? Puedes responder con tus palabras o decir “todavía no lo sé”.';
+    return (first?'Encontré '+count+' gasto(s) para revisar. Vamos uno por uno.\n\n':'Siguiente gasto:\n\n')+
+      displayLabel+' — '+amount+'\n'+date+'\n\n'+(perfume?'¿El perfume fue para uso personal, regalo, trabajo u otro motivo?':'¿Para qué fue este gasto?')+
+      '\n\nTambién puedes responder "No recuerdo", "Saltar" o "Terminar revisión".';
   }
-  return (first?'Encontrei '+candidates.length+' gasto(s) que ainda precisam de contexto. ':'Agora vamos revisar este lançamento: ')+label+' ('+amount+', '+date+'). Qual era a finalidade? Responda com suas palavras ou diga “ainda não sei”.';
+  return (first?'Encontrei '+count+' despesa(s) para revisar. Vamos por partes.\n\n':'Próxima despesa:\n\n')+
+    displayLabel+' — '+amount+'\n'+date+'\n\n'+(perfume?'Esse perfume foi para uso pessoal, presente, trabalho ou outra finalidade?':'Você lembra para que foi esse gasto?')+
+    '\n\nPode responder com suas palavras, dizer "Não lembro", "Pular" ou "Encerrar revisão".';
 };
 AlicerceIA._financialReviewProfileFromReply=function(message){
   var text=String(message||'').trim();
@@ -5920,7 +5931,7 @@ AlicerceIA._financialReviewProfileFromReply=function(message){
     profile.context=context;
     confidence.context='high';
   }
-  var unknown=/\b(ainda nao sei|nao sei|nao lembro|nao tenho certeza|nao consegui identificar)\b/.test(normalized);
+  var unknown=/\b(ainda nao sei|nao sei|nao lembro|nao tenho certeza|nao consegui identificar|nao me recordo|esqueci|i do not remember|i don't remember|no recuerdo)\b/.test(normalized);
   var hasAffirmedTerm=function(pattern){
     var expression=new RegExp(pattern.source,'g');
     var match;
@@ -5985,7 +5996,18 @@ AlicerceIA._applyFinancialReviewReply=function(message){
     state.handled.push(this._financialReviewKey(current));
     return 'Esse lançamento não está mais disponível. '+this._financialReviewNextPrompt(false);
   }
+  var normalizedReply=this._norm(message);
+  if(/^(pular|pula|proximo|proxima|skip|saltar)$/.test(normalizedReply)){
+    state.handled.push(this._financialReviewKey(row));
+    return 'Tudo bem, vamos deixar essa despesa para outra hora. Nenhuma informação foi alterada.\n\n'+this._financialReviewNextPrompt(false);
+  }
+  if(!String(message||'').trim()||/^(ok|sim|isso|certo|entendi|pode|continue|continuar|nao|yes|si|vale)$/.test(normalizedReply)){
+    return 'Para não registrar algo errado, me diga a finalidade com suas palavras. Se não lembrar, responda "Não lembro". Para avançar sem alterar, diga "Pular".';
+  }
   var parsed=this._financialReviewProfileFromReply(message);
+  if(!parsed.unknown&&String(parsed.purpose||'').trim().length<3){
+    return 'Não entendi a finalidade com segurança. Pode explicar um pouco mais ou dizer "Pular"?';
+  }
   var targets=[];
   if(row.source==='movement'){
     targets=Store.movements.filter(function(item){return item&&String(item.id)===String(row.id);});
@@ -6003,7 +6025,7 @@ AlicerceIA._applyFinancialReviewReply=function(message){
   }
   targets.forEach(function(item){
     var analysis=Object.assign({},item.analysis||{});
-    analysis.expenseProfile=parsed.profile;
+    analysis.expenseProfile=Object.assign({},analysis.expenseProfile||{},parsed.profile,{reviewedByAlicia:true});
     item.analysis=normalizeAlicerMovementAnalysis(analysis);
     if(parsed.purpose)item.purpose=parsed.purpose;
   });
@@ -6017,7 +6039,7 @@ AlicerceIA._applyFinancialReviewReply=function(message){
     savedText=parsed.unknown?'De acuerdo. Mantuve este gasto como indeterminado.':'Guardé la finalidad que indicaste junto a este gasto.';
     savedText+=' No cambié el importe, la fecha, la categoría ni el saldo. ';
   }else{
-    savedText=parsed.unknown?'Tudo bem. Mantive este gasto como indeterminado.':'Registrei a finalidade informada neste lançamento.';
+    savedText=parsed.unknown?'Tudo bem, registrei que você não lembra. Não vou insistir nesta revisão.':'Anotei a finalidade que você informou.';
     savedText+=' Não alterei valor, data, categoria ou saldo. ';
   }
   return savedText+this._financialReviewNextPrompt(false);
@@ -6097,7 +6119,7 @@ AlicerceIA.enviarMensagem=async function(question){
   var expenseCommand=null;
   var messageNorm=this._norm(message);
   var pendingQuestion=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque|what|which|where|when|how|compare|show|tell|why|cuanto|donde|cual|que|como|cuando|compara|muestra|dime)\b/.test(messageNorm)||/\?\s*$/.test(message);
-  var cancelPending=/^(?:cancela|cancelar|cancelar compra|desisti|desistir|deixa|deixa pra la|nao quero|esquece)$/i.test(messageNorm);
+  var cancelPending=/^(?:cancela|cancelar|cancelar compra|desisti|desistir|deixa|deixa pra la|nao quero|esquece|encerrar revisao|parar revisao|chega de revisar|stop reviewing|terminar revision)$/i.test(messageNorm);
   if(this._pendingFinancialReview&&cancelPending){
     this._pendingFinancialReview=null;
     var cancelledReview=Store.lang==='en'?'Okay. I stopped the review. Unknown expenses remain unchanged.':Store.lang==='es'?'De acuerdo. Detuve la revisión. Los gastos desconocidos siguen sin cambios.':'Tudo bem. Parei a revisão. Os gastos desconhecidos continuam sem alterações.';
