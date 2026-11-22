@@ -6007,7 +6007,7 @@ AlicerceIA._applyFinancialReviewReply=function(message){
     return 'Esse lançamento não está mais disponível. '+this._financialReviewNextPrompt(false);
   }
   var normalizedReply=this._norm(message);
-  var correctionIntent=/\b(errad|incorret|equivocad|nao confere|nao bate|leitura errada|valor errado|valor incorreto|ocr errado|revisar valor|corrigir valor)\b/.test(normalizedReply);
+  var correctionIntent=/\b(?:errad\w*|incorret\w*|equivocad\w*|nao confere|nao bate|leitura errada|valor errado|valor incorreto|ocr errado|revisar valor|corrigir valor)\b/.test(normalizedReply);
   if(correctionIntent){
     state.handled.push(this._financialReviewKey(row));
     var context=alicerceDocumentoOCRSuspeito(row.descricao||'')?' Esse lançamento contém uma leitura de documento aparentemente corrompida.':'';
@@ -6140,7 +6140,7 @@ AlicerceIA.enviarMensagem=async function(question){
     }
   var expenseCommand=null;
   var messageNorm=this._norm(message);
-  if(!this._pendingFinancialReview&&/\b(conta|fatura|lancamento|registro|valor|leitura|ocr)\b/.test(messageNorm)&&/\b(errad|incorret|nao confere|nao bate|valor errado|leitura errada)\b/.test(messageNorm)){
+  if(!this._pendingFinancialReview&&/\b(conta|fatura|lancamento|registro|valor|leitura|ocr)\b/.test(messageNorm)&&/\b(?:errad\w*|incorret\w*|nao confere|nao bate|valor errado|leitura errada)\b/.test(messageNorm)){
     var corrective='Entendi que você identificou um erro no lançamento. Não vou tratar isso como consulta de dívidas e não alterei nenhum dado. Abra Meus gastos, confira o mês e os detalhes do registro. Se a descrição contiver uma fatura inteira lida incorretamente, você poderá excluir esse lançamento com confirmação. Verifique o valor correto na fatura antes de registrá-lo novamente.';
     this._messages.push({role:'assistant',text:corrective});
     while(this._messages.length>4)this._messages.splice(0,2);
