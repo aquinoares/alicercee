@@ -6122,6 +6122,18 @@ AlicerceIA.enviarMensagem=async function(question){
   if(!message){if(inputSource==='ocr')this._photoTextPending=false;return;}
   if(!Array.isArray(this._messages))this._messages=[];
   var questionForEngine=inputSource==='ocr'?message:this._resolveFollowUp(message);
+  // Textos OCR não são perguntas comuns e nunca podem criar despesas automaticamente.
+  if(inputSource==='ocr'){
+    // Primeiro analisar com regras locais de segurança, independentemente de IA remota.
+    // Não colocar o OCR bruto no histórico de conversa nem no banco financeiro.
+    if(this._mostrarLeituraDocumento(message))return;
+    var fallback='A foto foi lida, mas não consegui separar os dados com segurança. O conteúdo não foi salvo como despesa. Tente fotografar somente o topo e os totais do documento, com boa iluminação.';
+    this._photoTextPending=false;
+    this._messages.push({role:'assistant',text:fallback});
+    while(this._messages.length>4)this._messages.shift();
+    this._answer=fallback;this._question='';render();
+    return;
+  }
   this._messages.push({role:'user',text:message});
 
   if(inputSource!=='ocr'){
@@ -6749,6 +6761,57 @@ AlicerceIA._lerContaEnergia=function(raw){
   // Sem rótulo inequívoco de total, não selecionar números de impostos, consumo ou código de barras.
   return bill;
 };
+/* Estruturador conservador local de NFC-e. Nunca cria lançamento automaticamente. */
+AlicerceIA._lerCupomMercado=function(raw){
+  var text=String(raw||'').replace(/\r/g,'');
+  var normalize=function(v){return String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();};
+  var normalized=normalize(text);
+  var isReceipt=/\b(nota fiscal de consumidor|consumidor eletronica|nfce|nfce|supermercad|valor a pagar|valor total|valor pago)\b/.test(normalized)&&
+    /\b(supermercad|consumidor|fiscal|cupom|itens)\b/.test(normalized);
+  if(!isReceipt)return null;
+  var moneyPattern=/(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/g;
+  var amount=function(v){var arr=String(v||'').match(moneyPattern);return arr&&arr.length?arr[arr.length-1]:'';};
+  var lines=text.split('\n').map(function(x){return x.trim();}).filter(Boolean);
+  var total='',paid='',date='',merchant='';
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i],lower=normalize(line);
+    if(!merchant&&/supermercad/.test(lower))merchant=line.match(/.{0,12}supermercad.{0,35}/i)?.[0]||'Supermercado';
+    if(!date){var d=line.match(/\b([0-3]\d[\/.-][01]\d[\/.-]20\d{2})\b/);if(d)date=d[1].replace(/[.-]/g,'/');}
+    if(/(valor\s*total|total\s*r\$|valor\s*a\s*pagar|total\s*a\s*pagar|valor\s*total\s*da\s*nota)/.test(lower)){
+      var m=amount(line);if(m&&!total)total=m;
+      else if(!total&&i+1<lines.length)total=amount(lines[i+1]);
+    }
+    if(/(valor\s*pago|pagamento\s*valor\s*pago|valor\s*recebido|total\s*pago)/.test(lower)){
+      var p=amount(line);if(p&&!paid)paid=p;
+      else if(!paid&&i+1<lines.length)paid=amount(lines[i+1]);
+    }
+  }
+  // Se o OCR não fornece rótulos inequívocos, não escolher números de produtos ou tributos.
+  var num=function(v){return v?Number(v.replace(/\./g,'').replace(',','.')):null;};
+  var mismatch=!!(total&&paid&&Math.abs(num(total)-num(paid))>=0.01);
+  return {merchant:merchant||'não identificado',total:total,paid:paid,date:date,mismatch:mismatch};
+};
+AlicerceIA._mostrarLeituraCupomMercado=function(text){
+  var receipt=this._lerCupomMercado(text);
+  if(!receipt)return false;
+  var msg='Identifiquei uma nota de compra. Confira a leitura antes de qualquer registro:\n\n';
+  msg+='Estabelecimento: '+receipt.merchant.slice(0,80);
+  msg+='\nData da nota: '+(receipt.date||'não identificada');
+  msg+='\nTotal identificado: '+(receipt.total?'R$ '+receipt.total:'não identificado com segurança');
+  msg+='\nValor pago identificado: '+(receipt.paid?'R$ '+receipt.paid:'não identificado com segurança');
+  if(receipt.mismatch)msg+='\n\nAtenção: o total e o valor pago não coincidem. A leitura pode estar errada.';
+  msg+='\n\nO texto da nota não será usado como nome da despesa. Não salvei nenhuma compra, valor ou pagamento. Confira a foto original; itens individuais só devem ser registrados após uma leitura confiável.';
+  this._photoTextPending=false;
+  if(!Array.isArray(this._messages))this._messages=[];
+  this._messages.push({role:'assistant',text:msg});
+  while(this._messages.length>4)this._messages.shift();
+  this._question='';this._answer=msg;
+  render();
+  return true;
+};
+AlicerceIA._mostrarLeituraDocumento=function(text){
+  return this._mostrarLeituraContaEnergia(text)||this._mostrarLeituraCupomMercado(text);
+};
 AlicerceIA._mostrarLeituraContaEnergia=function(text){
   var bill=this._lerContaEnergia(text);
   if(!bill)return false;
@@ -6827,7 +6890,7 @@ AlicerceIA.processarFoto=async function(input){
     return;
   }
   // Para contas de energia, evitar colar o OCR inteiro na conversa ou salvar como descrição.
-  if(this._mostrarLeituraContaEnergia(extracted))return;
+  if(this._mostrarLeituraDocumento(extracted))return;
   var messageInput=document.getElementById('alicerce-assistant-input');
   var maxChars=5000;
   var text=extracted.slice(0,maxChars);
