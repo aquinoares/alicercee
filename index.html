@@ -6976,7 +6976,22 @@ AlicerceIA.processarFoto=async function(input){
   if(status)status.textContent='Procurando QR Code na foto...';
   try{qrText=await this._scanQRCodeFile(file)}
   catch(error){console.warn('QR não identificado; usando OCR.',error)}
-  if(status)status.textContent='Lendo texto da foto...';
+  // NFC-e: um QR válido encerra a leitura de imagem sem aguardar OCR.
+  // A consulta fiscal continua manual, e nenhum lançamento é criado.
+  if(this._validarQRNfce(qrText)){
+    input.value='';
+    file=null;
+    this._photoBusy=false;
+    if(camera)camera.disabled=false;
+    if(String(Store.userId||'')!==ownerId){
+      if(status)status.textContent='A conta mudou durante a leitura. O resultado foi descartado.';
+      return;
+    }
+    if(status)status.textContent='QR Code identificado. Consulte a nota no portal oficial.';
+    this._mostrarQRNfce(qrText,'');
+    return;
+  }
+  if(status)status.textContent='QR Code não identificado. Lendo texto da foto...';
   try{
     var ocr=await this._loadPhotoOcr();
     worker=await ocr.createWorker('por',1,{
