@@ -9965,8 +9965,25 @@ function homeRenderComunicados() {
   const hour=Clock.currentHour();
   const greeting=hour<12?t('greeting'):hour<18?t('goodAfternoon'):t('goodEvening');
   const _hojeCompromissos=Clock.today();
-  const upcoming=dedupLista(Store.installments.filter(i=>i&&/^\d{4}-\d{2}-\d{2}$/.test(String(i.data||''))&&i.data>=_hojeCompromissos&&i.status!=='pago'&&i.status!=='recebido').sort((a,b)=>String(a.data).localeCompare(String(b.data)))).slice(0,3);
-  const commitments=dedupLista(Store.commitments.filter(c=>c&&!c.personId&&/^\d{4}-\d{2}-\d{2}$/.test(String(c.data||''))&&c.data>=_hojeCompromissos&&c.status!=='concluido').sort((a,b)=>String(a.data).localeCompare(String(b.data)))).slice(0,3);
+  // Agrupa parcelas recorrentes apenas na apresentação: mantém todos os registros originais.
+  const pendingInstallments=dedupLista(Store.installments.filter(i=>i&&/^\d{4}-\d{2}-\d{2}$/.test(String(i.data||''))&&i.data>=_hojeCompromissos&&i.status!=='pago'&&i.status!=='recebido').sort((a,b)=>String(a.data).localeCompare(String(b.data))));
+  const groupedInstallments=[];
+  const installmentKeys=new Map();
+  pendingInstallments.forEach(function(i){
+    const description=String(i.descricao||i.pessoa||'Compromisso').trim();
+    const amount=Number(i.valor)||0;
+    const key=description.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ')+'|'+amount.toFixed(2);
+    if(installmentKeys.has(key)){
+      installmentKeys.get(key).count++;
+    }else{
+      const group={item:i,count:1};
+      installmentKeys.set(key,group);
+      groupedInstallments.push(group);
+    }
+  });
+  const upcoming=groupedInstallments.slice(0,3);
+  const pendingCommitments=dedupLista(Store.commitments.filter(c=>c&&!c.personId&&/^\d{4}-\d{2}-\d{2}$/.test(String(c.data||''))&&c.data>=_hojeCompromissos&&c.status!=='concluido').sort((a,b)=>String(a.data).localeCompare(String(b.data))));
+  const commitments=pendingCommitments.slice(0,2);
   let html='<div class="content">';
   html+='<div class="mt-4"><p class="text-muted text-sm">'+greeting+'</p></div>';
   if(smartCards.length>0){html+='<div class="dynamic-card-wrap mt-2"><div class="dynamic-card-track" id="dc-track" tabindex="0" role="region" aria-label="'+esc(Store.lang==='en'?'Smart cards':Store.lang==='es'?'Tarjetas inteligentes':'Cartões inteligentes')+'">';
@@ -10064,12 +10081,16 @@ function homeRenderComunicados() {
     '<div class="balance-item"><div class="bi-label">'+t('disponivel')+'</div><div class="bi-value '+(_miniSaldo<0?'text-red':'text-green')+'">'+fmtMoney(_miniSaldo)+'</div></div>'+
     '<div class="balance-item"><div class="bi-label">Cartões</div><div class="bi-value text-yellow">'+fmtMoney(_miniCardsCurrent)+'</div></div></div>';
 html+='';
-  html+='<div class="section-title">'+t('proximosCompromissos')+'</div>';
+  html+='<div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>'+t('proximosCompromissos')+'</span><button type="button" class="btn btn-secondary btn-sm" onclick="go(\'calendario\')">Ver todos</button></div>';
   if(upcoming.length===0&&commitments.length===0){
     html+='<div class="card"><p class="text-muted">'+t('nenhumCompromisso')+'</p></div>';
   }else{
-    upcoming.forEach(i=>{html+='<div class="list-item"><div class="li-left">'+icon('calendario','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(i.descricao||i.pessoa||'')+'</div><div class="li-sub">'+fmtDate(i.data)+'</div></div></div><div class="li-right"><div class="li-amount text-red">-'+fmtMoney(i.valor)+'</div></div></div>'});
-    commitments.slice(0,2).forEach(c=>{html+='<div class="list-item"><div class="li-left">'+icon('calendario','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(c.descricao)+'</div><div class="li-sub">'+fmtDate(c.data)+'</div></div></div></div>'});
+    upcoming.forEach(function(group){
+      const i=group.item;
+      const repeat=group.count>1?' · +'+(group.count-1)+' vencimento(s) futuro(s)':'';
+      html+='<div class="list-item"><div class="li-left">'+icon('calendario','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(i.descricao||i.pessoa||'Compromisso')+'</div><div class="li-sub">Próximo: '+fmtDate(i.data)+esc(repeat)+'</div></div></div><div class="li-right"><div class="li-amount text-red">-'+fmtMoney(i.valor)+'</div></div></div>';
+    });
+    commitments.forEach(c=>{html+='<div class="list-item"><div class="li-left">'+icon('calendario','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(c.descricao)+'</div><div class="li-sub">'+fmtDate(c.data)+'</div></div></div></div>'});
   }
   html+='</div>';
   return html;
