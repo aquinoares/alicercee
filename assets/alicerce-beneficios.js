@@ -196,7 +196,7 @@ function renderPage(store,today){
    var kind=e.kind==="credit"?"Recarga":e.kind==="debit"?"Compra":"Ajuste de saldo";
    var id=JSON.stringify(e.id),walletId=JSON.stringify(w.id);
    var htmlRow='<div class="al-v2-entry"><span class="al-v2-entry-icon '+(credit?"credit":"debit")+'">'+iconText+'</span><div class="al-v2-entry-copy"><strong>'+esc(e.description)+'</strong><small>'+esc(kind)+' · '+esc(String(e.date||"").split("-").reverse().join("/"))+'</small></div><strong class="al-v2-entry-amount '+(credit?"credit":"debit")+'">'+(credit?"+":"−")+esc(money(Math.abs(e.amount)))+'</strong></div>';
-   if(section==="history")htmlRow+='<div class="al-v2-entry-controls">'+(e.kind!=="adjustment"?button("Editar",arg(w.id,"history",e.id),"quiet"):"")+ '<button type="button" class="al-v2-tiny-danger" onclick="alicerceBeneficioExcluirLancamento('+esc(walletId)+','+esc(id)+')">Excluir</button></div>';
+
    return '<div class="al-v2-entry-wrap">'+htmlRow+'</div>'+ (section==="history"?'<div class="al-v2-control-row">'+(e.kind!=="adjustment"?button("Editar",arg(w.id,"history",e.id),"quiet"):"")+'<button type="button" class="al-v2-tiny-danger" onclick="alicerceBeneficioExcluirLancamento('+esc(walletId)+','+esc(id)+')">Excluir</button></div>':"");
  }).join("")+'</div>';
  var editId=state.benefitEditEntryId;
