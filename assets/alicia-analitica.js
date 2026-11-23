@@ -55,7 +55,7 @@
   function intent(question){
     var q=norm(question);
     var display=/\b(grafico|graficos|visual|visualizar|desenhe|mostra|mostre|exiba|comparar|compare|evolucao|tendencia|distribuicao|categorias|categoria|analise por|analisa meus)\b/.test(q);
-    var finance=/\b(gasto|gastei|despesa|consumo|dinheiro|financeir\w*|divida|devo|pagar|receber|vencimento|categoria|compar|evolucao|mes|meses|semana|contas)\b/.test(q);
+    var finance=/\b(gastos?|gastei|despesas?|consumo|dinheiro|financeir\w*|divida|devo|pagar|receber|vencimento|categorias?|compar|evolucao|mes|meses|semana|contas)\b/.test(q);
     if(!display||!finance)return null;
     if(/\b(divida|dividas|pagar|pendente|vencimento|contas a vencer)\b/.test(q))return "obligations";
     if(/\b(compar|evolucao|tendencia|ultimos meses|mes a mes|meses)\b/.test(q))return "months";
