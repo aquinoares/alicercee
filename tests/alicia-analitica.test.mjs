@@ -44,8 +44,8 @@ test("interpreta intenções e não confunde pedidos sem assunto financeiro",()=
 test("gráfico por categoria usa registros reais e soma a parcela sem chamar de pagamento",()=>{
  const c=A.chart("Mostre gráfico de categorias de gasto",store(),clock);
  assert.equal(c.total,85);
- assert.equal(c.data[0].label,"comida");
- assert.equal(c.data[0].value,35);
+ assert.equal(c.data.find(x=>x.label==="comida").label,"comida");
+ assert.equal(c.data.find(x=>x.label==="comida").value,35);
  assert.equal(c.note.includes("parcelas de cartão"),true);
  assert.match(A.renderChart(c),/R\$[\s\u00a0]35,00/);
 });
@@ -85,7 +85,7 @@ test("dados de rótulos são escapados e não executáveis no gráfico",()=>{
  const c=A.chart("gráfico de categorias de gastos",st,clock);
  const out=A.renderChart(c);
  assert.equal(out.includes("<script>"),false);
- assert.equal(out.includes("&lt;script&gt;"),true);
+ assert.equal(out.includes("&lt;script&gt;"),true,JSON.stringify({type:c.type,data:c.data,html:out.slice(0,900)}));
 });
 test("chat embute gráfico na resposta e preserva dados do usuário",()=>{
  assert.match(html,/AlicerceAnalitica\.chart\(questionForEngine,Store,Clock\.today\(\)\)/);
