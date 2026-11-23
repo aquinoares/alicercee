@@ -145,7 +145,26 @@ function renderPage(store,today){
   html+='<button type="button" class="btn btn-primary btn-block mt-3" onclick="alicerceBeneficioAdicionar('+esc(JSON.stringify(w.id))+')">Registrar movimentação</button>';
   html+='<h3 class="mt-4">Histórico</h3>';
   if(!w.entries.length)html+='<p class="text-muted text-sm">Ainda não há recargas nem compras registradas.</p>';
-  else html+='<div class="al-benefit-history">'+w.entries.slice().reverse().slice(0,30).map(function(e){return '<div class="al-benefit-history-item"><div><strong>'+esc(e.description)+'</strong><small>'+esc(e.date.split("-").reverse().join("/"))+'</small></div><strong class="'+(e.kind==="credit"?'positive':'')+'">'+(e.kind==="credit"?'+':'−')+esc(money(e.amount))+'</strong></div>';}).join("")+'</div>';
+  else html+='<div class="al-benefit-history">'+w.entries.slice().reverse().map(function(e){
+    var editable=e.kind!=="adjustment";
+    var controls='<div class="al-benefit-actions">';
+    if(editable)controls+='<button type="button" class="btn btn-secondary btn-sm" onclick="alicerceBeneficioEditar('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(e.id))+')">Editar</button>';
+    controls+='<button type="button" class="btn btn-secondary btn-sm" onclick="alicerceBeneficioExcluirLancamento('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(e.id))+')">Excluir</button></div>';
+    return '<div class="al-benefit-history-item"><div><strong>'+esc(e.description)+'</strong><small>'+esc(e.date.split("-").reverse().join("/"))+(e.kind==="credit"?' · Recarga':e.kind==="debit"?' · Compra':' · Ajuste de saldo')+'</small>'+controls+'</div><strong class="'+(e.kind==="credit"?'positive':'')+'">'+(e.kind==="credit"||e.kind==="adjustment"&&Number(e.amount)>=0?'+':'−')+esc(money(Math.abs(e.amount)))+'</strong></div>';
+  }).join("")+'</div>';
+  var editId=store.screenData&&store.screenData.benefitEditEntryId;
+  var editRow=(w.entries||[]).find(function(e){return e.kind!=="adjustment"&&String(e.id)===String(editId);});
+  if(editRow){
+    html+='<div class="al-benefit-editbox mt-3"><h3>Corrigir lançamento</h3><p class="text-muted text-sm">O novo valor substitui o antigo. Não adiciona outra recarga.</p><label class="input-label" for="benefit-edit-amount">Valor correto (R$)</label><input class="input" id="benefit-edit-amount" inputmode="decimal" value="'+esc(String(editRow.amount).replace(".",","))+'">';
+    html+='<label class="input-label mt-3" for="benefit-edit-date">Data</label><input class="input" id="benefit-edit-date" type="date" value="'+esc(editRow.date)+'"><label class="input-label mt-3" for="benefit-edit-description">Descrição</label><input class="input" id="benefit-edit-description" maxlength="120" value="'+esc(editRow.description)+'">';
+    html+='<button type="button" class="btn btn-primary btn-block mt-3" onclick="alicerceBeneficioSalvarEdicao('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(editRow.id))+')">Salvar correção</button><button type="button" class="btn btn-secondary btn-block mt-2" onclick="go(\'beneficios\',{benefitWalletId:'+esc(JSON.stringify(w.id))+'})">Cancelar edição</button></div>';
+  }
+  html+='<section class="al-benefit-editbox mt-3"><h3>Conferir saldo real</h3><p class="text-muted text-sm">Se você adicionou um valor duplicado ou a operadora atualizou o saldo, informe aqui o saldo correto. O Alicerce registra somente a diferença, sem somar esse saldo novamente.</p>';
+  html+='<label class="input-label" for="benefit-real-balance">Saldo correto no cartão (R$)</label><input class="input" id="benefit-real-balance" inputmode="decimal" placeholder="Ex.: 485,00">';
+  html+='<button type="button" class="btn btn-secondary btn-block mt-3" onclick="alicerceBeneficioConferirSaldo('+esc(JSON.stringify(w.id))+')">Atualizar saldo para o valor informado</button></section>';
+  html+='<section class="al-benefit-editbox mt-3"><h3>Editar cartão</h3><label class="input-label" for="benefit-wallet-alias">Nome de identificação (opcional)</label><input class="input" id="benefit-wallet-alias" maxlength="50" value="'+esc(w.alias||"")+'" placeholder="Ex.: Meu Sodexo">';
+  html+='<button type="button" class="btn btn-secondary btn-block mt-3" onclick="alicerceBeneficioSalvarNome('+esc(JSON.stringify(w.id))+')">Salvar nome</button>';
+  html+='<button type="button" class="btn btn-secondary btn-block mt-3 al-benefit-danger" onclick="alicerceBeneficioExcluirCartao('+esc(JSON.stringify(w.id))+')">Excluir cartão e seu histórico</button></section>';
   html+='</section>';
  }
  html+='<div class="card mt-3"><h3>'+(items.length?'Adicionar outro cartão':'Adicionar cartão')+'</h3><label class="input-label">Fornecedor</label><select id="benefit-provider" class="input"><option value="pluxee">Sodexo / Pluxee</option><option value="solides">Sólides Benefícios</option></select>';
