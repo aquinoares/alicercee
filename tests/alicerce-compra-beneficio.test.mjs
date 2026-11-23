@@ -20,6 +20,8 @@ function st(){
 }
 test("Adicionar compra oferece benefício e preserva carteira entre etapas",()=>{
  assert.match(html,/id="pay-benefit"/);
+ assert.match(html,/contextoNovaCompra.novaCompraFlow&&contextoNovaCompra.paymentMethod!==\x27cartao\x27&&contextoNovaCompra.paymentMethod!==\x27beneficio\x27/);
+ assert.match(html,/go\(data.novaCompraFlow\?\x27beneficios\x27:\x27home\x27\)/);
  assert.match(html,/gasto-benefit-options/);
  assert.match(html,/id="ag-benefit-id"/);
  assert.match(html,/benefitWalletId: paymentData.paymentMethod==='beneficio'/);
