@@ -48,6 +48,11 @@ test("não duplica parcelas ligadas a compromissos nem altera registros",()=>{
  assert.equal(api.summarize(st,"2026-11-23").pendingTotal,970);
  assert.equal(JSON.stringify({movements:st.movements,installments:st.installments,commitments:st.commitments}),before);
 });
+test("compromisso quitado por movimento vinculado não permanece como dívida",()=>{
+ const st=store();
+ st.movements.push({id:"14",tipo:"despesa",valor:70,status:"pago",commitmentId:"10",data:"2026-11-23"});
+ assert.equal(api.summarize(st,"2026-11-23").pendingTotal,900);
+});
 test("sem lançamentos responde zero, não inventa movimentações",()=>{
  const s=api.summarize({movements:[],installments:[],commitments:[],loans:[]},"2026-11-23");
  assert.equal(s.pendingTotal,0);
