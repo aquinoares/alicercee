@@ -8809,7 +8809,7 @@ if(Store.screen==='home'){
     renderMenu();
     try{attachListeners()}catch(e){}
     if(Store.screen==='home'){
-      try{const sc=Store.getSmartCards();startDynamicRotation(sc.length)}catch(e){}
+      try{const count=document.querySelectorAll('#dc-track .dynamic-card').length;startDynamicRotation(count)}catch(e){}
       try{Trafego.homeSync()}catch(e){}
     }
     if (Store.screen === 'home') {
