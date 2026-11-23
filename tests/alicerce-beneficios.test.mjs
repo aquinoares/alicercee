@@ -43,7 +43,7 @@ test("Saldo acumula sem zerar no mês seguinte; exibição na home é opcional",
  assert.equal(B.renderHome(store),"");
  B.toggleHome(store,wallet.id,true);
  assert.match(B.renderHome(store),/R\$[\u00a0\s]225,00/);
- assert.match(B.renderPage(store,"2026-11-23"),/Registrar movimentação/);
+ assert.match(B.renderPage(store,"2026-11-23"),/Nova recarga/);
 });
 test("Alicia responde somente sobre carteira correspondente",()=>{
  const store=st();
