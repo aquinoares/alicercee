@@ -42,5 +42,5 @@ test('Feature catalogue is wired to the existing slider below the menu',()=>{
  assert.match(page,/window\.AlicerceGuiaAlicia\.cards\(Store\)/);
  assert.match(page,/alicia-guide-card/);
  assert.match(page,/dynamic-card-track/);
- assert.match(page,/startDynamicRotation\(sc\.length\)/);
+ assert.match(page,/startDynamicRotation\(count\)/);
 });
