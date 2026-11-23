@@ -5074,6 +5074,7 @@ const AlicerceIA = {
       this._qrConsultaUrl='';
       this._receiptDraft=null;
       this._receiptOCR='';
+      this._pixProofDraft=null;
       this._welcomeTypingStarted=false;
       this._proactiveConsumed=false;
       this.pararDigitacaoLauncher();
@@ -5644,6 +5645,7 @@ AlicerceIA.limparConversa=function(){
   this._pendingBenefitPurchase=null;
   this._receiptDraft=null;
   this._receiptOCR='';
+  this._pixProofDraft=null;
   this._qrConsultaUrl='';
   this._question='';
   this._answer='';
@@ -6836,7 +6838,7 @@ AlicerceIA._lerComprovantePix=function(raw){
   var lines=String(raw||'').replace(/\r/g,'').split('\n').map(function(s){return s.trim()}).filter(Boolean);
   var norm=function(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();};
   var all=norm(lines.join(' '));
-  if(!/\bpix\b/.test(all)||!/comprovante|transferencia|pagamento|enviado|realizado|concluido|recebido/.test(all))return null;
+  if(!/\bpix\b/.test(all)||!/comprovante|transferencia|pagamento|enviado|realizado|concluido|recebido/.test(all)||/nota fiscal|nfce|nfc-e|danfe|documento auxiliar da nota/.test(all))return null;
   var incoming=/pix recebido|voce recebeu|transferencia recebida|valor recebido/.test(all);
   var amount=null,recipient='',date='',evidence='';
   for(var i=0;i<lines.length;i++){
