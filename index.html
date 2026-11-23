@@ -14527,13 +14527,22 @@ function renderAddGasto(){
   html.push('<div class="form-group mt-4"><label class="form-label" for="ag-item">O que você comprou?</label><input id="ag-item" type="text" autocomplete="off" placeholder="Ex.: Almoço, roupa, combustível" value="'+esc(data.itemInput||'')+'"></div>');
   html.push('<div class="form-group mt-3"><label class="form-label" for="ag-local">Onde foi?</label><input id="ag-local" type="text" autocomplete="off" placeholder="Nome do estabelecimento (opcional)" value="'+esc(data.localInput||'')+'"></div>');
   /* ALICERCE_NOVA_COMPRA_SO_CARTAO_V5 */
-  html.push('<div style="margin-top:24px"><div class="form-label" style="margin-bottom:10px">Forma de pagamento</div><div class="gasto-payment-grid" style="display:grid;grid-template-columns:'+(data.novaCompraFlow?'1fr':'repeat(3,minmax(0,1fr))')+';gap:8px">');
+  html.push('<div style="margin-top:24px"><div class="form-label" style="margin-bottom:10px">Forma de pagamento</div><div class="gasto-payment-grid" style="display:grid;grid-template-columns:'+(data.novaCompraFlow?'1fr':'repeat(2,minmax(0,1fr))')+';gap:8px">');
   if(data.novaCompraFlow){
     html.push('<button type="button" id="pay-card" class="btn btn-primary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' Cartão</button></div></div>');
   }else{
     html.push('<button type="button" id="pay-pix" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'pix\')">'+icon('qr-code','ico-sm')+' Pix</button>');
     html.push('<button type="button" id="pay-card" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' Cartão</button>');
-    html.push('<button type="button" id="pay-cash" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'dinheiro\')">'+icon('banknote','ico-sm')+' Dinheiro</button></div></div>');
+    html.push('<button type="button" id="pay-cash" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'dinheiro\')">'+icon('banknote','ico-sm')+' Dinheiro</button>');
+    if(window.AlicerceBeneficios&&window.AlicerceBeneficios.wallets(Store).length){html.push('<button type="button" id="pay-benefit" class="btn '+(data.paymentMethod==='beneficio'?'btn-primary':'btn-secondary')+'" style="min-height:54px" onclick="selectGastoPayment(\'beneficio\')">'+icon('credit-card','ico-sm')+' Vale-alimentação</button>');}
+    html.push('</div></div>');
+  }
+  if(!data.novaCompraFlow&&window.AlicerceBeneficios&&window.AlicerceBeneficios.wallets(Store).length){
+    var options=window.AlicerceBeneficios.snapshot(Store);
+    html.push('<div id="gasto-benefit-options" style="display:'+(data.paymentMethod==='beneficio'?'block':'none')+';margin-top:12px;padding:15px;border:1px solid var(--field-border);border-radius:14px;background:var(--surface)">');
+    html.push('<label class="form-label" for="ag-benefit-id">Qual vale-alimentação?</label><select id="ag-benefit-id" class="input" onchange="Store.screenData=Store.screenData||{};Store.screenData.benefitWalletId=this.value"><option value="">Selecione o cartão</option>');
+    options.forEach(function(w){html.push('<option value="'+esc(w.id)+'" '+(String(data.benefitWalletId||'')===String(w.id)?'selected':'')+'>'+esc(w.name)+' · '+esc(fmtMoney(w.balance))+'</option>');});
+    html.push('</select><p class="text-muted text-sm mt-2">O valor será descontado apenas do vale-alimentação após a confirmação. Não reduzirá o saldo bancário.</p></div>');
   }
   html.push('<div id="gasto-card-options" style="display:'+(data.paymentMethod==='cartao'?'block':'none')+';margin-top:16px;border:1px solid var(--field-border);border-radius:18px;padding:16px;background:var(--surface)">');
   html.push('<div style="font-weight:750;color:var(--text);margin-bottom:12px">Detalhes do cartão</div>');
@@ -14597,6 +14606,8 @@ function selectGastoPayment(method){
   }
   const box=document.getElementById('gasto-card-options');
   if(box)box.style.display=method==='cartao'?'block':'none';
+  const benefitBox=document.getElementById('gasto-benefit-options');
+  if(benefitBox)benefitBox.style.display=method==='beneficio'?'block':'none';
   updateGastoPaymentButtons();
   const own=document.getElementById('card-own');
   const borrowed=document.getElementById('card-borrowed');
@@ -14640,9 +14651,9 @@ function selectGastoInstallment(value){
 
 function updateGastoPaymentButtons(){
   const data=Store.screenData||{};
-  ['pix','card','cash'].forEach(id=>{
+  ['pix','card','cash','benefit'].forEach(id=>{
     const el=document.getElementById('pay-'+id);
-    if(el)el.classList.toggle('btn-primary',data.paymentMethod===(id==='card'?'cartao':id==='cash'?'dinheiro':'pix'));
+    if(el)el.classList.toggle('btn-primary',data.paymentMethod===(id==='card'?'cartao':id==='cash'?'dinheiro':id==='benefit'?'beneficio':'pix'));
   });
 }
 
@@ -14667,6 +14678,15 @@ async function processGastoText(){
     if(contextoNovaCompra.novaCompraFlow&&contextoNovaCompra.paymentMethod!=='cartao'){
       showRecoveryScreen({message:'Em Nova compra, selecione um cartao cadastrado.'});
       return;
+    }
+    if(Store.screenData&&Store.screenData.paymentMethod==='beneficio'){
+      var benefitSelect=document.getElementById('ag-benefit-id');
+      var walletId=benefitSelect?benefitSelect.value:String(Store.screenData.benefitWalletId||'');
+      if(!window.AlicerceBeneficios||!window.AlicerceBeneficios.wallets(Store).some(function(w){return String(w.id)===String(walletId);})){
+        showToast('Selecione um vale-alimentação cadastrado.');
+        return;
+      }
+      if(amount>0){var wallet=window.AlicerceBeneficios.wallets(Store).find(function(w){return String(w.id)===String(walletId);});if(amount>window.AlicerceBeneficios.balance(wallet)){showToast('Saldo do vale-alimentação insuficiente. Confira as recargas.');return;}}
     }
     if(Store.screenData&&Store.screenData.paymentMethod==='cartao'&&!selectedCardId){
       showRecoveryScreen({message:'Selecione um cartao cadastrado.'});
@@ -14727,6 +14747,7 @@ async function processGastoText(){
       context: local,
       date: gastoDate || (result&&result.date) || today(),
       paymentMethod: paymentData.paymentMethod || '',
+      benefitWalletId: paymentData.paymentMethod==='beneficio'?(document.getElementById('ag-benefit-id')?document.getElementById('ag-benefit-id').value:paymentData.benefitWalletId||''):'',
       novaCompraFlow: !!paymentData.novaCompraFlow,
       cardOwnerType: paymentData.cardOwnerType || '',
       cardOwner: cardOwner,
@@ -14839,7 +14860,8 @@ function renderAddGastoDoubt(){
   const dateValue=data.date||today();
   const dateParts=String(dateValue).split('-');
   const dateLabel=dateParts.length===3?dateParts[2]+'/'+dateParts[1]+'/'+dateParts[0]:dateValue;
-  const paymentName=payment==='cartao'?'Cartão de '+cardTypeName.toLowerCase():(payment==='pix'?'Pix':(payment==='dinheiro'?'Dinheiro':'Não informado'));
+  const benefitWallet=window.AlicerceBeneficios&&window.AlicerceBeneficios.snapshot(Store).find(function(w){return String(w.id)===String(data.benefitWalletId||'');});
+  const paymentName=payment==='beneficio'?(benefitWallet?benefitWallet.name+' (vale-alimentação)':'Vale-alimentação'):(payment==='cartao'?'Cartão de '+cardTypeName.toLowerCase():(payment==='pix'?'Pix':(payment==='dinheiro'?'Dinheiro':'Não informado')));
 
   let html='<style>';
   html+='.gasto-review{color:var(--text);background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:20px;margin-top:16px;box-shadow:0 12px 32px rgba(0,0,0,.22)}';
@@ -14871,6 +14893,10 @@ function renderAddGastoDoubt(){
 
   html+='<div class="gr-panel"><div class="gr-muted">Resumo do pagamento</div>';
   html+='<div class="gr-line"><span>Forma</span><span class="gr-value">'+esc(paymentName)+'</span></div>';
+  if(payment==='beneficio'){
+    html+='<div class="gr-line"><span>Saldo registrado antes da compra</span><span class="gr-value">'+(benefitWallet?esc(fmtMoney(benefitWallet.balance)):'Cartão não encontrado')+'</span></div>';
+    html+='<div class="gr-hint">Essa compra ficará no histórico do vale-alimentação e não reduzirá seu saldo bancário.</div>';
+  }
   if(payment==='cartao'){
     html+='<div class="gr-line"><span>Cartão</span><span class="gr-value">'+esc(cardName)+'</span></div>';
     html+='<div class="gr-line"><span>Responsável</span><span class="gr-value">'+esc(ownerName||'Não informado')+'</span></div>';
@@ -14904,7 +14930,8 @@ function renderAddGastoDoubt(){
   html+='<input id="edit-gasto-amount" type="number" value="'+esc(amountValue!==undefined&&amountValue!==null?amountValue:'')+'">';
   html+='<input id="edit-gasto-merchant" type="text" value="'+esc(merchantValue)+'">';
   html+='<input id="edit-gasto-item" type="text" value="'+esc(itemValue)+'">';
-  html+='<select id="edit-gasto-payment"><option value="" '+(payment===''?'selected':'')+'></option><option value="pix" '+(payment==='pix'?'selected':'')+'>Pix</option><option value="dinheiro" '+(payment==='dinheiro'?'selected':'')+'>Dinheiro</option><option value="cartao" '+(payment==='cartao'?'selected':'')+'>Cartão</option></select>';
+  html+='<select id="edit-gasto-payment"><option value="" '+(payment===''?'selected':'')+'></option><option value="pix" '+(payment==='pix'?'selected':'')+'>Pix</option><option value="dinheiro" '+(payment==='dinheiro'?'selected':'')+'>Dinheiro</option><option value="cartao" '+(payment==='cartao'?'selected':'')+'>Cartão</option><option value="beneficio" '+(payment==='beneficio'?'selected':'')+'>Vale-alimentação</option></select>';
+  html+='<input type="hidden" id="edit-gasto-benefit-id" value="'+esc(data.benefitWalletId||'')+'">';
   html+='<select id="edit-gasto-card-id"><option value=""></option>';
   (Store.cards||[]).forEach(function(c){html+='<option value="'+esc(c.id)+'" '+(String(data.cardId||'')===String(c.id)?'selected':'')+'>'+esc(c.nome||'Cartão')+'</option>';});
   html+='</select>';
@@ -15223,6 +15250,7 @@ function saveDoubtGasto(){
   const installments=document.getElementById('edit-gasto-installments');
   const date=document.getElementById('edit-gasto-date');
   data.paymentMethod=payment?payment.value:'';
+  data.benefitWalletId=data.paymentMethod==='beneficio'?(document.getElementById('edit-gasto-benefit-id')?document.getElementById('edit-gasto-benefit-id').value:data.benefitWalletId||''):'';
   data.cardOwnerType=data.paymentMethod==='cartao'&&cardOwnerType?cardOwnerType.value:'';
   data.cardOwner=data.cardOwnerType==='emprestado'&&cardOwnerName?cardOwnerName.value.trim():'';
   data.cardId=data.paymentMethod==='cartao'&&cardId?cardId.value:'';
@@ -15232,6 +15260,12 @@ function saveDoubtGasto(){
   data.date=date&&date.value?date.value:today();
   Store.screenData=data;
 
+  if(data.paymentMethod==='beneficio'){
+    if(!window.AlicerceBeneficios||!window.AlicerceBeneficios.wallets(Store).some(function(w){return String(w.id)===String(data.benefitWalletId||'');})){
+      if(button)button.disabled=false;
+      showToast('Selecione um vale-alimentação cadastrado.');return;
+    }
+  }
   if(data.paymentMethod==='cartao'){
     const cartaoExiste=(Store.cards||[]).some(function(c){
       return String(c.id)===String(data.cardId||'');
@@ -15268,6 +15302,15 @@ function saveDoubtGasto(){
   const antes=Store.movements.length;
   try{
 
+    if(data.paymentMethod==='beneficio'){
+      const wallet=window.AlicerceBeneficios.wallets(Store).find(function(w){return String(w.id)===String(data.benefitWalletId);});
+      const description=String(interp.item||data.text||'Compra de alimentação').trim();
+      if(!description){showToast('Informe o que comprou.');if(button)button.disabled=false;return;}
+      const outcome=window.AlicerceBeneficios.addEntry(Store,data.benefitWalletId,'debit',String(value),data.date||today(),description,{category:cat,subcategory:sub,merchant:interp.merchant||'',origin:'add-gasto'});
+      if(!outcome.ok){showToast(outcome.error);if(button)button.disabled=false;return;}
+      showToast('Compra registrada em '+window.AlicerceBeneficios.providers[wallet.provider]+'. Saldo restante: '+fmtMoney(window.AlicerceBeneficios.balance(wallet)));
+      go('home');return;
+    }
     if(data.paymentMethod==='cartao'&&data.cardType==='credito'){
       if(salvarGastoCreditoCartao(data,interp)){
         if(data.classificationCorrection&&interp.merchant){
