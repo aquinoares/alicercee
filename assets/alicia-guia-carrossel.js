@@ -20,9 +20,9 @@ function cards(store){
  if(!store||!store.userId)return [];
  var hasBenefits=!!(root.AlicerceBeneficios&&root.AlicerceBeneficios.wallets(store).length);
  var hasExpenses=!!(Array.isArray(store.movements)&&store.movements.length);
- var options=FEATURES.filter(function(f){return !f.needsBenefits||hasBenefits;});
+ var options=FEATURES.slice(); // Inclui também recursos que o usuário ainda pode configurar.
  // No início, mostre primeiro funções úteis a quem ainda não registrou despesas.
- if(!hasExpenses){
+ if(!hasExpenses&&!hasBenefits){
    options=options.slice().sort(function(a,b){
      var priorities={chat:0,gasto:1,beneficios:2,beneficiochat:3,corrigir:4,cartoes:5,calendario:6,visao:7,atualizacoes:8};
      return priorities[a.id]-priorities[b.id];
