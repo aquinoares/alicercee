@@ -9,6 +9,7 @@ on:
       - "assets/alicia-cashflow.js"
       - "assets/alicia-analitica.js"
       - "assets/alicerce-beneficios.js"
+      - "assets/beneficios-premium.css"
       - "assets/alicia-compra-beneficio-chat.js"
       - "tests/alicia-debt-followup.test.mjs"
       - "tests/alicia-cashflow.test.mjs"

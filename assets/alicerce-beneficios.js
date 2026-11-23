@@ -128,49 +128,88 @@ function renderHome(store){
  return html+'</section>';
 }
 function renderPage(store,today){
- var items=wallets(store),selected=store.screenData&&store.screenData.benefitWalletId;
- var w=items.find(function(x){return String(x.id)===String(selected);})||items[0];
- var html='<div class="content al-benefits-page"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'home\')">‹ Início</button><div class="section-title mt-4">Meus benefícios</div>';
- html+='<p class="text-muted text-sm">Carteiras de vale-alimentação. Não fazem parte do saldo bancário nem do limite do cartão de crédito.</p>';
- if(!items.length){
-  html+='<div class="card mt-4"><h3>Comece por um vale-alimentação</h3><p class="text-muted text-sm">Escolha o fornecedor abaixo. O saldo começa em zero até você registrar uma recarga ou saldo inicial.</p></div>';
- }else{
-  html+='<div class="al-benefit-switches mt-4">'+items.map(function(x){return '<button class="al-benefit-chip'+(x===w?' active':'')+'" type="button" onclick="go(\'beneficios\',{benefitWalletId:'+JSON.stringify(x.id).replace(/"/g,"&quot;")+'})">'+esc(x.alias||PROVIDERS[x.provider])+'</button>';}).join("")+'</div>';
-  html+='<section class="al-benefit-detail card mt-3"><div class="al-benefit-heading"><span class="al-benefit-symbol">VA</span><div><strong>'+esc(w.alias||PROVIDERS[w.provider])+'</strong><small>Vale-alimentação · saldo registrado manualmente</small></div></div><div class="al-benefit-total">'+esc(money(balance(w)))+'</div>';
-  html+='<label class="al-benefit-toggle"><input type="checkbox" id="benefit-home-visible" '+(w.showHome?'checked':'')+' onchange="alicerceBeneficioHome('+esc(JSON.stringify(w.id)) +',this.checked)"> Exibir este cartão na tela principal</label>';
-  html+='<div class="al-benefit-fields"><label>Movimentação<select id="benefit-entry-kind" class="input"><option value="credit">Nova recarga (soma ao saldo)</option><option value="debit">Compra no mercado</option></select></label>';
-  html+='<label>Valor (R$)<input id="benefit-entry-amount" class="input" inputmode="decimal" placeholder="Ex.: 150,00"></label>';
-  html+='<label>Data<input id="benefit-entry-date" type="date" class="input" value="'+esc(today)+'"></label>';
-  html+='<label>Descrição<input id="benefit-entry-description" class="input" maxlength="120" placeholder="Ex.: Compra no supermercado"></label></div>';
-  html+='<button type="button" class="btn btn-primary btn-block mt-3" onclick="alicerceBeneficioAdicionar('+esc(JSON.stringify(w.id))+')">Registrar movimentação</button>';
-  html+='<h3 class="mt-4">Histórico</h3>';
-  if(!w.entries.length)html+='<p class="text-muted text-sm">Ainda não há recargas nem compras registradas.</p>';
-  else html+='<div class="al-benefit-history">'+w.entries.slice().reverse().map(function(e){
-    var editable=e.kind!=="adjustment";
-    var controls='<div class="al-benefit-actions">';
-    if(editable)controls+='<button type="button" class="btn btn-secondary btn-sm" onclick="alicerceBeneficioEditar('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(e.id))+')">Editar</button>';
-    controls+='<button type="button" class="btn btn-secondary btn-sm" onclick="alicerceBeneficioExcluirLancamento('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(e.id))+')">Excluir</button></div>';
-    return '<div class="al-benefit-history-item"><div><strong>'+esc(e.description)+'</strong><small>'+esc(e.date.split("-").reverse().join("/"))+(e.kind==="credit"?' · Recarga':e.kind==="debit"?' · Compra':' · Ajuste de saldo')+'</small>'+controls+'</div><strong class="'+(e.kind==="credit"?'positive':'')+'">'+(e.kind==="credit"||e.kind==="adjustment"&&Number(e.amount)>=0?'+':'−')+esc(money(Math.abs(e.amount)))+'</strong></div>';
-  }).join("")+'</div>';
-  var editId=store.screenData&&store.screenData.benefitEditEntryId;
-  var editRow=(w.entries||[]).find(function(e){return e.kind!=="adjustment"&&String(e.id)===String(editId);});
-  if(editRow){
-    html+='<div class="al-benefit-editbox mt-3"><h3>Corrigir lançamento</h3><p class="text-muted text-sm">O novo valor substitui o antigo. Não adiciona outra recarga.</p><label class="input-label" for="benefit-edit-amount">Valor correto (R$)</label><input class="input" id="benefit-edit-amount" inputmode="decimal" value="'+esc(String(editRow.amount).replace(".",","))+'">';
-    html+='<label class="input-label mt-3" for="benefit-edit-date">Data</label><input class="input" id="benefit-edit-date" type="date" value="'+esc(editRow.date)+'"><label class="input-label mt-3" for="benefit-edit-description">Descrição</label><input class="input" id="benefit-edit-description" maxlength="120" value="'+esc(editRow.description)+'">';
-    html+='<button type="button" class="btn btn-primary btn-block mt-3" onclick="alicerceBeneficioSalvarEdicao('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(editRow.id))+')">Salvar correção</button><button type="button" class="btn btn-secondary btn-block mt-2" onclick="go(\'beneficios\',{benefitWalletId:'+esc(JSON.stringify(w.id))+'})">Cancelar edição</button></div>';
-  }
-  html+='<section class="al-benefit-editbox mt-3"><h3>Conferir saldo real</h3><p class="text-muted text-sm">Se você adicionou um valor duplicado ou a operadora atualizou o saldo, informe aqui o saldo correto. O Alicerce registra somente a diferença, sem somar esse saldo novamente.</p>';
-  html+='<label class="input-label" for="benefit-real-balance">Saldo correto no cartão (R$)</label><input class="input" id="benefit-real-balance" inputmode="decimal" placeholder="Ex.: 485,00">';
-  html+='<button type="button" class="btn btn-secondary btn-block mt-3" onclick="alicerceBeneficioConferirSaldo('+esc(JSON.stringify(w.id))+')">Atualizar saldo para o valor informado</button></section>';
-  html+='<section class="al-benefit-editbox mt-3"><h3>Editar cartão</h3><label class="input-label" for="benefit-wallet-alias">Nome de identificação (opcional)</label><input class="input" id="benefit-wallet-alias" maxlength="50" value="'+esc(w.alias||"")+'" placeholder="Ex.: Meu Sodexo">';
-  html+='<button type="button" class="btn btn-secondary btn-block mt-3" onclick="alicerceBeneficioSalvarNome('+esc(JSON.stringify(w.id))+')">Salvar nome</button>';
-  html+='<button type="button" class="btn btn-secondary btn-block mt-3 al-benefit-danger" onclick="alicerceBeneficioExcluirCartao('+esc(JSON.stringify(w.id))+')">Excluir cartão e seu histórico</button></section>';
-  html+='</section>';
+ var items=wallets(store),state=store.screenData||{},section=String(state.benefitSection||"overview");
+ var selected=state.benefitWalletId,w=items.find(function(x){return String(x.id)===String(selected);})||items[0];
+ var arg=function(id,view,more){return "go('beneficios',{benefitWalletId:"+JSON.stringify(id)+",benefitSection:"+JSON.stringify(view)+(more?",benefitEditEntryId:"+JSON.stringify(more):"")+"})";};
+ var button=function(label,target,style){return '<button type="button" class="al-v2-action '+(style||'')+'" onclick="'+esc(target)+'">'+esc(label)+'</button>';};
+ var html='<div class="content al-benefits-page al-benefits-v2">';
+ html+='<header class="al-v2-header"><button type="button" class="al-v2-back" onclick="go(\'home\')" aria-label="Voltar para o início">‹</button><div><span class="al-v2-eyebrow">ALICERCE FINANCEIRO</span><h2>Meus benefícios</h2></div></header>';
+ html+='<p class="al-v2-intro">Seus vales-alimentação, organizados em um só lugar.</p>';
+ if(!items.length||section==="add"){
+   html+='<section class="al-v2-panel al-v2-onboard"><div class="al-v2-panel-head"><h3>Adicionar cartão</h3>'+ (items.length?button("Voltar",arg(w.id,"overview"),"quiet"):"") +'</div><p>Escolha o benefício. Você poderá incluir a recarga e acompanhar o saldo.</p>';
+   html+='<label for="benefit-provider">Operadora</label><select id="benefit-provider" class="input"><option value="pluxee">Sodexo / Pluxee</option><option value="solides">Sólides Benefícios</option></select>';
+   html+='<label class="al-v2-check"><input type="checkbox" id="benefit-new-showhome" checked> Mostrar na tela principal</label><button class="al-v2-primary" type="button" onclick="alicerceBeneficioCriar()">Adicionar cartão</button></section>';
+   if(!items.length)html+='<p class="al-v2-footnote">Nenhum cartão cadastrado. O saldo começa em zero e não afeta sua conta bancária.</p>';
+   return html+'</div>';
  }
- html+='<div class="card mt-3"><h3>'+(items.length?'Adicionar outro cartão':'Adicionar cartão')+'</h3><label class="input-label">Fornecedor</label><select id="benefit-provider" class="input"><option value="pluxee">Sodexo / Pluxee</option><option value="solides">Sólides Benefícios</option></select>';
- html+='<label class="al-benefit-toggle"><input type="checkbox" id="benefit-new-showhome" checked> Mostrar na tela principal</label>';
- html+='<button class="btn btn-secondary btn-block mt-3" type="button" onclick="alicerceBeneficioCriar()">Adicionar vale-alimentação</button></div>';
- html+='<p class="text-muted text-sm mt-3">O Alicerce não consulta a operadora automaticamente. Confira o saldo real no aplicativo do fornecedor antes de registrar. Compras desta carteira não reduzem o saldo bancário.</p></div>';
+ html+='<div class="al-v2-wallets" role="group" aria-label="Escolher benefício">';
+ items.forEach(function(x){
+   var active=x===w;
+   html+='<button type="button" class="al-v2-wallet-choice'+(active?' selected':'')+'" aria-pressed="'+active+'" onclick="'+esc(arg(x.id,"overview"))+'"><span class="al-v2-wallet-dot"></span>'+esc(x.alias||PROVIDERS[x.provider])+'</button>';
+ });
+ if(items.length<2)html+=button("+ Cartão",arg(w.id,"add"),"al-v2-plus");
+ html+='</div>';
+ var value=balance(w);
+ html+='<section class="al-v2-hero" aria-label="Cartão de vale-alimentação"><div class="al-v2-hero-top"><span class="al-v2-card-symbol">VA</span><span class="al-v2-hero-type">ALIMENTAÇÃO</span></div>';
+ html+='<div class="al-v2-card-name">'+esc(w.alias||PROVIDERS[w.provider])+'</div><div class="al-v2-balance-label">Saldo registrado</div><div class="al-v2-balance">'+esc(money(value))+'</div>';
+ html+='<div class="al-v2-hero-footer"><span>Carteira separada do banco</span><span>● Disponível</span></div></section>';
+ html+='<div class="al-v2-quick">';
+ html+=button("＋ Nova recarga",arg(w.id,"topup"),section==="topup"?"active":"");
+ html+=button("↗ Registrar compra",arg(w.id,"purchase"),section==="purchase"?"active":"");
+ html+=button("⇄ Corrigir saldo",arg(w.id,"balance"),section==="balance"?"active":"");
+ html+='</div>';
+ if(section==="topup"||section==="purchase"){
+   var credit=section==="topup";
+   html+='<section class="al-v2-panel"><div class="al-v2-panel-head"><h3>'+(credit?"Nova recarga":"Registrar compra")+'</h3>'+button("Fechar",arg(w.id,"overview"),"quiet")+'</div>';
+   html+='<p>'+(credit?"Use somente para um crédito novo recebido da empresa. Este valor será somado ao saldo atual.":"O valor será descontado apenas deste vale-alimentação.")+'</p>';
+   html+='<div class="al-v2-form"><label for="benefit-entry-amount">Valor (R$)</label><input id="benefit-entry-amount" class="input" type="text" inputmode="decimal" placeholder="0,00">';
+   html+='<label for="benefit-entry-date">Data</label><input id="benefit-entry-date" type="date" class="input" value="'+esc(today)+'">';
+   html+='<label for="benefit-entry-description">Descrição</label><input id="benefit-entry-description" class="input" maxlength="120" placeholder="'+(credit?"Ex.: Recarga mensal":"Ex.: Supermercado")+'">';
+   html+='<input id="benefit-entry-kind" type="hidden" value="'+(credit?"credit":"debit")+'"></div>';
+   html+='<button class="al-v2-primary" onclick="alicerceBeneficioAdicionar('+esc(JSON.stringify(w.id))+')">Confirmar '+(credit?"recarga":"compra")+'</button></section>';
+ }
+ if(section==="balance"){
+   html+='<section class="al-v2-panel"><div class="al-v2-panel-head"><h3>Conferir saldo real</h3>'+button("Fechar",arg(w.id,"overview"),"quiet")+'</div><p>Quando houver uma recarga duplicada ou diferença no valor, informe o saldo exibido pela operadora. O Alicerce ajusta só a diferença, sem somar tudo de novo.</p>';
+   html+='<label for="benefit-real-balance">Saldo correto (R$)</label><input id="benefit-real-balance" class="input" type="text" inputmode="decimal" placeholder="Ex.: 485,00">';
+   html+='<button class="al-v2-primary" onclick="alicerceBeneficioConferirSaldo('+esc(JSON.stringify(w.id))+')">Atualizar saldo</button></section>';
+ }
+ if(section==="settings"){
+   html+='<section class="al-v2-panel"><div class="al-v2-panel-head"><h3>Configurar cartão</h3>'+button("Fechar",arg(w.id,"overview"),"quiet")+'</div>';
+   html+='<label class="al-v2-check"><input type="checkbox" id="benefit-home-visible" '+(w.showHome?'checked':'')+' onchange="alicerceBeneficioHome('+esc(JSON.stringify(w.id))+',this.checked)"> Exibir este cartão na tela principal</label>';
+   html+='<label for="benefit-wallet-alias">Nome do cartão (opcional)</label><input id="benefit-wallet-alias" class="input" maxlength="50" value="'+esc(w.alias||"")+'" placeholder="Ex.: Meu Sodexo">';
+   html+='<button class="al-v2-secondary" onclick="alicerceBeneficioSalvarNome('+esc(JSON.stringify(w.id))+')">Salvar nome</button><div class="al-v2-danger-zone"><button type="button" class="al-v2-danger" onclick="alicerceBeneficioExcluirCartao('+esc(JSON.stringify(w.id))+')">Excluir cartão e histórico</button></div></section>';
+ }
+ var month=String(today||"").slice(0,7);
+ var monthly=(w.entries||[]).filter(function(e){return String(e.date||"").slice(0,7)===month;});
+ var paid=Math.round(monthly.filter(function(e){return e.kind==="debit";}).reduce(function(n,e){return n+Number(e.amount||0);},0)*100)/100;
+ var credited=Math.round(monthly.filter(function(e){return e.kind==="credit";}).reduce(function(n,e){return n+Number(e.amount||0);},0)*100)/100;
+ html+='<div class="al-v2-mini-metrics"><div><small>Recargas do mês</small><strong>'+esc(money(credited))+'</strong></div><div><small>Compras do mês</small><strong>'+esc(money(paid))+'</strong></div></div>';
+ html+='<section class="al-v2-history"><div class="al-v2-section-title"><div><span class="al-v2-eyebrow">MOVIMENTAÇÕES</span><h3>Histórico</h3></div>';
+ html+=button(section==="history"?"Ver menos":"Ver tudo",arg(w.id,section==="history"?"overview":"history"),"quiet");
+ html+='</div>';
+ var all=w.entries.slice().reverse();
+ var listing=section==="history"?all:all.slice(0,3);
+ if(!listing.length)html+='<div class="al-v2-empty">Ainda não há movimentações neste cartão.</div>';
+ else html+='<div class="al-v2-entries">'+listing.map(function(e){
+   var credit=e.kind==="credit"||e.kind==="adjustment"&&Number(e.amount)>=0;
+   var iconText=e.kind==="credit"?"↓":e.kind==="debit"?"↑":"⇄";
+   var kind=e.kind==="credit"?"Recarga":e.kind==="debit"?"Compra":"Ajuste de saldo";
+   var id=JSON.stringify(e.id),walletId=JSON.stringify(w.id);
+   var htmlRow='<div class="al-v2-entry"><span class="al-v2-entry-icon '+(credit?"credit":"debit")+'">'+iconText+'</span><div class="al-v2-entry-copy"><strong>'+esc(e.description)+'</strong><small>'+esc(kind)+' · '+esc(String(e.date||"").split("-").reverse().join("/"))+'</small></div><strong class="al-v2-entry-amount '+(credit?"credit":"debit")+'">'+(credit?"+":"−")+esc(money(Math.abs(e.amount)))+'</strong></div>';
+
+   return '<div class="al-v2-entry-wrap">'+htmlRow+'</div>'+ (section==="history"?'<div class="al-v2-control-row">'+(e.kind!=="adjustment"?button("Editar",arg(w.id,"history",e.id),"quiet"):"")+'<button type="button" class="al-v2-tiny-danger" onclick="alicerceBeneficioExcluirLancamento('+esc(walletId)+','+esc(id)+')">Excluir</button></div>':"");
+ }).join("")+'</div>';
+ var editId=state.benefitEditEntryId;
+ var editRow=section==="history"&&w.entries.find(function(e){return e.kind!=="adjustment"&&String(e.id)===String(editId);});
+ if(editRow){
+   html+='<div class="al-v2-panel al-v2-edit"><div class="al-v2-panel-head"><h3>Corrigir lançamento</h3>'+button("Cancelar",arg(w.id,"history"),"quiet")+'</div><p>O novo valor substitui o anterior. Não soma outra recarga.</p>';
+   html+='<label for="benefit-edit-amount">Valor correto</label><input id="benefit-edit-amount" class="input" inputmode="decimal" value="'+esc(String(editRow.amount).replace(".",","))+'">';
+   html+='<label for="benefit-edit-date">Data</label><input id="benefit-edit-date" class="input" type="date" value="'+esc(editRow.date)+'">';
+   html+='<label for="benefit-edit-description">Descrição</label><input id="benefit-edit-description" class="input" maxlength="120" value="'+esc(editRow.description)+'">';
+   html+='<button class="al-v2-primary" onclick="alicerceBeneficioSalvarEdicao('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(editRow.id))+')">Salvar correção</button></div>';
+ }
+ html+='</section><div class="al-v2-bottom-settings">'+button("⚙ Configurar cartão",arg(w.id,"settings"),"quiet")+'</div>';
+ html+='<p class="al-v2-footnote">Saldo calculado a partir dos registros no Alicerce. Não há sincronização automática com a operadora.</p></div>';
  return html;
 }
 function answer(store,question){
