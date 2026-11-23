@@ -6634,17 +6634,17 @@ AlicerceIA._pendingRecognitionMode='';
 AlicerceIA._privacyCopy={
   pt:{
     dictation:'Fale usando o microfone do teclado do seu celular. O texto reconhecido aparecerá no campo de mensagem.',
-    photo:'Privacidade: a leitura de fotos e documentos está temporariamente desativada. A imagem permanece no aparelho e nenhum texto reconhecido é enviado ou registrado.',
+    photo:'A foto será analisada no seu aparelho para identificar dados de notas e comprovantes. Confira tudo antes de registrar. O Alicerce não salva automaticamente o texto completo da imagem.',
     continue:'Continuar',cancel:'Cancelar'
   },
   en:{
     dictation:'Use your keyboard microphone to dictate. The recognized text will appear in the message field.',
-    photo:'Privacy: photo and document reading is temporarily disabled. The image stays on your device, and no recognized text is sent or stored.',
+    photo:'The photo is read on your device to identify receipt details. Review everything before recording an expense. Raw image text is not saved automatically.',
     continue:'Continue',cancel:'Cancel'
   },
   es:{
     dictation:'Habla usando el micrófono del teclado. El texto reconocido aparecerá en el campo de mensaje.',
-    photo:'Privacidad: la lectura de fotos y documentos está temporalmente desactivada. La imagen permanece en tu dispositivo y no se envía ni almacena el texto reconocido.',
+    photo:'La foto se analiza en tu dispositivo. Revisa los datos antes de registrar un gasto; el texto completo no se guarda automáticamente.',
     continue:'Continuar',cancel:'Cancelar'
   }
 };
@@ -6664,8 +6664,8 @@ AlicerceIA.mostrarAvisoDitado=function(){
   box.hidden=false;
   box.innerHTML='<p class="alicerce-assistant-privacy-text">'+esc(this._textoPrivacidade().dictation)+'</p>';
 };
-AlicerceIA.solicitarFoto=function(){
-  this._pendingPrivacyAction='camera';
+AlicerceIA.solicitarFoto=function(mode){
+  this._pendingPrivacyAction=mode==='gallery'?'gallery':'camera';
   this._pendingSpeechIndex=-1;
   this._pendingSpeechButton=null;
   var labels=this._textoPrivacidade();
@@ -6709,8 +6709,8 @@ AlicerceIA.cancelarAvisoPrivacidade=function(){
 AlicerceIA.confirmarAvisoPrivacidade=function(){
   var action=this._pendingPrivacyAction;
   this.cancelarAvisoPrivacidade();
-  if(action==='camera'){
-    var input=document.getElementById('alicerce-assistant-photo');
+  if(action==='camera'||action==='gallery'){
+    var input=document.getElementById(action==='gallery'?'alicerce-assistant-gallery':'alicerce-assistant-photo');
     if(input)input.click();
   }
 };
@@ -6831,6 +6831,63 @@ AlicerceIA.ouvirMensagem=async function(index,button){
 };
 
 
+AlicerceIA._pixProofDraft=null;
+AlicerceIA._lerComprovantePix=function(raw){
+  var lines=String(raw||'').replace(/\r/g,'').split('\n').map(function(s){return s.trim()}).filter(Boolean);
+  var norm=function(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();};
+  var all=norm(lines.join(' '));
+  if(!/\bpix\b/.test(all)||!/comprovante|transferencia|pagamento|enviado|realizado|concluido|recebido/.test(all))return null;
+  var incoming=/pix recebido|voce recebeu|transferencia recebida|valor recebido/.test(all);
+  var amount=null,recipient='',date='',evidence='';
+  for(var i=0;i<lines.length;i++){
+    var ln=lines[i],n=norm(ln);
+    if(!date){var dt=ln.match(/\b([0-3]?\d[\/.-][01]?\d[\/.-]20\d{2})\b/);if(dt)date=dt[1].replace(/[.-]/g,'/');}
+    if(amount===null&&/(?:^|\b)(?:valor(?:\s+(?:do|da)\s+(?:pix|pagamento|transferencia))?|total(?:\s+enviado)?|voce\s+(?:pagou|enviou))\b/.test(n)){
+      var val=ln.match(/R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/);
+      if(!val&&i+1<lines.length)val=lines[i+1].match(/R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/);
+      if(val){amount=Number(val[1].replace(/\./g,'').replace(',','.'));evidence=ln;}
+    }
+    if(!recipient&&/^(?:para|destinat[aá]rio|recebedor|favorecido|nome do recebedor|quem recebeu)\s*[:\-]/i.test(ln))recipient=ln.replace(/^[^:\-]+[:\-]\s*/,'').slice(0,100);
+  }
+  if(amount===null){
+    var amounts=String(raw||'').match(/R\$\s*(?:\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/g)||[];
+    if(amounts.length===1)amount=Number(amounts[0].replace(/R\$|\./g,'').replace(',','.'));
+  }
+  if(!(amount>0&&amount<=1000000))amount=null;
+  return {amount:amount,recipient:recipient,date:date,incoming:incoming,evidence:evidence};
+};
+AlicerceIA._mostrarComprovantePix=function(raw){
+  var proof=this._lerComprovantePix(raw);
+  if(!proof)return false;
+  this._pixProofDraft=Object.assign({ownerId:String(Store.userId||'')},proof);
+  var msg='Identifiquei um possível comprovante Pix.\n';
+  msg+='Valor: '+(proof.amount?fmtMoney(proof.amount):'não identificado com segurança');
+  msg+='\nDestinatário: '+(proof.recipient||'não identificado');
+  msg+='\nData: '+(proof.date||'não identificada');
+  msg+='\n\n'+(proof.incoming?'Parece ser um recebimento. Não vou registrar como gasto.':'Antes de lançar, confirme se foi uma despesa ou uma transferência entre suas contas.');
+  msg+='\nNenhum movimento foi salvo. A imagem pode conter dados que o OCR não leu corretamente.';
+  this._messages.push({role:'assistant',text:msg});
+  while(this._messages.length>6)this._messages.shift();
+  this._answer=msg;this._question='';render();return true;
+};
+AlicerceIA.conferirPixDespesa=function(){
+  var p=this._pixProofDraft;
+  if(!p||p.ownerId!==String(Store.userId||'')||p.incoming||!p.amount)return;
+  var d=today();
+  if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(p.date)){
+    var parts=p.date.split('/'),parsed=parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0');
+    var check=new Date(parsed+'T12:00:00');
+    if(!isNaN(check.getTime())&&check.getFullYear()===Number(parts[2])&&check.getMonth()+1===Number(parts[1])&&check.getDate()===Number(parts[0]))d=parsed;
+  }
+  var possible=(Store.movements||[]).filter(function(x){return x&&x.tipo==='despesa'&&x.data===d&&Math.abs(Number(x.valor||0)-p.amount)<0.01;});
+  if(possible.length&&!window.confirm('Já existe '+possible.length+' gasto(s) deste valor nesta data. Confira se o Pix já foi registrado. Deseja preparar outro lançamento?'))return;
+  Store.screenData={interpretation:{amount:p.amount,item:'Pagamento Pix',merchant:p.recipient,categoria:'',subcategoria:''},
+    amountInput:p.amount,itemInput:'Pagamento Pix',localInput:p.recipient,
+    text:'Pagamento Pix',context:p.recipient,date:d,paymentMethod:'pix',purpose:'',
+    cardId:'',cardOwnerType:'meu',cardOwner:'',cardType:'',installment:false,installments:0,
+    novaCompraFlow:false,gastoEdits:null,aliciaOrigin:true,pixProofOrigin:true};
+  go('addGastoDoubt',Store.screenData);
+};
 AlicerceIA._qrScriptPromise=null;
 AlicerceIA._qrConsultaUrl='';
 AlicerceIA._receiptDraft=null;
@@ -7130,6 +7187,7 @@ AlicerceIA.processarFoto=async function(input){
   if(this._photoBusy)return;
   this._receiptDraft=null;
   this._receiptOCR='';
+  this._pixProofDraft=null;
   this._qrConsultaUrl='';
   var file=input&&input.files&&input.files.length?input.files[0]:null;
   if(!file)return;
@@ -7202,6 +7260,8 @@ AlicerceIA.processarFoto=async function(input){
     if(status)status.textContent='Não consegui identificar QR Code nem texto suficiente. Inclua o QR Code na foto e tente novamente.';
     return;
   }
+  // Comprovantes Pix são distintos de notas fiscais e pagamentos de contas.
+  if(this._mostrarComprovantePix(extracted))return;
   // Para contas de energia, evitar colar o OCR inteiro na conversa ou salvar como descrição.
   if(this._mostrarLeituraDocumento(extracted)){
     var recognizedInput=document.getElementById('alicerce-assistant-input');
@@ -7317,6 +7377,9 @@ function renderAssistente(){
     });
     html+='</div>';
   }
+  if(AlicerceIA._pixProofDraft&&AlicerceIA._pixProofDraft.ownerId===String(Store.userId||'')){
+    if(!AlicerceIA._pixProofDraft.incoming&&AlicerceIA._pixProofDraft.amount)html+='<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="AlicerceIA.conferirPixDespesa()">Conferir Pix como despesa</button>';
+  }
   if(AlicerceIA._receiptOCR&&window.AlicerceConsumo){
     html+='<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="AlicerceIA.revisarProdutosNota()">Revisar produtos e arquivar por pastas</button>';
   }
@@ -7328,6 +7391,8 @@ function renderAssistente(){
   }
   html+='<form class="alicerce-assistant-composer" onsubmit="AlicerceIA.enviarMensagem();return false;">';
   html+='<input type="file" id="alicerce-assistant-photo" accept="image/jpeg,image/png,image/webp,image/bmp" capture="environment" style="display:none" onchange="AlicerceIA.processarFoto(this)">';
+  html+='<input type="file" id="alicerce-assistant-gallery" accept="image/jpeg,image/png,image/webp,image/bmp" style="display:none" onchange="AlicerceIA.processarFoto(this)">';
+  html+='<button class="alicerce-assistant-camera" type="button" aria-label="Anexar comprovante da galeria" title="Anexar comprovante da galeria" onclick="AlicerceIA.solicitarFoto(\'gallery\')">'+icon('file')+'</button>';
   html+='<button class="alicerce-assistant-camera" id="alicerce-assistant-camera" type="button" aria-label="'+esc(ui.camera)+'" title="'+esc(ui.camera)+'" onclick="AlicerceIA.solicitarFoto()">'+icon('camera')+'</button>';
   html+='<button class="alicerce-assistant-mic" id="alicerce-assistant-mic" type="button" aria-label="'+esc(ui.mic)+'" title="'+esc(ui.mic)+'" aria-pressed="false" onclick="AlicerceIA.toggleMicrofone()"><svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"></path></svg></button>';
   html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="5000" inputmode="text" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
