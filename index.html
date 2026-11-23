@@ -10560,6 +10560,59 @@ function renderGastos(){
   return html;
 }
 
+
+/* ALICERCE_GASTOS_RECOVERY_V2
+   Recovery is read-only: no mutation of financial records on render failure.
+   Preserve existing primary view; isolate malformed records and keep navigation usable. */
+const alicerceRenderGastosPrincipal=renderGastos;
+renderGastos=function(){
+  try{
+    return alicerceRenderGastosPrincipal();
+  }catch(error){
+    console.error('[Alicerce Gastos] Falha ao montar tela principal:',error);
+    try{
+      const safe=value=>esc(String(value===null||value===undefined?'':value));
+      const money=value=>fmtMoney(Number(value)||0);
+      const now=Clock.now();
+      const data=Store.screenData||{};
+      const month=(Number.isInteger(Number(data.month))&&Number(data.month)>=1&&Number(data.month)<=12)?Number(data.month):now.getMonth()+1;
+      const year=(Number.isInteger(Number(data.year))&&Number(data.year)>=2000)?Number(data.year):now.getFullYear();
+      const period=year+'-'+String(month).padStart(2,'0');
+      const movements=Array.isArray(Store.movements)?Store.movements:[];
+      const installments=Array.isArray(Store.installments)?Store.installments:[];
+      const rows=[];
+      movements.forEach(m=>{
+        try{
+          if(m&&m.tipo==='despesa'&&String(m.data||'').slice(0,7)===period)
+            rows.push({id:m.id,descricao:m.descricao||m.item||'Despesa',data:m.data,valor:Number(m.valor)||0,cat:m.categoria||'outros'});
+        }catch(e){console.warn('[Alicerce Gastos] Registro ignorado:',e)}
+      });
+      installments.forEach(i=>{
+        try{
+          if(i&&i.tipo==='cartao'&&i.compraId&&String(i.data||'').slice(0,7)===period)
+            rows.push({id:i.id,descricao:i.descricao||'Compra no cartão',data:i.data,valor:Number(i.valor)||0,cat:i.categoria||'outros'});
+        }catch(e){console.warn('[Alicerce Gastos] Parcela ignorada:',e)}
+      });
+      rows.sort((a,b)=>String(b.data||'').localeCompare(String(a.data||'')));
+      const total=rows.reduce((sum,m)=>sum+(Number(m.valor)||0),0);
+      let html='<main class="content" id="alicerce-gastos-screen" style="padding:18px 16px 110px;max-width:460px;margin:auto">';
+      html+='<h2 style="margin-bottom:10px">Meus gastos</h2>';
+      html+='<div style="display:flex;gap:10px;align-items:center;margin-bottom:18px"><button class="btn btn-secondary btn-sm" onclick="changeMonth(-1)" aria-label="Mês anterior">‹</button><strong>'+String(month).padStart(2,'0')+'/'+year+'</strong><button class="btn btn-secondary btn-sm" onclick="changeMonth(1)" aria-label="Próximo mês">›</button></div>';
+      html+='<div class="card" style="padding:16px;margin-bottom:16px"><div style="font-size:12px;opacity:.7">Total registrado no mês</div><strong style="font-size:26px">'+money(total)+'</strong><div style="font-size:12px;opacity:.7">'+rows.length+' lançamento(s)</div></div>';
+      html+='<div role="status" style="font-size:12px;line-height:1.5;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px">Exibição simplificada temporária. Seus lançamentos não foram alterados. Algumas informações podem não aparecer aqui.</div>';
+      if(!rows.length)html+='<p>Nenhum gasto registrado neste mês.</p>';
+      rows.forEach(m=>{
+        html+='<div style="padding:14px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:12px"><strong style="overflow-wrap:anywhere">'+safe(m.descricao)+'</strong><strong style="white-space:nowrap">'+money(m.valor)+'</strong></div><div style="font-size:12px;opacity:.68;margin-top:5px">'+safe(String(m.data||'').slice(0,10))+' · '+safe(m.cat)+'</div></div>';
+      });
+      html+='<button type="button" class="btn btn-secondary mt-3" onclick="go(\'home\')">Voltar ao início</button></main>';
+      return html;
+    }catch(recoveryError){
+      console.error('[Alicerce Gastos] Recuperação falhou:',recoveryError);
+      return '<main class="content"><h2>Meus gastos</h2><p>Não foi possível exibir os lançamentos agora. Nenhum registro foi alterado.</p><button class="btn btn-primary" onclick="go(\'home\')">Voltar ao início</button></main>';
+    }
+  }
+};
+
 function alicerceExcluirLancamentoOcrIncorreto(id){
   var row=(Store.movements||[]).find(function(item){return item&&String(item.id)===String(id);});
   if(!row||row.tipo!=='despesa'||!alicerceDocumentoOCRSuspeito(row.descricao||'')){
