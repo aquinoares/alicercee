@@ -2563,6 +2563,7 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
   <script src="/assets/alicia-cashflow.js"></script>
 <script src="/assets/alicia-analitica.js"></script>
 <script src="/assets/alicerce-beneficios.js"></script>
+<script src="/assets/alicia-compra-beneficio-chat.js"></script>
 <style id="alicerce-beneficios-v1-styles">
 .al-benefits-home{display:grid;gap:9px;margin:12px 0}
 .al-benefit-home-card{display:flex;align-items:center;gap:11px;width:100%;padding:14px 13px;text-align:left;border:1px solid var(--line);border-radius:17px;background:var(--surface2);color:var(--text);box-shadow:var(--highlight);cursor:pointer}
@@ -5047,6 +5048,7 @@ const AlicerceIA = {
   _messages:[],
   _pendingExpenseDraft:null,
   _pendingFinancialReview:null,
+  _pendingBenefitPurchase:null,
   _welcomeTypingStarted:false,
   _proactiveConsumed:false,
   _launcherAnimationStarted:false,
@@ -5062,6 +5064,7 @@ const AlicerceIA = {
       this._messages=[];
       this._pendingExpenseDraft=null;
       this._pendingFinancialReview=null;
+      this._pendingBenefitPurchase=null;
       this._qrConsultaUrl='';
       this._welcomeTypingStarted=false;
       this._proactiveConsumed=false;
@@ -5630,6 +5633,7 @@ AlicerceIA.limparConversa=function(){
   this._messages=[];
   this._pendingExpenseDraft=null;
   this._pendingFinancialReview=null;
+  this._pendingBenefitPurchase=null;
   this._question='';
   this._answer='';
   this._welcomeTypingStarted=false;
@@ -6128,6 +6132,58 @@ AlicerceIA._handleCommitmentAlertFollowUp=async function(message){
   return 'Pronto. Atualizei o compromisso "'+target.descricao+'": o aviso ficou programado para '+label+' antes, sem alterar a data ou o horário. Ele foi registrado na agenda e será considerado pela central de alertas. Notificações push com o app fechado ainda não estão ativas.';
 };
 
+AlicerceIA._responderCompraBeneficio=function(text,review){
+  this._messages.push({role:'assistant',text:String(text||""),benefitReview:!!review});
+  while(this._messages.length>8)this._messages.splice(0,2);
+  this._answer=String(text||"");
+  render();
+  if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
+};
+AlicerceIA._atenderCompraBeneficio=function(message){
+  var helper=window.AlicerceCompraBeneficioChat;
+  if(!helper)return false;
+  var pending=this._pendingBenefitPurchase;
+  if(pending){
+    if(helper.isCancel(message)){
+      this._pendingBenefitPurchase=null;
+      this._responderCompraBeneficio('Compra cancelada. Nenhum valor foi descontado.');
+      return true;
+    }
+    if(helper.isConfirm(message)){
+      this.confirmarCompraBeneficio();
+      return true;
+    }
+    var status=helper.applyFollowup(pending,message,Store);
+    if(status.terminal)this._pendingBenefitPurchase=null;
+    this._responderCompraBeneficio(status.reply,!!status.ready);
+    return true;
+  }
+  if(!helper.isPurchaseIntent(message))return false;
+  if(!Store.userId){
+    this._responderCompraBeneficio('Entre na sua conta do Alicerce para registrar uma compra.');
+    return true;
+  }
+  var prepared=helper.parse(message,Store,Clock.today());
+  if(!prepared.state.terminal)this._pendingBenefitPurchase=prepared.draft;
+  this._responderCompraBeneficio(prepared.state.reply,!!prepared.state.ready);
+  return true;
+};
+AlicerceIA.confirmarCompraBeneficio=function(){
+  this._resetUser();
+  var helper=window.AlicerceCompraBeneficioChat;
+  var draft=this._pendingBenefitPurchase;
+  if(!helper||!draft)return;
+  this._pendingBenefitPurchase=null;
+  var outcome=helper.confirm(Store,draft);
+  this._responderCompraBeneficio(outcome.ok?outcome.reply:"Não registrei a compra. "+String(outcome.error||"Confira os dados no cartão."));
+};
+AlicerceIA.cancelarCompraBeneficio=function(){
+  this._resetUser();
+  if(!this._pendingBenefitPurchase)return;
+  this._pendingBenefitPurchase=null;
+  this._responderCompraBeneficio('Compra cancelada. Nenhum valor foi descontado.');
+};
+
 AlicerceIA.enviarMensagem=async function(question){
   this._resetUser();
   this.pararAudio();
@@ -6148,6 +6204,12 @@ AlicerceIA.enviarMensagem=async function(question){
     return;
   }
   this._messages.push({role:'user',text:message});
+  // Alicia só prepara a compra. O débito é feito exclusivamente após confirmação.
+  // Prioridade a acompanhamentos de compras em andamento, sem interferir no OCR.
+  if(inputSource==='text'&&window.AlicerceCompraBeneficioChat&&!this._pendingFinancialReview&&!this._pendingExpenseDraft){
+    var benefitConversation=this._atenderCompraBeneficio(message);
+    if(benefitConversation)return;
+  }
   // Autonomous read-only visualization: before general-chat and debt-writing handlers,
   // an explicit analytical request is answered using the authenticated user's Store.
   // Never send raw records to a graph provider, or interpret a graph as a write request.
@@ -7112,6 +7174,9 @@ function renderAssistente(){
   html+='.alicia-chart-columns{display:flex;align-items:end;gap:5px;min-height:166px;justify-content:space-between}.alicia-chart-column{display:flex;flex-direction:column;align-items:center;justify-content:end;gap:6px;min-width:0;flex:1}.alicia-chart-column>span{font-size:8px;overflow-wrap:anywhere;text-align:center}.alicia-chart-column>small{font-size:9px;text-align:center;color:var(--text2)}.alicia-chart-column-rail{width:100%;height:100px;display:flex;align-items:end;border-radius:5px 5px 0 0;background:var(--line);overflow:hidden}.alicia-chart-column-rail i{width:100%;display:block;border-radius:4px 4px 0 0}';
   html+='.alicia-chart-note,.alicia-chart-empty{font-size:10px;line-height:1.5;color:var(--text2);margin:12px 0 0}.alicerce-assistant-message:has(.alicia-analytic-chart){max-width:min(100%,540px);width:calc(100% - 41px)}';
   html+='@media(max-width:430px){.alicia-chart-row{font-size:10px}.alicia-chart-column>span{font-size:7px}}';
+  html+='.alicia-benefit-review{display:grid;gap:8px;margin-top:12px;padding:12px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;min-width:0;white-space:normal}';
+  html+='.alicia-benefit-review>strong{font-size:12px}.alicia-benefit-review>div:not(.alicia-benefit-review-actions){display:flex;justify-content:space-between;gap:10px;font-size:11px}.alicia-benefit-review span{color:var(--text2)}.alicia-benefit-review b{text-align:right;overflow-wrap:anywhere}';
+  html+='.alicia-benefit-review p{font-size:10px;line-height:1.5;color:var(--text2)}.alicia-benefit-review-actions{display:flex;flex-wrap:wrap;gap:7px}.alicia-benefit-review-actions button{min-height:38px;flex:1;font-size:11px;padding:7px}';
   html+='.alicerce-assistant-messages{display:flex;flex-direction:column;gap:10px;min-width:0}';
   html+='.alicerce-assistant-line{display:flex;align-items:flex-end;gap:7px;width:100%;min-width:0}';
   html+='.alicerce-assistant-line.assistant{justify-content:flex-start}';
@@ -7156,7 +7221,7 @@ function renderAssistente(){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?window.AlicerceAnalitica.renderChart(item.chart):'')+'</div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?window.AlicerceAnalitica.renderChart(item.chart):'')+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }
