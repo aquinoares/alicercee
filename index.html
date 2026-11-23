@@ -5073,6 +5073,7 @@ const AlicerceIA = {
       this._pendingBenefitPurchase=null;
       this._qrConsultaUrl='';
       this._receiptDraft=null;
+      this._receiptOCR='';
       this._welcomeTypingStarted=false;
       this._proactiveConsumed=false;
       this.pararDigitacaoLauncher();
@@ -5642,6 +5643,7 @@ AlicerceIA.limparConversa=function(){
   this._pendingFinancialReview=null;
   this._pendingBenefitPurchase=null;
   this._receiptDraft=null;
+  this._receiptOCR='';
   this._qrConsultaUrl='';
   this._question='';
   this._answer='';
@@ -6213,6 +6215,12 @@ AlicerceIA.enviarMensagem=async function(question){
     return;
   }
   this._messages.push({role:'user',text:message});
+  if(window.AlicerceConsumo&&/\b(pastas? de (?:compras|consumo|produtos)|minhas pastas|historico de produtos|precos? dos produtos|analise de produtos|analise minhas compras)\b/.test(this._norm(message))){
+    var answer=window.AlicerceConsumo.summary(message);
+    this._messages.push({role:'assistant',text:answer});
+    while(this._messages.length>6)this._messages.shift();
+    this._answer=answer;this._question=message;render();return;
+  }
   // Alicia só prepara a compra. O débito é feito exclusivamente após confirmação.
   // Prioridade a acompanhamentos de compras em andamento, sem interferir no OCR.
   if(inputSource==='text'&&window.AlicerceCompraBeneficioChat&&!this._pendingFinancialReview&&!this._pendingExpenseDraft){
@@ -6826,6 +6834,14 @@ AlicerceIA.ouvirMensagem=async function(index,button){
 AlicerceIA._qrScriptPromise=null;
 AlicerceIA._qrConsultaUrl='';
 AlicerceIA._receiptDraft=null;
+AlicerceIA._receiptOCR='';
+AlicerceIA.revisarProdutosNota=function(){
+  if(!window.AlicerceConsumo||!this._receiptOCR)return;
+  var receipt=this._lerCupomMercado(this._receiptOCR)||{};
+  var qr=this._validarQRNfce(this._qrConsultaUrl);
+  receipt.fiscalKey=qr&&qr.key||'';
+  window.AlicerceConsumo.review(this._receiptOCR,receipt);
+};
 // A leitura é uma sugestão. Somente a tela de conferência pode registrar o gasto.
 AlicerceIA._setReceiptDraft=function(receipt,fiscalKey){
   this._receiptDraft=null;
@@ -6925,6 +6941,7 @@ AlicerceIA._mostrarQRNfce=function(raw,ocr){
   this._qrConsultaUrl=qr.url;
   var receipt=this._lerCupomMercado(ocr||'');
   this._setReceiptDraft(receipt,qr.key);
+  this._receiptOCR=String(ocr||'').slice(0,30000);
   var msg='QR Code da NFC-e identificado.\n\nPortal oficial: '+qr.host;
   if(qr.key)msg+='\nChave fiscal: final '+qr.key.slice(-6);
   if(receipt){
@@ -7057,6 +7074,7 @@ AlicerceIA._mostrarLeituraCupomMercado=function(text){
   var receipt=this._lerCupomMercado(text);
   if(!receipt)return false;
   this._setReceiptDraft(receipt,'');
+  this._receiptOCR=String(text||'').slice(0,30000);
   var msg='A foto parece ser de uma nota de compra. A leitura pode conter erros. Confira antes de qualquer registro:\n\n';
   msg+='Estabelecimento: '+receipt.merchant.slice(0,80);
   msg+='\nData da nota: '+(receipt.date||'não identificada');
@@ -7111,6 +7129,7 @@ AlicerceIA.processarFoto=async function(input){
   this._photoTextPending=false;
   if(this._photoBusy)return;
   this._receiptDraft=null;
+  this._receiptOCR='';
   this._qrConsultaUrl='';
   var file=input&&input.files&&input.files.length?input.files[0]:null;
   if(!file)return;
@@ -7271,6 +7290,7 @@ function renderAssistente(){
   if(messages.length)html+='<button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-clear" aria-label="'+esc(ui.clear)+'" title="'+esc(ui.clear)+'" onclick="AlicerceIA.limparConversa()">'+esc(ui.clear)+'</button>';
   html+='</div></div>';
   html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/alicia-assistente.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>Alicia</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
+  html+='<button type="button" class="btn btn-secondary btn-sm mt-2 mb-2" onclick="window.AlicerceConsumo&&window.AlicerceConsumo.open()">Minhas pastas de consumo</button>';
   html+='<section class="alicerce-assistant-chat-panel">';
   if(window.AlicerceCashflow&&Store.userId){html+=window.AlicerceCashflow.renderCards(Store,Clock.today());}
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
@@ -7296,6 +7316,9 @@ function renderAssistente(){
       html+='<button type="button" class="alicerce-assistant-prompt" onclick="AlicerceIA.enviarMensagem('+safeQuestion+')">'+esc(question)+'</button>';
     });
     html+='</div>';
+  }
+  if(AlicerceIA._receiptOCR&&window.AlicerceConsumo){
+    html+='<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="AlicerceIA.revisarProdutosNota()">Revisar produtos e arquivar por pastas</button>';
   }
   if(AlicerceIA._receiptDraft&&AlicerceIA._receiptDraft.ownerId===String(Store.userId||'')){
     html+='<button type="button" class="btn btn-primary btn-sm mt-2" onclick="AlicerceIA.conferirNotaLida()">Conferir e registrar compra</button>';
@@ -18173,4 +18196,5 @@ try{
 })();
 </script>
 <script src="/assets/alicia-debt-followup.js"></script>
+<script src="/assets/alicia-consumo-pastas.js"></script>
 </body></html>
