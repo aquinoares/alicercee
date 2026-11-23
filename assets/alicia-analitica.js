@@ -55,6 +55,7 @@
   function intent(question){
     var q=norm(question);
     var display=/\b(grafico|graficos|visual|visualizar|desenhe|mostra|mostre|exiba|comparar|compare|evolucao|tendencia|distribuicao|categorias|categoria|analise por|analisa meus)\b/.test(q);
+    if(display&&/\b(sodexo|pluxee|solides|vale alimentacao|vale-alimentacao|beneficio|beneficios)\b/.test(q))return "benefits";
     var finance=/\b(gastos?|gastei|despesas?|consumo|dinheiro|financeir\w*|divida|devo|pagar|receber|vencimento|categorias?|compar|evolucao|mes|meses|semana|contas)\b/.test(q);
     if(!display||!finance)return null;
     if(/\b(divida|dividas|pagar|pendente|vencimento|contas a vencer)\b/.test(q))return "obligations";
@@ -69,7 +70,21 @@
     var date=String(today||new Date().toISOString().slice(0,10));
     var month=date.slice(0,7);
     var data=[],total=0,title="",note="",mode="bars",basis="";
-    if(type==="months"){
+    if(type==="benefits"){
+      if(root.AlicerceBeneficios&&typeof root.AlicerceBeneficios.wallets==="function"){
+        var wallets=root.AlicerceBeneficios.wallets(store);
+        var normalizedQuestion=norm(question);
+        if(/\b(sodexo|pluxee)\b/.test(normalizedQuestion))wallets=wallets.filter(function(w){return w.provider==="pluxee";});
+        else if(/\bsolides\b/.test(normalizedQuestion))wallets=wallets.filter(function(w){return w.provider==="solides";});
+        data=wallets.map(function(w){
+          var total=(w.entries||[]).filter(function(e){return e.kind==="debit"&&String(e.date||"").slice(0,7)===month;}).reduce(function(sum,e){return sum+(Number(e.amount)||0);},0);
+          return {label:root.AlicerceBeneficios.providers[w.provider]||"Vale-alimentação",value:Math.round(total*100)/100};
+        });
+      }
+      title="Compras com vale-alimentação · "+month;
+      note="Compras pagas com benefício, separadas do saldo bancário e sem somá-las outra vez às despesas do caixa.";
+      total=sum(data);
+    }else if(type==="months"){
       data=Array.from({length:6},function(_,i){
         var key=monthOffset(month,i-5);
         return {label:monthLabel(key),value:sum(entries(store).filter(function(e){return e.data.slice(0,7)===key;})),month:key};
@@ -107,6 +122,7 @@
     if(!c)return "";
     if(c.empty)return "Preparei a análise \""+c.title+"\", mas não há lançamentos confirmados suficientes para desenhar valores neste período. Não vou criar números de demonstração.";
     if(c.mode==="overview")return "Montei um panorama visual no chat. As colunas representam situações diferentes do seu dinheiro e não devem ser somadas como se fossem o mesmo tipo de gasto.";
+    if(c.type==="benefits")return "Mostrei os gastos do mês com vale-alimentação, no total de "+money(c.total)+". Esse valor saiu dos benefícios, não do saldo bancário.";
     if(c.type==="obligations")return "Mostrei a divisão entre contas vencidas e outras pendências registradas, totalizando "+money(c.total)+".";
     if(c.type==="months")return "Organizei os últimos seis meses no gráfico. A soma dos registros exibidos é "+money(c.total)+". Isso não é uma projeção do futuro.";
     return "Montei o gráfico dentro da conversa. O total dos registros analisados é "+money(c.total)+".";

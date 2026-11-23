@@ -27,7 +27,7 @@ function addWallet(store,provider,showHome){
  list.push(w);store.save();
  return {ok:true,wallet:w};
 }
-function addEntry(store,id,kind,amount,date,description){
+function addEntry(store,id,kind,amount,date,description,details){
  var w=wallets(store).find(function(row){return String(row.id)===String(id);});
  if(!w)return {ok:false,error:"Não encontrei essa carteira na sua conta."};
  if(!["credit","debit"].includes(kind))return {ok:false,error:"Escolha recarga ou compra."};
@@ -39,7 +39,15 @@ function addEntry(store,id,kind,amount,date,description){
  if(kind==="debit"&&n>balance(w))return {ok:false,error:"Saldo insuficiente. Confira suas recargas ou o saldo inicial."};
  var label=String(description||"").trim().slice(0,120);
  if(kind==="debit"&&!label)return {ok:false,error:"Descreva a compra (por exemplo, supermercado)."};
- w.entries.push({id:typeof store._uid==="function"?store._uid():"entry-"+Date.now()+"-"+Math.random().toString(36).slice(2),kind:kind,amount:n,date:date,description:label||"Recarga do benefício",createdAt:new Date().toISOString()});
+ var meta=details&&typeof details==="object"?details:{};
+ var entry={id:typeof store._uid==="function"?store._uid():"entry-"+Date.now()+"-"+Math.random().toString(36).slice(2),kind:kind,amount:n,date:date,description:label||"Recarga do benefício",createdAt:new Date().toISOString()};
+ if(kind==="debit"){
+   entry.category=String(meta.category||"alimentacao").slice(0,60);
+   entry.subcategory=String(meta.subcategory||"").slice(0,60);
+   entry.merchant=String(meta.merchant||"").slice(0,100);
+   entry.origin=String(meta.origin||"benefits").slice(0,40);
+ }
+ w.entries.push(entry);
  store.save();return {ok:true,wallet:w};
 }
 function toggleHome(store,id,show){
@@ -55,6 +63,7 @@ function removeEntry(store,walletId,entryId){
  if(next.reduce(function(total,e){return total+(e.kind==="credit"?Number(e.amount):-Number(e.amount));},0)<-0.001)return false;
  w.entries=next;store.save();return true;
 }
+function spentInMonth(store,month){return wallets(store).reduce(function(result,w){(w.entries||[]).forEach(function(e){if(e.kind==="debit"&&String(e.date||"").slice(0,7)===month){result.total+=Number(e.amount)||0;result.count++;result.byProvider[w.provider]=(result.byProvider[w.provider]||0)+(Number(e.amount)||0);}});return result;},{total:0,count:0,byProvider:{}});}
 function snapshot(store){
  return wallets(store).map(function(w){
   var spent=0,credit=0;
@@ -108,7 +117,8 @@ function answer(store,question){
  var provider=/solides/.test(q)?"solides":/\b(sodexo|pluxee)\b/.test(q)?"pluxee":"";
  if(provider)list=list.filter(function(w){return w.provider===provider;});
  if(!list.length)return "Não encontrei essa carteira de benefício cadastrada na sua conta.";
- return list.map(function(w){return w.name+": saldo registrado "+money(w.balance)+", recargas "+money(w.credit)+", compras "+money(w.spent)+"."}).join("\n")+" Esses saldos são estimados a partir dos lançamentos feitos no Alicerce e não são sincronizados com as operadoras.";
+ var thisMonth=new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0");
+ return list.map(function(w){return w.name+": saldo registrado "+money(w.balance)+", recargas "+money(w.credit)+", compras acumuladas "+money(w.spent)+"."}).join("\n")+" Essas compras usam o saldo de vale-alimentação, sem reduzir o dinheiro bancário. Os valores são calculados dos lançamentos no Alicerce, não são sincronizados com as operadoras.";
 }
-root.AlicerceBeneficios={providers:PROVIDERS,wallets:wallets,balance:balance,addWallet:addWallet,addEntry:addEntry,removeEntry:removeEntry,toggleHome:toggleHome,snapshot:snapshot,renderHome:renderHome,renderPage:renderPage,answer:answer};
+root.AlicerceBeneficios={providers:PROVIDERS,wallets:wallets,balance:balance,addWallet:addWallet,addEntry:addEntry,removeEntry:removeEntry,toggleHome:toggleHome,snapshot:snapshot,spentInMonth:spentInMonth,renderHome:renderHome,renderPage:renderPage,answer:answer};
 })(typeof window!=="undefined"?window:globalThis);
