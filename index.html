@@ -6784,7 +6784,7 @@ AlicerceIA._mostrarQRNfce=function(raw,ocr){
     msg+='\nValor pago: '+(receipt.paid?'R$ '+receipt.paid:'não identificado');
     if(receipt.mismatch)msg+='\nAtenção: valores conflitantes. Confira no portal.';
   }
-  msg+='\n\nUse o botão "Consultar nota na SEFAZ" para abrir a página oficial. Produtos e valores completos dependem da consulta ao portal. Nenhum gasto foi salvo automaticamente.';
+  msg+='\n\nA foto foi analisada dentro do Alicerce; não é necessário copiar o texto do portal. O botão "Consultar nota na SEFAZ" é apenas uma opção para conferir a nota original. Nenhum gasto foi salvo automaticamente.';
   if(!Array.isArray(this._messages))this._messages=[];
   var last=this._messages[this._messages.length-1];
   if(!last||last.role!=='assistant'||last.text!==msg)this._messages.push({role:'assistant',text:msg});
@@ -6877,15 +6877,21 @@ AlicerceIA._lerCupomMercado=function(raw){
   };
   for(var i=0;i<lines.length;i++){
     var line=lines[i],lower=normalize(line);
-    if(!merchant&&/super\s*[nm]\s*ercad|mercado|atacadao|assai/.test(lower))merchant='Supermercado (nome não confirmado)';
+    if(!merchant&&/super\s*[nm]\s*ercad|mercado|atacadao|assai/.test(lower)){
+      var candidate=line.replace(/^\s*(?:documento auxiliar|danfe)\s*/i,'').trim();
+      merchant=/^[\p{L}\d][\p{L}\d\s.,&'\/-]{4,110}$/u.test(candidate)?candidate.slice(0,110):'Supermercado (nome não confirmado)';
+    }
     if(!date){var d=line.match(/\b([0-3]\d[\/.-][01]\d[\/.-]20\d{2})\b/);if(d)date=d[1].replace(/[.-]/g,'/');}
-    if(/(valor\s*total|total\s*r\$|valor\s*a\s*pagar|total\s*a\s*pagar|valor\s*total\s*da\s*nota)/.test(lower)){
+    if(/(valor\s*total|total\s*r\$|valor\s*a\s*pagar|total\s*a\s*pagar|valor\s*total\s*da\s*nota|valor\s*a\s*pagar\s*r\$)/.test(lower)){
       var m=amount(line);if(m&&!total)total=m;
       else if(!total&&i+1<lines.length)total=amount(lines[i+1]);
     }
     if(/(valor\s*pago|pagamento\s*valor\s*pago|valor\s*recebido|total\s*pago)/.test(lower)){
       var p=amount(line);if(p&&!paid)paid=p;
       else if(!paid&&i+1<lines.length)paid=amount(lines[i+1]);
+    }
+    if(!paid&&/^(cart[aã]o\s+de\s+(?:cr[eé]dito|d[eé]bito)|pix|dinheiro)\b/.test(lower)){
+      var pay=amount(line);if(pay)paid=pay;
     }
   }
   // Tenta valores mesmo em OCR que perdeu as quebras de linha, com tolerância limitada.
@@ -6976,22 +6982,11 @@ AlicerceIA.processarFoto=async function(input){
   if(status)status.textContent='Procurando QR Code na foto...';
   try{qrText=await this._scanQRCodeFile(file)}
   catch(error){console.warn('QR não identificado; usando OCR.',error)}
-  // NFC-e: um QR válido encerra a leitura de imagem sem aguardar OCR.
-  // A consulta fiscal continua manual, e nenhum lançamento é criado.
-  if(this._validarQRNfce(qrText)){
-    input.value='';
-    file=null;
-    this._photoBusy=false;
-    if(camera)camera.disabled=false;
-    if(String(Store.userId||'')!==ownerId){
-      if(status)status.textContent='A conta mudou durante a leitura. O resultado foi descartado.';
-      return;
-    }
-    if(status)status.textContent='QR Code identificado. Consulte a nota no portal oficial.';
-    this._mostrarQRNfce(qrText,'');
-    return;
-  }
-  if(status)status.textContent='QR Code não identificado. Lendo texto da foto...';
+  // QR identifica a origem fiscal, mas NUNCA interrompe a leitura da foto.
+  // O usuário não precisa sair do Alicerce para obter os dados que estão visíveis.
+  if(status)status.textContent=this._validarQRNfce(qrText)
+    ?'QR Code encontrado. Alicia está lendo também os dados impressos...'
+    :'Lendo texto da nota na foto...';
   try{
     var ocr=await this._loadPhotoOcr();
     worker=await ocr.createWorker('por',1,{
@@ -7025,7 +7020,10 @@ AlicerceIA.processarFoto=async function(input){
     if(status)status.textContent='A conta mudou durante a leitura. O resultado foi descartado.';
     return;
   }
-  if(this._mostrarQRNfce(qrText,extracted))return;
+  if(this._mostrarQRNfce(qrText,extracted)){
+    if(status)status.textContent=extracted?'QR Code e texto da foto analisados. Confira os dados.':'QR Code identificado; dados impressos não ficaram legíveis.';
+    return;
+  }
   this._qrConsultaUrl='';
   if(!extracted){
     if(status)status.textContent='Não consegui identificar QR Code nem texto suficiente. Inclua o QR Code na foto e tente novamente.';
