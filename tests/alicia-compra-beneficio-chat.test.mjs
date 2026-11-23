@@ -30,6 +30,7 @@ test("identifica compra Sodexo e não confunde com consulta de saldo",()=>{
  assert.equal(A.amountFrom("comprei R$ 85,50 no mercado"),85.5);
  assert.equal(A.amountFrom("gastei 35 reais com Sodexo"),35);
  assert.equal(A.amountFrom("comprei 40 no mercado com Sodexo"),40);
+ assert.equal(A.descriptionFrom("comprei um lanche de 20 reais com Sodexo"),"lanche");
 });
 test("confirmação é obrigatória, não basta responder sim",()=>{
  assert.equal(A.isConfirm("sim"),false);
