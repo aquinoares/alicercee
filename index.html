@@ -2561,6 +2561,7 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 @media(prefers-reduced-motion:reduce){.al-install-dialog{animation:none}}
 </style>
   <script src="/assets/alicia-cashflow.js"></script>
+<script src="/assets/alicia-analitica.js"></script>
 </head>
 <body data-theme="azul">
 
@@ -6133,6 +6134,21 @@ AlicerceIA.enviarMensagem=async function(question){
     return;
   }
   this._messages.push({role:'user',text:message});
+  // Autonomous read-only visualization: before general-chat and debt-writing handlers,
+  // an explicit analytical request is answered using the authenticated user's Store.
+  // Never send raw records to a graph provider, or interpret a graph as a write request.
+  if(inputSource==='text'&&!this._pendingFinancialReview&&window.AlicerceAnalitica){
+    var graph=window.AlicerceAnalitica.chart(questionForEngine,Store,Clock.today());
+    if(graph){
+      var explanation=window.AlicerceAnalitica.response(graph);
+      this._messages.push({role:'assistant',text:explanation,chart:graph});
+      while(this._messages.length>8)this._messages.splice(0,2);
+      this._question=message;this._answer=explanation;
+      render();
+      if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
+      return;
+    }
+  }
 
   if(inputSource!=='ocr'){
     var commitmentAlertReply=null;
@@ -7076,6 +7092,12 @@ function renderAssistente(){
   html+='.alicia-cashflow-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.alicia-cashflow-head strong{font-size:12px;color:var(--text)}.alicia-cashflow-head span{font-size:10px;color:var(--text2)}';
   html+='.alicia-cashflow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.alicia-cashflow-card{display:flex;flex-direction:column;gap:6px;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}.alicia-cashflow-card small{font-size:9px;color:var(--text2)}.alicia-cashflow-card strong{font-size:13px;overflow-wrap:anywhere;color:var(--text)}.alicia-cashflow-card span{font-size:9px;color:var(--text2);line-height:1.4}.alicia-cashflow-track{height:5px;background:var(--line);border-radius:5px;overflow:hidden}.alicia-cashflow-track i{height:100%;display:block;border-radius:5px}.alicia-cashflow-caveat{margin:10px 0 0;color:var(--text2);font-size:10px;line-height:1.5}';
   html+='@media(max-width:420px){.alicia-cashflow-grid{grid-template-columns:1fr}.alicia-cashflow-card{gap:4px}}';
+  html+='.alicia-analytic-chart{margin-top:12px;padding:12px 11px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;min-width:0;max-width:100%;white-space:normal}';
+  html+='.alicia-chart-top{display:flex;align-items:start;gap:10px;justify-content:space-between;margin-bottom:13px}.alicia-chart-top strong{font-size:12px;line-height:1.3}.alicia-chart-top small{font-size:8px;color:var(--accent);white-space:nowrap;font-weight:800}';
+  html+='.alicia-chart-bars{display:grid;gap:13px}.alicia-chart-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;font-size:11px;margin-bottom:5px}.alicia-chart-row span{overflow-wrap:anywhere}.alicia-chart-row strong{white-space:nowrap;font-size:11px}.alicia-chart-track{height:9px;background:var(--line);border-radius:9px;overflow:hidden}.alicia-chart-track i{display:block;height:100%;border-radius:9px;min-width:0}';
+  html+='.alicia-chart-columns{display:flex;align-items:end;gap:5px;min-height:166px;justify-content:space-between}.alicia-chart-column{display:flex;flex-direction:column;align-items:center;justify-content:end;gap:6px;min-width:0;flex:1}.alicia-chart-column>span{font-size:8px;overflow-wrap:anywhere;text-align:center}.alicia-chart-column>small{font-size:9px;text-align:center;color:var(--text2)}.alicia-chart-column-rail{width:100%;height:100px;display:flex;align-items:end;border-radius:5px 5px 0 0;background:var(--line);overflow:hidden}.alicia-chart-column-rail i{width:100%;display:block;border-radius:4px 4px 0 0}';
+  html+='.alicia-chart-note,.alicia-chart-empty{font-size:10px;line-height:1.5;color:var(--text2);margin:12px 0 0}.alicerce-assistant-message:has(.alicia-analytic-chart){max-width:min(100%,540px);width:calc(100% - 41px)}';
+  html+='@media(max-width:430px){.alicia-chart-row{font-size:10px}.alicia-chart-column>span{font-size:7px}}';
   html+='.alicerce-assistant-messages{display:flex;flex-direction:column;gap:10px;min-width:0}';
   html+='.alicerce-assistant-line{display:flex;align-items:flex-end;gap:7px;width:100%;min-width:0}';
   html+='.alicerce-assistant-line.assistant{justify-content:flex-start}';
@@ -7120,7 +7142,7 @@ function renderAssistente(){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span></div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?window.AlicerceAnalitica.renderChart(item.chart):'')+'</div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }

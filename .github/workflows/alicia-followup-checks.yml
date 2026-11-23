@@ -7,8 +7,10 @@ on:
       - "index.html"
       - "assets/alicia-debt-followup.js"
       - "assets/alicia-cashflow.js"
+      - "assets/alicia-analitica.js"
       - "tests/alicia-debt-followup.test.mjs"
       - "tests/alicia-cashflow.test.mjs"
+      - "tests/alicia-analitica.test.mjs"
       - ".github/workflows/alicia-followup-checks.yml"
   workflow_dispatch:
 
@@ -24,4 +26,4 @@ jobs:
         with:
           node-version: 22
       - name: Run Alicia follow-up tests
-        run: node --test tests/alicia-debt-followup.test.mjs tests/alicia-cashflow.test.mjs
+        run: node --test tests/alicia-debt-followup.test.mjs tests/alicia-cashflow.test.mjs tests/alicia-analitica.test.mjs
