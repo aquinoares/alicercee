@@ -2560,6 +2560,7 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 @keyframes alInstallIn{from{transform:translateY(14px);opacity:.5}to{transform:translateY(0);opacity:1}}
 @media(prefers-reduced-motion:reduce){.al-install-dialog{animation:none}}
 </style>
+  <script src="/assets/alicia-cashflow.js"></script>
 </head>
 <body data-theme="azul">
 
@@ -7071,6 +7072,10 @@ function renderAssistente(){
   html+='.alicerce-assistant-heading-copy{min-width:0;flex:1}';
   html+='.alicerce-assistant-heading h2{font-size:15px;line-height:1.25;margin:0;color:var(--text);overflow-wrap:anywhere}';
   html+='.alicerce-assistant-heading p{font-size:11px;line-height:1.35;color:var(--text2);margin:3px 0 0}';
+  html+='.alicia-cashflow{margin:0 0 13px;padding:13px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--highlight)}';
+  html+='.alicia-cashflow-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.alicia-cashflow-head strong{font-size:12px;color:var(--text)}.alicia-cashflow-head span{font-size:10px;color:var(--text2)}';
+  html+='.alicia-cashflow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.alicia-cashflow-card{display:flex;flex-direction:column;gap:6px;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}.alicia-cashflow-card small{font-size:9px;color:var(--text2)}.alicia-cashflow-card strong{font-size:13px;overflow-wrap:anywhere;color:var(--text)}.alicia-cashflow-card span{font-size:9px;color:var(--text2);line-height:1.4}.alicia-cashflow-track{height:5px;background:var(--line);border-radius:5px;overflow:hidden}.alicia-cashflow-track i{height:100%;display:block;border-radius:5px}.alicia-cashflow-caveat{margin:10px 0 0;color:var(--text2);font-size:10px;line-height:1.5}';
+  html+='@media(max-width:420px){.alicia-cashflow-grid{grid-template-columns:1fr}.alicia-cashflow-card{gap:4px}}';
   html+='.alicerce-assistant-messages{display:flex;flex-direction:column;gap:10px;min-width:0}';
   html+='.alicerce-assistant-line{display:flex;align-items:flex-end;gap:7px;width:100%;min-width:0}';
   html+='.alicerce-assistant-line.assistant{justify-content:flex-start}';
@@ -7105,6 +7110,7 @@ function renderAssistente(){
   html+='</div></div>';
   html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/alicia-assistente.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>Alicia</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
   html+='<section class="alicerce-assistant-chat-panel">';
+  if(window.AlicerceCashflow&&Store.userId){html+=window.AlicerceCashflow.renderCards(Store,Clock.today());}
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
     html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span></div>';
@@ -7833,6 +7839,7 @@ AlicerceIA.insight=function(){
 AlicerceIA.responder=function(question){
   this._resetUser();
   var q=this._norm(question);
+  if(window.AlicerceCashflow&&window.AlicerceCashflow.matches(question))return window.AlicerceCashflow.answer(Store,Clock.today());
   var asksFamilyModule=/\b(adicionar|adiciona|cadastrar|cadastre|incluir|inclui|criar|cria)\b/.test(q)&&/\b(pessoa|membro|dependente)\b/.test(q)&&/\bfamilia\b/.test(q);
   if(asksFamilyModule){
     if(Store.lang==='en')return 'The old family-member registration feature is no longer part of Alicerce. The Plans area is for personal savings goals. The existing Family expense category remains only to describe the purpose of a purchase.';
