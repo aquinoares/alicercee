@@ -44,6 +44,8 @@ function descriptionFrom(message){
     var phrase=str(product[1]).replace(/^(?:no|na|pelo|pela|cartao)\s+/,"").replace(/\s+(?:no|na|com|pelo|pela)$/,"").trim();
     if(phrase&&!/^(?:cartao|vale alimentacao|sodexo|pluxee|solides|beneficio)$/.test(phrase))return phrase.slice(0,100);
   }
+  var bought=q.match(/\bcomprei\s+(?:um|uma|uns|umas)?\s*([a-z][a-z\s-]{2,60}?)\s+(?:de|por|a)\s+(?:r\$\s*)?\d{1,7}(?:[.,]\d{1,2})?\s*(?:reais?)?\b/);
+  if(bought&&str(bought[1]))return str(bought[1]).slice(0,100);
   var place=q.match(/\b(?:no|na|em|do|da)\s+(supermercado|mercado|padaria|mercearia|hortifruti|acougue|atacadao|carrefour|assai|pao de acucar|loja de alimentos)\b/);
   if(place)return "Compra no "+place[1];
   return "";
