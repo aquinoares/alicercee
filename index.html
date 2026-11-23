@@ -183,6 +183,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .dynamic-dots{display:flex;justify-content:center;gap:6px;padding:10px 0 12px}
 .dynamic-dot{width:10px;height:10px;border-radius:50%;background:var(--line);cursor:pointer}
 .dynamic-dot.active{background:var(--accent)}
+/* Alicia: cards do tour reaproveitam o carrossel de avisos da home. */
+.alicia-guide-card{gap:7px;align-items:flex-start;padding:14px 18px;min-height:145px}.alicia-guide-card .dc-title{font-size:1rem;font-weight:750;color:var(--text);margin:1px 0}.alicia-guide-card .dc-text{font-size:.82rem;line-height:1.45}.alicia-guide-card .btn{min-height:35px;font-size:.76rem;border-radius:10px}.alicia-guide-heading{display:flex;align-items:center;gap:8px;color:var(--accent);font-size:.68rem;font-weight:800;letter-spacing:.065em}.alicia-guide-heading img{width:34px;height:38px;object-fit:contain;flex:none}.dynamic-card-wrap:has(.alicia-guide-card){min-height:218px}.dynamic-card-track:has(.alicia-guide-card){min-height:176px}@media(max-width:360px){.alicia-guide-card{padding:12px}.alicia-guide-card .dc-text{font-size:.78rem}}
 .balance-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
 .balance-item{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius2);padding:14px}
 .bi-saldo{position:relative;overflow:hidden}
@@ -2565,6 +2567,7 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 <link rel="stylesheet" href="/assets/beneficios-premium.css">
 <script src="/assets/alicerce-beneficios.js"></script>
 <script src="/assets/alicia-compra-beneficio-chat.js"></script>
+<script src="/assets/alicia-guia-carrossel.js"></script>
 <style id="alicerce-beneficios-v1-styles">
 .al-benefits-home{display:grid;gap:9px;margin:12px 0}
 .al-benefit-home-card{display:flex;align-items:center;gap:11px;width:100%;padding:14px 13px;text-align:left;border:1px solid var(--line);border-radius:17px;background:var(--surface2);color:var(--text);box-shadow:var(--highlight);cursor:pointer}
@@ -10411,6 +10414,12 @@ function alicerceBeneficioExcluirCartao(walletId){
 function renderHome(){
   const bal=Store.getBalances();
   let smartCards=[];try{smartCards=Store.getSmartCards()||[]}catch(e){}
+  // O carrossel que aparece logo abaixo do cabeçalho agora apresenta os recursos
+  // com a Alicia, sem remover alertas operacionais já existentes.
+  if(window.AlicerceGuiaAlicia){
+    const tips=window.AlicerceGuiaAlicia.cards(Store);
+    smartCards=tips.concat(smartCards.filter(function(c){return c&&Number(c.pr)!==9;}).slice(0,4));
+  }
   const hour=Clock.currentHour();
   const greeting=hour<12?t('greeting'):hour<18?t('goodAfternoon'):t('goodEvening');
   const _hojeCompromissos=Clock.today();
@@ -10436,7 +10445,7 @@ function renderHome(){
   let html='<div class="content">';
   html+='<div class="mt-4"><p class="text-muted text-sm">'+greeting+'</p></div>';
   if(smartCards.length>0){html+='<div class="dynamic-card-wrap mt-2"><div class="dynamic-card-track" id="dc-track" tabindex="0" role="region" aria-label="'+esc(Store.lang==='en'?'Smart cards':Store.lang==='es'?'Tarjetas inteligentes':'Cartões inteligentes')+'">';
-  smartCards.forEach(c=>{html+='<div class="dynamic-card"><div class="dc-title">'+esc(c.title)+'</div><div class="dc-text">'+esc(c.text)+'</div>'+(c.go&&c.lbl?'<button class="btn btn-secondary btn-sm mt-2" onclick="'+esc(c.go)+'">'+esc(c.lbl)+'</button>':'')+'</div>'});
+  smartCards.forEach(c=>{html+='<div class="dynamic-card'+(c.guide?' alicia-guide-card':'')+'">'+(c.guide?'<div class="alicia-guide-heading"><img src="/assets/alicia-assistente.webp" width="34" height="38" alt=""><span>ALICIA · GUIA DO APLICATIVO</span></div>':'')+'<div class="dc-title">'+esc(c.title)+'</div><div class="dc-text">'+esc(c.text)+'</div>'+(c.go&&c.lbl?'<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="'+esc(c.go)+'">'+esc(c.lbl)+'</button>':'')+'</div>'});
   html+='</div>';
   if(smartCards.length>1)html+='<div class="dynamic-dots">'+smartCards.map((_,i)=>'<div class="dynamic-dot'+(i===0?' active':'')+'" onclick="scrollToDC('+i+')"></div>').join('')+'</div>';
   html+='</div>';}
