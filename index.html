@@ -14527,9 +14527,11 @@ function renderAddGasto(){
   html.push('<div class="form-group mt-4"><label class="form-label" for="ag-item">O que você comprou?</label><input id="ag-item" type="text" autocomplete="off" placeholder="Ex.: Almoço, roupa, combustível" value="'+esc(data.itemInput||'')+'"></div>');
   html.push('<div class="form-group mt-3"><label class="form-label" for="ag-local">Onde foi?</label><input id="ag-local" type="text" autocomplete="off" placeholder="Nome do estabelecimento (opcional)" value="'+esc(data.localInput||'')+'"></div>');
   /* ALICERCE_NOVA_COMPRA_SO_CARTAO_V5 */
-  html.push('<div style="margin-top:24px"><div class="form-label" style="margin-bottom:10px">Forma de pagamento</div><div class="gasto-payment-grid" style="display:grid;grid-template-columns:'+(data.novaCompraFlow?'1fr':'repeat(2,minmax(0,1fr))')+';gap:8px">');
+  html.push('<div style="margin-top:24px"><div class="form-label" style="margin-bottom:10px">Forma de pagamento</div><div class="gasto-payment-grid" style="display:grid;grid-template-columns:'+'repeat(2,minmax(0,1fr))'+';gap:8px">');
   if(data.novaCompraFlow){
-    html.push('<button type="button" id="pay-card" class="btn btn-primary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' Cartão</button></div></div>');
+    html.push('<button type="button" id="pay-card" class="btn '+(data.paymentMethod==='beneficio'?'btn-secondary':'btn-primary')+'" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' Cartão</button>');
+    if(window.AlicerceBeneficios&&window.AlicerceBeneficios.wallets(Store).length){html.push('<button type="button" id="pay-benefit" class="btn '+(data.paymentMethod==='beneficio'?'btn-primary':'btn-secondary')+'" style="min-height:54px" onclick="selectGastoPayment(\'beneficio\')">'+icon('credit-card','ico-sm')+' Vale-alimentação</button>');}
+    html.push('</div></div>');
   }else{
     html.push('<button type="button" id="pay-pix" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'pix\')">'+icon('qr-code','ico-sm')+' Pix</button>');
     html.push('<button type="button" id="pay-card" class="btn btn-secondary" style="min-height:54px" onclick="selectGastoPayment(\'cartao\')">'+icon('credit-card','ico-sm')+' Cartão</button>');
@@ -14537,7 +14539,7 @@ function renderAddGasto(){
     if(window.AlicerceBeneficios&&window.AlicerceBeneficios.wallets(Store).length){html.push('<button type="button" id="pay-benefit" class="btn '+(data.paymentMethod==='beneficio'?'btn-primary':'btn-secondary')+'" style="min-height:54px" onclick="selectGastoPayment(\'beneficio\')">'+icon('credit-card','ico-sm')+' Vale-alimentação</button>');}
     html.push('</div></div>');
   }
-  if(!data.novaCompraFlow&&window.AlicerceBeneficios&&window.AlicerceBeneficios.wallets(Store).length){
+  if(window.AlicerceBeneficios&&window.AlicerceBeneficios.wallets(Store).length){
     var options=window.AlicerceBeneficios.snapshot(Store);
     html.push('<div id="gasto-benefit-options" style="display:'+(data.paymentMethod==='beneficio'?'block':'none')+';margin-top:12px;padding:15px;border:1px solid var(--field-border);border-radius:14px;background:var(--surface)">');
     html.push('<label class="form-label" for="ag-benefit-id">Qual vale-alimentação?</label><select id="ag-benefit-id" class="input" onchange="Store.screenData=Store.screenData||{};Store.screenData.benefitWalletId=this.value"><option value="">Selecione o cartão</option>');
@@ -14675,7 +14677,7 @@ async function processGastoText(){
     const cardIdInput=document.getElementById('ag-card-id');
     const selectedCardId=cardIdInput?cardIdInput.value:'';
     const contextoNovaCompra=Store.screenData||{};
-    if(contextoNovaCompra.novaCompraFlow&&contextoNovaCompra.paymentMethod!=='cartao'){
+    if(contextoNovaCompra.novaCompraFlow&&contextoNovaCompra.paymentMethod!=='cartao'&&contextoNovaCompra.paymentMethod!=='beneficio'){
       showRecoveryScreen({message:'Em Nova compra, selecione um cartao cadastrado.'});
       return;
     }
@@ -15309,7 +15311,7 @@ function saveDoubtGasto(){
       const outcome=window.AlicerceBeneficios.addEntry(Store,data.benefitWalletId,'debit',String(value),data.date||today(),description,{category:cat,subcategory:sub,merchant:interp.merchant||'',origin:'add-gasto'});
       if(!outcome.ok){showToast(outcome.error);if(button)button.disabled=false;return;}
       showToast('Compra registrada em '+window.AlicerceBeneficios.providers[wallet.provider]+'. Saldo restante: '+fmtMoney(window.AlicerceBeneficios.balance(wallet)));
-      go('home');return;
+      go(data.novaCompraFlow?'beneficios':'home');return;
     }
     if(data.paymentMethod==='cartao'&&data.cardType==='credito'){
       if(salvarGastoCreditoCartao(data,interp)){
