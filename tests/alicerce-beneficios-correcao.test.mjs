@@ -86,11 +86,49 @@ test("impede duplicar carteira do mesmo fornecedor, permite editar o nome",()=>{
  assert.equal(B.snapshot(s)[0].name,"Meu Sodexo");
  assert.match(B.renderHome(s),/Meu Sodexo/);
 });
-test("renderiza controles de histórico, correção de saldo e exclusão com confirmação",()=>{
+test("dashboard premium mostra cartão, resumo e somente 3 lançamentos inicialmente",()=>{
  const {s,w}=setup();
- s.screenData={benefitWalletId:w.id,benefitEditEntryId:w.entries[0].id};
+ B.addEntry(s,w.id,"credit","10","2026-11-23","Terceira recarga");
+ B.addEntry(s,w.id,"debit","5","2026-11-23","Compra 1");
  const page=B.renderPage(s,"2026-11-23");
- for(const word of ["Editar","Excluir","Saldo correto no cartão","Salvar correção","Excluir cartão e seu histórico","Atualizar saldo para o valor informado"])assert.ok(page.includes(word),word);
+ assert.match(page,/al-v2-hero/);
+ assert.match(page,/R\$[\s\u00a0]1.205,00/);
+ assert.match(page,/Nova recarga/);
+ assert.match(page,/Registrar compra/);
+ assert.match(page,/Corrigir saldo/);
+ assert.match(page,/Recargas do mês/);
+ assert.match(page,/Compras do mês/);
+ assert.match(page,/Ver tudo/);
+ assert.equal((page.match(/class="al-v2-entry-wrap"/g)||[]).length,3);
+ assert.equal(page.includes('id="benefit-real-balance"'),false);
+ assert.equal(page.includes("Excluir cartão e histórico"),false);
+});
+test("operações de correção e exclusão aparecem nas seções próprias sem poluir dashboard",()=>{
+ const {s,w}=setup();
+ s.screenData={benefitWalletId:w.id,benefitSection:"history",benefitEditEntryId:w.entries[0].id};
+ let page=B.renderPage(s,"2026-11-23");
+ for(const word of ["Editar","Excluir","Salvar correção","Valor correto"])assert.ok(page.includes(word),word);
+ assert.equal((page.match(/class="al-v2-entry-wrap"/g)||[]).length,2);
+ assert.equal(page.includes("id=\"benefit-real-balance\""),false);
+ s.screenData={benefitWalletId:w.id,benefitSection:"balance"};
+ page=B.renderPage(s,"2026-11-23");
+ assert.match(page,/id="benefit-real-balance"/);
+ assert.match(page,/Atualizar saldo/);
+ s.screenData={benefitWalletId:w.id,benefitSection:"settings"};
+ page=B.renderPage(s,"2026-11-23");
+ assert.match(page,/Exibir este cartão na tela principal/);
+ assert.match(page,/Excluir cartão e histórico/);
  for(const handler of ["alicerceBeneficioSalvarEdicao","alicerceBeneficioExcluirLancamento","alicerceBeneficioConferirSaldo","alicerceBeneficioExcluirCartao","alicerceBeneficioSalvarNome"])assert.ok(html.includes("function "+handler+"("),handler);
  assert.match(html,/window\.confirm\(/);
+});
+test("edição visual de recarga e compra tem formulários em seções separadas",()=>{
+ const {s,w}=setup();
+ s.screenData={benefitWalletId:w.id,benefitSection:"topup"};
+ let page=B.renderPage(s,"2026-11-23");
+ assert.match(page,/id="benefit-entry-kind" type="hidden" value="credit"/);
+ assert.match(page,/Confirmar recarga/);
+ s.screenData={benefitWalletId:w.id,benefitSection:"purchase"};
+ page=B.renderPage(s,"2026-11-23");
+ assert.match(page,/id="benefit-entry-kind" type="hidden" value="debit"/);
+ assert.match(page,/Confirmar compra/);
 });
