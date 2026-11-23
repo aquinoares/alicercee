@@ -19,10 +19,11 @@ function ensure(store){
  return store.settings.benefitWalletsV1;
 }
 function wallets(store){return ensure(store).filter(function(w){return w&&PROVIDERS[w.provider]&&w.type==="alimentacao"&&Array.isArray(w.entries);});}
-function balance(w){return Math.round((w.entries||[]).reduce(function(total,item){var n=Number(item.amount)||0;return total+(item.kind==="credit"?n:-n);},0)*100)/100;}
+function balance(w){return Math.round((w.entries||[]).reduce(function(total,item){var n=Number(item.amount)||0;return total+(item.kind==="credit"||item.kind==="adjustment"?n:-n);},0)*100)/100;}
 function addWallet(store,provider,showHome){
  if(!Object.prototype.hasOwnProperty.call(PROVIDERS,provider))return {ok:false,error:"Selecione Pluxee/Sodexo ou Sólides."};
  var list=ensure(store);if(!store||!store.userId)return {ok:false,error:"Entre na sua conta para salvar."};
+ if(list.some(function(w){return w&&w.provider===provider&&w.type==="alimentacao";}))return {ok:false,error:"Esse fornecedor já está cadastrado. Use o cartão existente para corrigir o saldo."};
  var w={id:typeof store._uid==="function"?store._uid():"va-"+Date.now()+"-"+Math.random().toString(36).slice(2),provider:provider,type:"alimentacao",showHome:!!showHome,entries:[],createdAt:new Date().toISOString()};
  list.push(w);store.save();
  return {ok:true,wallet:w};
@@ -55,20 +56,65 @@ function toggleHome(store,id,show){
  if(!w)return false;
  w.showHome=!!show;store.save();return true;
 }
+
+function validDate(date){
+ var d=String(date||"");if(!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;
+ var parsed=new Date(d+"T12:00:00Z");return !Number.isNaN(parsed.getTime())&&parsed.toISOString().slice(0,10)===d;
+}
+function recalc(entries){return Math.round(entries.reduce(function(total,e){var v=Number(e.amount)||0;return total+(e.kind==="credit"||e.kind==="adjustment"?v:-v);},0)*100)/100;}
+function setBalance(store,id,target,date){
+ var w=wallets(store).find(function(x){return String(x.id)===String(id);});
+ if(!w)return {ok:false,error:"Cartão não encontrado."};
+ var raw=String(target==null?"":target).trim();
+ if(!/^\d{1,8}(?:[.,]\d{1,2})?$/.test(raw))return {ok:false,error:"Informe o saldo real, igual ou maior que zero."};
+ var number=Number(raw.replace(",","."));if(!Number.isFinite(number)||number<0)return {ok:false,error:"Saldo inválido."};
+ if(!validDate(date))return {ok:false,error:"Data inválida."};
+ var delta=Math.round((number-balance(w))*100)/100;
+ if(delta===0)return {ok:true,unchanged:true,wallet:w};
+ w.entries.push({id:typeof store._uid==="function"?store._uid():"cor-"+Date.now(),kind:"adjustment",amount:delta,date:date,description:"Conferência de saldo real",origin:"manual-reconciliation",createdAt:new Date().toISOString()});
+ store.save();return {ok:true,wallet:w,delta:delta};
+}
+function updateEntry(store,walletId,entryId,amount,date,description){
+ var w=wallets(store).find(function(x){return String(x.id)===String(walletId);});
+ if(!w)return {ok:false,error:"Cartão não encontrado."};
+ var i=w.entries.findIndex(function(e){return String(e.id)===String(entryId);});
+ if(i<0)return {ok:false,error:"Lançamento não encontrado."};
+ if(w.entries[i].kind==="adjustment")return {ok:false,error:"Para alterar uma conferência de saldo, faça uma nova conferência."};
+ var n=validMoney(amount),label=String(description||"").trim().slice(0,120);
+ if(n===null)return {ok:false,error:"Informe um valor positivo válido."};
+ if(!validDate(date))return {ok:false,error:"Data inválida."};
+ if(!label)return {ok:false,error:"Informe uma descrição."};
+ var next=Object.assign({},w.entries[i],{amount:n,date:date,description:label,updatedAt:new Date().toISOString()});
+ var hypothetical=w.entries.slice();hypothetical[i]=next;
+ if(recalc(hypothetical)<0)return {ok:false,error:"Essa correção deixaria o saldo negativo. Confira as outras recargas e compras."};
+ w.entries[i]=next;store.save();return {ok:true,wallet:w};
+}
+function deleteWallet(store,id){
+ var list=ensure(store),i=list.findIndex(function(w){return w&&String(w.id)===String(id);});
+ if(i<0)return {ok:false,error:"Cartão não encontrado."};
+ list.splice(i,1);store.save();return {ok:true};
+}
+function updateWalletName(store,id,name){
+ var w=wallets(store).find(function(x){return String(x.id)===String(id);});
+ if(!w)return {ok:false,error:"Cartão não encontrado."};
+ var value=String(name||"").trim();
+ if(value.length>50)return {ok:false,error:"Use um nome com até 50 caracteres."};
+ w.alias=value;store.save();return {ok:true,wallet:w};
+}
 function removeEntry(store,walletId,entryId){
  var w=wallets(store).find(function(row){return String(row.id)===String(walletId);});
  if(!w)return false;
  var next=w.entries.filter(function(e){return String(e.id)!==String(entryId);});
  if(next.length===w.entries.length)return false;
- if(next.reduce(function(total,e){return total+(e.kind==="credit"?Number(e.amount):-Number(e.amount));},0)<-0.001)return false;
+ if(recalc(next)<-0.001)return false;
  w.entries=next;store.save();return true;
 }
 function spentInMonth(store,month){return wallets(store).reduce(function(result,w){(w.entries||[]).forEach(function(e){if(e.kind==="debit"&&String(e.date||"").slice(0,7)===month){result.total+=Number(e.amount)||0;result.count++;result.byProvider[w.provider]=(result.byProvider[w.provider]||0)+(Number(e.amount)||0);}});return result;},{total:0,count:0,byProvider:{}});}
 function snapshot(store){
  return wallets(store).map(function(w){
   var spent=0,credit=0;
-  (w.entries||[]).forEach(function(e){if(e.kind==="credit")credit+=Number(e.amount)||0;else spent+=Number(e.amount)||0;});
-  return {id:w.id,provider:w.provider,name:PROVIDERS[w.provider],showHome:!!w.showHome,balance:balance(w),spent:Math.round(spent*100)/100,credit:Math.round(credit*100)/100,entries:w.entries.length};
+  (w.entries||[]).forEach(function(e){if(e.kind==="credit")credit+=Number(e.amount)||0;else if(e.kind==="debit")spent+=Number(e.amount)||0;});
+  return {id:w.id,provider:w.provider,name:w.alias||PROVIDERS[w.provider],showHome:!!w.showHome,balance:balance(w),spent:Math.round(spent*100)/100,credit:Math.round(credit*100)/100,entries:w.entries.length};
  });
 }
 function renderHome(store){
@@ -89,17 +135,36 @@ function renderPage(store,today){
  if(!items.length){
   html+='<div class="card mt-4"><h3>Comece por um vale-alimentação</h3><p class="text-muted text-sm">Escolha o fornecedor abaixo. O saldo começa em zero até você registrar uma recarga ou saldo inicial.</p></div>';
  }else{
-  html+='<div class="al-benefit-switches mt-4">'+items.map(function(x){return '<button class="al-benefit-chip'+(x===w?' active':'')+'" type="button" onclick="go(\'beneficios\',{benefitWalletId:'+JSON.stringify(x.id).replace(/"/g,"&quot;")+'})">'+esc(PROVIDERS[x.provider])+'</button>';}).join("")+'</div>';
-  html+='<section class="al-benefit-detail card mt-3"><div class="al-benefit-heading"><span class="al-benefit-symbol">VA</span><div><strong>'+esc(PROVIDERS[w.provider])+'</strong><small>Vale-alimentação · saldo registrado manualmente</small></div></div><div class="al-benefit-total">'+esc(money(balance(w)))+'</div>';
+  html+='<div class="al-benefit-switches mt-4">'+items.map(function(x){return '<button class="al-benefit-chip'+(x===w?' active':'')+'" type="button" onclick="go(\'beneficios\',{benefitWalletId:'+JSON.stringify(x.id).replace(/"/g,"&quot;")+'})">'+esc(x.alias||PROVIDERS[x.provider])+'</button>';}).join("")+'</div>';
+  html+='<section class="al-benefit-detail card mt-3"><div class="al-benefit-heading"><span class="al-benefit-symbol">VA</span><div><strong>'+esc(w.alias||PROVIDERS[w.provider])+'</strong><small>Vale-alimentação · saldo registrado manualmente</small></div></div><div class="al-benefit-total">'+esc(money(balance(w)))+'</div>';
   html+='<label class="al-benefit-toggle"><input type="checkbox" id="benefit-home-visible" '+(w.showHome?'checked':'')+' onchange="alicerceBeneficioHome('+esc(JSON.stringify(w.id)) +',this.checked)"> Exibir este cartão na tela principal</label>';
-  html+='<div class="al-benefit-fields"><label>Movimentação<select id="benefit-entry-kind" class="input"><option value="credit">Recarga / saldo inicial</option><option value="debit">Compra no mercado</option></select></label>';
+  html+='<div class="al-benefit-fields"><label>Movimentação<select id="benefit-entry-kind" class="input"><option value="credit">Nova recarga (soma ao saldo)</option><option value="debit">Compra no mercado</option></select></label>';
   html+='<label>Valor (R$)<input id="benefit-entry-amount" class="input" inputmode="decimal" placeholder="Ex.: 150,00"></label>';
   html+='<label>Data<input id="benefit-entry-date" type="date" class="input" value="'+esc(today)+'"></label>';
   html+='<label>Descrição<input id="benefit-entry-description" class="input" maxlength="120" placeholder="Ex.: Compra no supermercado"></label></div>';
   html+='<button type="button" class="btn btn-primary btn-block mt-3" onclick="alicerceBeneficioAdicionar('+esc(JSON.stringify(w.id))+')">Registrar movimentação</button>';
   html+='<h3 class="mt-4">Histórico</h3>';
   if(!w.entries.length)html+='<p class="text-muted text-sm">Ainda não há recargas nem compras registradas.</p>';
-  else html+='<div class="al-benefit-history">'+w.entries.slice().reverse().slice(0,30).map(function(e){return '<div class="al-benefit-history-item"><div><strong>'+esc(e.description)+'</strong><small>'+esc(e.date.split("-").reverse().join("/"))+'</small></div><strong class="'+(e.kind==="credit"?'positive':'')+'">'+(e.kind==="credit"?'+':'−')+esc(money(e.amount))+'</strong></div>';}).join("")+'</div>';
+  else html+='<div class="al-benefit-history">'+w.entries.slice().reverse().map(function(e){
+    var editable=e.kind!=="adjustment";
+    var controls='<div class="al-benefit-actions">';
+    if(editable)controls+='<button type="button" class="btn btn-secondary btn-sm" onclick="alicerceBeneficioEditar('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(e.id))+')">Editar</button>';
+    controls+='<button type="button" class="btn btn-secondary btn-sm" onclick="alicerceBeneficioExcluirLancamento('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(e.id))+')">Excluir</button></div>';
+    return '<div class="al-benefit-history-item"><div><strong>'+esc(e.description)+'</strong><small>'+esc(e.date.split("-").reverse().join("/"))+(e.kind==="credit"?' · Recarga':e.kind==="debit"?' · Compra':' · Ajuste de saldo')+'</small>'+controls+'</div><strong class="'+(e.kind==="credit"?'positive':'')+'">'+(e.kind==="credit"||e.kind==="adjustment"&&Number(e.amount)>=0?'+':'−')+esc(money(Math.abs(e.amount)))+'</strong></div>';
+  }).join("")+'</div>';
+  var editId=store.screenData&&store.screenData.benefitEditEntryId;
+  var editRow=(w.entries||[]).find(function(e){return e.kind!=="adjustment"&&String(e.id)===String(editId);});
+  if(editRow){
+    html+='<div class="al-benefit-editbox mt-3"><h3>Corrigir lançamento</h3><p class="text-muted text-sm">O novo valor substitui o antigo. Não adiciona outra recarga.</p><label class="input-label" for="benefit-edit-amount">Valor correto (R$)</label><input class="input" id="benefit-edit-amount" inputmode="decimal" value="'+esc(String(editRow.amount).replace(".",","))+'">';
+    html+='<label class="input-label mt-3" for="benefit-edit-date">Data</label><input class="input" id="benefit-edit-date" type="date" value="'+esc(editRow.date)+'"><label class="input-label mt-3" for="benefit-edit-description">Descrição</label><input class="input" id="benefit-edit-description" maxlength="120" value="'+esc(editRow.description)+'">';
+    html+='<button type="button" class="btn btn-primary btn-block mt-3" onclick="alicerceBeneficioSalvarEdicao('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(editRow.id))+')">Salvar correção</button><button type="button" class="btn btn-secondary btn-block mt-2" onclick="go(\'beneficios\',{benefitWalletId:'+esc(JSON.stringify(w.id))+'})">Cancelar edição</button></div>';
+  }
+  html+='<section class="al-benefit-editbox mt-3"><h3>Conferir saldo real</h3><p class="text-muted text-sm">Se você adicionou um valor duplicado ou a operadora atualizou o saldo, informe aqui o saldo correto. O Alicerce registra somente a diferença, sem somar esse saldo novamente.</p>';
+  html+='<label class="input-label" for="benefit-real-balance">Saldo correto no cartão (R$)</label><input class="input" id="benefit-real-balance" inputmode="decimal" placeholder="Ex.: 485,00">';
+  html+='<button type="button" class="btn btn-secondary btn-block mt-3" onclick="alicerceBeneficioConferirSaldo('+esc(JSON.stringify(w.id))+')">Atualizar saldo para o valor informado</button></section>';
+  html+='<section class="al-benefit-editbox mt-3"><h3>Editar cartão</h3><label class="input-label" for="benefit-wallet-alias">Nome de identificação (opcional)</label><input class="input" id="benefit-wallet-alias" maxlength="50" value="'+esc(w.alias||"")+'" placeholder="Ex.: Meu Sodexo">';
+  html+='<button type="button" class="btn btn-secondary btn-block mt-3" onclick="alicerceBeneficioSalvarNome('+esc(JSON.stringify(w.id))+')">Salvar nome</button>';
+  html+='<button type="button" class="btn btn-secondary btn-block mt-3 al-benefit-danger" onclick="alicerceBeneficioExcluirCartao('+esc(JSON.stringify(w.id))+')">Excluir cartão e seu histórico</button></section>';
   html+='</section>';
  }
  html+='<div class="card mt-3"><h3>'+(items.length?'Adicionar outro cartão':'Adicionar cartão')+'</h3><label class="input-label">Fornecedor</label><select id="benefit-provider" class="input"><option value="pluxee">Sodexo / Pluxee</option><option value="solides">Sólides Benefícios</option></select>';
@@ -120,5 +185,5 @@ function answer(store,question){
  var thisMonth=new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0");
  return list.map(function(w){return w.name+": saldo registrado "+money(w.balance)+", recargas "+money(w.credit)+", compras acumuladas "+money(w.spent)+"."}).join("\n")+" Essas compras usam o saldo de vale-alimentação, sem reduzir o dinheiro bancário. Os valores são calculados dos lançamentos no Alicerce, não são sincronizados com as operadoras.";
 }
-root.AlicerceBeneficios={providers:PROVIDERS,wallets:wallets,balance:balance,addWallet:addWallet,addEntry:addEntry,removeEntry:removeEntry,toggleHome:toggleHome,snapshot:snapshot,spentInMonth:spentInMonth,renderHome:renderHome,renderPage:renderPage,answer:answer};
+root.AlicerceBeneficios={providers:PROVIDERS,wallets:wallets,balance:balance,addWallet:addWallet,addEntry:addEntry,removeEntry:removeEntry,toggleHome:toggleHome,snapshot:snapshot,updateEntry:updateEntry,setBalance:setBalance,deleteWallet:deleteWallet,updateWalletName:updateWalletName,spentInMonth:spentInMonth,renderHome:renderHome,renderPage:renderPage,answer:answer};
 })(typeof window!=="undefined"?window:globalThis);

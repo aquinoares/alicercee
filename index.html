@@ -2575,6 +2575,7 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 .al-benefit-toggle{display:flex;align-items:center;gap:9px;padding:12px 0;color:var(--text2);font-size:12px}.al-benefit-toggle input{width:17px;height:17px;accent-color:var(--accent)}
 .al-benefit-fields{display:grid;gap:10px}.al-benefit-fields label{display:grid;gap:4px;color:var(--text2);font-size:12px}
 .al-benefit-history{display:grid;gap:5px}.al-benefit-history-item{display:flex;justify-content:space-between;gap:9px;border-top:1px solid var(--line);padding:11px 0;font-size:12px}.al-benefit-history-item div{display:grid;gap:4px}.al-benefit-history-item small{color:var(--text2)}.al-benefit-history-item>.positive{color:#398c72}
+.al-benefit-editbox{padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface2)}.al-benefit-editbox h3{font-size:14px;margin:0 0 9px}.al-benefit-editbox .input{width:100%;box-sizing:border-box}.al-benefit-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.al-benefit-actions .btn{min-height:30px;padding:5px 9px;font-size:11px}.al-benefit-history-item>div{min-width:0;overflow-wrap:anywhere}.al-benefit-history-item>strong{white-space:nowrap}.al-benefit-danger{border-color:#ac6565!important;color:#b45b5b!important}
 @media(max-width:385px){.al-benefit-home-card{flex-wrap:wrap}.al-benefit-home-value{margin-left:56px}}
 </style>
 </head>
@@ -10348,6 +10349,62 @@ function alicerceBeneficioAdicionar(id){
 function alicerceBeneficioHome(id,show){
   if(!window.AlicerceBeneficios)return;
   if(window.AlicerceBeneficios.toggleHome(Store,id,show))showToast(show?'Cartão aparecerá no início.':'Cartão ocultado da tela inicial.');
+}
+
+
+/* Meus benefícios: alterações explícitas, com confirmação para exclusão.
+ * Alterar saldo não é nova recarga; compras e saldo bancário permanecem separados. */
+function alicerceBeneficioEditar(walletId,entryId){
+ go('beneficios',{benefitWalletId:walletId,benefitEditEntryId:entryId});
+}
+function alicerceBeneficioSalvarEdicao(walletId,entryId){
+ if(!window.AlicerceBeneficios)return;
+ var amount=document.getElementById('benefit-edit-amount'),date=document.getElementById('benefit-edit-date'),desc=document.getElementById('benefit-edit-description');
+ var result=window.AlicerceBeneficios.updateEntry(Store,walletId,entryId,amount?amount.value:'',date?date.value:'',desc?desc.value:'');
+ if(!result.ok){showToast(result.error);return;}
+ showToast('Lançamento corrigido sem criar outra recarga.');
+ go('beneficios',{benefitWalletId:walletId});
+}
+function alicerceBeneficioExcluirLancamento(walletId,entryId){
+ if(!window.AlicerceBeneficios)return;
+ var wallet=window.AlicerceBeneficios.wallets(Store).find(function(w){return String(w.id)===String(walletId);});
+ var entry=wallet&&(wallet.entries||[]).find(function(e){return String(e.id)===String(entryId);});
+ if(!entry)return;
+ var label=entry.kind==='credit'?'recarga':entry.kind==='debit'?'compra':'correção de saldo';
+ if(!window.confirm('Excluir esta '+label+' de R$ '+Number(Math.abs(entry.amount)).toFixed(2).replace('.',',')+'? O saldo e o histórico serão recalculados.'))return;
+ if(!window.AlicerceBeneficios.removeEntry(Store,walletId,entryId)){showToast('Não foi possível excluir: isso deixaria o saldo negativo ou o registro já não existe.');return;}
+ showToast('Lançamento excluído e saldo recalculado.');
+ go('beneficios',{benefitWalletId:walletId});
+}
+function alicerceBeneficioConferirSaldo(walletId){
+ if(!window.AlicerceBeneficios)return;
+ var input=document.getElementById('benefit-real-balance');
+ var value=input?input.value:'';
+ if(!window.confirm('Atualizar o saldo registrado para R$ '+String(value).replace('.',',')+'? Isso criará apenas um ajuste de diferença, não uma nova recarga.'))return;
+ var result=window.AlicerceBeneficios.setBalance(Store,walletId,value,Clock.today());
+ if(!result.ok){showToast(result.error);return;}
+ showToast(result.unchanged?'O saldo já estava correto.':'Saldo ajustado. Apenas a diferença foi registrada.');
+ go('beneficios',{benefitWalletId:walletId});
+}
+function alicerceBeneficioSalvarNome(walletId){
+ if(!window.AlicerceBeneficios)return;
+ var input=document.getElementById('benefit-wallet-alias');
+ var result=window.AlicerceBeneficios.updateWalletName(Store,walletId,input?input.value:'');
+ if(!result.ok){showToast(result.error);return;}
+ showToast('Identificação do cartão atualizada.');
+ go('beneficios',{benefitWalletId:walletId});
+}
+function alicerceBeneficioExcluirCartao(walletId){
+ if(!window.AlicerceBeneficios)return;
+ var wallet=window.AlicerceBeneficios.wallets(Store).find(function(w){return String(w.id)===String(walletId);});
+ if(!wallet)return;
+ var label=wallet.alias||window.AlicerceBeneficios.providers[wallet.provider]||'cartão';
+ if(!window.confirm('Excluir '+label+' e todo o seu histórico de recargas e compras? Essa ação não poderá ser desfeita pelo aplicativo.'))return;
+ if(!window.confirm('Confirma a exclusão definitiva deste vale-alimentação?'))return;
+ var result=window.AlicerceBeneficios.deleteWallet(Store,walletId);
+ if(!result.ok){showToast(result.error);return;}
+ showToast('Cartão excluído.');
+ go('beneficios');
 }
 
 function renderHome(){
