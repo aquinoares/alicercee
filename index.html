@@ -5072,6 +5072,7 @@ const AlicerceIA = {
       this._pendingFinancialReview=null;
       this._pendingBenefitPurchase=null;
       this._qrConsultaUrl='';
+      this._receiptDraft=null;
       this._welcomeTypingStarted=false;
       this._proactiveConsumed=false;
       this.pararDigitacaoLauncher();
@@ -5640,6 +5641,8 @@ AlicerceIA.limparConversa=function(){
   this._pendingExpenseDraft=null;
   this._pendingFinancialReview=null;
   this._pendingBenefitPurchase=null;
+  this._receiptDraft=null;
+  this._qrConsultaUrl='';
   this._question='';
   this._answer='';
   this._welcomeTypingStarted=false;
@@ -6822,6 +6825,44 @@ AlicerceIA.ouvirMensagem=async function(index,button){
 
 AlicerceIA._qrScriptPromise=null;
 AlicerceIA._qrConsultaUrl='';
+AlicerceIA._receiptDraft=null;
+// A leitura é uma sugestão. Somente a tela de conferência pode registrar o gasto.
+AlicerceIA._setReceiptDraft=function(receipt,fiscalKey){
+  this._receiptDraft=null;
+  if(!receipt)return;
+  var value=String(receipt.total||receipt.paid||'');
+  var amount=Number(value.replace(/\./g,'').replace(',','.'));
+  if(!Number.isFinite(amount)||amount<=0||amount>1000000)return;
+  this._receiptDraft={
+    ownerId:String(Store.userId||''),amount:amount,
+    merchant:receipt.merchant&&receipt.merchant!=='não identificado'?String(receipt.merchant).slice(0,110):'',
+    date:String(receipt.date||''),mismatch:!!receipt.mismatch,
+    fiscalKey:String(fiscalKey||''),ocrTotal:!!receipt.total
+  };
+};
+AlicerceIA.conferirNotaLida=function(){
+  this._resetUser();
+  var draft=this._receiptDraft;
+  if(!draft||!Store.userId||draft.ownerId!==String(Store.userId))return;
+  var day=today();
+  if(/^\d{2}\/\d{2}\/\d{4}$/.test(draft.date)){
+    var parts=draft.date.split('/');
+    var parsed=parts[2]+'-'+parts[1]+'-'+parts[0];
+    var test=new Date(parsed+'T12:00:00');
+    if(!isNaN(test.getTime())&&test.getFullYear()===Number(parts[2])&&test.getMonth()+1===Number(parts[1])&&test.getDate()===Number(parts[0]))day=parsed;
+  }
+  Store.screenData={
+    interpretation:{amount:draft.amount,item:'Compra de supermercado',merchant:draft.merchant,categoria:'',subcategoria:''},
+    amountInput:draft.amount,itemInput:'Compra de supermercado',localInput:draft.merchant,
+    text:'Compra de supermercado',context:draft.merchant,date:day,paymentMethod:'',
+    purpose:'',cardId:'',cardOwnerType:'meu',cardOwner:'',cardType:'',
+    installment:false,installments:0,novaCompraFlow:false,gastoEdits:null,
+    aliciaOrigin:true,receiptOrigin:true,
+    receiptFiscalKey:draft.fiscalKey
+  };
+  showToast('Confira valor, estabelecimento e forma de pagamento antes de salvar.');
+  go('addGastoDoubt',Store.screenData);
+};
 AlicerceIA._loadQRReader=function(){
   if(typeof window.jsQR==='function')return Promise.resolve(window.jsQR);
   if(this._qrScriptPromise)return this._qrScriptPromise;
@@ -6883,6 +6924,7 @@ AlicerceIA._mostrarQRNfce=function(raw,ocr){
   if(!qr)return false;
   this._qrConsultaUrl=qr.url;
   var receipt=this._lerCupomMercado(ocr||'');
+  this._setReceiptDraft(receipt,qr.key);
   var msg='QR Code da NFC-e identificado.\n\nPortal oficial: '+qr.host;
   if(qr.key)msg+='\nChave fiscal: final '+qr.key.slice(-6);
   if(receipt){
@@ -6893,7 +6935,7 @@ AlicerceIA._mostrarQRNfce=function(raw,ocr){
     msg+='\nValor pago: '+(receipt.paid?'R$ '+receipt.paid:'não identificado');
     if(receipt.mismatch)msg+='\nAtenção: valores conflitantes. Confira no portal.';
   }
-  msg+='\n\nA foto foi analisada dentro do Alicerce; não é necessário copiar o texto do portal. O botão "Consultar nota na SEFAZ" é apenas uma opção para conferir a nota original. Nenhum gasto foi salvo automaticamente.';
+  msg+='\n\n'+(this._receiptDraft?'Você pode abrir a conferência da compra, corrigir o que for necessário e escolher como pagou. Nada foi salvo.':'Não identifiquei um total seguro para preparar a compra. A consulta oficial é opcional. Nada foi salvo.');
   if(!Array.isArray(this._messages))this._messages=[];
   var last=this._messages[this._messages.length-1];
   if(!last||last.role!=='assistant'||last.text!==msg)this._messages.push({role:'assistant',text:msg});
@@ -7014,13 +7056,14 @@ AlicerceIA._lerCupomMercado=function(raw){
 AlicerceIA._mostrarLeituraCupomMercado=function(text){
   var receipt=this._lerCupomMercado(text);
   if(!receipt)return false;
+  this._setReceiptDraft(receipt,'');
   var msg='A foto parece ser de uma nota de compra. A leitura pode conter erros. Confira antes de qualquer registro:\n\n';
   msg+='Estabelecimento: '+receipt.merchant.slice(0,80);
   msg+='\nData da nota: '+(receipt.date||'não identificada');
   msg+='\nTotal identificado: '+(receipt.total?'R$ '+receipt.total:'não identificado com segurança');
   msg+='\nValor pago identificado: '+(receipt.paid?'R$ '+receipt.paid:'não identificado com segurança');
   if(receipt.mismatch)msg+='\n\nAtenção: o total e o valor pago não coincidem. A leitura pode estar errada.';
-  msg+='\n\nNão salvei compra, valor ou pagamento. Se um dado estiver ausente, confira-o na foto original. A Alicia não deve adivinhar valores nem registrar o texto completo como despesa.';
+  msg+='\n\n'+(this._receiptDraft?'Toque em “Conferir e registrar compra” para revisar ou corrigir os dados. Nada foi salvo.':'Não consegui localizar um total com segurança. Nada foi salvo; tente uma foto mais legível.');
   this._photoTextPending=false;
   if(!Array.isArray(this._messages))this._messages=[];
   var previous=this._messages[this._messages.length-1];
@@ -7067,6 +7110,8 @@ AlicerceIA.processarFoto=async function(input){
   this._resetUser();
   this._photoTextPending=false;
   if(this._photoBusy)return;
+  this._receiptDraft=null;
+  this._qrConsultaUrl='';
   var file=input&&input.files&&input.files.length?input.files[0]:null;
   if(!file)return;
   var ownerId=String(Store.userId||'');
@@ -7251,6 +7296,9 @@ function renderAssistente(){
       html+='<button type="button" class="alicerce-assistant-prompt" onclick="AlicerceIA.enviarMensagem('+safeQuestion+')">'+esc(question)+'</button>';
     });
     html+='</div>';
+  }
+  if(AlicerceIA._receiptDraft&&AlicerceIA._receiptDraft.ownerId===String(Store.userId||'')){
+    html+='<button type="button" class="btn btn-primary btn-sm mt-2" onclick="AlicerceIA.conferirNotaLida()">Conferir e registrar compra</button>';
   }
   if(AlicerceIA._qrConsultaUrl&&AlicerceIA._validarQRNfce(AlicerceIA._qrConsultaUrl)){
     html+='<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="AlicerceIA.abrirConsultaQR()">Consultar nota na SEFAZ</button>';
