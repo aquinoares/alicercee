@@ -21,7 +21,7 @@ return 'outros';
 }
 function key(){return 'consumptionReceiptsV1'}
 function records(){
-if(!window.Store||!Store.userId)return [];
+if(typeof Store==='undefined'||!Store.userId)return [];
 var v=Store.settings&&Store.settings[key()];
 return Array.isArray(v)?v.filter(function(x){return x&&x.ownerId===String(Store.userId)}):[];
 }
