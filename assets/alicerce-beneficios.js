@@ -78,7 +78,7 @@ function renderPage(store,today){
  var html='<div class="content al-benefits-page"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'home\')">‹ Início</button><div class="section-title mt-4">Meus benefícios</div>';
  html+='<p class="text-muted text-sm">Carteiras de vale-alimentação. Não fazem parte do saldo bancário nem do limite do cartão de crédito.</p>';
  if(!items.length){
-  html+='<div class="card mt-4"><h3>Adicionar vale-alimentação</h3><p class="text-muted text-sm">Escolha o fornecedor. O saldo começa em zero até você registrar uma recarga ou saldo inicial.</p>';
+  html+='<div class="card mt-4"><h3>Comece por um vale-alimentação</h3><p class="text-muted text-sm">Escolha o fornecedor abaixo. O saldo começa em zero até você registrar uma recarga ou saldo inicial.</p></div>';
  }else{
   html+='<div class="al-benefit-switches mt-4">'+items.map(function(x){return '<button class="al-benefit-chip'+(x===w?' active':'')+'" type="button" onclick="go(\'beneficios\',{benefitWalletId:'+JSON.stringify(x.id).replace(/"/g,"&quot;")+'})">'+esc(PROVIDERS[x.provider])+'</button>';}).join("")+'</div>';
   html+='<section class="al-benefit-detail card mt-3"><div class="al-benefit-heading"><span class="al-benefit-symbol">VA</span><div><strong>'+esc(PROVIDERS[w.provider])+'</strong><small>Vale-alimentação · saldo registrado manualmente</small></div></div><div class="al-benefit-total">'+esc(money(balance(w)))+'</div>';
@@ -93,7 +93,7 @@ function renderPage(store,today){
   else html+='<div class="al-benefit-history">'+w.entries.slice().reverse().slice(0,30).map(function(e){return '<div class="al-benefit-history-item"><div><strong>'+esc(e.description)+'</strong><small>'+esc(e.date.split("-").reverse().join("/"))+'</small></div><strong class="'+(e.kind==="credit"?'positive':'')+'">'+(e.kind==="credit"?'+':'−')+esc(money(e.amount))+'</strong></div>';}).join("")+'</div>';
   html+='</section>';
  }
- html+='<div class="card mt-3"><h3>Adicionar outro cartão</h3><label class="input-label">Fornecedor</label><select id="benefit-provider" class="input"><option value="pluxee">Sodexo / Pluxee</option><option value="solides">Sólides Benefícios</option></select>';
+ html+='<div class="card mt-3"><h3>'+(items.length?'Adicionar outro cartão':'Adicionar cartão')+'</h3><label class="input-label">Fornecedor</label><select id="benefit-provider" class="input"><option value="pluxee">Sodexo / Pluxee</option><option value="solides">Sólides Benefícios</option></select>';
  html+='<label class="al-benefit-toggle"><input type="checkbox" id="benefit-new-showhome" checked> Mostrar na tela principal</label>';
  html+='<button class="btn btn-secondary btn-block mt-3" type="button" onclick="alicerceBeneficioCriar()">Adicionar vale-alimentação</button></div>';
  html+='<p class="text-muted text-sm mt-3">O Alicerce não consulta a operadora automaticamente. Confira o saldo real no aplicativo do fornecedor antes de registrar. Compras desta carteira não reduzem o saldo bancário.</p></div>';
