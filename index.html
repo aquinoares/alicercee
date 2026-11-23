@@ -2568,6 +2568,7 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 <script src="/assets/alicerce-beneficios.js"></script>
 <script src="/assets/alicia-compra-beneficio-chat.js"></script>
 <script src="/assets/alicia-guia-carrossel.js"></script>
+<script src="/assets/alicia-contextual.js"></script>
 <style id="alicerce-beneficios-v1-styles">
 .al-benefits-home{display:grid;gap:9px;margin:12px 0}
 .al-benefit-home-card{display:flex;align-items:center;gap:11px;width:100%;padding:14px 13px;text-align:left;border:1px solid var(--line);border-radius:17px;background:var(--surface2);color:var(--text);box-shadow:var(--highlight);cursor:pointer}
@@ -6214,6 +6215,16 @@ AlicerceIA.enviarMensagem=async function(question){
   if(inputSource==='text'&&window.AlicerceCompraBeneficioChat&&!this._pendingFinancialReview&&!this._pendingExpenseDraft){
     var benefitConversation=this._atenderCompraBeneficio(message);
     if(benefitConversation)return;
+  }
+  // Resposta curta e contextual dentro do chat, independente do carrossel de novidades.
+  if(inputSource==='text'&&!this._pendingFinancialReview&&!this._pendingExpenseDraft&&!this._pendingBenefitPurchase&&window.AlicerceAliciaContextual&&window.AlicerceAliciaContextual.matches(questionForEngine)){
+    var financialInsight=window.AlicerceAliciaContextual.report(Store,Clock.today());
+    this._messages.push({role:'assistant',text:financialInsight.text});
+    while(this._messages.length>8)this._messages.splice(0,2);
+    this._question=message;this._answer=financialInsight.text;
+    render();
+    if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
+    return;
   }
   // Autonomous read-only visualization: before general-chat and debt-writing handlers,
   // an explicit analytical request is answered using the authenticated user's Store.
@@ -10414,12 +10425,9 @@ function alicerceBeneficioExcluirCartao(walletId){
 function renderHome(){
   const bal=Store.getBalances();
   let smartCards=[];try{smartCards=Store.getSmartCards()||[]}catch(e){}
-  // O carrossel que aparece logo abaixo do cabeçalho agora apresenta os recursos
-  // com a Alicia, sem remover alertas operacionais já existentes.
-  if(window.AlicerceGuiaAlicia){
-    const tips=window.AlicerceGuiaAlicia.cards(Store);
-    smartCards=tips.concat(smartCards.filter(function(c){return c&&Number(c.pr)!==9;}).slice(0,4));
-  }
+  // Carrossel: apenas novidades/recursos do aplicativo.
+  // Os alertas financeiros ficam na central de alertas; análises acontecem no chat.
+  if(window.AlicerceGuiaAlicia)smartCards=window.AlicerceGuiaAlicia.cards(Store);
   const hour=Clock.currentHour();
   const greeting=hour<12?t('greeting'):hour<18?t('goodAfternoon'):t('goodEvening');
   const _hojeCompromissos=Clock.today();
@@ -10445,7 +10453,7 @@ function renderHome(){
   let html='<div class="content">';
   html+='<div class="mt-4"><p class="text-muted text-sm">'+greeting+'</p></div>';
   if(smartCards.length>0){html+='<div class="dynamic-card-wrap mt-2"><div class="dynamic-card-track" id="dc-track" tabindex="0" role="region" aria-label="'+esc(Store.lang==='en'?'Smart cards':Store.lang==='es'?'Tarjetas inteligentes':'Cartões inteligentes')+'">';
-  smartCards.forEach(c=>{html+='<div class="dynamic-card'+(c.guide?' alicia-guide-card':'')+'">'+(c.guide?'<div class="alicia-guide-heading"><img src="/assets/alicia-assistente.webp" width="34" height="38" alt=""><span>ALICIA · GUIA DO APLICATIVO</span></div>':'')+'<div class="dc-title">'+esc(c.title)+'</div><div class="dc-text">'+esc(c.text)+'</div>'+(c.go&&c.lbl?'<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="'+esc(c.go)+'">'+esc(c.lbl)+'</button>':'')+'</div>'});
+  smartCards.forEach(c=>{html+='<div class="dynamic-card'+(c.guide?' alicia-guide-card':'')+'">'+(c.guide?'<div class="alicia-guide-heading"><img src="/assets/alicia-assistente.webp" width="34" height="38" alt=""><span>NOVIDADES · ALICERCE</span></div>':'')+'<div class="dc-title">'+esc(c.title)+'</div><div class="dc-text">'+esc(c.text)+'</div>'+(c.go&&c.lbl?'<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="'+esc(c.go)+'">'+esc(c.lbl)+'</button>':'')+'</div>'});
   html+='</div>';
   if(smartCards.length>1)html+='<div class="dynamic-dots">'+smartCards.map((_,i)=>'<div class="dynamic-dot'+(i===0?' active':'')+'" onclick="scrollToDC('+i+')"></div>').join('')+'</div>';
   html+='</div>';}
