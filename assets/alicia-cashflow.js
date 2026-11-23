@@ -59,7 +59,7 @@
       if(!c||c.tipo==="lembrete"||c.personId)return;
       var financial=c.naturezaFinanceira==="divida"||c.tipo==="conta"||c.paymentStatus==="pendente"&&valid(c.valor)>0;
       if(!financial)return;
-      if((store.movements||[]).some(function(m){return m&&String(m.commitmentId||"")===String(c.id||"")&&m.commitmentId;}))return;
+      if((store.movements||[]).some(function(m){return m&&m.commitmentId&&String(m.commitmentId)===String(c.id||"")&&paid(m);}))return;
       addPending("commitment:"+String(c.id||rows.upcoming.length),c,"commitment");
     });
     // Only recorded actual settlements affect past spending. Card purchases remain future
