@@ -4,7 +4,7 @@
 (function (root) {
   "use strict";
   function valid(v){var n=Number(v);return Number.isFinite(n)&&n>0?n:0;}
-  function paid(r){return !!r && (r.status==="pago"||r.status==="recebido"||r.paymentStatus==="pago"||r.status==="concluido");}
+  function paid(r){return !!r && (r.status==="pago"||r.status==="recebido"||r.paymentStatus==="pago"||r.status==="concluido"&&r.paymentStatus!=="pendente");}
   function date(r){return String(r && (r.dataVencimento||r.vencimentoOriginal||r.data)||"").slice(0,10);}
   function name(r){return String(r&&(r.descricao||r.description||r.local||r.estabelecimento||r.pessoa)||"Conta sem descrição");}
   function money(v){return (Number(v)||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});}
@@ -46,7 +46,7 @@
           if(definitiveTransfer(m))rows.paid.push({description:name(m),amount:amount,date:String(m.data||""),source:"gift"});
           else rows.unclear.push({description:name(m),amount:amount,date:String(m.data||""),source:"transfer"});
         }
-      }else if(m.tipo==="despesa"&&!m.installmentId&&!m.commitmentId&&!m.insuranceId){
+      }else if(m.tipo==="despesa"&&!m.installmentId&&!m.commitmentId){
         addPending("movement:"+String(m.id||rows.upcoming.length),m,"movement");
       }
     });
@@ -91,7 +91,7 @@
     var cash=/\b(gastei|gastou|gastos|dinheiro que nao volta|dinheiro que saiu|ja saiu|saida definitiva|despesa paga|despesas pagas|ja paguei)\b/.test(q);
     var debts=/\b(dividas|divida|a pagar|vou pagar|tenho que pagar|contas pendentes|conta pendente|quanto devo|compromissos financeiros|vencimentos)\b/.test(q);
     var overview=/\b(resumo financeiro|visao do dinheiro|panorama financeiro|situacao financeira|meu dinheiro)\b/.test(q);
-    return (cash&&debts)||overview||/dinheiro que nao volta/.test(q);
+    return (cash&&debts)||overview||/dinheiro que nao volta/.test(q)|| (debts&&/\b(quanto|total|valor|quando|mostre|mostrar|me diz)\b/.test(q));
   }
   function answer(store,today){
     var s=summarize(store,today);
