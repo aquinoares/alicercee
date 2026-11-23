@@ -40,7 +40,7 @@
   }
   function categorize(rows,key){
     var values={};
-    (rows||[]).forEach(function(r){var label=String(r[key]||"Outros").replace(/_/g," ");values[label]=(values[label]||0)+finite(r.valor);});
+    (rows||[]).forEach(function(r){var label=String(r[key]||"Outros").replace(/_/g," ");values[label]=(values[label]||0)+finite(r.value!=null?r.value:r.valor);});
     return Object.keys(values).map(function(k){return {label:k,value:Math.round(values[k]*100)/100};}).sort(function(a,b){return b.value-a.value;});
   }
   function sum(rows){return Math.round((rows||[]).reduce(function(a,r){return a+finite(r.value!=null?r.value:r.valor);},0)*100)/100;}
