@@ -73,6 +73,9 @@
     if(type==="benefits"){
       if(root.AlicerceBeneficios&&typeof root.AlicerceBeneficios.wallets==="function"){
         var wallets=root.AlicerceBeneficios.wallets(store);
+        var normalizedQuestion=norm(question);
+        if(/\b(sodexo|pluxee)\b/.test(normalizedQuestion))wallets=wallets.filter(function(w){return w.provider==="pluxee";});
+        else if(/\bsolides\b/.test(normalizedQuestion))wallets=wallets.filter(function(w){return w.provider==="solides";});
         data=wallets.map(function(w){
           var total=(w.entries||[]).filter(function(e){return e.kind==="debit"&&String(e.date||"").slice(0,7)===month;}).reduce(function(sum,e){return sum+(Number(e.amount)||0);},0);
           return {label:root.AlicerceBeneficios.providers[w.provider]||"Vale-alimentação",value:Math.round(total*100)/100};
