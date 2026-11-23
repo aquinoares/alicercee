@@ -11,6 +11,7 @@ on:
       - "assets/alicerce-beneficios.js"
       - "assets/beneficios-premium.css"
       - "assets/alicia-compra-beneficio-chat.js"
+      - "assets/alicia-guia-carrossel.js"
       - "tests/alicia-debt-followup.test.mjs"
       - "tests/alicia-cashflow.test.mjs"
       - "tests/alicia-analitica.test.mjs"
@@ -18,6 +19,7 @@ on:
       - "tests/alicerce-compra-beneficio.test.mjs"
       - "tests/alicia-compra-beneficio-chat.test.mjs"
       - "tests/alicerce-beneficios-correcao.test.mjs"
+      - "tests/alicia-guia-carrossel.test.mjs"
       - ".github/workflows/alicia-followup-checks.yml"
   workflow_dispatch:
 
@@ -33,4 +35,4 @@ jobs:
         with:
           node-version: 22
       - name: Run Alicia follow-up tests
-        run: node --test tests/alicia-debt-followup.test.mjs tests/alicia-cashflow.test.mjs tests/alicia-analitica.test.mjs tests/alicerce-beneficios.test.mjs tests/alicerce-compra-beneficio.test.mjs tests/alicia-compra-beneficio-chat.test.mjs tests/alicerce-beneficios-correcao.test.mjs
+        run: node --test tests/alicia-debt-followup.test.mjs tests/alicia-cashflow.test.mjs tests/alicia-analitica.test.mjs tests/alicerce-beneficios.test.mjs tests/alicerce-compra-beneficio.test.mjs tests/alicia-compra-beneficio-chat.test.mjs tests/alicerce-beneficios-correcao.test.mjs tests/alicia-guia-carrossel.test.mjs
