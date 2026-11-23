@@ -2562,6 +2562,20 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 </style>
   <script src="/assets/alicia-cashflow.js"></script>
 <script src="/assets/alicia-analitica.js"></script>
+<script src="/assets/alicerce-beneficios.js"></script>
+<style id="alicerce-beneficios-v1-styles">
+.al-benefits-home{display:grid;gap:9px;margin:12px 0}
+.al-benefit-home-card{display:flex;align-items:center;gap:11px;width:100%;padding:14px 13px;text-align:left;border:1px solid var(--line);border-radius:17px;background:var(--surface2);color:var(--text);box-shadow:var(--highlight);cursor:pointer}
+.al-benefit-symbol{flex:0 0 auto;display:grid;place-items:center;width:45px;height:37px;border-radius:11px;background:linear-gradient(135deg,#23614c,#2f887b);color:white;font-size:13px;font-weight:850;letter-spacing:.06em}
+.al-benefit-home-info{flex:1;min-width:0;display:grid;gap:3px}.al-benefit-home-info strong{font-size:13px}.al-benefit-home-info small,.al-benefit-heading small{display:block;font-size:10px;color:var(--text2)}
+.al-benefit-home-value{font-weight:800;font-size:15px;white-space:nowrap}
+.al-benefits-page{padding-bottom:125px}.al-benefit-switches{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}.al-benefit-chip{border:1px solid var(--line);border-radius:999px;background:var(--surface2);padding:9px 12px;color:var(--text);font-size:12px;white-space:nowrap}.al-benefit-chip.active{border-color:var(--accent);color:var(--accent)}
+.al-benefit-heading{display:flex;align-items:center;gap:10px}.al-benefit-heading strong{font-size:14px}.al-benefit-total{font-size:29px;font-weight:850;margin:19px 0 12px;font-variant-numeric:tabular-nums}
+.al-benefit-toggle{display:flex;align-items:center;gap:9px;padding:12px 0;color:var(--text2);font-size:12px}.al-benefit-toggle input{width:17px;height:17px;accent-color:var(--accent)}
+.al-benefit-fields{display:grid;gap:10px}.al-benefit-fields label{display:grid;gap:4px;color:var(--text2);font-size:12px}
+.al-benefit-history{display:grid;gap:5px}.al-benefit-history-item{display:flex;justify-content:space-between;gap:9px;border-top:1px solid var(--line);padding:11px 0;font-size:12px}.al-benefit-history-item div{display:grid;gap:4px}.al-benefit-history-item small{color:var(--text2)}.al-benefit-history-item>.positive{color:#398c72}
+@media(max-width:385px){.al-benefit-home-card{flex-wrap:wrap}.al-benefit-home-value{margin-left:56px}}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -7861,6 +7875,7 @@ AlicerceIA.insight=function(){
 AlicerceIA.responder=function(question){
   this._resetUser();
   var q=this._norm(question);
+  if(window.AlicerceBeneficios){var benefitAnswer=window.AlicerceBeneficios.answer(Store,question);if(benefitAnswer)return benefitAnswer;}
   if(window.AlicerceCashflow&&window.AlicerceCashflow.matches(question))return window.AlicerceCashflow.answer(Store,Clock.today());
   var asksFamilyModule=/\b(adicionar|adiciona|cadastrar|cadastre|incluir|inclui|criar|cria)\b/.test(q)&&/\b(pessoa|membro|dependente)\b/.test(q)&&/\bfamilia\b/.test(q);
   if(asksFamilyModule){
@@ -8994,7 +9009,7 @@ function renderMenu(){
     const mp=document.getElementById('menu-panel');
     const items=[
       {id:'home',label:t('home'),icon:'home'},{id:'gastos',label:t('gastos'),icon:'gastos'},
-      {id:'cartoes',label:t('cartoes'),icon:'cartoes'},{id:'emprestimos',label:t('emprestimos'),icon:'emprestimos'},
+      {id:'cartoes',label:t('cartoes'),icon:'cartoes'},{id:'beneficios',label:'Meus benefícios',icon:'cartoes'},{id:'emprestimos',label:t('emprestimos'),icon:'emprestimos'},
       {id:'calendario',label:t('calendario'),icon:'calendario'},{id:'visao',label:t('visaoFinanceira'),icon:'visao'},
       {id:'planos',label:Store.lang==='en'?'Plans':Store.lang==='es'?'Planes':'Planos',icon:'trend'},
       {id:'indicacoes',label:'Indique e ganhe',icon:'whatsapp'},
@@ -9571,6 +9586,7 @@ function renderScreen(){
       case 'login':return renderLogin();
       case 'home':return renderHome();
       case 'assistente':return renderAssistente();
+      case 'beneficios':return window.AlicerceBeneficios?window.AlicerceBeneficios.renderPage(Store,Clock.today()):'<div class="content">Benefícios indisponíveis</div>';
       case 'gastos':return renderGastos();
       case 'cartoes':return renderCartoes();
       case 'cartoesExtras':return renderCartoesExtras();
@@ -10244,7 +10260,32 @@ function homeRenderComunicados() {
   setTimeout(homeFeedStartRotation, 0);
   setTimeout(homeObservarAnuncios, 0);
   return html;
-}function renderHome(){
+}/* Meus Benefícios — ações locais com confirmação do usuário.
+ * Salvos no settings da conta, sem alteração no caixa ou cartão de crédito. */
+function alicerceBeneficioCriar(){
+  if(!window.AlicerceBeneficios)return;
+  var provider=document.getElementById('benefit-provider'),show=document.getElementById('benefit-new-showhome');
+  var result=window.AlicerceBeneficios.addWallet(Store,provider?provider.value:'',!!(show&&show.checked));
+  if(!result.ok){showToast(result.error);return;}
+  showToast('Vale-alimentação adicionado.');
+  go('beneficios',{benefitWalletId:result.wallet.id});
+}
+function alicerceBeneficioAdicionar(id){
+  if(!window.AlicerceBeneficios)return;
+  var kind=document.getElementById('benefit-entry-kind'),amount=document.getElementById('benefit-entry-amount'),date=document.getElementById('benefit-entry-date'),description=document.getElementById('benefit-entry-description');
+  var mode=kind?kind.value:'',value=amount?amount.value:'',day=date?date.value:'',label=description?description.value:'';
+  // A confirmação explícita é o botão "Registrar movimentação".
+  var result=window.AlicerceBeneficios.addEntry(Store,id,mode,value,day,label);
+  if(!result.ok){showToast(result.error);return;}
+  showToast(mode==='credit'?'Recarga registrada.':'Compra registrada no benefício.');
+  go('beneficios',{benefitWalletId:id});
+}
+function alicerceBeneficioHome(id,show){
+  if(!window.AlicerceBeneficios)return;
+  if(window.AlicerceBeneficios.toggleHome(Store,id,show))showToast(show?'Cartão aparecerá no início.':'Cartão ocultado da tela inicial.');
+}
+
+function renderHome(){
   const bal=Store.getBalances();
   let smartCards=[];try{smartCards=Store.getSmartCards()||[]}catch(e){}
   const hour=Clock.currentHour();
@@ -10278,6 +10319,7 @@ function homeRenderComunicados() {
   html+='</div>';}
     // ============================================================
   // ============================================================
+  if(window.AlicerceBeneficios)html+=window.AlicerceBeneficios.renderHome(Store);
   html+=AlicerceIA.renderCard();
   html+=homeRenderComunicados();
   // 4 MINI CARDS DA HOME
