@@ -61,6 +61,8 @@ document.body.appendChild(el);el.querySelector('#al-consumo-close').onclick=func
 return el;
 }
 function review(raw,receipt){
+var ownerId=typeof Store!=='undefined'&&String(Store.userId||'');
+if(!ownerId)return;
 var parsed=parse(raw);
 var body='<p class="text-muted text-sm">Revise produto, quantidade, valor total e pasta. Nada será lançado no banco ou no saldo.</p>';
 body+='<p class="text-sm">Itens reconhecidos: <strong>'+parsed.length+'</strong>. Você pode corrigir as linhas antes de arquivar.</p>';
@@ -70,7 +72,7 @@ body+='<p class="text-muted text-sm">Se nenhum item foi lido, a nota pode ser ar
 body+='<button type="button" class="btn btn-primary btn-block mt-3" id="al-consumo-save">Confirmar e arquivar nota</button>';
 var el=dialog('Produtos da nota · revisão',body);
 el.querySelector('#al-consumo-save').onclick=function(){
-if(!Store.userId){alert('Entre na conta para arquivar.');return}
+if(!Store.userId||String(Store.userId)!==ownerId){el.remove();alert('A conta mudou. Abra a nota novamente.');return}
 var lines=el.querySelector('#al-consumo-lines').value.split('\n').map(function(x){return x.trim()}).filter(Boolean);
 var list=[],bad=0;
 lines.forEach(function(line){
@@ -84,8 +86,15 @@ if(!list.length&&!confirm('Arquivar somente os dados gerais da nota, sem produto
 var keyFiscal=String(receipt&&receipt.fiscalKey||'');
 var prev=records();
 if(keyFiscal&&prev.some(function(x){return x.fiscalKey===keyFiscal})){alert('Esta chave fiscal já foi arquivada nesta conta.');return}
-var total=num(receipt&&receipt.total)||num(receipt&&receipt.paid)||null;
-var note={id:'nota-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),ownerId:String(Store.userId),createdAt:new Date().toISOString(),date:clean(receipt&&receipt.date),merchant:clean(receipt&&receipt.merchant),fiscalKey:keyFiscal,total:total,items:list,ledgerMovementId:null};
+var total=receipt&&!receipt.mismatch?num(receipt.total):null;
+var merchant=clean(receipt&&receipt.merchant),date=clean(receipt&&receipt.date);
+var signature=function(items){return JSON.stringify(items.map(function(x){return [norm(x.name),x.quantity,Math.round(x.total*100)]}).sort(function(a,b){return JSON.stringify(a).localeCompare(JSON.stringify(b))}));};
+if(date&&merchant&&merchant!=='não identificado'&&total!==null&&list.length&&prev.some(function(x){return x.date===date&&norm(x.merchant)===norm(merchant)&&x.total===total&&signature(x.items||[])===signature(list)})){
+if(!confirm('Já existe uma nota com os mesmos dados e produtos. Confira se é uma compra diferente antes de arquivar novamente.'))return;
+}
+var sum=list.reduce(function(a,x){return a+Math.round(x.total*100)},0);
+if(total!==null&&list.length&&sum!==Math.round(total*100)&&!confirm('A soma dos produtos difere do total da nota. Confira descontos ou itens não reconhecidos. Arquivar como leitura parcial?'))return;
+var note={id:'nota-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),ownerId:String(Store.userId),createdAt:new Date().toISOString(),date:clean(receipt&&receipt.date),merchant:clean(receipt&&receipt.merchant),fiscalKey:keyFiscal,total:total,items:list,ledgerMovementId:null,itemsReconciled:total!==null&&list.length>0&&sum===Math.round(total*100)};
 Store.settings=Store.settings||{};
 Store.settings[key()]=prev.concat(note);
 Store.save();
