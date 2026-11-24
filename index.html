@@ -6859,6 +6859,42 @@ AlicerceIA._mostrarComprovantePix=function(raw){
   while(this._messages.length>6)this._messages.shift();
   this._answer=msg;this._question='';render();return true;
 };
+AlicerceIA._pixCandidates=function(p){
+  if(!p||!Store.userId||p.ownerId!==String(Store.userId)||p.incoming||!p.amount)return [];
+  var m=String(p.date||'').match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m)return [];
+  var day=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');
+  var dt=new Date(day+'T12:00:00Z');
+  if(isNaN(dt.getTime())||dt.toISOString().slice(0,10)!==day)return [];
+  return Store.getAnalysisEntries().filter(function(x){
+    return x.source==='movement'&&x.data===day&&Math.round(x.valor*100)===Math.round(p.amount*100)&&String(x.pagamento||'').toLowerCase()==='pix';
+  });
+};
+AlicerceIA.vincularPixExistente=function(){
+  this._resetUser();
+  var p=this._pixProofDraft,rows=this._pixCandidates(p),owner=String(Store.userId||'');
+  if(!rows.length){showToast('Nenhum gasto Pix com a mesma data e valor. Confira a data e a forma de pagamento.');return;}
+  var old=document.getElementById('alicia-pix-link');if(old)old.remove();
+  var el=document.createElement('div');el.id='alicia-pix-link';
+  el.style='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:16px';
+  el.innerHTML='<section role="dialog" aria-modal="true" aria-label="Vincular Pix" style="background:var(--surface);color:var(--text);padding:20px;border-radius:18px;width:100%;max-width:460px"><h2>Vincular Pix existente</h2><p>Selecione o gasto correto. Nenhuma imagem, nome ou chave Pix será arquivada.</p><label for="alicia-pix-choice">Gasto correspondente</label><select id="alicia-pix-choice" class="input"><option value="">Escolher gasto</option>'+rows.map(function(x,i){return '<option value="'+i+'">'+esc(x.descricao||'Gasto')+' · '+esc(x.data)+' · '+fmtMoney(x.valor)+'</option>'}).join('')+'</select><button type="button" id="alicia-pix-confirm" class="btn btn-primary mt-3">Confirmar vínculo</button><button type="button" id="alicia-pix-cancel" class="btn btn-secondary mt-3">Cancelar</button></section>';
+  document.body.appendChild(el);
+  el.querySelector('#alicia-pix-cancel').onclick=function(){el.remove()};
+  el.querySelector('#alicia-pix-confirm').onclick=function(){
+    var choice=el.querySelector('#alicia-pix-choice').value;
+    if(choice==='')return;
+    var selected=rows[Number(choice)];
+    if(String(Store.userId)!==owner||AlicerceIA._pixProofDraft!==p||!selected||!AlicerceIA._pixCandidates(p).some(function(x){return x.id===selected.id;})){el.remove();showToast('A conferência mudou. Abra novamente.');return;}
+    var entry=(Store.movements||[]).find(function(x){return String(x.id)===String(selected.id);});
+    if(!entry){el.remove();return;}
+    if(entry.pixReview){showToast('Este gasto já possui conferência Pix.');return;}
+    entry.pixReview={version:1,confirmedAt:new Date().toISOString(),date:selected.data,amountCents:Math.round(selected.valor*100)};
+    Store.save();AlicerceIA._pixProofDraft=null;el.remove();
+    var answer='Vinculei a conferência Pix ao gasto existente. Nenhuma nova despesa foi criada e nenhum comprovante original foi guardado.';
+    AlicerceIA._messages.push({role:'assistant',text:answer});AlicerceIA._answer=answer;render();
+  };
+};
+
 AlicerceIA.conferirPixDespesa=function(){
   var p=this._pixProofDraft;
   if(!p||p.ownerId!==String(Store.userId||'')||p.incoming||!p.amount)return;
@@ -7383,6 +7419,7 @@ function renderAssistente(){
     html+='</div>';
   }
   if(AlicerceIA._pixProofDraft&&AlicerceIA._pixProofDraft.ownerId===String(Store.userId||'')){
+    if(AlicerceIA._pixCandidates(AlicerceIA._pixProofDraft).length)html+='<button type="button" class="btn btn-primary btn-sm mt-2" onclick="AlicerceIA.vincularPixExistente()">Vincular a gasto Pix existente</button>';
     if(!AlicerceIA._pixProofDraft.incoming&&AlicerceIA._pixProofDraft.amount)html+='<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="AlicerceIA.conferirPixDespesa()">Conferir Pix como despesa</button>';
   }
   if(AlicerceIA._receiptReview&&AlicerceIA._receiptReview.ownerId===String(Store.userId||'')&&window.AlicerceConsumo){
@@ -10951,7 +10988,10 @@ function gastosProdutosVinculados(m){
 }
 function gastosAcoesCorrecao(m){
   const attrs=' data-source="'+esc(m.source||'')+'" data-id="'+esc(m.id||'')+'"';
-  return gastosProdutosVinculados(m)+'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn btn-secondary btn-sm"'+attrs+' onclick="gastosCorrigir(this.dataset.source,this.dataset.id)">Corrigir gasto</button><button type="button" class="btn btn-secondary btn-sm"'+attrs+' onclick="gastosExcluir(this.dataset.source,this.dataset.id)">Excluir registro</button></div>';
+  const original=m.source==='movement'&&(Store.movements||[]).find(x=>String(x.id)===String(m.id));
+  const pix=original&&original.pixReview;
+  const verified=pix&&pix.date===m.data&&pix.amountCents===Math.round(m.valor*100)&&String(m.pagamento||'').toLowerCase()==='pix';
+  return (verified?'<p class="text-sm">Pix conferido pelo usuário · sem arquivo original</p>':'')+gastosProdutosVinculados(m)+'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn btn-secondary btn-sm"'+attrs+' onclick="gastosCorrigir(this.dataset.source,this.dataset.id)">Corrigir gasto</button><button type="button" class="btn btn-secondary btn-sm"'+attrs+' onclick="gastosExcluir(this.dataset.source,this.dataset.id)">Excluir registro</button></div>';
 }
 function gastosOrigem(source,id){
   if(!Store.userId)return null;
@@ -10995,6 +11035,7 @@ function gastosCorrigir(source,id){
   if(!window.confirm('Substituir este gasto por '+fmtMoney(amount)+' em '+date+'? O saldo e os totais serão recalculados.'))return;
   const current=gastosOrigem(source,id);
   if(String(Store.userId)!==owner||!current||current.entry!==entry||gastosVinculado(entry)){showToast('O registro mudou. Abra novamente.');return;}
+  if(entry.pixReview&&(entry.data!==date||Math.round(entry.valor*100)!==Math.round(amount*100)))delete entry.pixReview;
   entry.descricao=name.trim();entry.valor=Math.round(amount*100)/100;entry.data=date;entry.updatedAt=new Date().toISOString();
   Store.save();showToast('Gasto corrigido.');render();
 }
