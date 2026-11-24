@@ -6162,6 +6162,7 @@ AlicerceIA.enviarMensagem=async function(question){
     this._responderOcrIndeterminado();
     return;
   }
+  if(this._continuarDocumento(message))return;
   this._messages.push({role:'user',text:message});
   if(window.AlicerceConsumo&&/\b(pastas? de (?:compras|consumo|produtos)|minhas pastas|historico de produtos|precos? dos produtos|analise de produtos|analise minhas compras)\b/.test(this._norm(message))){
     var answer=window.AlicerceConsumo.summary(message);
@@ -6779,6 +6780,42 @@ AlicerceIA.ouvirMensagem=async function(index,button){
 };
 
 
+
+/* Contexto de documento ativo: somente respostas explícitas, nunca grava despesas. */
+AlicerceIA._continuarDocumento=function(message){
+  var p=this._pixProofDraft,d=this._receiptDraft,owner=String(Store.userId||'');
+  var draft=p&&p.awaitingContext?p:d&&d.awaitingContext?d:null;
+  if(!owner||!draft||draft.ownerId!==owner)return false;
+  var q=this._norm(message),reply='';
+  if(/^(cancelar|cancela|esqueca|descartar|descarta)(?: (?:o |a )?(?:pix|nota|documento|comprovante))?$/.test(q)){
+    this._pixProofDraft=null;this._receiptDraft=null;this._receiptOCR='';this._qrConsultaUrl='';
+    reply='Conferência cancelada. Nenhum gasto foi registrado.';
+  }else if(/^(?:(?:foi|e|era) (?:uma? )?)?(?:transferencia(?: entre (?:as |minhas )?contas)?|reembolso|receita|pagamento (?:de |da )?(?:fatura|conta)(?: ja cadastrada)?)$/.test(q)){
+    draft.awaitingContext=false;
+    this._pixProofDraft=null;this._receiptDraft=null;this._receiptOCR='';this._qrConsultaUrl='';
+    reply='Entendi a natureza informada. Não vou criar outra despesa. Confira a movimentação ou conta correspondente antes de registrar o pagamento.';
+  }else if(/^(?:(?:foi|e|era) (?:uma? )?)?(?:(?:compra|despesa|gasto) )?(?:pessoal|familiar|familia|para (?:a |minha )?familia|para (?:as )?despesas de casa|casa|obrigacao|trabalho)$/.test(q)){
+    if(p===draft&&p.incoming){
+      reply='Este comprovante parece ser um recebimento. Preciso confirmar a direção do Pix antes de preparar qualquer despesa.';
+    }else{
+      draft.purpose=/famil|casa/.test(q)?'Casa e família':/trabalho/.test(q)?'Trabalho':/obrigacao/.test(q)?'Obrigação':'Pessoal';
+      reply='Entendi: '+draft.purpose+'. Mantive essa finalidade no documento em análise. Toque em conferir para revisar os dados; ainda não registrei nenhum gasto.';
+    }
+  }else if(/^(?:data|foi em|foi dia|dia) /.test(q)){
+    var m=String(message).match(/\b(\d{1,2})[\/.-](\d{1,2})[\/.-](20\d{2})\b/);
+    if(!m)return false;
+    var iso=m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'),dt=new Date(iso+'T12:00:00Z');
+    if(isNaN(dt.getTime())||dt.toISOString().slice(0,10)!==iso)reply='Essa data não é válida. Confira o documento.';
+    else{draft.date=m[1].padStart(2,'0')+'/'+m[2].padStart(2,'0')+'/'+m[3];reply='Data atualizada na conferência: '+draft.date+'. Nada foi registrado.';}
+  }else if(/^(sim|confirmo|pode|pode salvar|pode registrar|salvar|registrar)$/.test(q)){
+    reply='Antes de salvar, abra a conferência do documento e valide valor, data e forma de pagamento. Não vou registrar sem essa revisão.';
+  }else return false;
+  this._messages.push({role:'user',text:message},{role:'assistant',text:reply});
+  while(this._messages.length>8)this._messages.shift();
+  this._answer=reply;this._question='';
+  render();return true;
+};
+
 AlicerceIA._pixProofDraft=null;
 AlicerceIA._lerComprovantePix=function(raw){
   var lines=String(raw||'').replace(/\r/g,'').split('\n').map(function(s){return s.trim()}).filter(Boolean);
@@ -6807,7 +6844,7 @@ AlicerceIA._lerComprovantePix=function(raw){
 AlicerceIA._mostrarComprovantePix=function(raw){
   var proof=this._lerComprovantePix(raw);
   if(!proof)return false;
-  this._pixProofDraft=Object.assign({ownerId:String(Store.userId||'')},proof);
+  this._pixProofDraft=Object.assign({ownerId:String(Store.userId||''),awaitingContext:true},proof);
   var msg='Identifiquei um possível comprovante Pix.\n';
   msg+='Valor: '+(proof.amount?fmtMoney(proof.amount):'não identificado com segurança');
   msg+='\nDestinatário: '+(proof.recipient||'não identificado');
@@ -6832,9 +6869,10 @@ AlicerceIA.conferirPixDespesa=function(){
   if(possible.length&&!window.confirm('Já existe '+possible.length+' gasto(s) deste valor nesta data. Confira se o Pix já foi registrado. Deseja preparar outro lançamento?'))return;
   Store.screenData={interpretation:{amount:p.amount,item:'Pagamento Pix',merchant:p.recipient,categoria:'',subcategoria:''},
     amountInput:p.amount,itemInput:'Pagamento Pix',localInput:p.recipient,
-    text:'Pagamento Pix',context:p.recipient,date:d,paymentMethod:'pix',purpose:'',
+    text:'Pagamento Pix',context:p.recipient,date:d,paymentMethod:'pix',purpose:p.purpose||'',
     cardId:'',cardOwnerType:'meu',cardOwner:'',cardType:'',installment:false,installments:0,
     novaCompraFlow:false,gastoEdits:null,aliciaOrigin:true,pixProofOrigin:true};
+  p.awaitingContext=false;
   go('addGastoDoubt',Store.screenData);
 };
 AlicerceIA._qrScriptPromise=null;
@@ -6856,7 +6894,7 @@ AlicerceIA._setReceiptDraft=function(receipt,fiscalKey){
   var amount=Number(value.replace(/\./g,'').replace(',','.'));
   if(!Number.isFinite(amount)||amount<=0||amount>1000000)return;
   this._receiptDraft={
-    ownerId:String(Store.userId||''),amount:amount,
+    ownerId:String(Store.userId||''),amount:amount,awaitingContext:true,
     merchant:receipt.merchant&&receipt.merchant!=='não identificado'?String(receipt.merchant).slice(0,110):'',
     date:String(receipt.date||''),mismatch:!!receipt.mismatch,
     fiscalKey:String(fiscalKey||''),ocrTotal:!!receipt.total
@@ -6880,11 +6918,12 @@ AlicerceIA.conferirNotaLida=function(){
     interpretation:{amount:draft.amount,item:'Compra conforme nota fiscal',merchant:draft.merchant,categoria:'',subcategoria:''},
     amountInput:draft.amount,itemInput:'Compra conforme nota fiscal',localInput:draft.merchant,
     text:'Compra conforme nota fiscal',context:draft.merchant,date:day,paymentMethod:'',
-    purpose:'',cardId:'',cardOwnerType:'meu',cardOwner:'',cardType:'',
+    purpose:draft.purpose||'',cardId:'',cardOwnerType:'meu',cardOwner:'',cardType:'',
     installment:false,installments:0,novaCompraFlow:false,gastoEdits:null,
     aliciaOrigin:true,receiptOrigin:true,
     receiptFiscalKey:draft.fiscalKey
   };
+  draft.awaitingContext=false;
   showToast('Confira valor, estabelecimento e forma de pagamento antes de salvar.');
   go('addGastoDoubt',Store.screenData);
 };
