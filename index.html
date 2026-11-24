@@ -5015,6 +5015,7 @@ const AlicerceIA = {
       this._answer='';
       this._messages=[];
       this._pendingExpenseDraft=null;
+      this._pendingForecastOwner='';
       this._pendingFinancialReview=null;
       this._pendingBenefitPurchase=null;
       this._qrConsultaUrl='';
@@ -5587,6 +5588,7 @@ AlicerceIA.limparConversa=function(){
   this._historyLoadedForUser=userId;
   this._messages=[];
   this._pendingExpenseDraft=null;
+  this._pendingForecastOwner='';
   this._pendingFinancialReview=null;
   this._pendingBenefitPurchase=null;
   this._receiptDraft=null;
@@ -6181,6 +6183,22 @@ AlicerceIA.enviarMensagem=async function(question){
   }
   if(this._continuarDocumento(message))return;
   this._messages.push({role:'user',text:message});
+  // Forecast is a read-only chat action; keep it ahead of graph and writing handlers.
+  if(!this._pendingExpenseDraft&&!this._pendingFinancialReview&&!this._pendingBenefitPurchase&&window.AlicerceCashflow&&typeof window.AlicerceCashflow.forecast==='function'){
+    var forecastQuery=message;
+    var forecastRequest=/(?:quanto (?:posso gastar|vai sobrar|sobra|vou ter)|quanto dinheiro (?:sobra|vai sobrar)|(?:consigo|posso) gastar quanto|previsao de saldo|saldo previsto)/.test(this._norm(message));
+    if(!forecastRequest&&this._pendingForecastOwner===String(Store.userId||'')&&/^(?:ate (?:o )?(?:dia )?)?\d{1,2}\/\d{1,2}(?:\/\d{4})?$/.test(message.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,''))){
+      forecastQuery='Quanto posso gastar até '+message.match(/\d{1,2}\/\d{1,2}(?:\/\d{4})?/)[0];forecastRequest=true;
+    }
+    this._pendingForecastOwner='';
+    if(forecastRequest){
+      var forecastReply=window.AlicerceCashflow.forecast(Store,Clock.today(),forecastQuery);
+      if(/^(qual e a data|informe uma data futura)/.test(this._norm(forecastReply)))this._pendingForecastOwner=String(Store.userId||'');
+      this._messages.push({role:'assistant',text:forecastReply});
+      while(this._messages.length>8)this._messages.shift();
+      this._answer=forecastReply;this._question=message;render();return;
+    }
+  }
   if(window.AlicerceConsumo&&/\b(pastas? de (?:compras|consumo|produtos)|minhas pastas|historico de produtos|precos? dos produtos|analise de produtos|analise minhas compras)\b/.test(this._norm(message))){
     var answer=window.AlicerceConsumo.summary(message);
     this._messages.push({role:'assistant',text:answer});
@@ -8143,7 +8161,7 @@ AlicerceIA.responder=function(question){
   this._resetUser();
   var q=this._norm(question);
   if(window.AlicerceBeneficios){var benefitAnswer=window.AlicerceBeneficios.answer(Store,question);if(benefitAnswer)return benefitAnswer;}
-  if(window.AlicerceCashflow&&window.AlicerceCashflow.matches(question))return window.AlicerceCashflow.answer(Store,Clock.today());
+  if(window.AlicerceCashflow&&window.AlicerceCashflow.matches(question))return window.AlicerceCashflow.answer(Store,Clock.today(),question);
   var asksFamilyModule=/\b(adicionar|adiciona|cadastrar|cadastre|incluir|inclui|criar|cria)\b/.test(q)&&/\b(pessoa|membro|dependente)\b/.test(q)&&/\bfamilia\b/.test(q);
   if(asksFamilyModule){
     if(Store.lang==='en')return 'The old family-member registration feature is no longer part of Alicerce. The Plans area is for personal savings goals. The existing Family expense category remains only to describe the purpose of a purchase.';
