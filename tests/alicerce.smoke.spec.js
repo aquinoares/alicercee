@@ -1725,7 +1725,7 @@ test('Assistente mantém o assunto quando a pessoa pergunta por outro período',
   await page.locator('#alicerce-assistant-input').fill('E na semana passada?');
   await page.locator('#alicerce-assistant-send').click();
   await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('R$ 200,00');
-  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('No período consultado');
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('Bar');
   await expect(page.locator('.alicerce-assistant-message.assistant').last()).not.toContainText('R$ 300,00');
   await expect(page.locator('.alicerce-assistant-message.user').last()).toContainText('E na semana passada?');
 });
@@ -3892,4 +3892,43 @@ test('Alícia revisa o mesmo gasto no chat e só altera depois de confirmar', as
   expect(result.rows).toHaveLength(1);
   expect(result.rows[0]).toMatchObject({ id: 'mesmo-gasto', forma: 'dinheiro', valor: 42.5 });
   expect(result.total).toBe(-42.5);
+});
+
+test('Alícia acompanha várias perguntas curtas, compara períodos e esquece o assunto ao limpar', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'consulta-encadeada';
+    Store.settings.alicerceLegalAcceptance = {
+      termsVersion: '2026-10-20-v1',
+      privacyVersion: '2026-10-20-v1',
+      acceptedAt: '2026-10-31T12:00:00.000Z'
+    };
+    const previousMonth = AlicerceIA._questionRange('mês passado').start;
+    Store.movements = [
+      { id: 'compra-atual', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', valor: 125, data: Clock.today() },
+      { id: 'compra-anterior', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', valor: 80, data: previousMonth },
+      { id: 'ajuda-anterior', tipo: 'despesa', status: 'pago', categoria: 'familia', subcategoria: 'filhos', valor: 50, data: previousMonth }
+    ];
+    render();
+  });
+  const input = page.locator('#alicerce-assistant-input');
+  const last = page.locator('.alicerce-assistant-message.assistant').last();
+  async function perguntar(question) {
+    await input.fill(question);
+    await page.locator('#alicerce-assistant-send').click();
+  }
+  await perguntar('Me diz quanto gastei no mercado este mês');
+  await expect(last).toContainText('125,00');
+  await perguntar('E no mês passado?');
+  await expect(last).toContainText('80,00');
+  await perguntar('Compara os dois');
+  await expect(last).toContainText('Comparação de períodos');
+  await expect(last).toContainText('125,00');
+  await expect(last).toContainText('80,00');
+  await perguntar('E com meu filho?');
+  await expect(last).toContainText('Filhos');
+  await expect(last).toContainText('50,00');
+  await page.locator('#alicerce-assistant-clear').click();
+  await perguntar('E no mês passado?');
+  await expect(last).toContainText('Qual gasto você quer consultar?');
 });
