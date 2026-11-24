@@ -28,3 +28,21 @@ test('compara as duas últimas compras em meses diferentes sem acessar outra con
   assert.match(answer, /R\$\s*7,00 e R\$\s*8,00/);
   assert.doesNotMatch(answer, /500/);
 });
+
+test('detecta aumentos comparáveis antes da data final e agrupa compras no mesmo dia', () => {
+  const note = (id, date, name, total, quantity = 1) => ({
+    id, date, ownerId: 'conta', items: [{ name, total, quantity }]
+  });
+  const receipts = [
+    note('a', '30/10/2026', 'Farofa Yoki 400G', 6),
+    note('b', '12/11/2026', 'Farofa Yoki 400G', 14, 2),
+    note('c', '12/11/2026', 'Farofa Yoki 400G', 8),
+    note('d', '25/11/2026', 'Farofa Yoki 400G', 500),
+    note('e', '13/11/2026', 'Farofa Yoki 800G', 16)
+  ];
+  const response = moduleWithReceipts(receipts).increases('2026-11-01', '2026-11-23');
+  assert.equal(response.comparable, 1);
+  assert.equal(response.items[0].name, 'Farofa Yoki 400G');
+  assert.equal(response.items[0].previous, 6);
+  assert.equal(response.items[0].delta, 1.33);
+});

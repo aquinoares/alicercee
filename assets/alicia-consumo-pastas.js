@@ -141,6 +141,45 @@ else response+='\nPara comparar preços, preciso de ao menos duas ocorrências d
 }
 return response;
 }
+function increases(start,end){
+var grouped=new Map();
+records().forEach(function(note){
+var date=receiptDate(note.date);
+if(!date||date>end)return;
+var products=new Map();
+(note.items||[]).forEach(function(item){
+var key=norm(item.name), quantity=Number(item.quantity), total=Number(item.total);
+if(!key||!Number.isFinite(quantity)||quantity<=0||!Number.isFinite(total)||total<=0)return;
+var row=products.get(key)||{name:item.name,date:date,total:0,quantity:0};
+row.total+=total;
+row.quantity+=quantity;
+products.set(key,row);
+});
+products.forEach(function(row,key){
+var daily=grouped.get(key)||new Map();
+var day=daily.get(date)||{name:row.name,date:date,total:0,quantity:0};
+day.total+=row.total;
+day.quantity+=row.quantity;
+daily.set(date,day);
+grouped.set(key,daily);
+});
+});
+var changes=[];
+var comparable=0;
+grouped.forEach(function(daily){
+var dates=Array.from(daily.keys()).sort();
+if(dates.length<2||dates[dates.length-1]<start)return;
+var latest=daily.get(dates[dates.length-1]);
+var prior=daily.get(dates[dates.length-2]);
+var current=latest.total/latest.quantity;
+var previous=prior.total/prior.quantity;
+var delta=Math.round((current-previous)*100)/100;
+comparable++;
+if(delta>=0.01)changes.push({name:latest.name,previous:previous,current:current,delta:delta,date:latest.date,previousDate:prior.date});
+});
+changes.sort(function(a,b){return b.delta-a.delta||a.name.localeCompare(b.name);});
+return {comparable:comparable,items:changes.slice(0,3)};
+}
 function open(){
 var data=records();
 var html='<p class="text-muted text-sm">Arquivo privado da conta. As pastas não alteram seu saldo bancário.</p>';
@@ -157,5 +196,5 @@ data.slice().reverse().slice(0,50).forEach(function(r){html+='<p class="text-sm"
 html+='</details>';
 dialog('Minhas pastas de consumo',html);
 }
-window.AlicerceConsumo={parse:parse,review:review,open:open,summary:summary,records:records};
+window.AlicerceConsumo={parse:parse,review:review,open:open,summary:summary,records:records,increases:increases};
 })();

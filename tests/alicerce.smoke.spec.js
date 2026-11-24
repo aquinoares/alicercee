@@ -3864,3 +3864,32 @@ test('Pix não confunde tarifa, varejo e valores conflitantes', async function (
   });
   expect(result.map(item => item && item.amount)).toEqual([50, null, null, null]);
 });
+
+test('Alícia revisa o mesmo gasto no chat e só altera depois de confirmar', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'revisao-cash';
+    Store.settings.alicerceLegalAcceptance = {
+      termsVersion: '2026-10-20-v1',
+      privacyVersion: '2026-10-20-v1',
+      acceptedAt: '2026-10-31T12:00:00.000Z'
+    };
+    Store.movements = [{ id: 'mesmo-gasto', descricao: 'Padaria Central', valor: 50, tipo: 'despesa', status: 'pago', forma: 'pix', data: Clock.today() }];
+    render();
+  });
+  const input = page.locator('#alicerce-assistant-input');
+  await input.fill('Corrige o gasto da Padaria Central. Foi em dinheiro, mas lancei no Pix');
+  await page.locator('#alicerce-assistant-send').click();
+  const confirm = page.getByRole('button', { name: 'Confirmar correção' });
+  await expect(confirm).toBeVisible();
+  expect(await page.evaluate(() => Store.movements[0].forma)).toBe('pix');
+  await input.fill('O valor foi R$ 42,50');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('42,50');
+  await confirm.click();
+  await expect(confirm).toHaveCount(0);
+  const result = await page.evaluate(() => ({ rows: Store.movements, total: Store.getMotorFinanceiro().disponivel }));
+  expect(result.rows).toHaveLength(1);
+  expect(result.rows[0]).toMatchObject({ id: 'mesmo-gasto', forma: 'dinheiro', valor: 42.5 });
+  expect(result.total).toBe(-42.5);
+});

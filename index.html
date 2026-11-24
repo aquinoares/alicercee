@@ -2577,6 +2577,7 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 <script src="/assets/alicia-compra-beneficio-chat.js"></script>
 <script src="/assets/alicia-guia-carrossel.js"></script>
 <script src="/assets/alicia-contextual.js"></script>
+<script src="/assets/alicia-edicao-chat.js"></script>
 <style id="alicerce-beneficios-v1-styles">
 .al-benefits-home{display:grid;gap:9px;margin:12px 0}
 .al-benefit-home-card{display:flex;align-items:center;gap:11px;width:100%;padding:14px 13px;text-align:left;border:1px solid var(--line);border-radius:17px;background:var(--surface2);color:var(--text);box-shadow:var(--highlight);cursor:pointer}
@@ -4703,6 +4704,7 @@ const detalhes={
         id:String(record.id||''),
         purchaseId:String((analysis&&analysis.purchaseId)||record.purchaseId||record.compraId||''),
         data:date,
+        dataCompra:source==='card'?record.dataCompra||'':date,
         valor:value,
         categoria:record.categoria||'outros',
         subcategoria:record.subcategoria||'outros',
@@ -5063,6 +5065,7 @@ const AlicerceIA = {
   _answer:'',
   _messages:[],
   _pendingExpenseDraft:null,
+  _pendingExpenseEdit:null,
   _pendingFinancialReview:null,
   _pendingBenefitPurchase:null,
   _welcomeTypingStarted:false,
@@ -5079,6 +5082,7 @@ const AlicerceIA = {
       this._answer='';
       this._messages=[];
       this._pendingExpenseDraft=null;
+      this._pendingExpenseEdit=null;
       this._pendingFinancialReview=null;
       this._pendingBenefitPurchase=null;
       this._qrConsultaUrl='';
@@ -5651,6 +5655,7 @@ AlicerceIA.limparConversa=function(){
   this._historyLoadedForUser=userId;
   this._messages=[];
   this._pendingExpenseDraft=null;
+  this._pendingExpenseEdit=null;
   this._pendingFinancialReview=null;
   this._pendingBenefitPurchase=null;
   this._receiptDraft=null;
@@ -5709,7 +5714,7 @@ AlicerceIA._parsePtNumberWords=function(value){
   }
   return found?total+current:null;
 };
-AlicerceIA._extractExpenseDate=function(value){
+AlicerceIA._extractExpenseDate=function(value,requireValid){
   var raw=String(value||'');
   var normalized=this._norm(raw);
   var base=today();
@@ -5721,26 +5726,26 @@ AlicerceIA._extractExpenseDate=function(value){
     return String(year)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
   }
   var match=raw.match(/\b(20\d{2})-(0?[1-9]|1[0-2])-([0-3]?\d)\b/);
-  if(match){var iso=toIso(match[1],match[2],match[3]);if(iso)return iso;}
+  if(match){var iso=toIso(match[1],match[2],match[3]);if(iso||requireValid)return iso;}
   match=raw.match(/\b(?:dia\s+)?([0-3]?\d)[\/.-]([01]?\d)(?:[\/.-](\d{2,4}))?\b/i);
   if(match){
     var year=match[3]?Number(match[3]):Number(base.slice(0,4));
     if(year<100)year+=2000;
     var localDate=toIso(year,match[2],match[1]);
-    if(localDate)return localDate;
+    if(localDate||requireValid)return localDate;
   }
   var months={janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
   match=normalized.match(/\b(?:dia\s+)?(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?\b/);
   if(match&&months[match[2]]){
     var monthDate=toIso(Number(match[3]||base.slice(0,4)),months[match[2]],match[1]);
-    if(monthDate)return monthDate;
+    if(monthDate||requireValid)return monthDate;
   }
   if(/\bdepois de amanha\b/.test(normalized))return dateShift(base,2);
   if(/\banteontem\b/.test(normalized))return dateShift(base,-2);
   if(/\bontem\b/.test(normalized))return dateShift(base,-1);
   if(/\bamanha\b/.test(normalized))return dateShift(base,1);
   if(/\bhoje\b/.test(normalized))return base;
-  return base;
+  return requireValid?'':base;
 };
 AlicerceIA._removeExpenseDateText=function(value){
   return String(value||'')
@@ -6244,6 +6249,87 @@ AlicerceIA._entenderMovimentacao=function(message){
   return null;
 };
 
+AlicerceIA._responderEdicao=function(reply,review){
+  this._messages.push({role:'assistant',text:reply,expenseEdit:review||''});
+  while(this._messages.length>8)this._messages.shift();
+  this._answer=reply;
+  render();
+  if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
+};
+
+AlicerceIA._tratarEdicao=function(message,row){
+  var editor=window.AlicerceEdicaoChat;
+  var pending=this._pendingExpenseEdit;
+  if(!editor||(!row&&!pending))return false;
+  if(row){
+    if(!editor.eligible(row))return false;
+    var previous=editor.snapshot(row);
+    pending={ownerId:Store.userId,id:row.id,original:previous,next:Object.assign({},previous)};
+  }
+  var q=this._norm(message);
+  if(!row&&/^(?:cancela|cancelar|cancelar correcao|descartar correcao)$/.test(q)){
+    this._pendingExpenseEdit=null;
+    this._responderEdicao('Correção cancelada.');
+    return true;
+  }
+  if(!row&&/^(?:confirmo a correcao|confirmar correcao|confirma a correcao)$/.test(q)){
+    if(pending.token)this.confirmarEdicao(pending.token);
+    else this._responderEdicao('Diga o que precisa mudar antes de confirmar.');
+    return true;
+  }
+  if(!row&&!/^(?:foi|era|o valor|valor|na verdade|troque|mude|corrig\w*|a data|data|paguei (?:em|no)|pix|dinheiro|anteontem|ontem|hoje|em|no)\b/.test(q))return false;
+  if(!row&&/^(?:pix|dinheiro)$/.test(q))message='Foi '+q;
+  var change=editor.changes(message,function(date){return AlicerceIA._extractExpenseDate(date,true);});
+  if(change.error){
+    if(!row){pending.token='';this._responderEdicao(change.error);}
+    return !row;
+  }
+  if(change.date&&change.date>today()){
+    this._responderEdicao('Para um gasto já pago, informe a data em que o pagamento aconteceu.');
+    return true;
+  }
+  Object.assign(pending.next,change);
+  var current=(Store.movements||[]).find(function(item){return item&&item.id===pending.id;});
+  var result=editor.updated(current,pending.original,pending.next,Store.userId);
+  if(result.error){
+    if(!row){pending.token='';this._responderEdicao(result.error);}
+    return !row;
+  }
+  this._pendingExpenseEdit=pending;
+  if(result.unchanged){
+    pending.token='';
+    this._responderEdicao('Encontrei '+(current.descricao||'o gasto')+'. O que deve mudar? Você pode dizer “Foi anteontem, em dinheiro” ou “O valor foi R$ 42,50”.');
+    return true;
+  }
+  pending.token=Store._uid();
+  var label=function(payment){return payment==='pix'?'Pix':'dinheiro';};
+  var format=function(record){return fmtMoney(record.amount)+' · '+formatDateBR(record.date)+' · '+label(record.method);};
+  this._responderEdicao((current.descricao||'Gasto')+'\nAntes · '+format(pending.original)+'\nDepois · '+format(pending.next)+'\nConfirme para atualizar este mesmo lançamento.',pending.token);
+  return true;
+};
+
+AlicerceIA.confirmarEdicao=function(token){
+  this._resetUser();
+  var pending=this._pendingExpenseEdit;
+  if(!pending||!token||pending.token!==token||!Store.userId||Store.userId!==pending.ownerId)return;
+  this._pendingExpenseEdit=null;
+  var index=Store.movements.findIndex(function(item){return item&&item.id===pending.id;});
+  var result=window.AlicerceEdicaoChat.updated(Store.movements[index],pending.original,pending.next,Store.userId);
+  if(!result.record){this._responderEdicao(result.error||'O lançamento já tem esses valores.');return;}
+  var movements=Store.movements.slice();
+  movements[index]=result.record;
+  Store.movements=movements;
+  Repository.set(Store.userId,'movements',movements);
+  this._responderEdicao('Atualizei '+(result.record.descricao||'o gasto original')+'. O novo valor é '+fmtMoney(result.record.valor)+'.');
+};
+
+AlicerceIA.cancelarEdicao=function(token){
+  this._resetUser();
+  if(!this._pendingExpenseEdit||this._pendingExpenseEdit.token!==token)return;
+  this._pendingExpenseEdit=null;
+  this._responderEdicao('Correção cancelada.');
+};
+
 AlicerceIA.enviarMensagem=async function(question){
   this._resetUser();
   this.pararAudio();
@@ -6265,6 +6351,12 @@ AlicerceIA.enviarMensagem=async function(question){
   }
   this._messages.push({role:'user',text:message});
   var moneyIntent=this._entenderMovimentacao(message);
+  if(moneyIntent&&moneyIntent.movementId){
+    var original=(Store.movements||[]).find(function(row){return row&&row.id===moneyIntent.movementId;});
+    this._pendingExpenseEdit=null;
+    if(original&&this._tratarEdicao(message,original))return;
+  }
+  if(!moneyIntent&&this._tratarEdicao(message,null))return;
   if(moneyIntent){
     this._messages.push({role:'assistant',text:moneyIntent.reply,moneyAction:moneyIntent});
     while(this._messages.length>8)this._messages.splice(0,2);
@@ -6272,6 +6364,11 @@ AlicerceIA.enviarMensagem=async function(question){
     this._answer=moneyIntent.reply;
     render();
     if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
+    return;
+  }
+  if(window.AlicerceAliciaContextual&&window.AlicerceAliciaContextual.marketMatches(questionForEngine)){
+    var market=window.AlicerceAliciaContextual.marketReport(Store,this._questionRange(questionForEngine),questionForEngine);
+    this._responderEdicao(market);
     return;
   }
   if(window.AlicerceConsumo&&/\b(pastas? de (?:compras|consumo|produtos)|minhas pastas|historico de produtos|precos? dos produtos|analise de produtos|analise minhas compras)\b/.test(this._norm(message))){
@@ -7345,6 +7442,11 @@ AlicerceIA.processarFoto=async function(input){
   this._responderOcrIndeterminado();
 };
 
+function renderConferenciaEdicao(token){
+  if(!token||!AlicerceIA._pendingExpenseEdit||AlicerceIA._pendingExpenseEdit.token!==token)return '';
+  return '<div class="alicia-benefit-review-actions mt-2"><button type="button" class="btn btn-primary" data-edit="'+esc(token)+'" onclick="AlicerceIA.confirmarEdicao(this.dataset.edit)">Confirmar correção</button><button type="button" class="btn btn-secondary" data-edit="'+esc(token)+'" onclick="AlicerceIA.cancelarEdicao(this.dataset.edit)">Cancelar</button></div>';
+}
+
 function renderAcaoDaConversa(action,index){
   if(!action)return '';
   var label=action.route==='gastos'?'Abrir Meus gastos':action.route==='beneficios'?'Abrir Meus benefícios':'';
@@ -7455,7 +7557,7 @@ function renderAssistente(){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?'<details class="mt-2"'+(index===messages.length-1?' open':'')+'><summary>Gráfico da resposta</summary>'+window.AlicerceAnalitica.renderChart(item.chart)+'</details>':'')+renderAcaoDaConversa(item.moneyAction,index)+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?'<details class="mt-2"'+(index===messages.length-1?' open':'')+'><summary>Gráfico da resposta</summary>'+window.AlicerceAnalitica.renderChart(item.chart)+'</details>':'')+renderAcaoDaConversa(item.moneyAction,index)+renderConferenciaEdicao(item.expenseEdit)+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }

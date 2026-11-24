@@ -58,5 +58,57 @@ function report(store,day){
  if(current.length&&previous.length)detail="Comparei os dois meses até o mesmo dia.";
  return {text:lines.slice(0,5).join("\n")+"\n"+detail,facts:facts,total:thisTotal,previousTotal:oldTotal,benefitMonth:benefitMonth};
 }
-root.AlicerceAliciaContextual={matches:matches,report:report};
+function marketMatches(input){
+ var q=norm(input);
+ var market=/\b(mercado|supermercado|atacadao|feira|compras de casa)\b/.test(q);
+ var prices=/\b(encarec\w*|subiu|subiram|mais car[oa]s?|aumento de preco|precos? (?:dos|de) produtos)\b/.test(q);
+ var benefit=/\b(sodexo|pluxee|solides|vale[- ]alimentacao)\b/.test(q);
+ var query=/\b(quanto|quais|qual|o que|analisa|analise|resumo|me mostra|me mostre)\b/.test(q);
+ var explicitPurchase=/^(?:alicia[, ]+)?(?:comprei|paguei|registra|registre|anota|anote)\b/.test(q);
+ return !explicitPurchase&&query&&((market&&(prices||benefit))||(prices&&benefit));
+}
+function marketReport(store,range,input){
+ if(!store||!store.userId)return "Entre na sua conta para consultar compras, notas e vales.";
+ var q=norm(input);
+ var within=function(date){return /^\d{4}-\d{2}-\d{2}$/.test(date)&&date>=range.start&&date<=range.end;};
+ var marketPattern=/\b(mercado|supermercado|atacado|atacadao|hortifruti|feira)\b/;
+ var dates=function(date){return date.split("-").reverse().join("/");};
+ var isMarket=function(row){
+   return marketPattern.test(norm([row.subcategoria,row.local,row.descricao].join(" ")).replace(/_/g," "));
+ };
+ var rows=typeof store.getAnalysisEntries==="function"?store.getAnalysisEntries():[];
+ var marketRows=rows.filter(function(row){
+   return row&&within(String(row.dataCompra||row.data||""))&&isMarket(row);
+ });
+ var marketTotal=marketRows.reduce(function(sum,row){return sum+amount(row.valor);},0);
+ var provider=/\b(?:sodexo|pluxee)\b/.test(q)?"pluxee":/\bsolides\b/.test(q)?"solides":"";
+ var label=provider==="pluxee"?"Sodexo/Pluxee":provider==="solides"?"Sólides":"vale-alimentação";
+ var wallets=root.AlicerceBeneficios?root.AlicerceBeneficios.wallets(store):[];
+ var selected=wallets.filter(function(wallet){return !provider||wallet.provider===provider;});
+ var entries=selected.flatMap(function(wallet){return wallet.entries||[];}).filter(function(entry){return entry.kind==="debit"&&within(String(entry.date||""));});
+ var marketOnly=/\b(?:mercado|supermercado|feira)\s+(?:com|no|pelo)\s+(?:(?:meu|o)\s+)?(?:sodexo|pluxee|solides|vale[- ]alimentacao)\b/.test(q);
+ var requestedBenefits=/\b(sodexo|pluxee|solides|vale[- ]alimentacao)\b/.test(q);
+ var lines=["Compras de "+dates(range.start)+" a "+dates(range.end)];
+ if(!marketOnly)lines.push("Mercado em dinheiro, Pix ou cartão: "+money(marketTotal)+" registrados.");
+ if(requestedBenefits){
+   if(!selected.length)lines.push("Nenhum cartão de "+label+" cadastrado.");
+   else {
+     var chosen=marketOnly?entries.filter(function(entry){return isMarket({subcategoria:entry.subcategory,local:entry.merchant,descricao:entry.description});}):entries;
+     var benefitTotal=chosen.reduce(function(sum,entry){return sum+amount(entry.amount);},0);
+     lines.push((marketOnly?"Mercado com ":"Compras com ")+label+": "+money(benefitTotal)+" registrados.");
+     if(marketOnly&&entries.length>chosen.length)lines.push("Compras do vale sem identificação de mercado ficaram fora desse valor.");
+   }
+ }
+ if(/\b(encarec\w*|subiu|subiram|mais car[oa]s?|aumento de preco|precos? (?:dos|de) produtos)\b/.test(q)){
+   var prices=root.AlicerceConsumo?root.AlicerceConsumo.increases(range.start,range.end):{comparable:0,items:[]};
+   if(!prices.comparable)lines.push("Ainda faltam compras em datas diferentes do mesmo produto para comparar preços.");
+   else if(!prices.items.length)lines.push("Nenhum aumento nos "+prices.comparable+" produtos comparáveis.");
+   else {
+     lines.push("Produtos que encareceram nas notas:");
+     prices.items.forEach(function(item){lines.push("• "+item.name+": "+money(item.previous)+" → "+money(item.current)+" por unidade.");});
+   }
+ }
+ return lines.join("\n");
+}
+root.AlicerceAliciaContextual={matches:matches,report:report,marketMatches:marketMatches,marketReport:marketReport};
 })(typeof window!=="undefined"?window:globalThis);
