@@ -4711,7 +4711,7 @@ const detalhes={
         compraId:record.compraId||'',cardId:record.cardId||'',
         parcelas:record.parcelas||1,parcelaAtual:record.parcelaAtual||1,
         dataCompra:record.dataCompra||'',hora:record.hora||record.time||'',
-        pagamento:record.pagamento||record.formaPagamento||record.metodoPagamento||record.paymentMethod||'',
+        pagamento:record.pagamento||record.formaPagamento||record.metodoPagamento||record.paymentMethod||record.forma||'',
         benefitWalletId:record.benefitWalletId||''
       });
     };
@@ -10935,9 +10935,23 @@ renderGastos=function(){
 };
 
 
+function gastosProdutosVinculados(m){
+  if(!Store.userId||!window.AlicerceConsumo||typeof window.AlicerceConsumo.linkedNotes!=='function')return '';
+  const id=m.source==='card'?m.compraId:m.id;
+  if(!id)return '';
+  const notes=window.AlicerceConsumo.linkedNotes(m.source,id);
+  if(!notes.length)return '';
+  let html='<details style="margin-top:10px"><summary>Produtos da nota vinculada</summary>';
+  notes.forEach(n=>{
+    html+='<p class="text-sm">'+esc(n.merchant||'Compra')+' · '+esc(n.date||'')+' · '+(n.total===null?'Total não identificado':fmtMoney(n.total))+'</p>';
+    if(!n.itemsReconciled)html+='<p class="text-muted text-sm">Leitura parcial ou valores não conciliados.</p>';
+    (n.items||[]).forEach(i=>{html+='<div class="text-sm" style="padding:5px 0">'+esc(i.name)+' · '+esc(String(i.quantity))+' un. · '+fmtMoney(i.total)+'</div>';});
+  });
+  return html+'</details>';
+}
 function gastosAcoesCorrecao(m){
   const attrs=' data-source="'+esc(m.source||'')+'" data-id="'+esc(m.id||'')+'"';
-  return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn btn-secondary btn-sm"'+attrs+' onclick="gastosCorrigir(this.dataset.source,this.dataset.id)">Corrigir gasto</button><button type="button" class="btn btn-secondary btn-sm"'+attrs+' onclick="gastosExcluir(this.dataset.source,this.dataset.id)">Excluir registro</button></div>';
+  return gastosProdutosVinculados(m)+'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn btn-secondary btn-sm"'+attrs+' onclick="gastosCorrigir(this.dataset.source,this.dataset.id)">Corrigir gasto</button><button type="button" class="btn btn-secondary btn-sm"'+attrs+' onclick="gastosExcluir(this.dataset.source,this.dataset.id)">Excluir registro</button></div>';
 }
 function gastosOrigem(source,id){
   if(!Store.userId)return null;
@@ -10987,7 +11001,7 @@ function gastosCorrigir(source,id){
 function gastosExcluir(source,id){
   const target=gastosOrigem(source,id);
   if(!target){showToast('Registro não encontrado.');return;}
-  if(source==='card'||(source==='movement'&&gastosVinculado(target.entry))){
+  if(source==='card'||(source==='movement'&&gastosVinculado(target.entry))||(window.AlicerceConsumo&&window.AlicerceConsumo.linkedNotes&&window.AlicerceConsumo.linkedNotes(source,id).length)){
     showToast('Registro vinculado. Corrija na origem para não comprometer parcelas ou pagamentos.');return;
   }
   const owner=String(Store.userId);
