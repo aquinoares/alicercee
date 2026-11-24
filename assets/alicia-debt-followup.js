@@ -20,6 +20,24 @@
       .replace(/\s+/g, ' ').trim();
   }
 
+  function greetingForLocalTime() {
+    var hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return 'Bom dia';
+    if (hour >= 12 && hour < 18) return 'Boa tarde';
+    return 'Boa noite';
+  }
+
+  function nextConversationPrompt(assistant) {
+    if (assistant._pendingFinancialReview) return 'Quando quiser, me conte para que foi o gasto que estamos revisando.';
+    if (assistant._pendingExpenseEdit) return 'Quer continuar a correção daquele gasto?';
+    var draft = assistant._pendingExpenseDraft;
+    if (draft && draft.awaiting === 'amount') return 'Quanto você pagou nessa compra?';
+    if (draft && draft.awaiting === 'item') return 'O que você comprou?';
+    if (draft && draft.awaiting === 'local') return 'Onde você fez essa compra?';
+    if (draft && draft.awaiting === 'purpose') return 'Para que foi essa compra?';
+    return '';
+  }
+
   function conversationalOpening(message) {
     var opening = message.match(/^(?:al[ií]cia[\s,!:.-]+)?(bom dia|boa tarde|boa noite|oi+|ol[aá]|opa|e a[ií])(?=$|[\s,!.?:-])[\s,!.?:-]*(?:al[ií]cia\b[\s,!.?:-]*)?/iu);
     var rest = opening ? message.slice(opening[0].length).trim() : message;
@@ -27,10 +45,10 @@
     var courtesy = /^(?:tudo (?:bem|bom|certo)(?: (?:com (?:voce|vc)|por ai))?|como (?:vai|voce (?:esta|ta)|vc (?:esta|ta))|obrigad[oa](?: mesmo)?|valeu)$/;
     if (!opening && !courtesy.test(smallTalk)) return null;
     if (rest && !courtesy.test(smallTalk)) return {remaining: rest};
-    if (/^(?:obrigad|valeu)/.test(smallTalk)) return {reply: 'Por nada!'};
+    if (/^(?:obrigad|valeu)/.test(smallTalk)) return {reply: 'Por nada!', thanks: true};
     var greeting = opening ? normalize(opening[1]) : '';
     var replies = {'bom dia':'Bom dia!', 'boa tarde':'Boa tarde!', 'boa noite':'Boa noite!'};
-    return {reply: (replies[greeting] || 'Oi!') + (smallTalk ? ' Tudo bem por aqui.' : '')};
+    return {reply: (replies[greeting] || greetingForLocalTime() + '!') + (smallTalk ? ' Tudo bem por aqui.' : '')};
   }
 
   function today() {
@@ -789,10 +807,9 @@
         if (question === undefined && this._photoTextPending) return originalSend.apply(this, arguments);
         var opening = conversationalOpening(message);
         if (opening && opening.reply) {
-          var invitation = this._pendingFinancialReview
-            ? ' Quando quiser, me conte para que foi o gasto que estamos revisando.'
-            : ' Como posso te ajudar?';
-          return respond(this, message, opening.reply + invitation);
+          var invitation = nextConversationPrompt(this);
+          if (!invitation && !opening.thanks) invitation = 'O que você quer ver hoje?';
+          return respond(this, message, opening.reply + (invitation ? ' ' + invitation : ''));
         }
         if (opening) message = opening.remaining;
         if (message) {
@@ -824,7 +841,7 @@
         try { name = String(Store.settings && Store.settings.displayName || '').trim().split(/\s+/)[0]; } catch (ignore) {}
         if (lang === 'en') return 'Hi' + (name ? ', ' + name : '') + '! How are you? I am here to help you understand your money. What should we look at today?';
         if (lang === 'es') return '¡Hola' + (name ? ', ' + name : '') + '! ¿Cómo estás? Estoy aquí para ayudarte a entender tu dinero. ¿Qué miramos hoy?';
-        return 'Oi' + (name ? ', ' + name : '') + '! Tudo bem com você? Estou aqui para ajudar a entender seu dinheiro. O que vamos olhar hoje?';
+        return greetingForLocalTime() + (name ? ', ' + name : '') + '! ' + (nextConversationPrompt(this) || 'O que vamos olhar hoje?');
       };
       openingWrapped._aliciaIntroWrapped = true;
       AlicerceIA.mensagemAbertura = openingWrapped;

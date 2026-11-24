@@ -380,3 +380,20 @@ testCase('cumprimentos no chat mantêm a revisão aberta até chegar uma finalid
   await AlicerceIA.enviarMensagem('mercado Bom Dia');
   assert.equal(routed[1],'mercado Bom Dia');
 });
+
+testCase('usa a hora local na abertura e no oi, respeita o cumprimento explícito e retoma a compra', async () => {
+  const {sandbox, AlicerceIA, api} = createContext({store:{settings:{displayName:'Ana Silva'}}});
+  AlicerceIA.enviarMensagem = () => {};
+  api.install();
+  for (const [hour, greeting] of [[0,'Boa noite'],[4,'Boa noite'],[5,'Bom dia'],[11,'Bom dia'],[12,'Boa tarde'],[17,'Boa tarde'],[18,'Boa noite'],[23,'Boa noite']]) {
+    sandbox.Date = class extends Date { getHours() { return hour; } };
+    assert.ok(AlicerceIA.mensagemAbertura().startsWith(greeting + ', Ana!'));
+    await AlicerceIA.enviarMensagem('Oi, Alícia!');
+    assert.ok(AlicerceIA._answer.startsWith(greeting + '!'));
+  }
+  await AlicerceIA.enviarMensagem('valeu');
+  assert.equal(AlicerceIA._answer,'Por nada!');
+  AlicerceIA._pendingExpenseDraft = {awaiting:'amount'};
+  await AlicerceIA.enviarMensagem('bom dia');
+  assert.equal(AlicerceIA._answer,'Bom dia! Quanto você pagou nessa compra?');
+});
