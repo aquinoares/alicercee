@@ -41,3 +41,30 @@ test("carousel is updates only while chat uses contextual module",()=>{
  assert.match(html,/NOVIDADES · ALICERCE/);
  assert.doesNotMatch(html,/smartCards=tips\.concat\(/);
 });
+
+test("Interpretação familiar e temporal usa o código real do aplicativo",()=>{
+ const start=html.indexOf("AlicerceIA._parsePtNumberWords=function");
+ const end=html.indexOf("AlicerceIA._expenseClarificationMessage",start);
+ assert.ok(start>=0&&end>start);
+ const assistant={_norm(s){return String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g," ").trim();}};
+ const fixed="2026-11-23";
+ const dateShift=(day,delta)=>{const d=new Date(day+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+delta);return d.toISOString().slice(0,10);};
+ vm.runInNewContext(html.slice(start,end),{AlicerceIA:assistant,today:()=>fixed,dateShift,Date,Math});
+ const cases=[
+ ["Dei R$ 50 à minha esposa ontem","esposa_marido",50,"2026-11-22"],
+ ["Dei R$ 50,90 ao meu filho anteontem","filhos",50.9,"2026-11-21"],
+ ["Dei R$ 100 de mesada","mesada",100,fixed],
+ ["Dei R$ 80 de presente ao meu filho no dia 15/11","presentes",80,"2026-11-15"],
+ ["Dei cinquenta reais à minha esposa","esposa_marido",50,fixed]
+ ];
+ for(const [phrase,sub,amount,date] of cases){
+  const result=assistant._parseExpenseCommand(phrase);
+  assert.equal(result?.familyClassification?.category,"familia",phrase);
+  assert.equal(result.familyClassification.subcategory,sub,phrase);
+  assert.equal(result.amount,amount,phrase);
+  assert.equal(result.date,date,phrase);
+ }
+ for(const phrase of ["Emprestei R$ 200 ao meu filho","Vou dar R$ 50 à minha esposa","Não dei R$ 50 ao meu filho","Transferi R$ 100 à minha esposa","Dei R$ 50 à minha esposa em 31/02","Dei R$ 50 ao meu filho amanhã"]){
+  assert.ok(assistant._parseExpenseCommand(phrase)?.error,phrase);
+ }
+});
