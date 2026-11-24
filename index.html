@@ -6166,6 +6166,7 @@ AlicerceIA.enviarMensagem=async function(question){
   var inputSource=(question===undefined&&this._photoTextPending)?'ocr':'text';
   if(inputSource!=='ocr')this._photoTextPending=false;
   var message=String(question!==undefined?question:(input?input.value:'')||'').trim();
+  if(message&&input)input.value='';
   if(!message){if(inputSource==='ocr')this._photoTextPending=false;return;}
   if(!Array.isArray(this._messages))this._messages=[];
   var questionForEngine=inputSource==='ocr'?message:this._resolveFollowUp(message);
@@ -7385,6 +7386,7 @@ function renderAssistente(){
   html+='.alicerce-assistant-input:focus-visible,.alicerce-assistant-send:focus-visible,.alicerce-assistant-camera:focus-visible,.alicerce-assistant-mic:focus-visible,.alicerce-assistant-prompt:focus-visible,.alicerce-assistant-back:focus-visible{outline:2px solid var(--accent);outline-offset:3px}';
   html+='@media(max-width:360px){.alicerce-assistant-message{max-width:94%}.alicerce-assistant-page{padding-left:10px;padding-right:10px}.alicerce-assistant-heading{gap:9px;padding:8px 9px}.alicerce-assistant-avatar{width:54px;height:54px;flex-basis:54px}.alicerce-assistant-chat-panel{padding:10px 9px 7px;min-height:330px}.alicerce-assistant-composer{gap:5px}.alicerce-assistant-camera,.alicerce-assistant-mic,.alicerce-assistant-send{width:40px;height:42px;flex-basis:40px}.alicerce-assistant-financial,.alicerce-assistant-clear{padding:6px 7px;font-size:9px}}';
   html+='@supports (padding: max(0px)){.alicerce-assistant-page{padding-bottom:max(118px,calc(90px + env(safe-area-inset-bottom)))}.alicerce-assistant-composer{bottom:calc(62px + env(safe-area-inset-bottom))}}';
+  html+='.app.alicia-chat-fullscreen{max-width:100%;height:100dvh;min-height:0;overflow:hidden}.alicerce-assistant-page{height:100%;min-height:0;display:flex;flex-direction:column;max-width:960px;padding:0 10px max(8px,env(safe-area-inset-bottom));background:var(--bg)}.alicerce-assistant-topbar{flex-shrink:0;margin:6px 0}.alicerce-assistant-heading{flex-shrink:0;margin:0 0 6px;padding:5px 8px;border:0;background:transparent;box-shadow:none}.alicerce-assistant-avatar{width:36px;height:36px;flex-basis:36px}.alicerce-assistant-chat-panel{flex:1;min-height:0;border:0;padding:4px 2px;background:transparent;box-shadow:none;border-radius:0;overflow:hidden}.alicerce-assistant-messages{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:4px 2px 12px;scrollbar-width:thin}.alicerce-assistant-line{flex-shrink:0}.alicerce-assistant-composer{position:static;flex-shrink:0;background:var(--bg);gap:5px}.alicerce-assistant-input{height:50px;border-radius:22px}.alicerce-assistant-camera,.alicerce-assistant-mic,.alicerce-assistant-send{width:36px;height:40px;flex-basis:36px}.alicerce-assistant-prompts{flex-shrink:0;margin:4px 0 8px;max-height:100px;overflow:auto}.alicerce-assistant-status:empty{display:none}.alicerce-assistant-privacy{flex-shrink:0;max-height:25dvh;overflow:auto}.alicia-chat-chart>summary{cursor:pointer;font-size:12px;color:var(--accent);margin-top:8px}.alicia-chat-chart:not([open]) .alicia-analytic-chart{display:none}.alicerce-assistant-chat-panel>button{flex-shrink:0}.alicerce-assistant-page>button{align-self:flex-end;flex-shrink:0;font-size:11px}.alicerce-assistant-message{font-size:15px;border:0}.alicerce-assistant-message.assistant{background:transparent;padding:8px 6px}.alicerce-assistant-message.user{background:var(--surface2);border-radius:18px;padding:10px 14px}';
   html+='</style>';
   html+='<div class="content alicerce-assistant-page" id="alicerce-assistant-page">';
   html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back','ico-xs')+esc(ui.back)+'</button><div class="alicerce-assistant-top-actions"><button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-voice-toggle" title="'+esc(ui.voiceTitle)+'" aria-pressed="'+(AlicerceIA._voiceEnabled()?'true':'false')+'" onclick="AlicerceIA.toggleVoz()">'+(AlicerceIA._voiceEnabled()?esc(ui.voiceOn):esc(ui.voiceOff))+'</button><button type="button" class="alicerce-assistant-financial" id="alicerce-assistant-financial" title="'+esc(ui.financialTitle)+'" onclick="go(\'visao\')">'+esc(ui.financial)+'</button>';
@@ -7393,7 +7395,6 @@ function renderAssistente(){
   html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/alicia-assistente.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>Alicia</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
   html+='<button type="button" class="btn btn-secondary btn-sm mt-2 mb-2" onclick="window.AlicerceConsumo&&window.AlicerceConsumo.open()">Minhas pastas de consumo</button>';
   html+='<section class="alicerce-assistant-chat-panel">';
-  if(window.AlicerceCashflow&&Store.userId){html+=window.AlicerceCashflow.renderCards(Store,Clock.today());}
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
     html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span></div>';
@@ -7403,7 +7404,7 @@ function renderAssistente(){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?window.AlicerceAnalitica.renderChart(item.chart):'')+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?'<details class="alicia-chat-chart" '+(index===messages.length-1&&!item.chartClosed?'open':'')+'><summary>Ver gráfico / recolher</summary>'+window.AlicerceAnalitica.renderChart(item.chart)+'</details>':'')+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }
@@ -8991,7 +8992,9 @@ if(Store.screen==='trafegoForm'&&!alPolAceiteTrafegoValido()){
   var _alPolDadosOriginais=Store.screenData||null;
   Store.screen='trafegoRegras';Store.screenData={alPolDadosRetorno:_alPolDadosOriginais};
 }
-app.innerHTML=safeRender(()=>renderHeader()+renderScreen())+renderBottomNav();
+app.innerHTML=safeRender(()=>Store.screen==='assistente'?renderScreen():renderHeader()+renderScreen())+(Store.screen==='assistente'?'':renderBottomNav());
+app.classList.toggle('alicia-chat-fullscreen',Store.screen==='assistente');
+if(Store.screen==='assistente')requestAnimationFrame(function(){var log=document.getElementById('alicerce-assistant-messages');if(log)log.scrollTop=log.scrollHeight;});
 if(Store.screen==='home'){
   try{}catch(e){console.error('Erro ao renderizar Visao Financeira:',e)}
 }
