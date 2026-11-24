@@ -50,7 +50,7 @@ function report(store,day){
  var benefitMonth=0;
  if(root.AlicerceBeneficios&&typeof root.AlicerceBeneficios.spentInMonth==="function"){
   var spent=root.AlicerceBeneficios.spentInMonth(store,month);benefitMonth=spent&&Number(spent.total)||0;
-  if(benefitMonth>0){lines.push("Vale-alimentação no mês: "+money(benefitMonth)+" (fora do caixa bancário).");facts++;}
+  if(benefitMonth>0){lines.push("Vale-alimentação no mês: "+money(benefitMonth)+" (incluído nas compras acima, fora do caixa bancário).");facts++;}
  }
  if(!facts)return {text:"Não encontrei movimentações confirmadas suficientes para um diagnóstico. Não vou estimar valores sem dados.",facts:0};
  var detail="Os valores refletem apenas o que foi registrado no aplicativo.";
