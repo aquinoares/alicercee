@@ -5609,7 +5609,7 @@ AlicerceIA.limparConversa=function(){
 // Read-only lookup and explicit review of an existing expense, never a new expense.
 AlicerceIA._buscarGastoOperacional=function(message){
  var q=this._norm(message);
- var match=q.match(/^(?:alicia )?(?:corrigir|corrija|editar|edite|localizar|localize|encontrar|encontre|buscar|busque|ache) (?:o |a |meu |minha )?(?:gasto|despesa|compra|lancamento)(?: (?:de|do|da|com|no|na))? (.+)$/);
+ var match=q.match(/^(?:alicia )?(?:quero |preciso )?(?:corrigir|corrija|editar|edite|localizar|localize|encontrar|encontre|buscar|busque|ache) (?:o |a |meu |minha )?(?:gasto|despesa|compra|lancamento)(?: (?:de|do|da|com|no|na))? (.+)$/);
  if(!match)return null;
  if(!Store.userId)return {text:'Entre na sua conta para localizar seus gastos.'};
  var query=match[1].trim();
@@ -11105,21 +11105,47 @@ function gastosCorrigir(source,id){
     return;
   }
   const owner=String(Store.userId),entry=target.entry;
-  const name=window.prompt('Descrição correta:',entry.descricao||entry.item||'');
-  if(name===null)return;
-  const value=window.prompt('Valor correto (R$):',String(entry.valor).replace('.',','));
-  if(value===null)return;
-  const date=window.prompt('Data correta (AAAA-MM-DD):',entry.data||'');
-  if(date===null)return;
-  const amount=Number(String(value).trim().replace(',','.'));
-  const parsed=new Date(date+'T12:00:00Z');
-  if(!name.trim()||name.trim().length>120||!/^\d{1,8}(?:[.,]\d{1,2})?$/.test(value.trim())||!Number.isFinite(amount)||amount<=0||!/^\d{4}-\d{2}-\d{2}$/.test(date)||isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==date){showToast('Confira descrição, valor e data. Nada foi alterado.');return;}
-  if(!window.confirm('Substituir este gasto por '+fmtMoney(amount)+' em '+date+'? O saldo e os totais serão recalculados.'))return;
-  const current=gastosOrigem(source,id);
-  if(String(Store.userId)!==owner||!current||current.entry!==entry||gastosVinculado(entry)){showToast('O registro mudou. Abra novamente.');return;}
-  if(entry.pixReview&&(entry.data!==date||Math.round(entry.valor*100)!==Math.round(amount*100)))delete entry.pixReview;
-  entry.descricao=name.trim();entry.valor=Math.round(amount*100)/100;entry.data=date;entry.updatedAt=new Date().toISOString();
-  Store.save();showToast('Gasto corrigido.');render();
+  const initial=JSON.stringify(entry);
+  const dialog=document.createElement('dialog');
+  dialog.style.cssText='margin:auto;width:min(94vw,480px);max-height:85dvh;overflow:auto;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:20px;padding:20px';
+  const methods=['pix','dinheiro','transferencia'];
+  const oldMethod=String(target.row.pagamento||'');
+  const option=(v,label,selected)=>'<option value="'+esc(v)+'"'+(selected?' selected':'')+'>'+esc(label)+'</option>';
+  dialog.innerHTML='<form><h2>Corrigir gasto</h2><p class="text-sm">Edite o lançamento original. Nenhum novo gasto será criado.</p>'+
+    '<label>Descrição<input name="description" maxlength="120" required value="'+esc(entry.descricao||entry.item||'')+'"></label>'+
+    '<label>Valor (R$)<input name="amount" inputmode="decimal" required value="'+esc(String(entry.valor).replace('.',','))+'"></label>'+
+    '<label>Data da despesa<input name="date" type="date" required max="'+esc(today())+'" value="'+esc(entry.data||'')+'"></label>'+
+    '<label>Categoria<select name="category">'+Object.keys(ALICERCE_CATEGORIES).map(c=>option(c,Interpreter.catDisplay(c),entry.categoria===c)).join('')+'</select></label>'+
+    '<label>Subcategoria<select name="subcategory"></select></label>'+
+    '<label>Forma de pagamento<select name="payment">'+option('','Manter forma atual: '+(oldMethod||'não informada'),true)+methods.map(m=>option(m,m==='pix'?'Pix':m==='dinheiro'?'Dinheiro':'Transferência',false)).join('')+'</select></label>'+
+    '<p class="text-sm">Para corrigir uma compra para crédito, débito ou benefício, será necessário revisar o vínculo financeiro na origem. Não trocaremos apenas o rótulo.</p>'+
+    '<p role="alert" class="text-sm" id="gasto-edit-error"></p><button type="submit" class="btn btn-primary">Confirmar correção</button> <button type="button" class="btn btn-secondary" data-cancel>Cancelar</button></form>';
+  document.body.appendChild(dialog);
+  const form=dialog.querySelector('form'),cat=form.elements.category,sub=form.elements.subcategory;
+  function fillSub(selected){sub.innerHTML=ALICERCE_CATEGORIES[cat.value].subs.map(v=>option(v,Interpreter.subDisplay(v),selected===v)).join('');}
+  fillSub(entry.subcategoria);
+  cat.onchange=()=>fillSub('');
+  dialog.querySelector('[data-cancel]').onclick=()=>dialog.close();
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  form.onsubmit=function(ev){
+    ev.preventDefault();
+    const name=form.elements.description.value.trim(),value=form.elements.amount.value.trim(),date=form.elements.date.value;
+    const amount=Number(value.replace(',','.')),parsed=new Date(date+'T12:00:00Z'),payment=form.elements.payment.value;
+    const fail=msg=>{dialog.querySelector('#gasto-edit-error').textContent=msg;};
+    if(!name||name.length>120||alicerceDocumentoOCRSuspeito(name)||!/^\d{1,8}(?:[.,]\d{1,2})?$/.test(value)||!Number.isFinite(amount)||amount<=0||!/^\d{4}-\d{2}-\d{2}$/.test(date)||isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==date||date>today()||!alicerClassificationPairIsValid(cat.value,sub.value))return fail('Confira os dados. Nada foi alterado.');
+    if(payment&&(!methods.includes(payment)||(oldMethod&&!methods.includes(oldMethod))))return fail('Forma vinculada ou não reconhecida. Corrija na origem.');
+    const current=gastosOrigem(source,id);
+    if(String(Store.userId)!==owner||!current||current.entry!==entry||JSON.stringify(entry)!==initial||gastosVinculado(entry)){dialog.close();showToast('O registro mudou. Abra novamente.');return;}
+    const changedCategory=entry.categoria!==cat.value||entry.subcategoria!==sub.value;
+    if(entry.pixReview&&(entry.data!==date||Math.round(entry.valor*100)!==Math.round(amount*100)||(payment&&payment!=='pix')))delete entry.pixReview;
+    entry.descricao=name;entry.valor=Math.round(amount*100)/100;entry.data=date;entry.categoria=cat.value;entry.subcategoria=sub.value;
+    if(payment){entry.forma=payment;entry.paymentMethod=payment;entry.pagamento=payment;entry.formaPagamento=payment;entry.metodoPagamento=payment;}
+    if(changedCategory&&entry.analysis&&entry.analysis.expenseProfile)delete entry.analysis.expenseProfile;
+    entry.updatedAt=new Date().toISOString();
+    if(changedCategory&&(entry.estabelecimento||entry.local))Store.learnCorrection(entry.estabelecimento||entry.local,cat.value,sub.value,name);
+    Store.save();dialog.close();showToast('Gasto corrigido.');render();
+  };
+  dialog.showModal();
 }
 function gastosExcluir(source,id){
   const target=gastosOrigem(source,id);
@@ -15764,7 +15790,7 @@ function saveDoubtGasto(){
       const wallet=window.AlicerceBeneficios.wallets(Store).find(function(w){return String(w.id)===String(data.benefitWalletId);});
       const description=String(interp.item||data.text||'Compra de alimentação').trim();
       if(!description){showToast('Informe o que comprou.');if(button)button.disabled=false;return;}
-      const outcome=window.AlicerceBeneficios.addEntry(Store,data.benefitWalletId,'debit',String(value),data.date||today(),description,{category:cat,subcategory:sub,merchant:interp.merchant||'',origin:'add-gasto'});
+      const outcome=window.AlicerceBeneficios.addEntry(Store,data.benefitWalletId,'debit',String(value),data.date||today(),description,{category:cat,subcategory:sub,merchant:interp.merchant||'',purpose:String(data.purpose||interp.purpose||''),origin:'add-gasto'});
       if(!outcome.ok){showToast(outcome.error);if(button)button.disabled=false;return;}
       showToast('Compra registrada em '+window.AlicerceBeneficios.providers[wallet.provider]+'. Saldo restante: '+fmtMoney(window.AlicerceBeneficios.balance(wallet)));
       go(data.novaCompraFlow?'beneficios':'home');return;
