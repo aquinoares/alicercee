@@ -4706,7 +4706,13 @@ const detalhes={
         items:analysis&&Array.isArray(analysis.items)?analysis.items:[] ,
         metrics:analysis&&analysis.metrics?analysis.metrics:{},
         analysis:analysis||null,
-        source:source
+        source:source,
+        tipo:source==='card'?'cartao':'despesa',
+        compraId:record.compraId||'',cardId:record.cardId||'',
+        parcelas:record.parcelas||1,parcelaAtual:record.parcelaAtual||1,
+        dataCompra:record.dataCompra||'',hora:record.hora||record.time||'',
+        pagamento:record.pagamento||record.formaPagamento||record.metodoPagamento||record.paymentMethod||'',
+        benefitWalletId:record.benefitWalletId||''
       });
     };
     (this.movements||[]).forEach(function(m){
@@ -4719,81 +4725,21 @@ const detalhes={
       if(!i||i.tipo!=='cartao'||!i.compraId||i.loanId||i.fromCard)return;
       append(i,'card');
     });
+    // Benefits are consumption, not bank outflows. Project existing entries without writing copies.
+    if(this.userId&&window.AlicerceBeneficios&&typeof window.AlicerceBeneficios.spendingEntries==='function'){
+      window.AlicerceBeneficios.spendingEntries(this).forEach(function(e){append(e,'benefit');});
+    }
     return rows;
   },
   getSpendingAnalysis(month,year){
     const cats={};
     const monthStr=year+'-'+String(month).padStart(2,'0');
-    const realizado=s=>s==='pago'||s==='recebido';
-    const money=v=>Number(v)||0;
-
-    (this.movements||[]).forEach(m=>{
-      if(
-        !m||
-        m.tipo!=='despesa'||
-        !realizado(m.status)||
-        !m.data||
-        !m.data.startsWith(monthStr)
-      ){
-        return;
-      }
-
-      /*
-       * Cartao emprestado nao representa consumo pessoal
-       * do titular do cartao.
-       */
-      if(m.loanId){
-        const loan=(this.loans||[]).find(
-          l=>l&&l.id===m.loanId
-        );
-
-        if(
-          loan&&
-          loan.tipo==='emprestei'&&
-          loan.fromCard
-        ){
-          return;
-        }
-      }
-
-      if(!alicerceIsConsumptionRecord(m))return;
-      const categoria=m.categoria||'outros';
-      const subcategoria=m.subcategoria||'outros';
-      const valor=money(m.valor);
-
-      if(!cats[categoria]){
-        cats[categoria]={
-          total:0,
-          subs:{}
-        };
-      }
-
-      cats[categoria].total+=valor;
-
-      if(!cats[categoria].subs[subcategoria]){
-        cats[categoria].subs[subcategoria]=0;
-      }
-
-      cats[categoria].subs[subcategoria]+=valor;
+    this.getAnalysisEntries().filter(r=>r.data.slice(0,7)===monthStr).forEach(r=>{
+      const cat=r.categoria||'outros',sub=r.subcategoria||'outros';
+      if(!cats[cat])cats[cat]={total:0,subs:{}};
+      cats[cat].total+=r.valor;
+      cats[cat].subs[sub]=(cats[cat].subs[sub]||0)+r.valor;
     });
-
-    (this.getCardPurchasesByMonth(month,year)||[]).forEach(compra=>{
-      if(!alicerceIsConsumptionRecord(compra))return;
-      const categoria=compra.categoria||'outros';
-      const subcategoria=compra.subcategoria||'outros';
-      const valor=Number(compra.valor)||0;
-
-      if(!cats[categoria]){
-        cats[categoria]={total:0,subs:{}};
-      }
-      cats[categoria].total+=valor;
-
-      if(!cats[categoria].subs[subcategoria]){
-        cats[categoria].subs[subcategoria]=0;
-      }
-      cats[categoria].subs[subcategoria]+=valor;
-    });
-
     return cats;
   },
 
@@ -10741,25 +10687,7 @@ function renderGastos(){
   const money=v=>fmtMoney(Number(v)||0);
   const safe=v=>esc(String(v===undefined||v===null?'':v));
 
-  const movements=(Store.movements||[]).filter(m=>
-    m&&m.tipo==='despesa'&&m.data&&String(m.data).slice(0,7)===monthStr
-  );
-
-  const cardRows=(Store.installments||[]).filter(i=>
-    i&&i.tipo==='cartao'&&i.compraId&&i.data&&
-    String(i.data).slice(0,7)===monthStr&&Number(i.valor)>0
-  ).map(i=>({
-    id:i.id,compraId:i.compraId,cardId:i.cardId,loanId:i.loanId||'',
-    fromCard:!!i.fromCard,categoria:i.categoria||'outros',
-    subcategoria:i.subcategoria||'outros',
-    descricao:i.descricao||'Compra no cartão',
-    local:i.local||'',estabelecimento:i.local||'',data:i.data,
-    dataCompra:i.dataCompra||'',valor:Number(i.valor)||0,
-    parcelaAtual:i.parcelaAtual||1,parcelas:i.parcelas||1,
-    responsavel:i.responsavel||'',hora:i.hora||i.time||'',tipo:'cartao'
-  }));
-
-  const spendingItems=movements.concat(cardRows);
+  const spendingItems=Store.getAnalysisEntries().filter(m=>m.data.slice(0,7)===monthStr);
   // Gastos realizados e compromissos futuros são mostrados separadamente.
   // Um compromisso ainda não pago nunca deve ser somado ao total realizado.
   const futurePending=(Store.installments||[]).filter(i=>i&&String(i.data||'').slice(0,7)===monthStr&&
@@ -10808,14 +10736,14 @@ function renderGastos(){
   html+='</header>';
 
   html+='<section style="padding:3px 0 18px;border-bottom:1px solid var(--border-color,#333)">';
-  html+='<div style="font-size:12px;opacity:.7;font-weight:650">Total registrado no mês</div>';
+  html+='<div style="font-size:12px;opacity:.7;font-weight:650">Consumo registrado no mês (inclui parcelas e benefícios)</div>';
   html+='<div style="font-size:34px;line-height:1.2;font-weight:850;letter-spacing:-1px;margin-top:5px">'+money(totalMonth)+'</div>';
-  html+='<div style="font-size:12px;opacity:.65;margin-top:6px">'+allItems.length+' lançamento(s) realizado(s)</div>';
+  html+='<div style="font-size:12px;opacity:.65;margin-top:6px">'+allItems.length+' lançamento(s) de consumo</div>';
   html+='</section>';
   html+='<section style="margin-top:15px;padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--surface2)">';
   html+='<div style="font-size:13px;font-weight:800">Compromissos previstos neste mês</div>';
   html+='<div style="font-size:23px;font-weight:850;margin-top:7px">'+money(futureTotal)+'</div>';
-  html+='<div style="font-size:11px;opacity:.7;margin-top:4px">'+futurePending.length+' pendência(s) registrada(s). Não incluídas no total de gastos realizados.</div>';
+  html+='<div style="font-size:11px;opacity:.7;margin-top:4px">'+futurePending.length+' pendência(s) registrada(s). Compromissos não pagos; parcelas de compras podem também aparecer no consumo. Não some os dois totais.</div>';
   futurePending.slice().sort((a,b)=>String(a.data).localeCompare(String(b.data))).slice(0,8).forEach(i=>{
     html+='<div style="display:flex;justify-content:space-between;gap:10px;padding-top:10px;margin-top:10px;border-top:1px solid var(--line);font-size:12px">';
     html+='<span style="min-width:0;overflow-wrap:anywhere">'+safe(i.descricao||i.pessoa||'Compromisso')+'<span style="display:block;opacity:.65">'+safe(String(i.data||'').split('-').reverse().join('/'))+'</span></span>';
