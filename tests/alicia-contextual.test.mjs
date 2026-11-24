@@ -41,3 +41,37 @@ test("carousel is updates only while chat uses contextual module",()=>{
  assert.match(html,/NOVIDADES · ALICERCE/);
  assert.doesNotMatch(html,/smartCards=tips\.concat\(/);
 });
+
+test("compares matching days and excludes future records from the period",()=>{
+ const s={userId:"a",getAnalysisEntries(){return [
+   {data:"2026-11-02",valor:100,categoria:"comida"},
+   {data:"2026-11-29",valor:500,categoria:"comida"},
+   {data:"2026-10-02",valor:80,categoria:"comida"},
+   {data:"2026-10-29",valor:400,categoria:"comida"}
+ ];}};
+ const report=A.report(s,"2026-11-23");
+ assert.equal(report.total,100);
+ assert.equal(report.previousTotal,80);
+ assert.match(report.text,/25% a mais/);
+});
+
+test("responde mercado por data de compra, Sodexo e aumento sem misturar os totais",()=>{
+ const s={userId:"a",getAnalysisEntries(){return [
+   {data:"2026-12-15",dataCompra:"2026-11-12",valor:50,subcategoria:"mercado"},
+   {data:"2026-11-11",valor:30,subcategoria:"feira"},
+   {data:"2026-11-15",valor:55,subcategoria:"uber"}
+ ];}};
+ ctx.AlicerceBeneficios={wallets:()=>[
+   {provider:"pluxee",entries:[{kind:"debit",amount:13,date:"2026-11-02"}]},
+   {provider:"solides",entries:[{kind:"debit",amount:20,date:"2026-11-02"}]}
+ ]};
+ ctx.AlicerceConsumo={increases:()=>({comparable:1,items:[{name:"Farofa",previous:6,current:8}]})};
+ const q="Quanto gastei no mercado, o que encareceu e quanto saiu do Sodexo?";
+ assert.equal(A.marketMatches(q),true);
+ assert.equal(A.marketMatches("Comprei no mercado com Sodexo"),false);
+ const result=A.marketReport(s,{start:"2026-11-01",end:"2026-11-23"},q);
+ assert.match(result,/Mercado em dinheiro, Pix ou cartão: R\$\s*80,00/);
+ assert.match(result,/Sodexo\/Pluxee: R\$\s*13,00/);
+ assert.match(result,/Farofa: R\$\s*6,00 → R\$\s*8,00/);
+ assert.doesNotMatch(result,/Sólides/);
+});

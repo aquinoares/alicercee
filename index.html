@@ -1894,6 +1894,14 @@ body .gasto-review .gr-primary{background:var(--accent);border-color:var(--accen
 /* FIM ALICERCE_CARTOES_VISUAL_V2 */
 </style>
 <style id="alicerce-visao-financeira">
+.visao-caixa{padding:16px;margin:0 0 14px;border:1px solid var(--line);border-radius:18px;background:var(--surface)}
+.visao-caixa h2{margin:0 0 10px;font-size:16px}
+.visao-caixa dl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0}
+.visao-caixa dt,.visao-caixa small,.visao-caixa p{font-size:12px;color:var(--text2)}
+.visao-caixa dd{margin:3px 0 0;font-weight:750;overflow-wrap:anywhere}
+.visao-caixa p{margin:10px 0 0}
+@media(max-width:350px){.visao-caixa dl{grid-template-columns:1fr}}
+
 body:has(.visao-financeira){background:#080A11;color:#E9ECF1}
 .app:has(.visao-financeira){background:#080A11;border:1px solid #3A3A3C;min-height:100vh}
 .app:has(.visao-financeira) .header{background:#080A11;border-bottom:0}
@@ -2569,6 +2577,8 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 <script src="/assets/alicia-compra-beneficio-chat.js"></script>
 <script src="/assets/alicia-guia-carrossel.js"></script>
 <script src="/assets/alicia-contextual.js"></script>
+<script src="/assets/alicia-edicao-chat.js"></script>
+<script src="/assets/alicia-conversa.js"></script>
 <style id="alicerce-beneficios-v1-styles">
 .al-benefits-home{display:grid;gap:9px;margin:12px 0}
 .al-benefit-home-card{display:flex;align-items:center;gap:11px;width:100%;padding:14px 13px;text-align:left;border:1px solid var(--line);border-radius:17px;background:var(--surface2);color:var(--text);box-shadow:var(--highlight);cursor:pointer}
@@ -2610,6 +2620,8 @@ window.alicerceSupabase = window.supabase.createClient(
 </script>
 <script>function formatDateBR(value){
   if(!value) return '';
+  const civil=String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(civil)return civil[3]+'/'+civil[2]+'/'+civil[1];
   try{
     const d = new Date(value);
     if(Number.isNaN(d.getTime())) return String(value);
@@ -4693,6 +4705,7 @@ const detalhes={
         id:String(record.id||''),
         purchaseId:String((analysis&&analysis.purchaseId)||record.purchaseId||record.compraId||''),
         data:date,
+        dataCompra:source==='card'?record.dataCompra||'':date,
         valor:value,
         categoria:record.categoria||'outros',
         subcategoria:record.subcategoria||'outros',
@@ -5053,6 +5066,8 @@ const AlicerceIA = {
   _answer:'',
   _messages:[],
   _pendingExpenseDraft:null,
+  _pendingExpenseEdit:null,
+  _spendingConversation:null,
   _pendingFinancialReview:null,
   _pendingBenefitPurchase:null,
   _welcomeTypingStarted:false,
@@ -5069,6 +5084,9 @@ const AlicerceIA = {
       this._answer='';
       this._messages=[];
       this._pendingExpenseDraft=null;
+      this._lastChatExpenseId=null;
+      this._pendingExpenseEdit=null;
+      this._spendingConversation=null;
       this._pendingFinancialReview=null;
       this._pendingBenefitPurchase=null;
       this._qrConsultaUrl='';
@@ -5641,6 +5659,9 @@ AlicerceIA.limparConversa=function(){
   this._historyLoadedForUser=userId;
   this._messages=[];
   this._pendingExpenseDraft=null;
+  this._lastChatExpenseId=null;
+      this._pendingExpenseEdit=null;
+  this._spendingConversation=null;
   this._pendingFinancialReview=null;
   this._pendingBenefitPurchase=null;
   this._receiptDraft=null;
@@ -5657,23 +5678,35 @@ AlicerceIA.limparConversa=function(){
   showToast((Store.lang==='en'?'Conversation cleared.':Store.lang==='es'?'Conversación eliminada.':'Conversa apagada.'));
 };
 
-AlicerceIA._resolveFollowUp=function(question){
-  this._resetUser();
-  var current=this._norm(question);
-  var standalone=/^(?:e\s+)?(?:(?:na|no|nesta|neste|nessa|nesse)\s+)?(?:semana passada|esta semana|nessa semana|ultimos 7 dias|mes passado|mes anterior|hoje|ontem|ultimos 3 meses|trimestre)$/.test(current);
-  if(!standalone||!Array.isArray(this._messages)||!this._messages.length)return String(question||'').trim();
-  var previous='';
-  for(var i=this._messages.length-1;i>=0;i--){
-    var item=this._messages[i];
-    if(item&&item.role==='user'&&item.text){
-      previous=this._norm(item.text);
-      break;
-    }
+AlicerceIA._responderConsultaEncadeada=function(turn){
+  var api=window.AlicerceConversa;
+  if(turn.prompt){this._responderNoChat(turn.prompt);return;}
+  if(!Store.userId){this._responderNoChat('Entre na sua conta para consultar seus gastos.');return;}
+  if(turn.query)this._spendingConversation=api.remember(this._spendingConversation,turn.query);
+  if(turn.query&&turn.query.kind==='market'){
+    this._responderNoChat(window.AlicerceAliciaContextual.marketReport(
+      Store,this._questionRange(turn.query.period),turn.query.question
+    ));
+    return;
   }
-  if(!previous)return String(question||'').trim();
-  var base=previous.replace(/\s+(?:nesta semana|nesse semana|nessa semana|esta semana|semana passada|ultimos 7 dias|mes passado|mes anterior|hoje|ontem|ultimos 3 meses|trimestre)$/,'').trim();
-  if(!base)return String(question||'').trim();
-  return base+' '+current.replace(/^e\s+/,'');
+  var rows=Store.getAnalysisEntries();
+  var wallets=window.AlicerceBeneficios?window.AlicerceBeneficios.wallets(Store):[];
+  var read=function(query){
+    var range=this._questionRange(query.period);
+    var result=api.spending(query,range,rows,wallets);
+    result.period=range.start===range.end?formatDateBR(range.start):formatDateBR(range.start)+' a '+formatDateBR(range.end);
+    return result;
+  }.bind(this);
+  if(turn.compare){
+    var before=read(turn.compare[0]);
+    var after=read(turn.compare[1]);
+    if(before.missingWallet){this._responderNoChat('Essa carteira ainda não foi cadastrada em Meus benefícios.');return;}
+    this._responderNoChat(after.label+' · Comparação de períodos\n'+before.period+' · '+fmtMoney(before.total)+'\n'+after.period+' · '+fmtMoney(after.total));
+    return;
+  }
+  var result=read(turn.query);
+  this._responderNoChat(result.missingWallet?result.label+' ainda não cadastrado em Meus benefícios.':
+    result.label+' · '+result.period+'\n'+fmtMoney(result.total)+' · '+result.count+(result.count===1?' lançamento registrado.':' lançamentos registrados.'));
 };
 
 AlicerceIA._parsePtNumberWords=function(value){
@@ -5699,7 +5732,7 @@ AlicerceIA._parsePtNumberWords=function(value){
   }
   return found?total+current:null;
 };
-AlicerceIA._extractExpenseDate=function(value){
+AlicerceIA._extractExpenseDate=function(value,requireValid){
   var raw=String(value||'');
   var normalized=this._norm(raw);
   var base=today();
@@ -5711,26 +5744,26 @@ AlicerceIA._extractExpenseDate=function(value){
     return String(year)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
   }
   var match=raw.match(/\b(20\d{2})-(0?[1-9]|1[0-2])-([0-3]?\d)\b/);
-  if(match){var iso=toIso(match[1],match[2],match[3]);if(iso)return iso;}
+  if(match){var iso=toIso(match[1],match[2],match[3]);if(iso||requireValid)return iso;}
   match=raw.match(/\b(?:dia\s+)?([0-3]?\d)[\/.-]([01]?\d)(?:[\/.-](\d{2,4}))?\b/i);
   if(match){
     var year=match[3]?Number(match[3]):Number(base.slice(0,4));
     if(year<100)year+=2000;
     var localDate=toIso(year,match[2],match[1]);
-    if(localDate)return localDate;
+    if(localDate||requireValid)return localDate;
   }
   var months={janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
   match=normalized.match(/\b(?:dia\s+)?(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?\b/);
   if(match&&months[match[2]]){
     var monthDate=toIso(Number(match[3]||base.slice(0,4)),months[match[2]],match[1]);
-    if(monthDate)return monthDate;
+    if(monthDate||requireValid)return monthDate;
   }
   if(/\bdepois de amanha\b/.test(normalized))return dateShift(base,2);
   if(/\banteontem\b/.test(normalized))return dateShift(base,-2);
   if(/\bontem\b/.test(normalized))return dateShift(base,-1);
   if(/\bamanha\b/.test(normalized))return dateShift(base,1);
   if(/\bhoje\b/.test(normalized))return base;
-  return base;
+  return requireValid?'':base;
 };
 AlicerceIA._removeExpenseDateText=function(value){
   return String(value||'')
@@ -5748,8 +5781,9 @@ AlicerceIA._parseExpenseCommand=function(value){
   var purchaseDate=this._extractExpenseDate(raw);
   var questionIntent=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque)\b/.test(normalized)||/\?\s*$/.test(raw);
   if(questionIntent)return null;
+  var family=normalized.match(/^(?:alicia\s+)?(?:dei|doei|mandei|enviei|passei|transferi|fiz (?:um )?pix)\b.*\b(?:para|pra|pro)\s+(?:(?:a|o)\s+)?(?:minha|meu)\s+(esposa|marido|companheira|companheiro|filha|filho)\b/);
   var expenseIntent=/\b(comprei|comprar|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|adiciona|adicionar)\b/.test(normalized);
-  if(!expenseIntent)return null;
+  if(!expenseIntent&&!family)return null;
   if(/\b(parcelad[oa]s?|\d+\s+parcelas?)\b/.test(normalized))return{unsupported:'installments'};
   if(/\b(cartao|credito|debito)\b/.test(normalized))return{unsupported:'card'};
 
@@ -5792,6 +5826,13 @@ AlicerceIA._parseExpenseCommand=function(value){
     amountRaw=bareAmountMatch[0];
   }
   if(amount!==null&&(!(amount>0)||!isFinite(amount)||amount>10000000))return{error:'Não consegui reconhecer um valor válido. Envie o valor em reais, por exemplo R$ 25,00.'};
+
+  if(family&&amount!==null&&!/\b(?:emprest\w*|devolver|reembolso|devolucao|recebi|voltar)\b/.test(normalized)){
+    var member=family[1];
+    var method=/\bpix\b/.test(normalized)?'pix':/\b(dinheiro|especie)\b/.test(normalized)?'dinheiro':'';
+    return {amount:amount,item:'Ajuda familiar',local:'',paymentMethod:method,purpose:'Ajuda para '+member,date:purchaseDate,familyCategory:/^filh[oa]$/.test(member)?'filhos':'esposa_marido'};
+  }
+  if(family&&!expenseIntent)return {error:'Entendi que o valor é para sua família. Se foi uma ajuda sem devolução, diga o valor em reais. Se foi um empréstimo, use Empréstimos para acompanhar o retorno.'};
 
   var details=raw;
   if(amountRaw)details=details.replace(amountRaw,' ');
@@ -6197,6 +6238,170 @@ AlicerceIA.cancelarCompraBeneficio=function(){
   this._responderCompraBeneficio('Compra cancelada. Nenhum valor foi descontado.');
 };
 
+AlicerceIA._entenderMovimentacao=function(message){
+  var q=this._norm(message).replace(/^alicia\s+/, '');
+  if(/\b(?:corrig\w*|errad\w*|incorret\w*|mas (?:eu )?(?:lancei|registrei|adicionei|coloquei|cadastrei))\b/.test(q)&&/\b(?:gasto|compra|lancamento|registro|pix|cartao|pagamento|valor|data)\b/.test(q)){
+    if(!Store.userId)return {reply:'Entre na sua conta para localizar o lançamento.'};
+    var search=function(text){
+      return AlicerceIA._norm(text).replace(/\b(?:de|do|da|dos|das|o|a)\b/g,' ').replace(/\s+/g,' ').trim();
+    };
+    var query=' '+search(message)+' ';
+    var matches=(Store.movements||[]).filter(function(row){
+      if(!row||row.tipo!=='despesa')return false;
+      var name=search(row.descricao||row.item);
+      return name.length>=4&&query.includes(' '+name+' ');
+    });
+    var row=matches.length===1?matches[0]:null;
+    return {reply:row
+      ?'Encontrei '+(row.descricao||row.item)+' no valor de '+fmtMoney(row.valor)+', registrado em '+formatDateBR(row.data)+'. Confira o pagamento no lançamento original antes de criar outra compra.'
+      :matches.length>1?'Encontrei mais de um gasto com essa descrição. Abra Meus gastos e compare a data e o valor para identificar o registro certo.'
+      :'Abra Meus gastos e procure pelo valor, pela data e pela descrição do lançamento original. Se o pagamento foi no cartão, confira também a fatura.',
+      movementId:row&&row.id,route:'gastos'};
+  }
+  if(/\b(?:sodexo|pluxee|solides|vale alimentacao)\b/.test(q)&&/\b(?:troquei|trocar|converti|converter|vendi|vender)\b/.test(q)&&/\b(?:dinheiro|especie|pix)\b/.test(q)){
+    return {reply:'Entendi que o saldo do vale saiu e você recebeu dinheiro. O app ainda não registra essa conversão vinculada. Confira a movimentação em Meus benefícios antes de ajustar qualquer saldo.',route:'beneficios'};
+  }
+  if(/^(?:dei|doei|mandei|enviei|passei|transferi|fiz (?:um )?pix)\b/.test(q)&&/\b(?:para|pra|pro) (?:mim|(?:a |uma )?minha (?:outra )?conta|(?:o |um )?meu (?:outro )?banco|(?:uma )?conta minha)\b/.test(q)){
+    return {reply:'Entendi que o dinheiro passou entre suas próprias contas. Isso não entra como gasto da família ou do mês.'};
+  }
+  return null;
+};
+
+AlicerceIA._responderNoChat=function(reply,review){
+  this._messages.push({role:'assistant',text:reply,expenseEdit:review||''});
+  while(this._messages.length>8)this._messages.shift();
+  this._answer=reply;
+  render();
+  if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
+};
+
+AlicerceIA._tratarEdicao=function(message,row){
+  var editor=window.AlicerceEdicaoChat;
+  var pending=this._pendingExpenseEdit;
+  if(!editor||(!row&&!pending))return false;
+  if(row){
+    if(!editor.eligible(row))return false;
+    var previous=editor.snapshot(row);
+    pending={ownerId:Store.userId,id:row.id,original:previous,next:Object.assign({},previous)};
+  }
+  var q=this._norm(message);
+  if(!row&&/^(?:cancela|cancelar|cancelar correcao|descartar correcao)$/.test(q)){
+    this._pendingExpenseEdit=null;
+    this._responderNoChat('Correção cancelada.');
+    return true;
+  }
+  if(!row&&/^(?:confirmo a correcao|confirmar correcao|confirma a correcao)$/.test(q)){
+    if(pending.token)this.confirmarEdicao(pending.token);
+    else this._responderNoChat('Diga o que precisa mudar antes de confirmar.');
+    return true;
+  }
+  var cardPhrase=q.split(/ mas (?:eu )?(?:lancei|registrei|adicionei|coloquei|cadastrei) /)[0];
+  var wantsCard=!/\b(?:nao|parcelad[oa]|parcelas?|emprestado)\b/.test(cardPhrase)&&/\b(?:foi|era|paguei|passei|assinatura|compra)\b.*\b(?:no|em|com o) (?:cartao|credito|debito)\b/.test(cardPhrase);
+  if(pending.cardCorrection&&/\b(?:nao|parcelad[oa]|parcelas?|emprestado)\b/.test(q)){
+    this._pendingExpenseEdit=null;this._responderNoChat('Correção interrompida. Posso corrigir uma compra à vista no seu próprio cartão.');return true;
+  }
+  if(wantsCard||pending.cardCorrection){
+    pending.token='';
+    var cards=Store.cards||[];
+    if(!cards.length){
+      this._pendingExpenseEdit=null;
+      this._responderNoChat('Cadastre o cartão em Cartões e depois peça a correção pelo nome da despesa.');
+      return true;
+    }
+    pending.cardCorrection=true;
+    this._pendingExpenseEdit=pending;
+    var mode=cardPhrase.match(/\b(credito|debito)\b/);
+    if(mode&&!/credito .*debito|debito .*credito/.test(cardPhrase))pending.cardType=mode[1];
+    var options=cards.map(function(card,i){return (i+1)+' · '+card.nome;});
+    var selected=cards.filter(function(card,i){
+      return q===String(i+1)||q===AlicerceIA._norm(card.nome);
+    });
+    if(selected.length===1)pending.cardId=selected[0].id;
+    else if(cards.length===1)pending.cardId=cards[0].id;
+    if(!pending.cardId){this._responderNoChat('Qual cartão você usou? '+options.join(' / '));return true;}
+    if(!pending.cardType){this._responderNoChat('Foi no crédito ou no débito?');return true;}
+    var card=cards.find(function(c){return c.id===pending.cardId;});
+    var expense=Store.movements.find(function(m){return m.id===pending.id;});
+    if(!card||!expense){this._pendingExpenseEdit=null;this._responderNoChat('O cartão ou a despesa mudou. Confira o lançamento.');return true;}
+    pending.token=Store._uid();
+    this._responderNoChat('Corrigir '+expense.descricao+' · '+fmtMoney(expense.valor)+' · '+formatDateBR(expense.data)+' para '+card.nome+' no '+(pending.cardType==='credito'?'crédito à vista':'débito')+'?',pending.token);
+    return true;
+  }
+  if(!row&&!/^(?:foi|era|o valor|valor|na verdade|troque|mude|corrig\w*|a data|data|paguei (?:em|no)|pix|dinheiro|anteontem|ontem|hoje|em|no)\b/.test(q))return false;
+  if(!row&&/^(?:pix|dinheiro)$/.test(q))message='Foi '+q;
+  var change=editor.changes(message,function(date){return AlicerceIA._extractExpenseDate(date,true);});
+  if(change.error){
+    if(!row){pending.token='';this._responderNoChat(change.error);}
+    return !row;
+  }
+  if(change.date&&change.date>today()){
+    this._responderNoChat('Para um gasto já pago, informe a data em que o pagamento aconteceu.');
+    return true;
+  }
+  Object.assign(pending.next,change);
+  var current=(Store.movements||[]).find(function(item){return item&&item.id===pending.id;});
+  var result=editor.updated(current,pending.original,pending.next,Store.userId);
+  if(result.error){
+    if(!row){pending.token='';this._responderNoChat(result.error);}
+    return !row;
+  }
+  this._pendingExpenseEdit=pending;
+  if(result.unchanged){
+    pending.token='';
+    this._responderNoChat('Encontrei '+(current.descricao||'o gasto')+'. O que deve mudar? Você pode dizer “Foi anteontem, em dinheiro” ou “O valor foi R$ 42,50”.');
+    return true;
+  }
+  pending.token=Store._uid();
+  var label=function(payment){return payment==='pix'?'Pix':'dinheiro';};
+  var format=function(record){return fmtMoney(record.amount)+' · '+formatDateBR(record.date)+' · '+label(record.method);};
+  this._responderNoChat((current.descricao||'Gasto')+'\nAntes · '+format(pending.original)+'\nDepois · '+format(pending.next)+'\nConfirme para atualizar este mesmo lançamento.',pending.token);
+  return true;
+};
+
+AlicerceIA.confirmarEdicao=function(token){
+  this._resetUser();
+  var pending=this._pendingExpenseEdit;
+  if(!pending||!token||pending.token!==token||!Store.userId||Store.userId!==pending.ownerId)return;
+  this._pendingExpenseEdit=null;
+  var index=Store.movements.findIndex(function(item){return item&&item.id===pending.id;});
+  if(pending.cardCorrection){
+    var row=Store.movements[index];
+    var check=window.AlicerceEdicaoChat.updated(row,pending.original,pending.original,Store.userId);
+    var card=(Store.cards||[]).find(function(c){return c.id===pending.cardId;});
+    if(!check.unchanged||!card){this._responderNoChat('O lançamento ou o cartão mudou. Confira os dados novamente.');return;}
+    if(pending.cardType==='credito'){
+      var invoiceId='correcao-'+row.id;
+      if(!Store.installments.some(function(it){return it.id===invoiceId;})){
+        var installment=Store.addInstallment(Object.assign({},row,{id:invoiceId,compraId:invoiceId,tipo:'cartao',
+          forma:'cartao',paymentMethod:'cartao',cardType:'credito',cardId:card.id,dataCompra:row.data,
+          data:vencimentoCompraCartao(card,row.data,0),status:'pendente',parcelaAtual:1,parcelas:1,
+          responsavel:'Eu',local:row.estabelecimento||''}));
+        if(!installment){this._responderNoChat('Não consegui vincular a compra à fatura. Confira o lançamento.');return;}
+      }
+      Store.removeMovement(row.id);
+    }else{
+      Store.movements[index]=Object.assign({},row,{forma:'cartao',paymentMethod:'cartao',cardType:'debito',cardId:card.id,cardOwnerType:'meu'});
+      Store.save();
+    }
+    this._responderNoChat('Corrigi o pagamento de '+row.descricao+' para '+card.nome+'.');
+    return;
+  }
+  var result=window.AlicerceEdicaoChat.updated(Store.movements[index],pending.original,pending.next,Store.userId);
+  if(!result.record){this._responderNoChat(result.error||'O lançamento já tem esses valores.');return;}
+  var movements=Store.movements.slice();
+  movements[index]=result.record;
+  Store.movements=movements;
+  Repository.set(Store.userId,'movements',movements);
+  this._responderNoChat('Atualizei '+(result.record.descricao||'o gasto original')+'. O novo valor é '+fmtMoney(result.record.valor)+'.');
+};
+
+AlicerceIA.cancelarEdicao=function(token){
+  this._resetUser();
+  if(!this._pendingExpenseEdit||this._pendingExpenseEdit.token!==token)return;
+  this._pendingExpenseEdit=null;
+  this._responderNoChat('Correção cancelada.');
+};
+
 AlicerceIA.enviarMensagem=async function(question){
   this._resetUser();
   this.pararAudio();
@@ -6207,7 +6412,7 @@ AlicerceIA.enviarMensagem=async function(question){
   var message=String(question!==undefined?question:(input?input.value:'')||'').trim();
   if(!message){if(inputSource==='ocr')this._photoTextPending=false;return;}
   if(!Array.isArray(this._messages))this._messages=[];
-  var questionForEngine=inputSource==='ocr'?message:this._resolveFollowUp(message);
+  var questionForEngine=inputSource==='ocr'?message:message.replace(/^(?:al[ií]cia[, ]+)?(?:me fala |me diz |me diga |me conta |queria saber )(?=quanto|onde|qual|quais|como)/i,'');
   // Textos OCR não são perguntas comuns e nunca podem criar despesas automaticamente.
   if(inputSource==='ocr'){
     // Primeiro analisar com regras locais de segurança, independentemente de IA remota.
@@ -6217,6 +6422,42 @@ AlicerceIA.enviarMensagem=async function(question){
     return;
   }
   this._messages.push({role:'user',text:message});
+  var conversation=window.AlicerceConversa;
+  var contextTurn=Store.lang==='pt'&&conversation?conversation.turn(questionForEngine,this._spendingConversation):null;
+  var awaitingReply=this._pendingExpenseDraft||this._pendingExpenseEdit||this._pendingFinancialReview||this._pendingBenefitPurchase;
+  if(awaitingReply&&!/^(?:e|quanto|compare|compara)\b/.test(this._norm(questionForEngine)))contextTurn=null;
+  var lastId=this._lastChatExpenseId;
+  this._lastChatExpenseId=null;
+  var shortCorrection=/^(?:(?:opa|na verdade|corrigindo) )?(?:foi|era|paguei) (?:no |em |com |com o |via )?(?:cartao(?: de (?:credito|debito))?|credito|debito|pix|dinheiro)$/.test(this._norm(message));
+  if(lastId&&shortCorrection&&!awaitingReply){
+    var recent=Store.movements.find(function(row){return row.id===lastId;});
+    if(recent&&this._tratarEdicao(message,recent))return;
+  }
+  var moneyIntent=this._entenderMovimentacao(message);
+  if(moneyIntent&&moneyIntent.movementId){
+    var original=(Store.movements||[]).find(function(row){return row&&row.id===moneyIntent.movementId;});
+    this._pendingExpenseEdit=null;
+    if(original&&this._tratarEdicao(message,original))return;
+  }
+  if(!moneyIntent&&this._tratarEdicao(message,null))return;
+  if(moneyIntent){
+    this._messages.push({role:'assistant',text:moneyIntent.reply,moneyAction:moneyIntent});
+    while(this._messages.length>8)this._messages.splice(0,2);
+    this._question=message;
+    this._answer=moneyIntent.reply;
+    render();
+    if(this._voiceEnabled())setTimeout(function(){AlicerceIA.ouvirMensagem(AlicerceIA._messages.length-1,null);},0);
+    return;
+  }
+  if(conversation&&window.AlicerceAliciaContextual&&window.AlicerceAliciaContextual.marketMatches(questionForEngine)){
+    this._responderConsultaEncadeada({query:conversation.marketQuery(questionForEngine)});
+    return;
+  }
+  if(contextTurn){
+    this._responderConsultaEncadeada(contextTurn);
+    return;
+  }
+  if(/^(?:quanto|onde|qual|quais|compare|mostre|me mostra)\b/.test(this._norm(questionForEngine)))this._spendingConversation=null;
   if(window.AlicerceConsumo&&/\b(pastas? de (?:compras|consumo|produtos)|minhas pastas|historico de produtos|precos? dos produtos|analise de produtos|analise minhas compras)\b/.test(this._norm(message))){
     var answer=window.AlicerceConsumo.summary(message);
     this._messages.push({role:'assistant',text:answer});
@@ -6394,14 +6635,20 @@ AlicerceIA.enviarMensagem=async function(question){
       actionAnswer='Entre na sua conta antes de registrar uma despesa. Assim o lançamento fica vinculado ao seu cadastro.';
     }else{
       try{
+        var actionOwner=Store.userId;
         var interpreterText='Valor: '+expenseCommand.amount+' | Item: '+expenseCommand.item+' | Local: '+expenseCommand.local+(expenseCommand.purpose?' | Contexto: '+expenseCommand.purpose:'');
         var interpretation={amount:expenseCommand.amount,purpose:expenseCommand.purpose||'',item:expenseCommand.item,merchant:expenseCommand.local,categoria:'',subcategoria:''};
-        if(ALICIA_INTERPRETER_ENABLED){
+        if(expenseCommand.familyCategory){
+          interpretation.categoria='familia';
+          interpretation.subcategoria=expenseCommand.familyCategory;
+          interpretation.confidence='high';
+          interpretation.source='local_context';
+        }else if(ALICIA_INTERPRETER_ENABLED){
           var parsedInterpretation=await Interpreter.interpret(interpreterText);
           if(parsedInterpretation&&typeof parsedInterpretation==='object')interpretation=parsedInterpretation;
         }
         if(!interpretation||typeof interpretation!=='object')interpretation={};
-        if(ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED){
+        if(ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED&&!expenseCommand.familyCategory){
           var aliciaClassification=await aliciaClassificarDespesa({item:expenseCommand.item,merchant:expenseCommand.local,context:expenseCommand.purpose});
           if(aliciaClassification){
             interpretation.categoria=aliciaClassification.category;
@@ -6424,6 +6671,7 @@ AlicerceIA.enviarMensagem=async function(question){
             interpretation.source='local_context';
           }
         }
+        if(Store.userId!==actionOwner)return;
         interpretation.amount=expenseCommand.amount;
         interpretation.purpose=expenseCommand.purpose||'';
         if(!interpretation.item)interpretation.item=expenseCommand.item;
@@ -6838,25 +7086,32 @@ AlicerceIA._lerComprovantePix=function(raw){
   var lines=String(raw||'').replace(/\r/g,'').split('\n').map(function(s){return s.trim()}).filter(Boolean);
   var norm=function(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();};
   var all=norm(lines.join(' '));
-  if(!/\bpix\b/.test(all)||!/comprovante|transferencia|pagamento|enviado|realizado|concluido|recebido/.test(all)||/nota fiscal|nfce|nfc-e|danfe|documento auxiliar da nota/.test(all))return null;
+  if(!/\bpix\b/.test(all)||!/\b(?:comprovante|transferencia|pix enviado|pix recebido|end to end|e2e)\b/.test(all)||/nota fiscal|nfce|nfc-e|danfe|documento auxiliar da nota/.test(all))return null;
   var incoming=/pix recebido|voce recebeu|transferencia recebida|valor recebido/.test(all);
-  var amount=null,recipient='',date='',evidence='';
+  var amount=null,recipient='',date='';
+  var primary=[],generic=[];
+  var readMoney=function(text){
+    var match=String(text||'').match(/(?:R\$\s*)?(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})(?!\d)/);
+    return match?Number(match[1].replace(/\./g,'').replace(',','.')):null;
+  };
   for(var i=0;i<lines.length;i++){
     var ln=lines[i],n=norm(ln);
     if(!date){var dt=ln.match(/\b([0-3]?\d[\/.-][01]?\d[\/.-]20\d{2})\b/);if(dt)date=dt[1].replace(/[.-]/g,'/');}
-    if(amount===null&&/(?:^|\b)(?:valor(?:\s+(?:do|da)\s+(?:pix|pagamento|transferencia))?|total(?:\s+enviado)?|voce\s+(?:pagou|enviou))\b/.test(n)){
-      var val=ln.match(/R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/);
-      if(!val&&i+1<lines.length)val=lines[i+1].match(/R\$\s*(\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/);
-      if(val){amount=Number(val[1].replace(/\./g,'').replace(',','.'));evidence=ln;}
+    var isPrimary=/^(?:valor\s+(?:d[oa]\s+(?:pix|pagamento|transferencia|transacao)|enviado|transferido|recebido|pago)|total\s+(?:enviado|transferido|recebido|pago)|voce\s+(?:pagou|enviou|recebeu))\b/.test(n);
+    var isGeneric=/^(?:valor|total)\s*[:\-]?\s*(?:r\$\s*)?(?:\d|$)/.test(n);
+    if(isPrimary||isGeneric){
+      var value=readMoney(ln);
+      if(value===null&&/^\s*(?:R\$\s*)?\d[\d.]*,\d{2}\s*$/.test(lines[i+1]||''))value=readMoney(lines[i+1]);
+      if(value!==null)(isPrimary?primary:generic).push(value);
     }
     if(!recipient&&/^(?:para|destinat[aá]rio|recebedor|favorecido|nome do recebedor|quem recebeu)\s*[:\-]/i.test(ln))recipient=ln.replace(/^[^:\-]+[:\-]\s*/,'').slice(0,100);
   }
-  if(amount===null){
-    var amounts=String(raw||'').match(/R\$\s*(?:\d{1,3}(?:\.\d{3})*,\d{2}|\d+,\d{2})/g)||[];
-    if(amounts.length===1)amount=Number(amounts[0].replace(/R\$|\./g,'').replace(',','.'));
+  var candidates=primary.length?primary:generic;
+  if(candidates.length&&candidates.every(function(candidate){return candidate===candidates[0];})){
+    amount=candidates[0];
   }
   if(!(amount>0&&amount<=1000000))amount=null;
-  return {amount:amount,recipient:recipient,date:date,incoming:incoming,evidence:evidence};
+  return {amount:amount,recipient:recipient,date:date,incoming:incoming};
 };
 AlicerceIA._mostrarComprovantePix=function(raw){
   var proof=this._lerComprovantePix(raw);
@@ -6874,8 +7129,8 @@ AlicerceIA._mostrarComprovantePix=function(raw){
 };
 AlicerceIA.conferirPixDespesa=function(){
   var p=this._pixProofDraft;
-  if(!p||p.ownerId!==String(Store.userId||'')||p.incoming||!p.amount)return;
-  var d=today();
+  if(!p||!Store.userId||p.ownerId!==String(Store.userId)||p.incoming||!p.amount)return;
+  var d='';
   if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(p.date)){
     var parts=p.date.split('/'),parsed=parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0');
     var check=new Date(parsed+'T12:00:00');
@@ -7274,6 +7529,35 @@ AlicerceIA.processarFoto=async function(input){
   this._responderOcrIndeterminado();
 };
 
+function renderConferenciaEdicao(token){
+  if(!token||!AlicerceIA._pendingExpenseEdit||AlicerceIA._pendingExpenseEdit.token!==token)return '';
+  return '<div class="alicia-benefit-review-actions mt-2"><button type="button" class="btn btn-primary" data-edit="'+esc(token)+'" onclick="AlicerceIA.confirmarEdicao(this.dataset.edit)">Confirmar correção</button><button type="button" class="btn btn-secondary" data-edit="'+esc(token)+'" onclick="AlicerceIA.cancelarEdicao(this.dataset.edit)">Cancelar</button></div>';
+}
+
+function renderAcaoDaConversa(action,index){
+  if(!action)return '';
+  var label=action.route==='gastos'?'Abrir Meus gastos':action.route==='beneficios'?'Abrir Meus benefícios':'';
+  return label?'<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="AlicerceIA.abrirAcaoDaConversa('+index+')">'+label+'</button>':'';
+}
+
+AlicerceIA.abrirAcaoDaConversa=function(index){
+  this._resetUser();
+  var entry=this._messages[index];
+  var action=entry&&entry.moneyAction;
+  if(!action)return;
+  if(action.route==='beneficios'){go('beneficios');return;}
+  if(action.route!=='gastos')return;
+  var row=action.movementId&&(Store.movements||[]).find(function(item){return item&&item.id===action.movementId;});
+  var date=row&&String(row.data||'').match(/^(\d{4})-(\d{2})-/);
+  go('gastos',date?{year:Number(date[1]),month:Number(date[2]),movementId:row.id}:null);
+};
+
+AlicerceIA.experimentar=function(prompt){
+  go('assistente');
+  var input=document.getElementById('alicerce-assistant-input');
+  if(input){input.value=prompt;input.focus();}
+};
+
 function renderAssistente(){
   AlicerceIA._resetUser();
   var lang=Store.lang||'pt';
@@ -7288,7 +7572,7 @@ function renderAssistente(){
   var animateWelcome=!messages.length&&!AlicerceIA._welcomeTypingStarted;
   var html='<style id="alicerce-assistant-screen-styles">';
   html+='.alicerce-assistant-page{box-sizing:border-box;width:100%;max-width:720px;margin:0 auto;padding:0 14px 118px}';
-  html+='.alicerce-assistant-chat-panel{display:flex;flex-direction:column;min-height:360px;padding:13px 12px 8px;border:1px solid var(--line);border-radius:20px;background:var(--surface2);box-shadow:0 8px 24px rgba(0,0,0,.07);min-width:0}';
+  html+='.alicerce-assistant-chat-panel{display:flex;flex-direction:column;min-height:min(540px,64dvh);padding:13px 12px 8px;border:1px solid var(--line);border-radius:20px;background:var(--surface2);box-shadow:0 8px 24px rgba(0,0,0,.07);min-width:0}';
   html+='.alicerce-assistant-topbar{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:12px 0 10px}';
   html+='.alicerce-assistant-top-actions{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-width:0}';
   html+='.alicerce-assistant-financial,.alicerce-assistant-clear{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:6px 9px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--text2);font-size:10px;font-weight:750;white-space:nowrap;cursor:pointer}';
@@ -7306,10 +7590,6 @@ function renderAssistente(){
   html+='.alicerce-assistant-heading-copy{min-width:0;flex:1}';
   html+='.alicerce-assistant-heading h2{font-size:15px;line-height:1.25;margin:0;color:var(--text);overflow-wrap:anywhere}';
   html+='.alicerce-assistant-heading p{font-size:11px;line-height:1.35;color:var(--text2);margin:3px 0 0}';
-  html+='.alicia-cashflow{margin:0 0 13px;padding:13px;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--highlight)}';
-  html+='.alicia-cashflow-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.alicia-cashflow-head strong{font-size:12px;color:var(--text)}.alicia-cashflow-head span{font-size:10px;color:var(--text2)}';
-  html+='.alicia-cashflow-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.alicia-cashflow-card{display:flex;flex-direction:column;gap:6px;min-width:0;padding:9px 8px;border:1px solid var(--line);border-radius:12px;background:var(--surface2)}.alicia-cashflow-card small{font-size:9px;color:var(--text2)}.alicia-cashflow-card strong{font-size:13px;overflow-wrap:anywhere;color:var(--text)}.alicia-cashflow-card span{font-size:9px;color:var(--text2);line-height:1.4}.alicia-cashflow-track{height:5px;background:var(--line);border-radius:5px;overflow:hidden}.alicia-cashflow-track i{height:100%;display:block;border-radius:5px}.alicia-cashflow-caveat{margin:10px 0 0;color:var(--text2);font-size:10px;line-height:1.5}';
-  html+='@media(max-width:420px){.alicia-cashflow-grid{grid-template-columns:1fr}.alicia-cashflow-card{gap:4px}}';
   html+='.alicia-analytic-chart{margin-top:12px;padding:12px 11px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;min-width:0;max-width:100%;white-space:normal}';
   html+='.alicia-chart-top{display:flex;align-items:start;gap:10px;justify-content:space-between;margin-bottom:13px}.alicia-chart-top strong{font-size:12px;line-height:1.3}.alicia-chart-top small{font-size:8px;color:var(--accent);white-space:nowrap;font-weight:800}';
   html+='.alicia-chart-bars{display:grid;gap:13px}.alicia-chart-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;font-size:11px;margin-bottom:5px}.alicia-chart-row span{overflow-wrap:anywhere}.alicia-chart-row strong{white-space:nowrap;font-size:11px}.alicia-chart-track{height:9px;background:var(--line);border-radius:9px;overflow:hidden}.alicia-chart-track i{display:block;height:100%;border-radius:9px;min-width:0}';
@@ -7319,7 +7599,7 @@ function renderAssistente(){
   html+='.alicia-benefit-review{display:grid;gap:8px;margin-top:12px;padding:12px;background:var(--surface2);border:1px solid var(--line);border-radius:14px;min-width:0;white-space:normal}';
   html+='.alicia-benefit-review>strong{font-size:12px}.alicia-benefit-review>div:not(.alicia-benefit-review-actions){display:flex;justify-content:space-between;gap:10px;font-size:11px}.alicia-benefit-review span{color:var(--text2)}.alicia-benefit-review b{text-align:right;overflow-wrap:anywhere}';
   html+='.alicia-benefit-review p{font-size:10px;line-height:1.5;color:var(--text2)}.alicia-benefit-review-actions{display:flex;flex-wrap:wrap;gap:7px}.alicia-benefit-review-actions button{min-height:38px;flex:1;font-size:11px;padding:7px}';
-  html+='.alicerce-assistant-messages{display:flex;flex-direction:column;gap:10px;min-width:0}';
+  html+='.alicerce-assistant-messages{display:flex;flex-direction:column;gap:10px;min-width:0;flex:1}';
   html+='.alicerce-assistant-line{display:flex;align-items:flex-end;gap:7px;width:100%;min-width:0}';
   html+='.alicerce-assistant-line.assistant{justify-content:flex-start}';
   html+='.alicerce-assistant-line.user{justify-content:flex-end}';
@@ -7354,7 +7634,7 @@ function renderAssistente(){
   html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/alicia-assistente.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>Alicia</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
   html+='<button type="button" class="btn btn-secondary btn-sm mt-2 mb-2" onclick="window.AlicerceConsumo&&window.AlicerceConsumo.open()">Minhas pastas de consumo</button>';
   html+='<section class="alicerce-assistant-chat-panel">';
-  if(window.AlicerceCashflow&&Store.userId){html+=window.AlicerceCashflow.renderCards(Store,Clock.today());}
+
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
     html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span></div>';
@@ -7364,7 +7644,7 @@ function renderAssistente(){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?window.AlicerceAnalitica.renderChart(item.chart):'')+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?'<details class="mt-2"'+(index===messages.length-1?' open':'')+'><summary>Gráfico da resposta</summary>'+window.AlicerceAnalitica.renderChart(item.chart)+'</details>':'')+renderAcaoDaConversa(item.moneyAction,index)+renderConferenciaEdicao(item.expenseEdit)+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }
@@ -7437,6 +7717,8 @@ AlicerceIA._questionRange=function(question){
   }else if(/esta semana|nessa semana/.test(q)){
     var weekDay=now.getDay()||7;
     start=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-weekDay+1));end=today;
+  }else if(/\banteontem\b/.test(q)){
+    start=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-2));end=start;
   }else if(/\bontem\b/.test(q)){
     start=this._iso(new Date(now.getFullYear(),now.getMonth(),now.getDate()-1));end=start;
   }else if(/\bhoje\b/.test(q)){
@@ -8115,6 +8397,9 @@ AlicerceIA.responder=function(question){
     /(?:quanto|qual|tem|tenho|apareceu|positivo|negativo|atual|agora|meu|minha|porque|sobrou|restou)/.test(q);
   if(asksBalance){
     var balanceMotor=Store.getMotorFinanceiro();
+    if(Store.lang==='pt'&&!/\b(porque|por que|apareceu|antes|positivo|negativo|sem entrada)\b/.test(q)){
+      return 'Caixa registrado: '+fmtMoney(balanceMotor.disponivel)+'. Depois dos compromissos considerados no cálculo: '+fmtMoney(balanceMotor.disponivelApos)+'.';
+    }
     var receivedTotal=Store.getEntradasRealizadas();
     var available=fmtMoney(balanceMotor.disponivel);
     var received=fmtMoney(receivedTotal);
@@ -8136,6 +8421,14 @@ AlicerceIA.responder=function(question){
   var rows=this._rows();
   var range=this._questionRange(question);
   var selected=this._rangeRows(range.start,range.end,rows);
+  if(Store.lang==='pt'&&!/\b(?:compare|comparar|evolucao)\b/.test(q)&&/\b(?:quanto|total|valor)\b/.test(q)&&/\b(?:gastei|gastos?|despesas?|dei|mandei|enviei|paguei)\b/.test(q)){
+    var category=/\bfilh[oa]s?\b/.test(q)?'filhos':/\b(?:esposa|marido|companheira|companheiro)\b/.test(q)?'esposa_marido':'';
+    if(category||/\bfamilia\b/.test(q)){
+      var familyRows=selected.filter(function(row){return row.categoria==='familia'&&(!category||row.subcategoria===category);});
+      var label=category==='filhos'?'Filhos':category==='esposa_marido'?'Esposa ou marido':'Família';
+      return label+' · '+formatDateBR(range.start)+' a '+formatDateBR(range.end)+'\n'+fmtMoney(this._sum(familyRows))+' em '+familyRows.length+(familyRows.length===1?' lançamento.':' lançamentos.');
+    }
+  }
   if(/custo de sobrevivencia|quanto custa manter|despesas? essenciais|gastos? essenciais|estilo de vida|discricionari|sup[eé]rflu|necessidades basicas|realidade financeira/.test(q)){
     return this._financialRealityAnswer(this._financialReality(selected,rows));
   }
@@ -9216,6 +9509,15 @@ function renderAtualizacoes(){
   let html='<div class="content">';
   html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'home\')">'+icon('back','ico-sm')+' '+copy.back+'</button>';
   html+='<h2 class="mt-4">'+copy.title+'</h2><p class="text-muted text-sm">'+copy.sub+'</p>';
+  if(lang==='pt'&&Store.userId&&window.AlicerceGuiaAlicia){
+    html+='<section class="mt-4" aria-label="Como usar o Alicerce"><h3>Como usar o Alicerce</h3>';
+    window.AlicerceGuiaAlicia.posts.forEach(function(post){
+      html+='<article class="card mt-3"><strong>'+esc(post.title)+'</strong><p class="text-sm text-muted mt-2">'+esc(post.text)+'</p>';
+      if(post.prompt)html+='<p class="text-sm mt-2">“'+esc(post.prompt)+'”</p>';
+      html+='<button type="button" class="btn btn-secondary btn-sm mt-2" data-post="'+esc(post.id)+'" onclick="AlicerceGuiaAlicia.openPost(this.dataset.post)">'+esc(post.link)+'</button></article>';
+    });
+    html+='</section>';
+  }
   copy.items.forEach(function(item){
     html+='<div class="card mt-3"><div class="flex items-center gap-2"><span class="text-accent">'+icon('check','ico-sm')+'</span><strong>'+esc(item[0])+'</strong></div><p class="text-sm text-muted mt-2">'+esc(item[1])+'</p></div>';
   });
@@ -10730,8 +11032,11 @@ function alicerceDocumentoOCRSuspeito(value){
 
 function renderGastos(){
   const now=Clock.now();
-  const month=Number.isInteger(Number(Store.screenData&&Store.screenData.month))&&Number(Store.screenData.month)>=1&&Number(Store.screenData.month)<=12?Number(Store.screenData.month):now.getMonth()+1;
-  const year=Number.isInteger(Number(Store.screenData&&Store.screenData.year))&&Number(Store.screenData.year)>=2000?Number(Store.screenData.year):now.getFullYear();
+  const filter=Store.screenData||{};
+  const selectedMonth=Number(filter.month);
+  const selectedYear=Number(filter.year);
+  const month=Number.isInteger(selectedMonth)&&selectedMonth>=1&&selectedMonth<=12?selectedMonth:now.getMonth()+1;
+  const year=Number.isInteger(selectedYear)&&selectedYear>=2000?selectedYear:now.getFullYear();
   const monthStr=year+'-'+String(month).padStart(2,'0');
   const mn=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
   const money=v=>fmtMoney(Number(v)||0);
@@ -10881,7 +11186,8 @@ function renderGastos(){
     const dataLabel=parts.length===3?parts[2]+'/'+parts[1]+'/'+parts[0]:String(m.data||'');
     const id='gasto-detalhe-'+index;
 
-    html+='<details style="border-bottom:1px solid var(--border-color,#333);padding:0">';
+    const isSelected=filter.movementId&&String(filter.movementId)===String(m.id);
+    html+='<details'+(isSelected?' open':'')+' style="border-bottom:1px solid var(--border-color,#333);padding:0">';
     html+='<summary class="gastos-item-summary">';
     html+='<span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--card-bg,#242424);border:1px solid var(--border-color,#444);font-size:13px;font-weight:800">'+gastosIconeCategoria(m.categoria||'outros')+'</span>';
     html+='<span class="gastos-item-copy">';
@@ -13972,6 +14278,10 @@ function renderVisao(){
   let html='<div class="content visao-financeira">';
   html+='<div class="visao-topo"><div class="visao-logo">Alicerce</div><div class="visao-subtitulo">Visão financeira</div></div>';
   html+='<section class="visao-hero"><div class="visao-pill">Disponível agora</div><div class="visao-saldo">'+fmtMoney(v.disponivel)+'</div><div class="visao-atualizado">Atualizado hoje, '+hora+'</div></section>';
+  if(Store.userId&&Store.lang==='pt'&&window.AlicerceCashflow){
+    html+=window.AlicerceCashflow.renderCards(Store,Clock.today());
+    html+='<button type="button" class="btn btn-secondary btn-block mb-3" onclick="AlicerceIA.experimentar(\'Me dá um resumo financeiro\')">Pedir resumo à Alícia</button>';
+  }
   html+=AlicerceIA.renderDashboard();
   html+='<details class="visao-details"><summary>'+esc((Store.lang==='en'?'Commitments and projections':Store.lang==='es'?'Compromisos y proyecciones':'Compromissos e projeções'))+'</summary><div class="visao-lista">';
   itens.forEach(function(item){
@@ -15102,6 +15412,7 @@ function confirmGastoInteligente(){
   const movementPurpose=String(data.purpose||interp.purpose||'').trim();
   if(movementPurpose)movementPayload.purpose=movementPurpose;
   const mv=Store.addMovement(movementPayload);
+  if(mv&&data.aliciaOrigin)AlicerceIA._lastChatExpenseId=mv.id;
   if(data.classificationCorrection&&interp.merchant){
     Store.learnCorrection(interp.merchant,interp.categoria,interp.subcategoria,interp.item);
   }
@@ -15137,7 +15448,7 @@ function renderAddGastoDoubt(){
   const ownerName=ownerType==='emprestado'?String(data.cardOwner||'').trim():'Você';
   const cardTypeName=data.cardType==='credito'?'Crédito':(data.cardType==='debito'?'Débito':'Não informado');
   const count=data.installment?Number(data.installments)||0:1;
-  const dateValue=data.date||today();
+  const dateValue=data.date||(data.pixProofOrigin?'':today());
   const dateParts=String(dateValue).split('-');
   const dateLabel=dateParts.length===3?dateParts[2]+'/'+dateParts[1]+'/'+dateParts[0]:dateValue;
   const benefitWallet=window.AlicerceBeneficios&&window.AlicerceBeneficios.snapshot(Store).find(function(w){return String(w.id)===String(data.benefitWalletId||'');});
@@ -15182,7 +15493,12 @@ function renderAddGastoDoubt(){
     html+='<div class="gr-line"><span>Responsável</span><span class="gr-value">'+esc(ownerName||'Não informado')+'</span></div>';
     html+='<div class="gr-line"><span>Parcelamento</span><span class="gr-value">'+(data.installment?esc(String(count)+' parcelas'):'À vista')+'</span></div>';
   }
-  html+='<div class="gr-line"><span>Data da compra</span><span class="gr-value">'+esc(dateLabel)+'</span></div></div>';
+  if(data.pixProofOrigin){
+    html+='<label class="gr-label" for="edit-gasto-date">Data do Pix</label><input id="edit-gasto-date" class="gr-input" type="date" required value="'+esc(dateValue)+'" oninput="cacheGastoDoubtEdits()">';
+  }else{
+    html+='<div class="gr-line"><span>Data da compra</span><span class="gr-value">'+esc(dateLabel)+'</span></div>';
+  }
+  html+='</div>';
 
   html+='<div class="gr-panel"><div style="font-size:16px;font-weight:800">Classificação da Alicia</div>';
   if(categoryValue&&subcategoryValue){
@@ -15220,7 +15536,7 @@ function renderAddGastoDoubt(){
   html+='<select id="edit-gasto-card-type"><option value=""></option><option value="credito" '+(data.cardType==='credito'?'selected':'')+'>Crédito</option><option value="debito" '+(data.cardType==='debito'?'selected':'')+'>Débito</option></select>';
   html+='<select id="edit-gasto-installment"><option value="false" '+(!data.installment?'selected':'')+'>Não</option><option value="true" '+(data.installment?'selected':'')+'>Sim</option></select>';
   html+='<input id="edit-gasto-installments" type="number" value="'+(Number(data.installments)||'')+'">';
-  html+='<input id="edit-gasto-date" type="date" value="'+esc(dateValue)+'">';
+  if(!data.pixProofOrigin)html+='<input id="edit-gasto-date" type="date" value="'+esc(dateValue)+'">';
   html+='</div></div>';
 
   return html;
@@ -15353,6 +15669,26 @@ function validateDoubtGasto(){
   button.disabled=!valid;
 }
 
+function vencimentoCompraCartao(card,dataCompra,indice){
+  const fechamento=Number(card.fechamento)||null;
+  const vencimento=Number(card.vencimento)||0;
+  const dataBase=new Date(dataCompra+'T00:00:00');
+
+  let deslocamento=1;
+  if(fechamento){
+    deslocamento=(dataBase.getDate()>fechamento?1:0)+(vencimento&&vencimento<=fechamento?1:0);
+  }
+
+  const d=new Date(dataBase);
+  d.setDate(1);
+  d.setMonth(d.getMonth()+deslocamento+indice);
+  if(vencimento){
+    const ultimoDia=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+    d.setDate(Math.min(vencimento,ultimoDia));
+  }
+
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
 function salvarGastoCreditoCartao(data,interp){
   const cardId=String(data.cardId||'');
   const card=(Store.cards||[]).find(function(c){return String(c.id)===cardId;});
@@ -15376,39 +15712,19 @@ function salvarGastoCreditoCartao(data,interp){
     return false;
   }
 
-  const fechamento=Number(card.fechamento)||null;
-  const vencimento=Number(card.vencimento)||0;
-  const dataBase=new Date(dataCompra+'T00:00:00');
-  if(isNaN(dataBase.getTime())){
-    showToast('Data da compra inválida.');
-    return false;
-  }
-
-  let deslocamento=1;
-  if(fechamento){
-    deslocamento=(dataBase.getDate()>fechamento?1:0)+(vencimento&&vencimento<=fechamento?1:0);
-  }
-
+  if(!Number.isFinite(new Date(dataCompra+'T00:00:00').getTime()))return false;
   const compraId='compra-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);
   const ids=[];
   const valorParcela=Math.round((valor/parcelas)*100)/100;
   let acumulado=0;
 
   for(let i=0;i<parcelas;i++){
-    const d=new Date(dataBase);
-    d.setDate(1);
-    d.setMonth(d.getMonth()+deslocamento+i);
-    if(vencimento){
-      const ultimoDia=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
-      d.setDate(Math.min(vencimento,ultimoDia));
-    }
-
     const parcelaValor=i===parcelas-1
       ?Math.round((valor-acumulado)*100)/100
       :valorParcela;
     acumulado+=parcelaValor;
 
-    const dataVencimento=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const dataVencimento=vencimentoCompraCartao(card,dataCompra,i);
     const item=Store.addInstallment({
       cardId:cardId,
       tipo:'cartao',
@@ -15471,6 +15787,12 @@ function salvarGastoCreditoCartao(data,interp){
   return true;
 }
 function saveDoubtGasto(){
+  const dateField=document.getElementById('edit-gasto-date');
+  if(Store.screenData&&Store.screenData.pixProofOrigin&&(!dateField||!dateField.value)){
+    showToast('Informe a data que consta no comprovante Pix.');
+    if(dateField)dateField.focus();
+    return;
+  }
   cacheGastoDoubtEdits();
   const button=document.getElementById('btn-save-gasto-doubt');
   if(button){

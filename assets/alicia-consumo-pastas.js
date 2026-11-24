@@ -26,19 +26,33 @@ var v=Store.settings&&Store.settings[key()];
 return Array.isArray(v)?v.filter(function(x){return x&&x.ownerId===String(Store.userId)}):[];
 }
 function parse(raw){
-var lines=String(raw||'').replace(/\r/g,'').split('\n').map(clean).filter(Boolean);
+var lines=String(raw||'').replace(/\r/g,'').split('\n').map(function(line){return line.trim().replace(/\s+/g,' ')}).filter(Boolean);
 var items=[];
 for(var i=0;i<lines.length;i++){
 var title=lines[i],n=norm(title);
 if(/^(qtde|qtd|vl\.|valor|total|documento|cnpj|cpf|chave|tributos|pagamento|troco|desconto|subtotal|consumidor)/.test(n))continue;
-var q=title.match(/\b(?:qtde|qtd)[.:\s]*([\d.,]+).*?(?:vl\.?\s*total|total)\s*([\d.]+,\d{2})/i);
-if(q)continue;
-var next=lines.slice(i+1,i+4).join(' ');
-var quantity=next.match(/\b(?:qtde|qtd)[.:\s]*([\d.,]+)/i);
-var total=next.match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})/i);
-if(!total){
-var j=lines.slice(i+1,i+4).findIndex(function(x){return /\bvl\.?\s*total\b/i.test(x)});
-if(j>=0){var m=lines[i+1+j].match(/([\d.]+,\d{2})/);if(m)total=m}
+// Cupom impresso: código, descrição, quantidade, unidade, preço e total.
+var printed=title.match(/^(?:\d{1,14}\s+)?(.+?\p{L}.*?)\s+(\d+(?:,\d{1,3})?)\s*(?:UN|KG|LT|L|PC|CX|PCT)\s+(?:[xX]\s*)?(\d[\d.]*,\d{2})\s+(\d[\d.]*,\d{2})$/iu);
+var quantity,total;
+if(printed){
+title=printed[1];
+quantity=[null,printed[2]];
+total=[null,printed[4]];
+var expected=Number(printed[2].replace(',','.'))*num(printed[3]);
+if(Math.abs(expected-num(printed[4]))>0.011)continue;
+}else{
+var inline=title.match(/^(.+?)\s+(?=\b(?:qtde|qtd)[.:\s])/i);
+if(inline)title=inline[1].trim();
+var start=i+(inline?0:1);
+var detail=inline?lines[start].slice(title.length):lines[start]||'';
+quantity=detail.match(/^\s*(?:qtde|qtd)[.:\s]*([\d.,]+)/i);
+if(!quantity)continue;
+for(var j=start+1;j<lines.length&&j<=start+7;j++){
+var field=lines[j];
+if(!/^(?:un\s*[:.]|(?:vl\.?|valor)\s*(?:unit|total)|(?:R\$\s*)?[\d.]+,\d{2}$)/i.test(field))break;
+detail+=' '+field;
+}
+total=detail.match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})(?!\d)/i);
 }
 if(!total||!/\p{L}/u.test(title)||title.length<4||title.length>115)continue;
 var desc=clean(title.replace(/\s*\((?:c[oó]digo|cod)\s*[:.]?\s*\d+\s*\)/i,''));
@@ -46,7 +60,6 @@ var value=num(total[1]);
 var qt=quantity?Number(quantity[1].replace(',','.')):1;
 if(!value||!Number.isFinite(qt)||qt<=0||qt>10000)continue;
 if(/nota fiscal|supermercado|cnpj|documento|tributo|informac|emitid|consumidor|chave de acesso/i.test(norm(desc)))continue;
-if(items.some(function(x){return x.name===desc&&x.total===value}))continue;
 items.push({name:desc,quantity:qt,total:value,folder:folder(desc)});
 if(items.length>=120)break;
 }
@@ -63,7 +76,7 @@ return el;
 function review(raw,receipt){
 var parsed=parse(raw);
 var body='<p class="text-muted text-sm">Revise produto, quantidade, valor total e pasta. Nada será lançado no banco ou no saldo.</p>';
-body+='<p class="text-sm">Itens reconhecidos: <strong>'+parsed.length+'</strong>. Você pode corrigir as linhas antes de arquivar.</p>';
+body+='<p class="text-sm">Itens reconhecidos: <strong>'+parsed.length+'</strong> · Soma dos itens: <strong>'+money(parsed.reduce(function(sum,item){return sum+item.total},0))+'</strong>. Você pode corrigir as linhas antes de arquivar.</p>';
 body+='<label for="al-consumo-lines" class="form-label">Um produto por linha: nome | quantidade | total</label>';
 body+='<textarea id="al-consumo-lines" rows="9" style="width:100%;font-size:14px;min-height:180px">'+escape(parsed.map(function(x){return x.name+' | '+x.quantity+' | '+x.total.toFixed(2).replace('.',',')}).join('\n'))+'</textarea>';
 body+='<p class="text-muted text-sm">Se nenhum item foi lido, a nota pode ser arquivada sem produtos. O total da compra é independente da soma de itens quando houver descontos.</p>';
@@ -98,9 +111,17 @@ if(typeof render==='function')render();
 }
 };
 }
+function receiptDate(value){
+var raw=String(value||'');
+var iso=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+var br=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+var date=iso?raw:br?br[3]+'-'+br[2].padStart(2,'0')+'-'+br[1].padStart(2,'0'):'';
+var instant=date?new Date(date+'T12:00:00Z'):null;
+return instant&&!isNaN(instant.getTime())&&instant.toISOString().slice(0,10)===date?date:'';
+}
 function summary(question){
 var data=records(),items=[];
-data.forEach(function(r){(r.items||[]).forEach(function(it){items.push({name:it.name,folder:it.folder,total:Number(it.total)||0,quantity:Number(it.quantity)||1,date:r.date,merchant:r.merchant})})});
+data.forEach(function(r){(r.items||[]).forEach(function(it){items.push({name:it.name,folder:it.folder||folder(it.name),total:Number(it.total)||0,quantity:Number(it.quantity)||1,date:receiptDate(r.date),receiptId:r.id||data.indexOf(r),merchant:r.merchant})})});
 if(!data.length)return 'Ainda não existem notas arquivadas. Envie a foto de uma nota à Alícia para começar seu histórico de produtos.';
 var q=norm(question),group=q.match(/alimentacao|limpeza|higiene|saude|casa|pets|outros/);
 var target=group?group[0]:null;
@@ -111,11 +132,63 @@ var by={};filtered.forEach(function(x){by[x.folder]=(by[x.folder]||0)+x.total});
 var ranked=Object.keys(by).sort(function(a,b){return by[b]-by[a]}).slice(0,5);
 if(ranked.length)response+='\nPastas: '+ranked.map(function(k){return (categories.find(function(c){return c[0]===k})||[k,k])[1]+' '+money(by[k])}).join(' · ')+'.';
 if(/preco|aumento|barato|caro|produto|compare|comparar/.test(q)){
-var matching=items.filter(function(x){return norm(x.name).length>3&&q.includes(norm(x.name))}).sort(function(a,b){return String(a.date).localeCompare(String(b.date))});
+var words=function(value){return norm(value).match(/[a-z0-9]+/g)||[]};
+var ignored=new Set(['compare','comparar','preco','precos','aumento','barato','caro','produto','produtos','o','a','do','da','de','os','das','dos','em','no','na','quanto','custou','custa','pastas','consumo','historico','minhas','meus','nas','nos']);
+var targetWords=words(question).filter(function(word){return !ignored.has(word)});
+var products=Object.create(null);
+items.forEach(function(item){
+var name=words(item.name).join(' ');
+if(!item.date||!targetWords.length||!targetWords.every(function(word){return name.split(' ').includes(word)}))return;
+var notes=products[name]||(products[name]=new Map());
+var entry=notes.get(item.receiptId)||{name:item.name,date:item.date,total:0,quantity:0};
+entry.total+=item.total;entry.quantity+=item.quantity;notes.set(item.receiptId,entry);
+});
+var variants=Object.keys(products);
+var matching=variants.length===1?Array.from(products[variants[0]].values()).sort(function(a,b){return a.date.localeCompare(b.date)}):[];
+if(variants.length>1)response+='\nEncontrei mais de uma versão desse produto. Informe também a marca ou o tamanho da embalagem.';
 if(matching.length>=2){var a=matching[matching.length-2],b=matching[matching.length-1];response+='\n'+b.name+': últimas duas ocorrências, '+money(a.total/a.quantity)+' e '+money(b.total/b.quantity)+' por unidade informada. Confira embalagens e quantidades antes de comparar.'}
 else response+='\nPara comparar preços, preciso de ao menos duas ocorrências do mesmo produto com unidades equivalentes.';
 }
 return response;
+}
+function increases(start,end){
+var grouped=new Map();
+records().forEach(function(note){
+var date=receiptDate(note.date);
+if(!date||date>end)return;
+var products=new Map();
+(note.items||[]).forEach(function(item){
+var key=norm(item.name), quantity=Number(item.quantity), total=Number(item.total);
+if(!key||!Number.isFinite(quantity)||quantity<=0||!Number.isFinite(total)||total<=0)return;
+var row=products.get(key)||{name:item.name,date:date,total:0,quantity:0};
+row.total+=total;
+row.quantity+=quantity;
+products.set(key,row);
+});
+products.forEach(function(row,key){
+var daily=grouped.get(key)||new Map();
+var day=daily.get(date)||{name:row.name,date:date,total:0,quantity:0};
+day.total+=row.total;
+day.quantity+=row.quantity;
+daily.set(date,day);
+grouped.set(key,daily);
+});
+});
+var changes=[];
+var comparable=0;
+grouped.forEach(function(daily){
+var dates=Array.from(daily.keys()).sort();
+if(dates.length<2||dates[dates.length-1]<start)return;
+var latest=daily.get(dates[dates.length-1]);
+var prior=daily.get(dates[dates.length-2]);
+var current=latest.total/latest.quantity;
+var previous=prior.total/prior.quantity;
+var delta=Math.round((current-previous)*100)/100;
+comparable++;
+if(delta>=0.01)changes.push({name:latest.name,previous:previous,current:current,delta:delta,date:latest.date,previousDate:prior.date});
+});
+changes.sort(function(a,b){return b.delta-a.delta||a.name.localeCompare(b.name);});
+return {comparable:comparable,items:changes.slice(0,3)};
 }
 function open(){
 var data=records();
@@ -133,5 +206,5 @@ data.slice().reverse().slice(0,50).forEach(function(r){html+='<p class="text-sm"
 html+='</details>';
 dialog('Minhas pastas de consumo',html);
 }
-window.AlicerceConsumo={parse:parse,review:review,open:open,summary:summary,records:records};
+window.AlicerceConsumo={parse:parse,review:review,open:open,summary:summary,records:records,increases:increases};
 })();

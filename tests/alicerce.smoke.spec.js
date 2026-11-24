@@ -1478,7 +1478,7 @@ test('Alicia usa o nome informado no perfil e não transforma o e-mail em nome',
   expect(greeting.saved).toBe('Ana Costa');
 });
 
-test('Alicia lê a foto localmente, preenche o texto para revisão e descarta a referência ao arquivo', async function ({ page }) {
+test('Alícia lê a nota localmente, mostra os dados para revisão e libera o arquivo', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   await page.evaluate(function () {
     Store.userId = 'ocr-alicia-teste';
@@ -1495,12 +1495,13 @@ test('Alicia lê a foto localmente, preenche o texto para revisão e descarta a 
     Store.installments = [];
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
     window.__aliciaOcrTest = { filename: '', terminated: false };
+    AlicerceIA._scanQRCodeFile = async function () { return ''; };
     window.Tesseract = {
       createWorker: async function () {
         return {
           recognize: async function (file) {
             window.__aliciaOcrTest.filename = file.name;
-            return { data: { text: 'MERCADO CENTRAL\nLEITE 2 UNIDADES\nTOTAL R$ 18,90' } };
+            return { data: { text: 'DANFE NFC-e\nSUPERMERCADO CENTRAL\nData 23/11/2026\nLEITE 2 UNIDADES\nValor total: R$ 18,90' } };
           },
           terminate: async function () {
             window.__aliciaOcrTest.terminated = true;
@@ -1517,9 +1518,10 @@ test('Alicia lê a foto localmente, preenche o texto para revisão e descarta a 
     mimeType: 'image/jpeg',
     buffer: Buffer.from('imagem temporária de teste')
   });
-  await expect(page.locator('#alicerce-assistant-status')).toContainText('Texto extraído no aparelho');
-  await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/MERCADO CENTRAL/);
-  await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/R\$ 18,90/);
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('SUPERMERCADO CENTRAL');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('R$ 18,90');
+  await expect(page.locator('#alicerce-assistant-input')).toHaveValue('');
+  await expect(page.getByRole('button', { name: 'Conferir e registrar compra' })).toBeVisible();
   const state = await page.evaluate(function () {
     var fileInput = document.getElementById('alicerce-assistant-photo');
     return {
@@ -1723,7 +1725,7 @@ test('Assistente mantém o assunto quando a pessoa pergunta por outro período',
   await page.locator('#alicerce-assistant-input').fill('E na semana passada?');
   await page.locator('#alicerce-assistant-send').click();
   await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('R$ 200,00');
-  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('No período consultado');
+  await expect(page.locator('.alicerce-assistant-message.assistant').last()).toContainText('Bar');
   await expect(page.locator('.alicerce-assistant-message.assistant').last()).not.toContainText('R$ 300,00');
   await expect(page.locator('.alicerce-assistant-message.user').last()).toContainText('E na semana passada?');
 });
@@ -2561,7 +2563,7 @@ test('Alicia não registra automaticamente compras parceladas ou no cartão pelo
   expect(result.screen).toBe('assistente');
 });
 
-test('Alicia limita a conversa a duas interações, permite limpar e leva aos relatórios da Visão financeira', async function ({ page }) {
+test('Alícia mantém as respostas recentes, permite limpar e leva à Visão Financeira', async function ({ page }) {
   await page.setViewportSize({ width: 375, height: 812 });
   await prepararTelaSemNuvem(page, 'assistente');
   await page.evaluate(function () {
@@ -2590,9 +2592,13 @@ test('Alicia limita a conversa a duas interações, permite limpar e leva aos re
   }
 
   const historyLength = await page.evaluate(function () { return AlicerceIA._messages.length; });
-  expect(historyLength).toBe(4);
-  await expect(page.locator('.alicerce-assistant-message.user')).toHaveCount(2);
-  await expect(page.locator('.alicerce-assistant-message.assistant')).toHaveCount(2);
+  expect(historyLength).toBe(6);
+  await expect(page.locator('.alicerce-assistant-message.user')).toHaveCount(3);
+  await expect(page.locator('.alicerce-assistant-message.assistant')).toHaveCount(3);
+  const graph = page.locator('.alicerce-assistant-messages details').filter({ hasText: 'Gráfico da resposta' });
+  await expect(graph).toHaveAttribute('open', '');
+  await graph.locator('summary').click();
+  await expect(graph).not.toHaveAttribute('open');
   await expect(page.locator('#alicerce-assistant-clear')).toBeVisible();
 
   const mobileLayout = await page.evaluate(function () {
@@ -2644,8 +2650,8 @@ test('Alicia orienta o uso do microfone do teclado sem pedir acesso ao microfone
   expect(await page.evaluate(function () { return window.__speechRecognitionStarts; })).toBe(0);
 
   await page.locator('#alicerce-assistant-camera').click();
-  await expect(notice).toContainText('leitura de fotos e documentos está temporariamente desativada');
-  await expect(notice).toContainText('nenhum texto reconhecido é enviado ou registrado');
+  await expect(notice).toContainText('A foto será analisada no seu aparelho');
+  await expect(notice).toContainText('não salva automaticamente o texto completo da imagem');
   await page.locator('.alicerce-assistant-privacy-cancel').click();
   await expect(notice).toBeHidden();
 });
@@ -3041,7 +3047,7 @@ test('Alicia revisa gastos sem contexto pelo chat e salva a finalidade sem alter
   });
 
   expect(result.firstPrompt).toContain('Corrida por aplicativo');
-  expect(result.firstPrompt).toContain('finalidade');
+  expect(result.firstPrompt).toContain('Você lembra para que foi esse gasto?');
   expect(result.movement).toMatchObject({
     amount: 42.50,
     category: 'transporte',
@@ -3822,4 +3828,107 @@ test('central de alertas identifica compromisso com aviso de 30 minutos', async 
   });
   expect(alerts.before.some(function (item) { return item.text === 'Dentista' && item.label === 'Em 30 minutos'; })).toBe(true);
   expect(alerts.after.some(function (item) { return item.text === 'Dentista'; })).toBe(false);
+});
+
+test('Alícia prepara ajuda familiar datada e abre o gasto a corrigir', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'alicia-family-regression';
+    Store.settings.alicerceLegalAcceptance = {
+      termsVersion: '2026-10-20-v1',
+      privacyVersion: '2026-10-20-v1',
+      acceptedAt: '2026-10-31T12:00:00.000Z'
+    };
+    Store.movements = [{ id: 'pix-incorreto', tipo: 'despesa', descricao: 'ChatGPT', valor: 70, data: '2026-10-23', status: 'pago', pagamento: 'pix' }];
+    await AlicerceIA.enviarMensagem('Mandei um Pix de R$ 50 para minha esposa no dia 12/11/2026');
+    const draft = Store.screenData;
+    await AlicerceIA.enviarMensagem('Paguei a assinatura do ChatGPT no cartão, mas lancei no Pix');
+    AlicerceIA.abrirAcaoDaConversa(AlicerceIA._messages.length - 1);
+    return { draft, navigation: Store.screenData, count: Store.movements.length };
+  });
+  expect(result.draft).toMatchObject({ amountInput: 50, date: '2026-11-12', paymentMethod: 'pix', interpretation: { categoria: 'familia', subcategoria: 'esposa_marido' } });
+  expect(result.navigation).toMatchObject({ year: 2026, month: 10, movementId: 'pix-incorreto' });
+  expect(result.count).toBe(1);
+  await expect(page.locator('details[open]').filter({ hasText: 'ChatGPT' })).toHaveCount(1);
+});
+
+test('Pix não confunde tarifa, varejo e valores conflitantes', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(function () {
+    return [
+      AlicerceIA._lerComprovantePix('Comprovante Pix\nValor da tarifa: R$ 1,00\nValor transferido: R$ 50,00'),
+      AlicerceIA._lerComprovantePix('Comprovante Pix\nValor da tarifa: R$ 1,00'),
+      AlicerceIA._lerComprovantePix('Comprovante Pix\nValor enviado: R$ 50,00\nValor transferido: R$ 80,00'),
+      AlicerceIA._lerComprovantePix('PIX pagamento aprovado\nSUPERMERCADO EXEMPLO\nValor pago: R$ 50,00')
+    ];
+  });
+  expect(result.map(item => item && item.amount)).toEqual([50, null, null, null]);
+});
+
+test('Alícia revisa o mesmo gasto no chat e só altera depois de confirmar', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'revisao-cash';
+    Store.settings.alicerceLegalAcceptance = {
+      termsVersion: '2026-10-20-v1',
+      privacyVersion: '2026-10-20-v1',
+      acceptedAt: '2026-10-31T12:00:00.000Z'
+    };
+    Store.movements = [{ id: 'mesmo-gasto', descricao: 'Padaria Central', valor: 50, tipo: 'despesa', status: 'pago', forma: 'pix', data: Clock.today() }];
+    render();
+  });
+  const input = page.locator('#alicerce-assistant-input');
+  await input.fill('Corrige o gasto da Padaria Central. Foi em dinheiro, mas lancei no Pix');
+  await page.locator('#alicerce-assistant-send').click();
+  const confirm = page.getByRole('button', { name: 'Confirmar correção' });
+  await expect(confirm).toBeVisible();
+  expect(await page.evaluate(() => Store.movements[0].forma)).toBe('pix');
+  await input.fill('O valor foi R$ 42,50');
+  await page.locator('#alicerce-assistant-send').click();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('42,50');
+  await confirm.click();
+  await expect(confirm).toHaveCount(0);
+  const result = await page.evaluate(() => ({ rows: Store.movements, total: Store.getMotorFinanceiro().disponivel }));
+  expect(result.rows).toHaveLength(1);
+  expect(result.rows[0]).toMatchObject({ id: 'mesmo-gasto', forma: 'dinheiro', valor: 42.5 });
+  expect(result.total).toBe(-42.5);
+});
+
+test('Alícia acompanha várias perguntas curtas, compara períodos e esquece o assunto ao limpar', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  await page.evaluate(function () {
+    Store.userId = 'consulta-encadeada';
+    Store.settings.alicerceLegalAcceptance = {
+      termsVersion: '2026-10-20-v1',
+      privacyVersion: '2026-10-20-v1',
+      acceptedAt: '2026-10-31T12:00:00.000Z'
+    };
+    const previousMonth = AlicerceIA._questionRange('mês passado').start;
+    Store.movements = [
+      { id: 'compra-atual', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', valor: 125, data: Clock.today() },
+      { id: 'compra-anterior', tipo: 'despesa', status: 'pago', categoria: 'comida', subcategoria: 'mercado', valor: 80, data: previousMonth },
+      { id: 'ajuda-anterior', tipo: 'despesa', status: 'pago', categoria: 'familia', subcategoria: 'filhos', valor: 50, data: previousMonth }
+    ];
+    render();
+  });
+  const input = page.locator('#alicerce-assistant-input');
+  const last = page.locator('.alicerce-assistant-message.assistant').last();
+  async function perguntar(question) {
+    await input.fill(question);
+    await page.locator('#alicerce-assistant-send').click();
+  }
+  await perguntar('Me diz quanto gastei no mercado este mês');
+  await expect(last).toContainText('125,00');
+  await perguntar('E no mês passado?');
+  await expect(last).toContainText('80,00');
+  await perguntar('Compara os dois');
+  await expect(last).toContainText('Comparação de períodos');
+  await expect(last).toContainText('125,00');
+  await expect(last).toContainText('80,00');
+  await perguntar('E com meu filho?');
+  await expect(last).toContainText('Filhos');
+  await expect(last).toContainText('50,00');
+  await page.locator('#alicerce-assistant-clear').click();
+  await perguntar('E no mês passado?');
+  await expect(last).toContainText('Qual gasto você quer consultar?');
 });
