@@ -26,34 +26,36 @@ var v=Store.settings&&Store.settings[key()];
 return Array.isArray(v)?v.filter(function(x){return x&&x.ownerId===String(Store.userId)}):[];
 }
 function safeProduct(value){
+ if(String(value||'').length>120)return false;
  var v=norm(value);
  // Reject identifiers and contact/banking labels rather than attempting to retain redacted fragments.
  return !!v&&!/\b(cpf|cnpj|rg|pix|chave|cliente|consumidor|destinatario|beneficiario|favorecido|telefone|celular|email|e-mail|endereco|logradouro|cep|agencia|conta bancaria|autenticacao|protocolo|titular|pagador|recebedor)\b/.test(v)&&!/@|\b\d{5,}\b|\b\d{3}[.\s]\d{3}[.\s]\d{3}[-\s]\d{2}\b|\b\d{2}[.\s]\d{3}[.\s]\d{3}[/\s]\d{4}[-\s]\d{2}\b/.test(v);
 }
 function parse(raw){
-var lines=String(raw||'').replace(/\r/g,'').split('\n').map(clean).filter(Boolean);
+// Strict product layout: title directly followed by a quantity label and a
+// line total. Never infer product names from unrelated nearby document text.
+var lines=String(raw||'').slice(0,60000).replace(/\r/g,'').split('\n').map(clean).filter(Boolean);
 var items=[];
-for(var i=0;i<lines.length;i++){
-var title=lines[i],n=norm(title);
-if(/^(qtde|qtd|vl\.|valor|total|documento|cnpj|cpf|chave|tributos|pagamento|troco|desconto|subtotal|consumidor)/.test(n))continue;
-var q=title.match(/\b(?:qtde|qtd)[.:\s]*([\d.,]+).*?(?:vl\.?\s*total|total)\s*([\d.]+,\d{2})/i);
-if(q)continue;
-var next=lines.slice(i+1,i+4).join(' ');
-var quantity=next.match(/\b(?:qtde|qtd)[.:\s]*([\d.,]+)/i);
-var total=next.match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})/i);
-if(!total){
-var j=lines.slice(i+1,i+4).findIndex(function(x){return /\bvl\.?\s*total\b/i.test(x)});
-if(j>=0){var m=lines[i+1+j].match(/([\d.]+,\d{2})/);if(m)total=m}
-}
-if(!total||!/\p{L}/u.test(title)||title.length<4||title.length>115)continue;
-var desc=clean(title.replace(/\s*\((?:c[oó]digo|cod)\s*[:.]?\s*\d+\s*\)/i,''));
-var value=num(total[1]);
-var qt=quantity?Number(quantity[1].replace(',','.')):1;
-if(!safeProduct(desc)||!value||!Number.isFinite(qt)||qt<=0||qt>10000)continue;
-if(/nota fiscal|supermercado|cnpj|documento|tributo|informac|emitid|consumidor|chave de acesso/i.test(norm(desc)))continue;
-if(items.some(function(x){return x.name===desc&&x.total===value}))continue;
-items.push({name:desc,quantity:qt,total:value,folder:folder(desc)});
-if(items.length>=120)break;
+for(var i=0;i<lines.length-1&&items.length<120;i++){
+ var title=lines[i],n=norm(title);
+ if(/^(qtde|qtd|quantidade|vl\.|valor|total|documento|cnpj|cpf|chave|tributos|pagamento|troco|desconto|subtotal|consumidor|nome|rua|avenida|bairro|data|hora|emissao|serie|numero|nota|nfce|danfe)/.test(n))continue;
+ if(!/^(?:qtde|qtd|quantidade)\b/i.test(lines[i+1]))continue;
+ var detail=lines[i+1],quantity=detail.match(/^(?:qtde|qtd|quantidade)[.:\s]*([\d.,]+)/i);
+ var total=detail.match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})/i);
+ var consumed=1;
+ if(!total&&/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*$/i.test(detail)&&/^[\d.]+,\d{2}$/.test(lines[i+2]||'')){
+   total=[lines[i+2],lines[i+2]];consumed=2;
+ }else if(!total&&/^(?:vl\.?\s*total|valor\s*total)\b/i.test(lines[i+2]||'')){
+   total=lines[i+2].match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})/i);consumed=2;
+   if(!total&&/^[\d.]+,\d{2}$/.test(lines[i+3]||'')){total=[lines[i+3],lines[i+3]];consumed=3;}
+ }
+ var desc=clean(title.replace(/\s*\((?:c[oó]digo|cod)\s*[:.]?\s*\d+\s*\)/i,''));
+ var value=total?num(total[1]):null,qt=quantity?Number(quantity[1].replace(',','.')):null;
+ if(!safeProduct(desc)||!/\p{L}/u.test(desc)||desc.length<4||desc.length>115||!value||!Number.isFinite(qt)||qt<=0||qt>10000)continue;
+ if(/nota fiscal|supermercado|documento|tributo|informac|emitid|chave de acesso/i.test(norm(desc)))continue;
+ // Repeated identical lines can be real purchases; do not silently discard.
+ items.push({name:desc,quantity:qt,total:value,folder:folder(desc)});
+ i+=consumed;
 }
 return items;
 }
