@@ -47,6 +47,7 @@ function addEntry(store,id,kind,amount,date,description,details){
    entry.subcategory=String(meta.subcategory||"").slice(0,60);
    entry.merchant=String(meta.merchant||"").slice(0,100);
    entry.origin=String(meta.origin||"benefits").slice(0,40);
+   entry.purpose=String(meta.purpose||"").slice(0,120);
  }
  w.entries.push(entry);
  store.save();return {ok:true,wallet:w};
@@ -108,6 +109,24 @@ function removeEntry(store,walletId,entryId){
  if(next.length===w.entries.length)return false;
  if(recalc(next)<-0.001)return false;
  w.entries=next;store.save();return true;
+}
+// Read-only projection: no additional financial movement and no balance mutation.
+function spendingEntries(store){
+ var rows=[],seen=new Set();
+ wallets(store).forEach(function(w){
+   w.entries.forEach(function(e){
+     if(!e||e.kind!=="debit"||!e.id||!validDate(e.date)||!Number.isFinite(Number(e.amount))||Number(e.amount)<=0)return;
+     if(["transfer","refund","adjustment"].includes(e.financialRole))return;
+     var id="benefit:"+String(w.id)+":"+String(e.id);
+     if(seen.has(id))return;seen.add(id);
+     rows.push({id:id,benefitWalletId:String(w.id),tipo:"despesa",data:e.date,valor:Number(e.amount),
+       categoria:e.category==="alimentacao"?"comida":e.category||"comida",
+       subcategoria:e.subcategory||"outros",descricao:e.description||"Compra com benefício",
+       local:e.merchant||"",purpose:e.purpose||"",origin:e.origin||"benefits",
+       pagamento:w.alias||PROVIDERS[w.provider]});
+   });
+ });
+ return rows;
 }
 function spentInMonth(store,month){return wallets(store).reduce(function(result,w){(w.entries||[]).forEach(function(e){if(e.kind==="debit"&&String(e.date||"").slice(0,7)===month){result.total+=Number(e.amount)||0;result.count++;result.byProvider[w.provider]=(result.byProvider[w.provider]||0)+(Number(e.amount)||0);}});return result;},{total:0,count:0,byProvider:{}});}
 function snapshot(store){
@@ -224,5 +243,5 @@ function answer(store,question){
  var thisMonth=new Date().getFullYear()+"-"+String(new Date().getMonth()+1).padStart(2,"0");
  return list.map(function(w){return w.name+": saldo registrado "+money(w.balance)+", recargas "+money(w.credit)+", compras acumuladas "+money(w.spent)+"."}).join("\n")+" Essas compras usam o saldo de vale-alimentação, sem reduzir o dinheiro bancário. Os valores são calculados dos lançamentos no Alicerce, não são sincronizados com as operadoras.";
 }
-root.AlicerceBeneficios={providers:PROVIDERS,wallets:wallets,balance:balance,addWallet:addWallet,addEntry:addEntry,removeEntry:removeEntry,toggleHome:toggleHome,snapshot:snapshot,updateEntry:updateEntry,setBalance:setBalance,deleteWallet:deleteWallet,updateWalletName:updateWalletName,spentInMonth:spentInMonth,renderHome:renderHome,renderPage:renderPage,answer:answer};
+root.AlicerceBeneficios={providers:PROVIDERS,wallets:wallets,balance:balance,addWallet:addWallet,addEntry:addEntry,removeEntry:removeEntry,toggleHome:toggleHome,snapshot:snapshot,updateEntry:updateEntry,setBalance:setBalance,deleteWallet:deleteWallet,updateWalletName:updateWalletName,spentInMonth:spentInMonth,spendingEntries:spendingEntries,renderHome:renderHome,renderPage:renderPage,answer:answer};
 })(typeof window!=="undefined"?window:globalThis);

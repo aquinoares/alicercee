@@ -25,30 +25,37 @@ if(typeof Store==='undefined'||!Store.userId)return [];
 var v=Store.settings&&Store.settings[key()];
 return Array.isArray(v)?v.filter(function(x){return x&&x.ownerId===String(Store.userId)}):[];
 }
-function parse(raw){
-var lines=String(raw||'').replace(/\r/g,'').split('\n').map(clean).filter(Boolean);
-var items=[];
-for(var i=0;i<lines.length;i++){
-var title=lines[i],n=norm(title);
-if(/^(qtde|qtd|vl\.|valor|total|documento|cnpj|cpf|chave|tributos|pagamento|troco|desconto|subtotal|consumidor)/.test(n))continue;
-var q=title.match(/\b(?:qtde|qtd)[.:\s]*([\d.,]+).*?(?:vl\.?\s*total|total)\s*([\d.]+,\d{2})/i);
-if(q)continue;
-var next=lines.slice(i+1,i+4).join(' ');
-var quantity=next.match(/\b(?:qtde|qtd)[.:\s]*([\d.,]+)/i);
-var total=next.match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})/i);
-if(!total){
-var j=lines.slice(i+1,i+4).findIndex(function(x){return /\bvl\.?\s*total\b/i.test(x)});
-if(j>=0){var m=lines[i+1+j].match(/([\d.]+,\d{2})/);if(m)total=m}
+function safeProduct(value){
+ if(String(value||'').length>120)return false;
+ var v=norm(value);
+ // Reject identifiers and contact/banking labels rather than attempting to retain redacted fragments.
+ return !!v&&!/\b(cpf|cnpj|rg|pix|chave|cliente|consumidor|destinatario|beneficiario|favorecido|telefone|celular|email|e-mail|endereco|logradouro|cep|agencia|conta bancaria|autenticacao|protocolo|titular|pagador|recebedor)\b/.test(v)&&!/@|\b\d{5,}\b|\b\d{3}[.\s]\d{3}[.\s]\d{3}[-\s]\d{2}\b|\b\d{2}[.\s]\d{3}[.\s]\d{3}[/\s]\d{4}[-\s]\d{2}\b/.test(v);
 }
-if(!total||!/\p{L}/u.test(title)||title.length<4||title.length>115)continue;
-var desc=clean(title.replace(/\s*\((?:c[oó]digo|cod)\s*[:.]?\s*\d+\s*\)/i,''));
-var value=num(total[1]);
-var qt=quantity?Number(quantity[1].replace(',','.')):1;
-if(!value||!Number.isFinite(qt)||qt<=0||qt>10000)continue;
-if(/nota fiscal|supermercado|cnpj|documento|tributo|informac|emitid|consumidor|chave de acesso/i.test(norm(desc)))continue;
-if(items.some(function(x){return x.name===desc&&x.total===value}))continue;
-items.push({name:desc,quantity:qt,total:value,folder:folder(desc)});
-if(items.length>=120)break;
+function parse(raw){
+// Strict product layout: title directly followed by a quantity label and a
+// line total. Never infer product names from unrelated nearby document text.
+var lines=String(raw||'').slice(0,60000).replace(/\r/g,'').split('\n').map(clean).filter(Boolean);
+var items=[];
+for(var i=0;i<lines.length-1&&items.length<120;i++){
+ var title=lines[i],n=norm(title);
+ if(/^(qtde|qtd|quantidade|vl\.|valor|total|documento|cnpj|cpf|chave|tributos|pagamento|troco|desconto|subtotal|consumidor|nome|rua|avenida|bairro|data|hora|emissao|serie|numero|nota|nfce|danfe)/.test(n))continue;
+ if(!/^(?:qtde|qtd|quantidade)\b/i.test(lines[i+1]))continue;
+ var detail=lines[i+1],quantity=detail.match(/^(?:qtde|qtd|quantidade)[.:\s]*([\d.,]+)/i);
+ var total=detail.match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})/i);
+ var consumed=1;
+ if(!total&&/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*$/i.test(detail)&&/^[\d.]+,\d{2}$/.test(lines[i+2]||'')){
+   total=[lines[i+2],lines[i+2]];consumed=2;
+ }else if(!total&&/^(?:vl\.?\s*total|valor\s*total)\b/i.test(lines[i+2]||'')){
+   total=lines[i+2].match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})/i);consumed=2;
+   if(!total&&/^[\d.]+,\d{2}$/.test(lines[i+3]||'')){total=[lines[i+3],lines[i+3]];consumed=3;}
+ }
+ var desc=clean(title.replace(/\s*\((?:c[oó]digo|cod)\s*[:.]?\s*\d+\s*\)/i,''));
+ var value=total?num(total[1]):null,qt=quantity?Number(quantity[1].replace(',','.')):null;
+ if(!safeProduct(desc)||!/\p{L}/u.test(desc)||desc.length<4||desc.length>115||!value||!Number.isFinite(qt)||qt<=0||qt>10000)continue;
+ if(/nota fiscal|supermercado|documento|tributo|informac|emitid|chave de acesso/i.test(norm(desc)))continue;
+ // Repeated identical lines can be real purchases; do not silently discard.
+ items.push({name:desc,quantity:qt,total:value,folder:folder(desc)});
+ i+=consumed;
 }
 return items;
 }
@@ -60,23 +67,53 @@ el.innerHTML='<section role="dialog" aria-modal="true" aria-label="'+escape(titl
 document.body.appendChild(el);el.querySelector('#al-consumo-close').onclick=function(){el.remove()};
 return el;
 }
+
+// Candidate purchases are read from their original stores. A fiscal receipt is
+// supporting evidence only: linking it never creates a second financial entry.
+function candidates(receipt){
+ if(typeof Store==='undefined'||!Store.userId||!receipt||receipt.mismatch)return [];
+ var total=num(receipt.total),d=String(receipt.date||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+ if(total===null||!d)return [];
+ var day=d[3]+'-'+d[2]+'-'+d[1],rows=[],groups=new Map();
+ var match=function(v){return Math.round(Number(v)*100)===Math.round(total*100)};
+ var entries=typeof Store.getAnalysisEntries==='function'?Store.getAnalysisEntries():[];
+ entries.forEach(function(e){
+   if(!e||!e.id)return;
+   if(e.source==='card'){
+     if(!e.compraId||e.dataCompra!==day)return;
+     var g=groups.get(String(e.compraId))||{id:String(e.compraId),source:'card',label:e.descricao||'Compra no cartão',total:0};
+     g.total+=Number(e.valor)||0;groups.set(g.id,g);
+   }else if((e.source==='movement'||e.source==='benefit')&&e.data===day&&match(e.valor)){
+     rows.push({id:String(e.id),source:e.source,label:e.descricao||'Compra',total:Number(e.valor)});
+   }
+ });
+ groups.forEach(function(g){if(match(g.total))rows.push(g)});
+ return rows;
+}
+function linkedNotes(source,id){
+ return records().filter(function(n){return n.ledgerSource===source&&String(n.ledgerMovementId)===String(id)});
+}
+
 function review(raw,receipt){
-var parsed=parse(raw);
+var ownerId=typeof Store!=='undefined'&&String(Store.userId||'');
+if(!ownerId)return;
+var parsed=Array.isArray(raw)?raw.filter(function(x){return x&&safeProduct(x.name)&&Number.isFinite(x.quantity)&&x.quantity>0&&Number.isFinite(x.total)&&x.total>0;}).map(function(x){return {name:clean(x.name),quantity:x.quantity,total:x.total,folder:folder(x.name)};}):parse(raw),options=candidates(receipt);
 var body='<p class="text-muted text-sm">Revise produto, quantidade, valor total e pasta. Nada será lançado no banco ou no saldo.</p>';
 body+='<p class="text-sm">Itens reconhecidos: <strong>'+parsed.length+'</strong>. Você pode corrigir as linhas antes de arquivar.</p>';
 body+='<label for="al-consumo-lines" class="form-label">Um produto por linha: nome | quantidade | total</label>';
 body+='<textarea id="al-consumo-lines" rows="9" style="width:100%;font-size:14px;min-height:180px">'+escape(parsed.map(function(x){return x.name+' | '+x.quantity+' | '+x.total.toFixed(2).replace('.',',')}).join('\n'))+'</textarea>';
 body+='<p class="text-muted text-sm">Se nenhum item foi lido, a nota pode ser arquivada sem produtos. O total da compra é independente da soma de itens quando houver descontos.</p>';
+body+='<label for="al-consumo-link" class="form-label">Vincular a uma compra já registrada</label><select id="al-consumo-link" class="input"><option value="">Somente arquivar (sem criar despesa)</option>'+options.map(function(x,i){return '<option value="'+i+'">'+escape(x.label)+' · '+escape(money(x.total))+' · '+escape(x.source==='benefit'?'Benefício':x.source==='card'?'Cartão':'Gasto')+'</option>'}).join('')+'</select>';
 body+='<button type="button" class="btn btn-primary btn-block mt-3" id="al-consumo-save">Confirmar e arquivar nota</button>';
 var el=dialog('Produtos da nota · revisão',body);
 el.querySelector('#al-consumo-save').onclick=function(){
-if(!Store.userId){alert('Entre na conta para arquivar.');return}
+if(!Store.userId||String(Store.userId)!==ownerId){el.remove();alert('A conta mudou. Abra a nota novamente.');return}
 var lines=el.querySelector('#al-consumo-lines').value.split('\n').map(function(x){return x.trim()}).filter(Boolean);
 var list=[],bad=0;
 lines.forEach(function(line){
 var parts=line.split('|').map(function(x){return x.trim()});
 var q=Number((parts[1]||'').replace(',','.')),value=num(parts[2]||'');
-if(parts.length!==3||!parts[0]||parts[0].length>120||!Number.isFinite(q)||q<=0||!value||value<=0){bad++;return}
+if(parts.length!==3||!safeProduct(parts[0])||parts[0].length>120||!Number.isFinite(q)||q<=0||!value||value<=0){bad++;return}
 list.push({name:clean(parts[0]),quantity:q,total:value,folder:folder(parts[0])});
 });
 if(bad){alert('Corrija as linhas inválidas antes de arquivar.');return}
@@ -84,14 +121,28 @@ if(!list.length&&!confirm('Arquivar somente os dados gerais da nota, sem produto
 var keyFiscal=String(receipt&&receipt.fiscalKey||'');
 var prev=records();
 if(keyFiscal&&prev.some(function(x){return x.fiscalKey===keyFiscal})){alert('Esta chave fiscal já foi arquivada nesta conta.');return}
-var total=num(receipt&&receipt.total)||num(receipt&&receipt.paid)||null;
-var note={id:'nota-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),ownerId:String(Store.userId),createdAt:new Date().toISOString(),date:clean(receipt&&receipt.date),merchant:clean(receipt&&receipt.merchant),fiscalKey:keyFiscal,total:total,items:list,ledgerMovementId:null};
+var total=receipt&&!receipt.mismatch?num(receipt.total):null;
+var merchant=clean(receipt&&receipt.merchant),date=clean(receipt&&receipt.date);
+var signature=function(items){return JSON.stringify(items.map(function(x){return [norm(x.name),x.quantity,Math.round(x.total*100)]}).sort(function(a,b){return JSON.stringify(a).localeCompare(JSON.stringify(b))}));};
+if(date&&merchant&&merchant!=='não identificado'&&total!==null&&list.length&&prev.some(function(x){return x.date===date&&norm(x.merchant)===norm(merchant)&&x.total===total&&signature(x.items||[])===signature(list)})){
+if(!confirm('Já existe uma nota com os mesmos dados e produtos. Confira se é uma compra diferente antes de arquivar novamente.'))return;
+}
+var sum=list.reduce(function(a,x){return a+Math.round(x.total*100)},0);
+if(total!==null&&list.length&&sum!==Math.round(total*100)&&!confirm('A soma dos produtos difere do total da nota. Confira descontos ou itens não reconhecidos. Arquivar como leitura parcial?'))return;
+var choice=el.querySelector('#al-consumo-link').value,link=null;
+if(choice!==''){
+ var selected=options[Number(choice)];
+ link=selected&&candidates(receipt).find(function(x){return x.id===selected.id&&x.source===selected.source});
+ if(!link){alert('A compra mudou. Abra a conferência novamente.');return;}
+ if(linkedNotes(link.source,link.id).length){alert('Já existe uma nota vinculada a esta compra. Confira antes de arquivar outra.');return;}
+}
+var note={id:'nota-'+Date.now()+'-'+Math.random().toString(36).slice(2,8),ownerId:String(Store.userId),createdAt:new Date().toISOString(),date:clean(receipt&&receipt.date),merchant:clean(receipt&&receipt.merchant),fiscalKey:keyFiscal,total:total,items:list,ledgerMovementId:link?link.id:null,ledgerSource:link?link.source:null,itemsReconciled:total!==null&&list.length>0&&sum===Math.round(total*100)};
 Store.settings=Store.settings||{};
 Store.settings[key()]=prev.concat(note);
 Store.save();
 el.remove();
 if(window.AlicerceIA&&Array.isArray(AlicerceIA._messages)){
-var answer='Arquivei a nota com '+list.length+' produtos organizados em pastas. O arquivo de consumo não altera seu saldo nem cria despesa. Posso analisar seus preços por produto.';
+var answer='Arquivei a nota com '+list.length+' produtos organizados em pastas. O arquivo de consumo não altera seu saldo nem cria despesa. '+(link?'Vinculei os produtos à compra selecionada. ':'A nota permanece sem vínculo financeiro. ')+'Posso analisar seus preços por produto.';
 AlicerceIA._messages.push({role:'assistant',text:answer});
 AlicerceIA._answer=answer;
 if(typeof render==='function')render();
@@ -133,5 +184,5 @@ data.slice().reverse().slice(0,50).forEach(function(r){html+='<p class="text-sm"
 html+='</details>';
 dialog('Minhas pastas de consumo',html);
 }
-window.AlicerceConsumo={parse:parse,review:review,open:open,summary:summary,records:records};
+window.AlicerceConsumo={parse:parse,review:review,open:open,summary:summary,records:records,candidates:candidates,linkedNotes:linkedNotes};
 })();

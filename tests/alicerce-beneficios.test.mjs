@@ -71,3 +71,56 @@ test("A tela e o menu estão conectados ao aplicativo",()=>{
  assert.match(html,/alicerceBeneficioAdicionar/);
  assert.match(html,/Meus benefícios/);
 });
+
+test("Projeção central inclui somente compras de benefício e não duplica saldo",()=>{
+ const store=st(), w=B.addWallet(store,"pluxee",true).wallet;
+ B.addEntry(store,w.id,"credit","500","2026-11-01","Recarga");
+ B.addEntry(store,w.id,"debit","80","2026-11-23","Mercado",{category:"comida",subcategory:"mercado",purpose:"familia"});
+ B.setBalance(store,w.id,"400","2026-11-23");
+ const before=JSON.stringify(store.settings), saves=store.count;
+ const rows=B.spendingEntries(store);
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].valor,80);
+ assert.equal(rows[0].categoria,"comida");
+ assert.equal(rows[0].purpose,"familia");
+ assert.equal(rows[0].benefitWalletId,w.id);
+ assert.equal(B.spendingEntries(store)[0].id,rows[0].id);
+ assert.equal(JSON.stringify(store.settings),before);
+ assert.equal(store.count,saves);
+ assert.equal(B.balance(w),400);
+ assert.equal(store.movements.length,0);
+ assert.equal(B.spendingEntries(st("outro")).length,0);
+ const debit=w.entries.find(e=>e.kind==="debit");
+ B.updateEntry(store,w.id,debit.id,"65","2026-11-23","Mercado corrigido");
+ assert.equal(B.spendingEntries(store)[0].valor,65);
+ assert.equal(B.spendingEntries(store)[0].id,rows[0].id);
+ assert.equal(B.removeEntry(store,w.id,debit.id),true);
+ assert.equal(B.spendingEntries(store).length,0);
+});
+test("Tela de gastos e categorias consultam a mesma projeção",()=>{
+ assert.match(html,/const spendingItems=Store\.getAnalysisEntries\(\)/);
+ assert.match(html,/this\.getAnalysisEntries\(\)\.filter\(r=>r\.data\.slice/);
+ assert.match(html,/gastosAcoesCorrecao\(m\)/);
+});
+
+test("Leitura fiscal conserva produtos repetidos e rejeita identificadores explícitos",()=>{
+ const context={Store:{userId:"synthetic-test",settings:{}},Intl,Date,Math,Map};context.window=context;
+ vm.runInNewContext(readFileSync(new URL("../assets/alicia-consumo-pastas.js",import.meta.url),"utf8"),context);
+ const parsed=context.AlicerceConsumo.parse([
+ "CPF: 000.000.000-00","Qtde:1 Vl. Total 9,99",
+ "FAROFA PRONTA 400G (Código: 12345)","Qtde:1 UN Vl. Unit.: 7,99 Vl. Total","7,99",
+ "FAROFA PRONTA 400G (Código: 12345)","Qtde:1 UN Vl. Total 7,99",
+ "Email: exemplo@example.invalid","Qtde:1 Vl. Total 1,00",
+ "Nome: Pessoa Fictícia","Qtde:1 Vl. Total 1,00"
+ ].join("\n"));
+ assert.equal(parsed.length,2);
+ assert.equal(parsed[0].name,"FAROFA PRONTA 400G");
+ assert.equal(parsed[0].total,7.99);
+ assert.equal(parsed[1].total,7.99);
+ assert.equal(parsed.some(x=>/cpf|email|pessoa/i.test(x.name)),false);
+});
+test("Fluxo de documentos não envia OCR bruto ao interpretador remoto",()=>{
+ assert.doesNotMatch(html,/input_source:\s*['"]ocr['"]/);
+ assert.doesNotMatch(html,/_receiptOCR\s*=\s*String\(/);
+ assert.match(html,/return \{amount:amount,recipient:'',date:date,incoming:incoming\}/);
+});
