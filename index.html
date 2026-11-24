@@ -10832,6 +10832,7 @@ function renderGastos(){
       html+='<div style="margin-top:10px;color:var(--negative);font-weight:750">A descrição parece conter texto OCR de uma fatura inteira. Confira valor, data e situação do pagamento: podem estar incorretos.</div>';
       html+='<button type="button" class="btn btn-secondary btn-sm mt-2" data-id="'+safe(m.id)+'" onclick="alicerceExcluirLancamentoOcrIncorreto(this.getAttribute(\'data-id\'))">Excluir registro incorreto</button>';
     }
+    html+=gastosAcoesCorrecao(m);
     html+='</div></details>';
   });
 
@@ -10859,21 +10860,7 @@ renderGastos=function(){
       const month=(Number.isInteger(Number(data.month))&&Number(data.month)>=1&&Number(data.month)<=12)?Number(data.month):now.getMonth()+1;
       const year=(Number.isInteger(Number(data.year))&&Number(data.year)>=2000)?Number(data.year):now.getFullYear();
       const period=year+'-'+String(month).padStart(2,'0');
-      const movements=Array.isArray(Store.movements)?Store.movements:[];
-      const installments=Array.isArray(Store.installments)?Store.installments:[];
-      const rows=[];
-      movements.forEach(m=>{
-        try{
-          if(m&&m.tipo==='despesa'&&String(m.data||'').slice(0,7)===period)
-            rows.push({id:m.id,descricao:m.descricao||m.item||'Despesa',data:m.data,valor:Number(m.valor)||0,cat:m.categoria||'outros'});
-        }catch(e){console.warn('[Alicerce Gastos] Registro ignorado:',e)}
-      });
-      installments.forEach(i=>{
-        try{
-          if(i&&i.tipo==='cartao'&&i.compraId&&String(i.data||'').slice(0,7)===period)
-            rows.push({id:i.id,descricao:i.descricao||'Compra no cartão',data:i.data,valor:Number(i.valor)||0,cat:i.categoria||'outros'});
-        }catch(e){console.warn('[Alicerce Gastos] Parcela ignorada:',e)}
-      });
+      const rows=Store.getAnalysisEntries().filter(m=>m.data.slice(0,7)===period);
       rows.sort((a,b)=>String(b.data||'').localeCompare(String(a.data||'')));
       const total=rows.reduce((sum,m)=>sum+(Number(m.valor)||0),0);
       let html='<main class="content" id="alicerce-gastos-screen" style="padding:18px 16px 110px;max-width:460px;margin:auto">';
@@ -10883,7 +10870,7 @@ renderGastos=function(){
       html+='<div role="status" style="font-size:12px;line-height:1.5;margin:14px 0;padding:12px;border:1px solid var(--line);border-radius:12px">Exibição simplificada temporária. Seus lançamentos não foram alterados. Algumas informações podem não aparecer aqui.</div>';
       if(!rows.length)html+='<p>Nenhum gasto registrado neste mês.</p>';
       rows.forEach(m=>{
-        html+='<div style="padding:14px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;gap:12px"><strong style="overflow-wrap:anywhere">'+safe(m.descricao)+'</strong><strong style="white-space:nowrap">'+money(m.valor)+'</strong></div><div style="font-size:12px;opacity:.68;margin-top:5px">'+safe(String(m.data||'').slice(0,10))+' · '+safe(m.cat)+'</div></div>';
+        html+='<details style="border-bottom:1px solid var(--line);padding:14px 0"><summary style="cursor:pointer"><strong>'+safe(m.descricao||'Despesa')+'</strong> · '+money(m.valor)+'</summary><div style="padding:10px 0;font-size:12px">'+safe(m.data)+' · '+safe(m.categoria||'outros')+'<div>'+safe(m.pagamento||'')+'</div>'+gastosAcoesCorrecao(m)+'</div></details>';
       });
       html+='<button type="button" class="btn btn-secondary mt-3" onclick="go(\'home\')">Voltar ao início</button></main>';
       return html;
@@ -10893,6 +10880,73 @@ renderGastos=function(){
     }
   }
 };
+
+
+function gastosAcoesCorrecao(m){
+  const attrs=' data-source="'+esc(m.source||'')+'" data-id="'+esc(m.id||'')+'"';
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px"><button type="button" class="btn btn-secondary btn-sm"'+attrs+' onclick="gastosCorrigir(this.dataset.source,this.dataset.id)">Corrigir gasto</button><button type="button" class="btn btn-secondary btn-sm"'+attrs+' onclick="gastosExcluir(this.dataset.source,this.dataset.id)">Excluir registro</button></div>';
+}
+function gastosOrigem(source,id){
+  if(!Store.userId)return null;
+  const row=Store.getAnalysisEntries().find(r=>r.source===source&&String(r.id)===String(id));
+  if(!row)return null;
+  if(source==='benefit'){
+    const w=window.AlicerceBeneficios.wallets(Store).find(w=>String(w.id)===String(row.benefitWalletId));
+    const e=w&&w.entries.find(e=>'benefit:'+w.id+':'+e.id===id&&e.kind==='debit');
+    return e?{row:row,entry:e,wallet:w}:null;
+  }
+  const collection=source==='movement'?Store.movements:source==='card'?Store.installments:null;
+  const entry=collection&&collection.find(e=>String(e.id)===String(id));
+  return entry?{row:row,entry:entry}:null;
+}
+function gastosVinculado(entry){
+  return !!(entry.loanId||entry.compraId||entry.cardId||entry.installmentId||entry.commitmentId||entry.cashMovementId||entry.receiptFiscalKey||entry.documentId||
+    (Store.installments||[]).some(i=>i&&String(i.cashMovementId||'')===String(entry.id))||
+    (Store.settings&&Array.isArray(Store.settings.consumptionReceiptsV1)&&Store.settings.consumptionReceiptsV1.some(n=>n&&String(n.ledgerMovementId||'')===String(entry.id))));
+}
+function gastosCorrigir(source,id){
+  const target=gastosOrigem(source,id);
+  if(!target){showToast('Registro não encontrado.');return;}
+  if(source==='benefit'){
+    go('beneficios',{benefitWalletId:target.wallet.id,benefitSection:'history',benefitEditEntryId:target.entry.id});return;
+  }
+  if(source==='card'||gastosVinculado(target.entry)){
+    if(target.row.cardId){go('cardDetail',{cardId:target.row.cardId});}
+    else showToast('Este gasto está vinculado a outro registro. Corrija na origem para preservar o saldo.');
+    return;
+  }
+  const owner=String(Store.userId),entry=target.entry;
+  const name=window.prompt('Descrição correta:',entry.descricao||entry.item||'');
+  if(name===null)return;
+  const value=window.prompt('Valor correto (R$):',String(entry.valor).replace('.',','));
+  if(value===null)return;
+  const date=window.prompt('Data correta (AAAA-MM-DD):',entry.data||'');
+  if(date===null)return;
+  const amount=Number(String(value).trim().replace(',','.'));
+  const parsed=new Date(date+'T12:00:00Z');
+  if(!name.trim()||name.trim().length>120||!/^\d{1,8}(?:[.,]\d{1,2})?$/.test(value.trim())||!Number.isFinite(amount)||amount<=0||!/^\d{4}-\d{2}-\d{2}$/.test(date)||isNaN(parsed.getTime())||parsed.toISOString().slice(0,10)!==date){showToast('Confira descrição, valor e data. Nada foi alterado.');return;}
+  if(!window.confirm('Substituir este gasto por '+fmtMoney(amount)+' em '+date+'? O saldo e os totais serão recalculados.'))return;
+  const current=gastosOrigem(source,id);
+  if(String(Store.userId)!==owner||!current||current.entry!==entry||gastosVinculado(entry)){showToast('O registro mudou. Abra novamente.');return;}
+  entry.descricao=name.trim();entry.valor=Math.round(amount*100)/100;entry.data=date;entry.updatedAt=new Date().toISOString();
+  Store.save();showToast('Gasto corrigido.');render();
+}
+function gastosExcluir(source,id){
+  const target=gastosOrigem(source,id);
+  if(!target){showToast('Registro não encontrado.');return;}
+  if(source==='card'||(source==='movement'&&gastosVinculado(target.entry))){
+    showToast('Registro vinculado. Corrija na origem para não comprometer parcelas ou pagamentos.');return;
+  }
+  const owner=String(Store.userId);
+  if(!window.confirm('Excluir o registro de '+fmtMoney(target.row.valor)+'? Isso altera os totais e o saldo correspondente.'))return;
+  const current=gastosOrigem(source,id);
+  if(String(Store.userId)!==owner||!current||current.entry!==target.entry)return;
+  if(source==='benefit'){
+    if(!window.AlicerceBeneficios.removeEntry(Store,current.wallet.id,current.entry.id)){showToast('Não foi possível excluir. Confira o saldo do benefício.');return;}
+  }else if(source==='movement'&&!gastosVinculado(current.entry)){Store.removeMovement(current.entry.id);}
+  else return;
+  showToast('Registro excluído.');render();
+}
 
 function alicerceExcluirLancamentoOcrIncorreto(id){
   var row=(Store.movements||[]).find(function(item){return item&&String(item.id)===String(id);});
