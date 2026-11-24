@@ -5084,6 +5084,7 @@ const AlicerceIA = {
       this._answer='';
       this._messages=[];
       this._pendingExpenseDraft=null;
+      this._lastChatExpenseId=null;
       this._pendingExpenseEdit=null;
       this._spendingConversation=null;
       this._pendingFinancialReview=null;
@@ -5658,7 +5659,8 @@ AlicerceIA.limparConversa=function(){
   this._historyLoadedForUser=userId;
   this._messages=[];
   this._pendingExpenseDraft=null;
-  this._pendingExpenseEdit=null;
+  this._lastChatExpenseId=null;
+      this._pendingExpenseEdit=null;
   this._spendingConversation=null;
   this._pendingFinancialReview=null;
   this._pendingBenefitPurchase=null;
@@ -6293,6 +6295,38 @@ AlicerceIA._tratarEdicao=function(message,row){
     else this._responderNoChat('Diga o que precisa mudar antes de confirmar.');
     return true;
   }
+  var cardPhrase=q.split(/ mas (?:eu )?(?:lancei|registrei|adicionei|coloquei|cadastrei) /)[0];
+  var wantsCard=!/\b(?:nao|parcelad[oa]|parcelas?|emprestado)\b/.test(cardPhrase)&&/\b(?:foi|era|paguei|passei|assinatura|compra)\b.*\b(?:no|em|com o) (?:cartao|credito|debito)\b/.test(cardPhrase);
+  if(pending.cardCorrection&&/\b(?:nao|parcelad[oa]|parcelas?|emprestado)\b/.test(q)){
+    this._pendingExpenseEdit=null;this._responderNoChat('Correção interrompida. Posso corrigir uma compra à vista no seu próprio cartão.');return true;
+  }
+  if(wantsCard||pending.cardCorrection){
+    pending.token='';
+    var cards=Store.cards||[];
+    if(!cards.length){
+      this._pendingExpenseEdit=null;
+      this._responderNoChat('Cadastre o cartão em Cartões e depois peça a correção pelo nome da despesa.');
+      return true;
+    }
+    pending.cardCorrection=true;
+    this._pendingExpenseEdit=pending;
+    var mode=cardPhrase.match(/\b(credito|debito)\b/);
+    if(mode&&!/credito .*debito|debito .*credito/.test(cardPhrase))pending.cardType=mode[1];
+    var options=cards.map(function(card,i){return (i+1)+' · '+card.nome;});
+    var selected=cards.filter(function(card,i){
+      return q===String(i+1)||q===AlicerceIA._norm(card.nome);
+    });
+    if(selected.length===1)pending.cardId=selected[0].id;
+    else if(cards.length===1)pending.cardId=cards[0].id;
+    if(!pending.cardId){this._responderNoChat('Qual cartão você usou? '+options.join(' / '));return true;}
+    if(!pending.cardType){this._responderNoChat('Foi no crédito ou no débito?');return true;}
+    var card=cards.find(function(c){return c.id===pending.cardId;});
+    var expense=Store.movements.find(function(m){return m.id===pending.id;});
+    if(!card||!expense){this._pendingExpenseEdit=null;this._responderNoChat('O cartão ou a despesa mudou. Confira o lançamento.');return true;}
+    pending.token=Store._uid();
+    this._responderNoChat('Corrigir '+expense.descricao+' · '+fmtMoney(expense.valor)+' · '+formatDateBR(expense.data)+' para '+card.nome+' no '+(pending.cardType==='credito'?'crédito à vista':'débito')+'?',pending.token);
+    return true;
+  }
   if(!row&&!/^(?:foi|era|o valor|valor|na verdade|troque|mude|corrig\w*|a data|data|paguei (?:em|no)|pix|dinheiro|anteontem|ontem|hoje|em|no)\b/.test(q))return false;
   if(!row&&/^(?:pix|dinheiro)$/.test(q))message='Foi '+q;
   var change=editor.changes(message,function(date){return AlicerceIA._extractExpenseDate(date,true);});
@@ -6330,6 +6364,28 @@ AlicerceIA.confirmarEdicao=function(token){
   if(!pending||!token||pending.token!==token||!Store.userId||Store.userId!==pending.ownerId)return;
   this._pendingExpenseEdit=null;
   var index=Store.movements.findIndex(function(item){return item&&item.id===pending.id;});
+  if(pending.cardCorrection){
+    var row=Store.movements[index];
+    var check=window.AlicerceEdicaoChat.updated(row,pending.original,pending.original,Store.userId);
+    var card=(Store.cards||[]).find(function(c){return c.id===pending.cardId;});
+    if(!check.unchanged||!card){this._responderNoChat('O lançamento ou o cartão mudou. Confira os dados novamente.');return;}
+    if(pending.cardType==='credito'){
+      var invoiceId='correcao-'+row.id;
+      if(!Store.installments.some(function(it){return it.id===invoiceId;})){
+        var installment=Store.addInstallment(Object.assign({},row,{id:invoiceId,compraId:invoiceId,tipo:'cartao',
+          forma:'cartao',paymentMethod:'cartao',cardType:'credito',cardId:card.id,dataCompra:row.data,
+          data:vencimentoCompraCartao(card,row.data,0),status:'pendente',parcelaAtual:1,parcelas:1,
+          responsavel:'Eu',local:row.estabelecimento||''}));
+        if(!installment){this._responderNoChat('Não consegui vincular a compra à fatura. Confira o lançamento.');return;}
+      }
+      Store.removeMovement(row.id);
+    }else{
+      Store.movements[index]=Object.assign({},row,{forma:'cartao',paymentMethod:'cartao',cardType:'debito',cardId:card.id,cardOwnerType:'meu'});
+      Store.save();
+    }
+    this._responderNoChat('Corrigi o pagamento de '+row.descricao+' para '+card.nome+'.');
+    return;
+  }
   var result=window.AlicerceEdicaoChat.updated(Store.movements[index],pending.original,pending.next,Store.userId);
   if(!result.record){this._responderNoChat(result.error||'O lançamento já tem esses valores.');return;}
   var movements=Store.movements.slice();
@@ -6370,6 +6426,13 @@ AlicerceIA.enviarMensagem=async function(question){
   var contextTurn=Store.lang==='pt'&&conversation?conversation.turn(questionForEngine,this._spendingConversation):null;
   var awaitingReply=this._pendingExpenseDraft||this._pendingExpenseEdit||this._pendingFinancialReview||this._pendingBenefitPurchase;
   if(awaitingReply&&!/^(?:e|quanto|compare|compara)\b/.test(this._norm(questionForEngine)))contextTurn=null;
+  var lastId=this._lastChatExpenseId;
+  this._lastChatExpenseId=null;
+  var shortCorrection=/^(?:(?:opa|na verdade|corrigindo) )?(?:foi|era|paguei) (?:no |em |com |com o |via )?(?:cartao(?: de (?:credito|debito))?|credito|debito|pix|dinheiro)$/.test(this._norm(message));
+  if(lastId&&shortCorrection&&!awaitingReply){
+    var recent=Store.movements.find(function(row){return row.id===lastId;});
+    if(recent&&this._tratarEdicao(message,recent))return;
+  }
   var moneyIntent=this._entenderMovimentacao(message);
   if(moneyIntent&&moneyIntent.movementId){
     var original=(Store.movements||[]).find(function(row){return row&&row.id===moneyIntent.movementId;});
@@ -15349,6 +15412,7 @@ function confirmGastoInteligente(){
   const movementPurpose=String(data.purpose||interp.purpose||'').trim();
   if(movementPurpose)movementPayload.purpose=movementPurpose;
   const mv=Store.addMovement(movementPayload);
+  if(mv&&data.aliciaOrigin)AlicerceIA._lastChatExpenseId=mv.id;
   if(data.classificationCorrection&&interp.merchant){
     Store.learnCorrection(interp.merchant,interp.categoria,interp.subcategoria,interp.item);
   }
@@ -15605,6 +15669,26 @@ function validateDoubtGasto(){
   button.disabled=!valid;
 }
 
+function vencimentoCompraCartao(card,dataCompra,indice){
+  const fechamento=Number(card.fechamento)||null;
+  const vencimento=Number(card.vencimento)||0;
+  const dataBase=new Date(dataCompra+'T00:00:00');
+
+  let deslocamento=1;
+  if(fechamento){
+    deslocamento=(dataBase.getDate()>fechamento?1:0)+(vencimento&&vencimento<=fechamento?1:0);
+  }
+
+  const d=new Date(dataBase);
+  d.setDate(1);
+  d.setMonth(d.getMonth()+deslocamento+indice);
+  if(vencimento){
+    const ultimoDia=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+    d.setDate(Math.min(vencimento,ultimoDia));
+  }
+
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
 function salvarGastoCreditoCartao(data,interp){
   const cardId=String(data.cardId||'');
   const card=(Store.cards||[]).find(function(c){return String(c.id)===cardId;});
@@ -15628,39 +15712,19 @@ function salvarGastoCreditoCartao(data,interp){
     return false;
   }
 
-  const fechamento=Number(card.fechamento)||null;
-  const vencimento=Number(card.vencimento)||0;
-  const dataBase=new Date(dataCompra+'T00:00:00');
-  if(isNaN(dataBase.getTime())){
-    showToast('Data da compra inválida.');
-    return false;
-  }
-
-  let deslocamento=1;
-  if(fechamento){
-    deslocamento=(dataBase.getDate()>fechamento?1:0)+(vencimento&&vencimento<=fechamento?1:0);
-  }
-
+  if(!Number.isFinite(new Date(dataCompra+'T00:00:00').getTime()))return false;
   const compraId='compra-'+Date.now()+'-'+Math.random().toString(36).slice(2,8);
   const ids=[];
   const valorParcela=Math.round((valor/parcelas)*100)/100;
   let acumulado=0;
 
   for(let i=0;i<parcelas;i++){
-    const d=new Date(dataBase);
-    d.setDate(1);
-    d.setMonth(d.getMonth()+deslocamento+i);
-    if(vencimento){
-      const ultimoDia=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
-      d.setDate(Math.min(vencimento,ultimoDia));
-    }
-
     const parcelaValor=i===parcelas-1
       ?Math.round((valor-acumulado)*100)/100
       :valorParcela;
     acumulado+=parcelaValor;
 
-    const dataVencimento=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    const dataVencimento=vencimentoCompraCartao(card,dataCompra,i);
     const item=Store.addInstallment({
       cardId:cardId,
       tipo:'cartao',

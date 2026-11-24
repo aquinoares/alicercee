@@ -30,3 +30,29 @@ test('rejeita mudança de conta, correção desatualizada e registros vinculados
   assert.ok(editor.updated(original, before, { ...next, date: '2026-02-30' }, 'a').error);
   assert.ok(editor.changes('Foi no cartão, mas lancei no Pix', () => '').error);
 });
+
+test('corrige o Pix da conversa só após escolher o cartão, o tipo e confirmar', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url),'utf8');
+  for (const type of ['credito','debito']) {
+    const row = {...original, descricao:'Assinatura GPT'};
+    const store = {userId:'a', movements:[row], installments:[], cards:[{id:'n',nome:'Banco A'},{id:'b',nome:'Banco B',fechamento:20,vencimento:10}],
+      _uid:()=>'token', addInstallment(i){this.installments.push(i);return i;},
+      removeMovement(id){this.movements=this.movements.filter(m=>m.id!==id);},save(){}};
+    const assistant = {_resetUser(){},_norm:s=>s.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim(),_responderNoChat(){}};
+    const ctx={AlicerceIA:assistant,window:scope,Store:store,fmtMoney:String,formatDateBR:String};
+    vm.runInNewContext(html.slice(html.indexOf('AlicerceIA._tratarEdicao='),html.indexOf('AlicerceIA.cancelarEdicao=')),ctx);
+    vm.runInNewContext(html.slice(html.indexOf('function vencimentoCompraCartao'),html.indexOf('function salvarGastoCreditoCartao')),ctx);
+    assert.ok(assistant._tratarEdicao('opa, foi no cartao',row));
+    assistant._tratarEdicao('2');
+    assistant._tratarEdicao(type);
+    assert.equal(store.movements[0].forma,'pix');
+    assistant.confirmarEdicao('token');
+    assistant.confirmarEdicao('token');
+    assert.equal(store.movements.length + store.installments.length,1);
+    const corrected=(type==='credito'?store.installments:store.movements)[0];
+    assert.equal(corrected.cardId,'b');
+    assert.equal(corrected.valor,50);
+    assert.equal(corrected.dataCompra||corrected.data,row.data);
+    if(type==='credito')assert.equal(corrected.data,'2027-01-10');
+  }
+});
