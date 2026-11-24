@@ -25,6 +25,11 @@ if(typeof Store==='undefined'||!Store.userId)return [];
 var v=Store.settings&&Store.settings[key()];
 return Array.isArray(v)?v.filter(function(x){return x&&x.ownerId===String(Store.userId)}):[];
 }
+function safeProduct(value){
+ var v=norm(value);
+ // Reject identifiers and contact/banking labels rather than attempting to retain redacted fragments.
+ return !!v&&!/\b(cpf|cnpj|rg|pix|chave|cliente|consumidor|destinatario|beneficiario|favorecido|telefone|celular|email|e-mail|endereco|logradouro|cep|agencia|conta bancaria|autenticacao|protocolo|titular|pagador|recebedor)\b/.test(v)&&!/@|\b\d{5,}\b|\b\d{3}[.\s]\d{3}[.\s]\d{3}[-\s]\d{2}\b|\b\d{2}[.\s]\d{3}[.\s]\d{3}[/\s]\d{4}[-\s]\d{2}\b/.test(v);
+}
 function parse(raw){
 var lines=String(raw||'').replace(/\r/g,'').split('\n').map(clean).filter(Boolean);
 var items=[];
@@ -44,7 +49,7 @@ if(!total||!/\p{L}/u.test(title)||title.length<4||title.length>115)continue;
 var desc=clean(title.replace(/\s*\((?:c[oó]digo|cod)\s*[:.]?\s*\d+\s*\)/i,''));
 var value=num(total[1]);
 var qt=quantity?Number(quantity[1].replace(',','.')):1;
-if(!value||!Number.isFinite(qt)||qt<=0||qt>10000)continue;
+if(!safeProduct(desc)||!value||!Number.isFinite(qt)||qt<=0||qt>10000)continue;
 if(/nota fiscal|supermercado|cnpj|documento|tributo|informac|emitid|consumidor|chave de acesso/i.test(norm(desc)))continue;
 if(items.some(function(x){return x.name===desc&&x.total===value}))continue;
 items.push({name:desc,quantity:qt,total:value,folder:folder(desc)});
@@ -90,7 +95,7 @@ function linkedNotes(source,id){
 function review(raw,receipt){
 var ownerId=typeof Store!=='undefined'&&String(Store.userId||'');
 if(!ownerId)return;
-var parsed=parse(raw),options=candidates(receipt);
+var parsed=Array.isArray(raw)?raw.filter(function(x){return x&&safeProduct(x.name)&&Number.isFinite(x.quantity)&&x.quantity>0&&Number.isFinite(x.total)&&x.total>0;}).map(function(x){return {name:clean(x.name),quantity:x.quantity,total:x.total,folder:folder(x.name)};}):parse(raw),options=candidates(receipt);
 var body='<p class="text-muted text-sm">Revise produto, quantidade, valor total e pasta. Nada será lançado no banco ou no saldo.</p>';
 body+='<p class="text-sm">Itens reconhecidos: <strong>'+parsed.length+'</strong>. Você pode corrigir as linhas antes de arquivar.</p>';
 body+='<label for="al-consumo-lines" class="form-label">Um produto por linha: nome | quantidade | total</label>';
@@ -106,7 +111,7 @@ var list=[],bad=0;
 lines.forEach(function(line){
 var parts=line.split('|').map(function(x){return x.trim()});
 var q=Number((parts[1]||'').replace(',','.')),value=num(parts[2]||'');
-if(parts.length!==3||!parts[0]||parts[0].length>120||!Number.isFinite(q)||q<=0||!value||value<=0){bad++;return}
+if(parts.length!==3||!safeProduct(parts[0])||parts[0].length>120||!Number.isFinite(q)||q<=0||!value||value<=0){bad++;return}
 list.push({name:clean(parts[0]),quantity:q,total:value,folder:folder(parts[0])});
 });
 if(bad){alert('Corrija as linhas inválidas antes de arquivar.');return}
