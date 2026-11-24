@@ -358,3 +358,25 @@ testCase('não marca conta antiga como paga quando o lançamento da saída falha
   assert.equal(Store.commitments[0].paymentStatus, 'pendente');
   assert.equal(Store.movements.length, 0);
 });
+
+testCase('cumprimentos no chat mantêm a revisão aberta até chegar uma finalidade', async () => {
+  const { Store, AlicerceIA, api } = createContext();
+  const review = {current:{id:'pix', source:'movement'}, handled:[]};
+  const pix = {id:'pix', valor:5.30};
+  Store.movements.push(pix);
+  AlicerceIA._pendingFinancialReview = review;
+  const routed = [];
+  AlicerceIA.enviarMensagem = function(message){routed.push(message);};
+  api.install();
+  for (const message of ['Bom dia alicia','Oi, Alícia! Tudo bem?', 'Boa noite!', 'Obrigada']) {
+    await AlicerceIA.enviarMensagem(message);
+    assert.match(AlicerceIA._answer,/gasto que estamos revisando/);
+    assert.equal(AlicerceIA._pendingFinancialReview,review);
+    assert.equal(Store.saveCalls,0);
+  }
+  assert.equal(routed.length,0);
+  await AlicerceIA.enviarMensagem('Bom dia, Alícia! Foi para comprar pão');
+  assert.deepEqual(routed,['Foi para comprar pão']);
+  await AlicerceIA.enviarMensagem('mercado Bom Dia');
+  assert.equal(routed[1],'mercado Bom Dia');
+});

@@ -20,6 +20,19 @@
       .replace(/\s+/g, ' ').trim();
   }
 
+  function conversationalOpening(message) {
+    var opening = message.match(/^(?:al[ií]cia[\s,!:.-]+)?(bom dia|boa tarde|boa noite|oi+|ol[aá]|opa|e a[ií])(?=$|[\s,!.?:-])[\s,!.?:-]*(?:al[ií]cia\b[\s,!.?:-]*)?/iu);
+    var rest = opening ? message.slice(opening[0].length).trim() : message;
+    var smallTalk = normalize(rest).replace(/^(?:alicia )|(?: alicia)$/g, '');
+    var courtesy = /^(?:tudo (?:bem|bom|certo)(?: (?:com (?:voce|vc)|por ai))?|como (?:vai|voce (?:esta|ta)|vc (?:esta|ta))|obrigad[oa](?: mesmo)?|valeu)$/;
+    if (!opening && !courtesy.test(smallTalk)) return null;
+    if (rest && !courtesy.test(smallTalk)) return {remaining: rest};
+    if (/^(?:obrigad|valeu)/.test(smallTalk)) return {reply: 'Por nada!'};
+    var greeting = opening ? normalize(opening[1]) : '';
+    var replies = {'bom dia':'Bom dia!', 'boa tarde':'Boa tarde!', 'boa noite':'Boa noite!'};
+    return {reply: (replies[greeting] || 'Oi!') + (smallTalk ? ' Tudo bem por aqui.' : '')};
+  }
+
   function today() {
     try {
       if (typeof Clock !== 'undefined' && Clock && typeof Clock.today === 'function') {
@@ -773,11 +786,20 @@
         this._resetUser();
         var input = typeof document !== 'undefined' ? document.getElementById('alicerce-assistant-input') : null;
         var message = String(question !== undefined ? question : (input ? input.value : '') || '').trim();
+        if (question === undefined && this._photoTextPending) return originalSend.apply(this, arguments);
+        var opening = conversationalOpening(message);
+        if (opening && opening.reply) {
+          var invitation = this._pendingFinancialReview
+            ? ' Quando quiser, me conte para que foi o gasto que estamos revisando.'
+            : ' Como posso te ajudar?';
+          return respond(this, message, opening.reply + invitation);
+        }
+        if (opening) message = opening.remaining;
         if (message) {
           var handled = handleMessage(this, message);
           if (handled !== null && handled !== undefined) return respond(this, message, handled);
         }
-        return originalSend.apply(this, arguments);
+        return opening ? originalSend.call(this, message) : originalSend.apply(this, arguments);
       };
       sendWrapped._aliciaFollowupWrapped = true;
       AlicerceIA.enviarMensagem = sendWrapped;
