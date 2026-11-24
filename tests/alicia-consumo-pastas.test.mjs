@@ -46,3 +46,16 @@ test('detecta aumentos comparáveis antes da data final e agrupa compras no mesm
   assert.equal(response.items[0].previous, 6);
   assert.equal(response.items[0].delta, 1.33);
 });
+
+test('separa campos em linhas, produtos por peso e totais do cupom', () => {
+  const items = moduleWithReceipts().parse([
+    'FAROFA PRONTA YOKI 400G (Código: 75512)', 'Qtde.:1', 'UN: UN0001',
+    'Vl. Unit.: 7,99', 'Vl. Total', '7,99',
+    '10472 BISC TUCS PIZZA 100G 2 UN 2,19 4,38',
+    '123 BANANA 0,500 KG x 8,00 4,00', 'TOTAL 16,37',
+    '234 PRODUTO ILEGÍVEL 2 UN 8,00 1,00'
+  ].join('\n'));
+  assert.deepEqual(Array.from(items, i => [i.name,i.quantity,i.total]), [
+    ['FAROFA PRONTA YOKI 400G',1,7.99],['BISC TUCS PIZZA 100G',2,4.38],['BANANA',0.5,4]
+  ]);
+});

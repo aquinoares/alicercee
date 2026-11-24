@@ -26,24 +26,34 @@ var v=Store.settings&&Store.settings[key()];
 return Array.isArray(v)?v.filter(function(x){return x&&x.ownerId===String(Store.userId)}):[];
 }
 function parse(raw){
-var lines=String(raw||'').replace(/\r/g,'').split('\n').map(clean).filter(Boolean);
+var lines=String(raw||'').replace(/\r/g,'').split('\n').map(function(line){return line.trim().replace(/\s+/g,' ')}).filter(Boolean);
 var items=[];
 for(var i=0;i<lines.length;i++){
 var title=lines[i],n=norm(title);
 if(/^(qtde|qtd|vl\.|valor|total|documento|cnpj|cpf|chave|tributos|pagamento|troco|desconto|subtotal|consumidor)/.test(n))continue;
+// Cupom impresso: código, descrição, quantidade, unidade, preço e total.
+var printed=title.match(/^(?:\d{1,14}\s+)?(.+?\p{L}.*?)\s+(\d+(?:,\d{1,3})?)\s*(?:UN|KG|LT|L|PC|CX|PCT)\s+(?:[xX]\s*)?(\d[\d.]*,\d{2})\s+(\d[\d.]*,\d{2})$/iu);
+var quantity,total;
+if(printed){
+title=printed[1];
+quantity=[null,printed[2]];
+total=[null,printed[4]];
+var expected=Number(printed[2].replace(',','.'))*num(printed[3]);
+if(Math.abs(expected-num(printed[4]))>0.011)continue;
+}else{
 var inline=title.match(/^(.+?)\s+(?=\b(?:qtde|qtd)[.:\s])/i);
 if(inline)title=inline[1].trim();
-var detail=inline?lines[i]:lines[i+1]||'';
-var quantity=detail.match(/\b(?:qtde|qtd)[.:\s]*([\d.,]+)/i);
+var start=i+(inline?0:1);
+var detail=inline?lines[start].slice(title.length):lines[start]||'';
+quantity=detail.match(/^\s*(?:qtde|qtd)[.:\s]*([\d.,]+)/i);
 if(!quantity)continue;
-var nextIndex=i+(inline?1:2);
-var following=lines[nextIndex]||'';
-if(/^\s*(?:vl\.?\s*total|valor\s*total)\b/i.test(following)){
-detail+=' '+following;
-following=lines[nextIndex+1]||'';
+for(var j=start+1;j<lines.length&&j<=start+7;j++){
+var field=lines[j];
+if(!/^(?:un\s*[:.]|(?:vl\.?|valor)\s*(?:unit|total)|(?:R\$\s*)?[\d.]+,\d{2}$)/i.test(field))break;
+detail+=' '+field;
 }
-var total=(detail+' '+(/^\s*(?:R\$\s*)?[\d.]+,\d{2}\s*$/.test(following)?following:''))
-.match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})/i);
+total=detail.match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})(?!\d)/i);
+}
 if(!total||!/\p{L}/u.test(title)||title.length<4||title.length>115)continue;
 var desc=clean(title.replace(/\s*\((?:c[oó]digo|cod)\s*[:.]?\s*\d+\s*\)/i,''));
 var value=num(total[1]);
@@ -66,7 +76,7 @@ return el;
 function review(raw,receipt){
 var parsed=parse(raw);
 var body='<p class="text-muted text-sm">Revise produto, quantidade, valor total e pasta. Nada será lançado no banco ou no saldo.</p>';
-body+='<p class="text-sm">Itens reconhecidos: <strong>'+parsed.length+'</strong>. Você pode corrigir as linhas antes de arquivar.</p>';
+body+='<p class="text-sm">Itens reconhecidos: <strong>'+parsed.length+'</strong> · Soma dos itens: <strong>'+money(parsed.reduce(function(sum,item){return sum+item.total},0))+'</strong>. Você pode corrigir as linhas antes de arquivar.</p>';
 body+='<label for="al-consumo-lines" class="form-label">Um produto por linha: nome | quantidade | total</label>';
 body+='<textarea id="al-consumo-lines" rows="9" style="width:100%;font-size:14px;min-height:180px">'+escape(parsed.map(function(x){return x.name+' | '+x.quantity+' | '+x.total.toFixed(2).replace('.',',')}).join('\n'))+'</textarea>';
 body+='<p class="text-muted text-sm">Se nenhum item foi lido, a nota pode ser arquivada sem produtos. O total da compra é independente da soma de itens quando houver descontos.</p>';
