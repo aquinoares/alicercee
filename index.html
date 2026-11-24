@@ -5019,7 +5019,7 @@ const AlicerceIA = {
       this._pendingBenefitPurchase=null;
       this._qrConsultaUrl='';
       this._receiptDraft=null;
-      this._receiptOCR='';
+      this._receiptOCR='';this._receiptReview=null;
       this._pixProofDraft=null;
       this._welcomeTypingStarted=false;
       this._proactiveConsumed=false;
@@ -5590,7 +5590,7 @@ AlicerceIA.limparConversa=function(){
   this._pendingFinancialReview=null;
   this._pendingBenefitPurchase=null;
   this._receiptDraft=null;
-  this._receiptOCR='';
+  this._receiptOCR='';this._receiptReview=null;
   this._pixProofDraft=null;
   this._qrConsultaUrl='';
   this._question='';
@@ -6158,7 +6158,7 @@ AlicerceIA.enviarMensagem=async function(question){
   if(inputSource==='ocr'){
     // Primeiro analisar com regras locais de segurança, independentemente de IA remota.
     // Não colocar o OCR bruto no histórico de conversa nem no banco financeiro.
-    if(this._mostrarLeituraDocumento(message))return;
+    if(this._mostrarComprovantePix(message)||this._mostrarLeituraDocumento(message))return;
     this._responderOcrIndeterminado();
     return;
   }
@@ -6484,23 +6484,7 @@ AlicerceIA.enviarMensagem=async function(question){
 
   var userId=String(Store.userId||'');
   var client=window.alicerceSupabase;
-  if(inputSource==='ocr'&&ALICIA_INTERPRETER_ENABLED&&userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
-    try{
-      var ocrResult=await client.functions.invoke('alicia-chat',{
-        body:{message:message,input_source:'ocr',photo_text_consent:true}
-      });
-      if(String(Store.userId||'')!==userId){this._photoTextPending=false;return;}
-      if(ocrResult&&ocrResult.error)throw ocrResult.error;
-      var ocrData=ocrResult&&ocrResult.data?ocrResult.data:{};
-      if(!ocrData.ok||!ocrData.answer)throw new Error('O interpretador não retornou uma leitura válida.');
-      answer=String(ocrData.answer);
-    }catch(error){
-      console.warn('Alicia: interpretador OCR indisponível.',error);
-      answer='Não consegui concluir a leitura agora. Nenhum lançamento foi registrado, e a foto e o texto não foram salvos. Tente novamente com uma imagem mais nítida.';
-      var ocrStatus=document.getElementById('alicerce-assistant-status');
-      if(ocrStatus)ocrStatus.textContent=answer;
-    }
-  }else if(inputSource==='ocr'){
+  if(inputSource==='ocr'){
     answer='A foto foi lida, mas não consegui separar seus dados com segurança. Nenhum lançamento foi criado. Confira a imagem e tente novamente com melhor nitidez.';
   }else if(ALICIA_REMOTE_MODEL_ENABLED&&userId&&client&&client.functions&&typeof client.functions.invoke==='function'){
     var consentKey='alicia_ai_consent_v1_'+userId;
@@ -6788,11 +6772,11 @@ AlicerceIA._continuarDocumento=function(message){
   if(!owner||!draft||draft.ownerId!==owner)return false;
   var q=this._norm(message),reply='';
   if(/^(cancelar|cancela|esqueca|descartar|descarta)(?: (?:o |a )?(?:pix|nota|documento|comprovante))?$/.test(q)){
-    this._pixProofDraft=null;this._receiptDraft=null;this._receiptOCR='';this._qrConsultaUrl='';
+    this._pixProofDraft=null;this._receiptDraft=null;this._receiptOCR='';this._receiptReview=null;this._qrConsultaUrl='';
     reply='Conferência cancelada. Nenhum gasto foi registrado.';
   }else if(/^(?:(?:foi|e|era) (?:uma? )?)?(?:transferencia(?: entre (?:as |minhas )?contas)?|reembolso|receita|pagamento (?:de |da )?(?:fatura|conta)(?: ja cadastrada)?)$/.test(q)){
     draft.awaitingContext=false;
-    this._pixProofDraft=null;this._receiptDraft=null;this._receiptOCR='';this._qrConsultaUrl='';
+    this._pixProofDraft=null;this._receiptDraft=null;this._receiptOCR='';this._receiptReview=null;this._qrConsultaUrl='';
     reply='Entendi a natureza informada. Não vou criar outra despesa. Confira a movimentação ou conta correspondente antes de registrar o pagamento.';
   }else if(/^(?:(?:foi|e|era) (?:uma? )?)?(?:(?:compra|despesa|gasto) )?(?:pessoal|familiar|familia|para (?:a |minha )?familia|para (?:as )?despesas de casa|casa|obrigacao|trabalho)$/.test(q)){
     if(p===draft&&p.incoming){
@@ -6839,7 +6823,8 @@ AlicerceIA._lerComprovantePix=function(raw){
     if(amounts.length===1)amount=Number(amounts[0].replace(/R\$|\./g,'').replace(',','.'));
   }
   if(!(amount>0&&amount<=1000000))amount=null;
-  return {amount:amount,recipient:recipient,date:date,incoming:incoming,evidence:evidence};
+  // Retain only transaction facts; do not retain names, keys or source text.
+  return {amount:amount,recipient:'',date:date,incoming:incoming};
 };
 AlicerceIA._mostrarComprovantePix=function(raw){
   var proof=this._lerComprovantePix(raw);
@@ -6847,7 +6832,7 @@ AlicerceIA._mostrarComprovantePix=function(raw){
   this._pixProofDraft=Object.assign({ownerId:String(Store.userId||''),awaitingContext:true},proof);
   var msg='Identifiquei um possível comprovante Pix.\n';
   msg+='Valor: '+(proof.amount?fmtMoney(proof.amount):'não identificado com segurança');
-  msg+='\nDestinatário: '+(proof.recipient||'não identificado');
+  msg+='\nDestinatário: não coletado por privacidade';
   msg+='\nData: '+(proof.date||'não identificada');
   msg+='\n\n'+(proof.incoming?'Parece ser um recebimento. Confirme se foi receita, reembolso ou transferência própria. Não vou registrar como gasto.':'Antes de lançar, confirme se foi uma compra pessoal, familiar, pagamento de uma conta existente ou transferência entre suas contas.');
   msg+='\nNenhum movimento foi salvo. A imagem pode conter dados que o OCR não leu corretamente.';
@@ -6879,12 +6864,22 @@ AlicerceIA._qrScriptPromise=null;
 AlicerceIA._qrConsultaUrl='';
 AlicerceIA._receiptDraft=null;
 AlicerceIA._receiptOCR='';
+
+AlicerceIA._prepararRevisaoPrivada=function(raw,receipt,fiscalKey){
+ this._receiptOCR='';
+ this._receiptReview=null;
+ if(!Store.userId||!window.AlicerceConsumo)return;
+ var items=window.AlicerceConsumo.parse(String(raw||''));
+ var r=receipt||{};
+ this._receiptReview={ownerId:String(Store.userId),items:items,receipt:{
+   total:r.total||'',paid:r.paid||'',date:r.date||'',merchant:r.merchant||'',mismatch:!!r.mismatch,
+   fiscalKey:String(fiscalKey||'')
+ }};
+};
+
 AlicerceIA.revisarProdutosNota=function(){
-  if(!window.AlicerceConsumo||!this._receiptOCR)return;
-  var receipt=this._lerCupomMercado(this._receiptOCR)||{};
-  var qr=this._validarQRNfce(this._qrConsultaUrl);
-  receipt.fiscalKey=qr&&qr.key||'';
-  window.AlicerceConsumo.review(this._receiptOCR,receipt);
+  if(!window.AlicerceConsumo||!this._receiptReview||this._receiptReview.ownerId!==String(Store.userId||''))return;
+  window.AlicerceConsumo.review(this._receiptReview.items,this._receiptReview.receipt);
 };
 // A leitura é uma sugestão. Somente a tela de conferência pode registrar o gasto.
 AlicerceIA._setReceiptDraft=function(receipt,fiscalKey){
@@ -6989,7 +6984,7 @@ AlicerceIA._mostrarQRNfce=function(raw,ocr){
   this._qrConsultaUrl=qr.url;
   var receipt=this._lerCupomMercado(ocr||'');
   this._setReceiptDraft(receipt,qr.key);
-  this._receiptOCR=String(ocr||'').slice(0,30000);
+  this._prepararRevisaoPrivada(ocr,receipt,qr.key);
   var msg='QR Code da NFC-e identificado.\n\nPortal oficial: '+qr.host;
   if(qr.key)msg+='\nChave fiscal: final '+qr.key.slice(-6);
   if(receipt){
@@ -7122,7 +7117,7 @@ AlicerceIA._mostrarLeituraCupomMercado=function(text){
   var receipt=this._lerCupomMercado(text);
   if(!receipt)return false;
   this._setReceiptDraft(receipt,'');
-  this._receiptOCR=String(text||'').slice(0,30000);
+  this._prepararRevisaoPrivada(text,receipt,'');
   var msg='A foto parece ser de uma nota de compra. A leitura pode conter erros. Confira antes de qualquer registro:\n\n';
   msg+='Estabelecimento: '+receipt.merchant.slice(0,80);
   msg+='\nData da nota: '+(receipt.date||'não identificada');
@@ -7177,7 +7172,7 @@ AlicerceIA.processarFoto=async function(input){
   this._photoTextPending=false;
   if(this._photoBusy)return;
   this._receiptDraft=null;
-  this._receiptOCR='';
+  this._receiptOCR='';this._receiptReview=null;
   this._pixProofDraft=null;
   this._qrConsultaUrl='';
   var file=input&&input.files&&input.files.length?input.files[0]:null;
@@ -7371,7 +7366,7 @@ function renderAssistente(){
   if(AlicerceIA._pixProofDraft&&AlicerceIA._pixProofDraft.ownerId===String(Store.userId||'')){
     if(!AlicerceIA._pixProofDraft.incoming&&AlicerceIA._pixProofDraft.amount)html+='<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="AlicerceIA.conferirPixDespesa()">Conferir Pix como despesa</button>';
   }
-  if(AlicerceIA._receiptOCR&&window.AlicerceConsumo){
+  if(AlicerceIA._receiptReview&&AlicerceIA._receiptReview.ownerId===String(Store.userId||'')&&window.AlicerceConsumo){
     html+='<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="AlicerceIA.revisarProdutosNota()">Revisar produtos e arquivar por pastas</button>';
   }
   if(AlicerceIA._receiptDraft&&AlicerceIA._receiptDraft.ownerId===String(Store.userId||'')){
