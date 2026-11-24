@@ -5606,6 +5606,30 @@ AlicerceIA.limparConversa=function(){
   showToast((Store.lang==='en'?'Conversation cleared.':Store.lang==='es'?'Conversación eliminada.':'Conversa apagada.'));
 };
 
+// Read-only lookup and explicit review of an existing expense, never a new expense.
+AlicerceIA._buscarGastoOperacional=function(message){
+ var q=this._norm(message);
+ var match=q.match(/^(?:alicia )?(?:corrigir|corrija|editar|edite|localizar|localize|encontrar|encontre|buscar|busque|ache) (?:o |a |meu |minha )?(?:gasto|despesa|compra|lancamento)(?: (?:de|do|da|com|no|na))? (.+)$/);
+ if(!match)return null;
+ if(!Store.userId)return {text:'Entre na sua conta para localizar seus gastos.'};
+ var query=match[1].trim();
+ if(query.length<2)return {text:'Diga a descrição do gasto que deseja localizar.'};
+ var rows=Store.getAnalysisEntries().filter(r=>r&&r.id&&this._norm([r.descricao,r.local,r.categoria,r.subcategoria].join(' ')).includes(query));
+ rows.sort((a,b)=>String(b.data).localeCompare(String(a.data)));
+ if(!rows.length)return {text:'Não encontrei um gasto correspondente. Tente informar a descrição ou o estabelecimento. Nada foi alterado.'};
+ return {text:'Encontrei '+rows.length+' lançamento(s). Selecione o registro correto para revisar. Nenhum valor foi alterado.',choices:rows.slice(0,8).map(r=>({source:r.source,id:String(r.id),description:String(r.descricao||'Gasto'),date:r.data,amount:r.valor})),ownerId:String(Store.userId)};
+};
+AlicerceIA.revisarGastoOperacional=function(index){
+ this._resetUser();
+ var m=this._messages[this._messages.length-1],d=m&&m.expenseChoices;
+ if(!d||d.ownerId!==String(Store.userId||''))return;
+ var choice=d.choices[Number(index)];
+ if(!choice)return;
+ var found=gastosOrigem(choice.source,choice.id);
+ if(!found||found.row.data!==choice.date||Math.round(found.row.valor*100)!==Math.round(choice.amount*100)){showToast('O lançamento mudou. Faça uma nova busca.');return;}
+ gastosCorrigir(choice.source,choice.id);
+};
+
 AlicerceIA._resolveFollowUp=function(question){
   this._resetUser();
   var current=this._norm(question);
@@ -6184,6 +6208,14 @@ AlicerceIA.enviarMensagem=async function(question){
   }
   if(this._continuarDocumento(message))return;
   this._messages.push({role:'user',text:message});
+  if(inputSource==='text'&&!this._pendingExpenseDraft&&!this._pendingFinancialReview&&!this._pendingBenefitPurchase){
+    var lookup=this._buscarGastoOperacional(message);
+    if(lookup){
+      this._messages.push({role:'assistant',text:lookup.text,expenseChoices:lookup});
+      while(this._messages.length>8)this._messages.shift();
+      this._answer=lookup.text;this._question=message;render();return;
+    }
+  }
   // Forecast is a read-only chat action; keep it ahead of graph and writing handlers.
   if(!this._pendingExpenseDraft&&!this._pendingFinancialReview&&!this._pendingBenefitPurchase&&window.AlicerceCashflow&&typeof window.AlicerceCashflow.forecast==='function'){
     var forecastQuery=message;
@@ -7434,7 +7466,7 @@ function renderAssistente(){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?'<details class="alicia-chat-chart" '+((item.chartOpen===undefined?index===messages.length-1:item.chartOpen)?'open':'')+' data-message-index="'+index+'" ontoggle="AlicerceIA.alternarGrafico(this)"><summary>Ver gráfico / recolher</summary>'+window.AlicerceAnalitica.renderChart(item.chart)+'</details>':'')+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?'<details class="alicia-chat-chart" '+((item.chartOpen===undefined?index===messages.length-1:item.chartOpen)?'open':'')+' data-message-index="'+index+'" ontoggle="AlicerceIA.alternarGrafico(this)"><summary>Ver gráfico / recolher</summary>'+window.AlicerceAnalitica.renderChart(item.chart)+'</details>':'')+(item.expenseChoices&&item.expenseChoices.ownerId===String(Store.userId||'')&&index===messages.length-1?'<div class="alicia-benefit-review">'+(item.expenseChoices.choices||[]).map(function(c,i){return '<button class="btn btn-secondary btn-sm" type="button" onclick="AlicerceIA.revisarGastoOperacional('+i+')">'+esc(c.description)+' · '+esc(c.date)+' · '+esc(fmtMoney(c.amount))+'</button>';}).join('')+'</div>':'')+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }
