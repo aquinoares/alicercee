@@ -3828,6 +3828,11 @@ test('Alícia prepara ajuda familiar datada e abre o gasto a corrigir', async fu
   await prepararTelaSemNuvem(page, 'assistente');
   const result = await page.evaluate(async function () {
     Store.userId = 'alicia-family-regression';
+    Store.settings.alicerceLegalAcceptance = {
+      termsVersion: '2026-10-20-v1',
+      privacyVersion: '2026-10-20-v1',
+      acceptedAt: '2026-10-31T12:00:00.000Z'
+    };
     Store.movements = [{ id: 'pix-incorreto', tipo: 'despesa', descricao: 'ChatGPT', valor: 70, data: '2026-10-23', status: 'pago', pagamento: 'pix' }];
     await AlicerceIA.enviarMensagem('Mandei um Pix de R$ 50 para minha esposa no dia 12/11/2026');
     const draft = Store.screenData;
