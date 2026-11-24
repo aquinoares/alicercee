@@ -1478,7 +1478,7 @@ test('Alicia usa o nome informado no perfil e não transforma o e-mail em nome',
   expect(greeting.saved).toBe('Ana Costa');
 });
 
-test('Alicia lê a foto localmente, preenche o texto para revisão e descarta a referência ao arquivo', async function ({ page }) {
+test('Alícia lê a nota localmente, mostra os dados para revisão e libera o arquivo', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   await page.evaluate(function () {
     Store.userId = 'ocr-alicia-teste';
@@ -1495,12 +1495,13 @@ test('Alicia lê a foto localmente, preenche o texto para revisão e descarta a 
     Store.installments = [];
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
     window.__aliciaOcrTest = { filename: '', terminated: false };
+    AlicerceIA._scanQRCodeFile = async function () { return ''; };
     window.Tesseract = {
       createWorker: async function () {
         return {
           recognize: async function (file) {
             window.__aliciaOcrTest.filename = file.name;
-            return { data: { text: 'MERCADO CENTRAL\nLEITE 2 UNIDADES\nTOTAL R$ 18,90' } };
+            return { data: { text: 'DANFE NFC-e\nSUPERMERCADO CENTRAL\nData 23/11/2026\nLEITE 2 UNIDADES\nValor total: R$ 18,90' } };
           },
           terminate: async function () {
             window.__aliciaOcrTest.terminated = true;
@@ -1517,9 +1518,10 @@ test('Alicia lê a foto localmente, preenche o texto para revisão e descarta a 
     mimeType: 'image/jpeg',
     buffer: Buffer.from('imagem temporária de teste')
   });
-  await expect(page.locator('#alicerce-assistant-status')).toContainText('Texto extraído no aparelho');
-  await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/MERCADO CENTRAL/);
-  await expect(page.locator('#alicerce-assistant-input')).toHaveValue(/R\$ 18,90/);
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('SUPERMERCADO CENTRAL');
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText('R$ 18,90');
+  await expect(page.locator('#alicerce-assistant-input')).toHaveValue('');
+  await expect(page.getByRole('button', { name: 'Conferir e registrar compra' })).toBeVisible();
   const state = await page.evaluate(function () {
     var fileInput = document.getElementById('alicerce-assistant-photo');
     return {
@@ -2561,7 +2563,7 @@ test('Alicia não registra automaticamente compras parceladas ou no cartão pelo
   expect(result.screen).toBe('assistente');
 });
 
-test('Alicia limita a conversa a duas interações, permite limpar e leva aos relatórios da Visão financeira', async function ({ page }) {
+test('Alícia mantém as respostas recentes, permite limpar e leva à Visão Financeira', async function ({ page }) {
   await page.setViewportSize({ width: 375, height: 812 });
   await prepararTelaSemNuvem(page, 'assistente');
   await page.evaluate(function () {
@@ -2590,9 +2592,13 @@ test('Alicia limita a conversa a duas interações, permite limpar e leva aos re
   }
 
   const historyLength = await page.evaluate(function () { return AlicerceIA._messages.length; });
-  expect(historyLength).toBe(4);
-  await expect(page.locator('.alicerce-assistant-message.user')).toHaveCount(2);
-  await expect(page.locator('.alicerce-assistant-message.assistant')).toHaveCount(2);
+  expect(historyLength).toBe(6);
+  await expect(page.locator('.alicerce-assistant-message.user')).toHaveCount(3);
+  await expect(page.locator('.alicerce-assistant-message.assistant')).toHaveCount(3);
+  const graph = page.locator('.alicerce-assistant-messages details').filter({ hasText: 'Gráfico da resposta' });
+  await expect(graph).toHaveAttribute('open', '');
+  await graph.locator('summary').click();
+  await expect(graph).not.toHaveAttribute('open');
   await expect(page.locator('#alicerce-assistant-clear')).toBeVisible();
 
   const mobileLayout = await page.evaluate(function () {
@@ -3041,7 +3047,7 @@ test('Alicia revisa gastos sem contexto pelo chat e salva a finalidade sem alter
   });
 
   expect(result.firstPrompt).toContain('Corrida por aplicativo');
-  expect(result.firstPrompt).toContain('finalidade');
+  expect(result.firstPrompt).toContain('Você lembra para que foi esse gasto?');
   expect(result.movement).toMatchObject({
     amount: 42.50,
     category: 'transporte',
