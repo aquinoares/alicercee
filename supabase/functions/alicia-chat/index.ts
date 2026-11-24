@@ -141,7 +141,7 @@ function validInterpreterPair(categories: any, category: string, subcategory: st
   return !!(row && Array.isArray(row.subs) && row.subs.indexOf(subcategory) >= 0);
 }
 async function interpretOcrText(admin: any, userId: string, rawText: string): Promise<string> {
-  const text = cleanText(rawText, 5000);
+  const text = cleanText(rawText, 20000);
   if (!text) return "Não encontrei texto legível nessa foto. Tente enviar uma imagem mais nítida.";
   const [knowledgeResult, learningResult] = await Promise.all([
     admin.from("alicia_interpreter_knowledge").select("knowledge_type,knowledge_key,payload,priority")
@@ -167,6 +167,19 @@ async function interpretOcrText(admin: any, userId: string, rawText: string): Pr
   const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const normalizedText = normalizeInterpreterText(text);
   const paddedText = " " + normalizedText + " ";
+
+  // Document nature is separate from expense category. Never infer a payment
+  // or a new expense merely from the presence of a document.
+  const isPix = /\b(pix|end to end|endtoend|e2e)\b/.test(normalizedText);
+  const isFiscal = /\b(danfe|nfce|nfc e|nota fiscal|chave de acesso)\b/.test(normalizedText);
+  const isInvoice = /\b(fatura do cartao|fatura de cartao|fatura cartao)\b/.test(normalizedText);
+  const isBill = /\b(boleto|linha digitavel|vencimento)\b/.test(normalizedText);
+  const documentKind = isPix && isFiscal ? "Documento misto: nota e Pix" :
+    isPix ? "Comprovante Pix" : isFiscal ? "Nota fiscal" :
+    isInvoice ? "Fatura de cartão" : isBill ? "Conta ou boleto" : "Documento não identificado";
+  const ambiguousNature = isPix || isInvoice || isBill || !isFiscal;
+  const multiItemFiscal = isFiscal && (lines.filter(line =>
+    /\b(qtde|qtd|quantidade|vl\.?\s*unit|valor unitario)\b/i.test(normalizeInterpreterText(line))).length > 1);
 
   let merchant = "";
   let merchantKey = "";
@@ -275,7 +288,7 @@ async function interpretOcrText(admin: any, userId: string, rawText: string): Pr
       }
     }
   }
-  if (!classification && itemRule && validInterpreterPair(categories, String(itemRule.category || ""), String(itemRule.subcategory || ""))) {
+  if (!classification && !isFiscal && !ambiguousNature && itemRule && validInterpreterPair(categories, String(itemRule.category || ""), String(itemRule.subcategory || ""))) {
     classification = { category: itemRule.category, subcategory: itemRule.subcategory };
     classificationConfidence = "high";
   }
@@ -301,6 +314,11 @@ async function interpretOcrText(admin: any, userId: string, rawText: string): Pr
     }
   }
 
+  // A recipient, a merchant or a single item cannot establish financial purpose.
+  if (ambiguousNature || multiItemFiscal) {
+    classification = null;
+    classificationConfidence = "low";
+  }
   const categoryName = classification && categories[classification.category]
     ? String(categories[classification.category].name || classification.category) : "";
   const subcategoryName = classification ? String(classification.subcategory).replace(/_/g, " ") : "";
@@ -308,6 +326,7 @@ async function interpretOcrText(admin: any, userId: string, rawText: string): Pr
     amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const rows = [
     "Consegui organizar os dados que o OCR encontrou. Confira:",
+    "Tipo de documento: " + documentKind,
     "Estabelecimento: " + (merchant || "Não identificado"),
     "Item/serviço: " + (item || "Não identificado"),
     "Valor total: " + moneyText,
@@ -321,6 +340,11 @@ async function interpretOcrText(admin: any, userId: string, rawText: string): Pr
   if (classification) rows.push("Confiança da classificação: " + classificationConfidence);
   if (amount === null) rows.push("Não consegui identificar o valor total com segurança. Não vou adivinhar esse dado.");
   rows.push("Nada foi registrado na sua conta. A foto foi lida no aparelho e o texto desta análise foi usado apenas nesta solicitação, sem ser gravado no histórico.");
+  if (isPix) rows.push("Esse Pix foi enviado ou recebido? Foi uma compra, pagamento de uma conta já cadastrada ou transferência entre suas contas?");
+  else if (isInvoice) rows.push("Você quer registrar as compras da fatura ou vincular o pagamento a uma fatura existente? Não vou somar os dois como despesas.");
+  else if (isBill) rows.push("Esta conta já foi paga ou ainda está pendente?");
+  else if (isFiscal) rows.push("A compra foi pessoal, familiar ou outra finalidade? Qual foi a forma de pagamento? Se já cadastrou a compra, vincule a nota em vez de criar outra despesa.");
+  else rows.push("Que tipo de movimentação este documento representa?");
   rows.push("Confira os campos e me diga o que precisa corrigir.");
   return rows.join("\n");
 }
@@ -397,7 +421,7 @@ Deno.serve(async (req: Request) => {
     const userId = auth.user.id;
 
     if (isOcrRequest) {
-      const ocrText = cleanText(body.message, 5000);
+      const ocrText = cleanText(body.message, 20000);
       if (!ocrText) return reply(req, { error: "Não encontrei texto legível na foto." }, 400);
       const answer = await interpretOcrText(auth.admin, userId, ocrText);
       return reply(req, {
