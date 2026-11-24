@@ -6866,7 +6866,7 @@ AlicerceIA._mostrarComprovantePix=function(raw){
   msg+='Valor: '+(proof.amount?fmtMoney(proof.amount):'não identificado com segurança');
   msg+='\nDestinatário: '+(proof.recipient||'não identificado');
   msg+='\nData: '+(proof.date||'não identificada');
-  msg+='\n\n'+(proof.incoming?'Parece ser um recebimento. Não vou registrar como gasto.':'Antes de lançar, confirme se foi uma despesa ou uma transferência entre suas contas.');
+  msg+='\n\n'+(proof.incoming?'Parece ser um recebimento. Confirme se foi receita, reembolso ou transferência própria. Não vou registrar como gasto.':'Antes de lançar, confirme se foi uma compra pessoal, familiar, pagamento de uma conta existente ou transferência entre suas contas.');
   msg+='\nNenhum movimento foi salvo. A imagem pode conter dados que o OCR não leu corretamente.';
   this._messages.push({role:'assistant',text:msg});
   while(this._messages.length>6)this._messages.shift();
@@ -6875,12 +6875,13 @@ AlicerceIA._mostrarComprovantePix=function(raw){
 AlicerceIA.conferirPixDespesa=function(){
   var p=this._pixProofDraft;
   if(!p||p.ownerId!==String(Store.userId||'')||p.incoming||!p.amount)return;
-  var d=today();
+  var d='';
   if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(p.date)){
     var parts=p.date.split('/'),parsed=parts[2]+'-'+parts[1].padStart(2,'0')+'-'+parts[0].padStart(2,'0');
     var check=new Date(parsed+'T12:00:00');
     if(!isNaN(check.getTime())&&check.getFullYear()===Number(parts[2])&&check.getMonth()+1===Number(parts[1])&&check.getDate()===Number(parts[0]))d=parsed;
   }
+  if(!d){showToast('Informe a data correta do Pix antes de registrar.');return;}
   var possible=(Store.movements||[]).filter(function(x){return x&&x.tipo==='despesa'&&x.data===d&&Math.abs(Number(x.valor||0)-p.amount)<0.01;});
   if(possible.length&&!window.confirm('Já existe '+possible.length+' gasto(s) deste valor nesta data. Confira se o Pix já foi registrado. Deseja preparar outro lançamento?'))return;
   Store.screenData={interpretation:{amount:p.amount,item:'Pagamento Pix',merchant:p.recipient,categoria:'',subcategoria:''},
@@ -6904,8 +6905,8 @@ AlicerceIA.revisarProdutosNota=function(){
 // A leitura é uma sugestão. Somente a tela de conferência pode registrar o gasto.
 AlicerceIA._setReceiptDraft=function(receipt,fiscalKey){
   this._receiptDraft=null;
-  if(!receipt)return;
-  var value=String(receipt.total||receipt.paid||'');
+  if(!receipt||receipt.mismatch||!receipt.total)return;
+  var value=String(receipt.total);
   var amount=Number(value.replace(/\./g,'').replace(',','.'));
   if(!Number.isFinite(amount)||amount<=0||amount>1000000)return;
   this._receiptDraft={
@@ -6919,17 +6920,20 @@ AlicerceIA.conferirNotaLida=function(){
   this._resetUser();
   var draft=this._receiptDraft;
   if(!draft||!Store.userId||draft.ownerId!==String(Store.userId))return;
-  var day=today();
+  var day='';
   if(/^\d{2}\/\d{2}\/\d{4}$/.test(draft.date)){
     var parts=draft.date.split('/');
     var parsed=parts[2]+'-'+parts[1]+'-'+parts[0];
     var test=new Date(parsed+'T12:00:00');
     if(!isNaN(test.getTime())&&test.getFullYear()===Number(parts[2])&&test.getMonth()+1===Number(parts[1])&&test.getDate()===Number(parts[0]))day=parsed;
   }
+  if(!day){showToast('Confira a data da nota e registre manualmente se não estiver legível.');return;}
+  var possible=(Store.movements||[]).filter(function(x){return x&&x.tipo==='despesa'&&x.data===day&&Math.abs(Number(x.valor||0)-draft.amount)<0.01;});
+  if(possible.length&&!window.confirm('Já existe gasto desse valor nesta data. Confira se a nota pertence a uma compra registrada. Preparar outro lançamento?'))return;
   Store.screenData={
-    interpretation:{amount:draft.amount,item:'Compra de supermercado',merchant:draft.merchant,categoria:'',subcategoria:''},
-    amountInput:draft.amount,itemInput:'Compra de supermercado',localInput:draft.merchant,
-    text:'Compra de supermercado',context:draft.merchant,date:day,paymentMethod:'',
+    interpretation:{amount:draft.amount,item:'Compra conforme nota fiscal',merchant:draft.merchant,categoria:'',subcategoria:''},
+    amountInput:draft.amount,itemInput:'Compra conforme nota fiscal',localInput:draft.merchant,
+    text:'Compra conforme nota fiscal',context:draft.merchant,date:day,paymentMethod:'',
     purpose:'',cardId:'',cardOwnerType:'meu',cardOwner:'',cardType:'',
     installment:false,installments:0,novaCompraFlow:false,gastoEdits:null,
     aliciaOrigin:true,receiptOrigin:true,
@@ -7139,8 +7143,8 @@ AlicerceIA._mostrarLeituraCupomMercado=function(text){
   msg+='\nData da nota: '+(receipt.date||'não identificada');
   msg+='\nTotal identificado: '+(receipt.total?'R$ '+receipt.total:'não identificado com segurança');
   msg+='\nValor pago identificado: '+(receipt.paid?'R$ '+receipt.paid:'não identificado com segurança');
-  if(receipt.mismatch)msg+='\n\nAtenção: o total e o valor pago não coincidem. A leitura pode estar errada.';
-  msg+='\n\n'+(this._receiptDraft?'Toque em “Conferir e registrar compra” para revisar ou corrigir os dados. Nada foi salvo.':'Não consegui localizar um total com segurança. Nada foi salvo; tente uma foto mais legível.');
+  if(receipt.mismatch)msg+='\n\nAtenção: total e valor pago diferentes. Pode haver troco, pagamentos divididos ou erro de leitura. Confira antes de registrar.';
+  msg+='\n\n'+(this._receiptDraft?'Toque em “Conferir e registrar compra” para revisar ou corrigir os dados. Nada foi salvo.':'Não consegui confirmar um total sem conflito. Nada foi salvo; confira a nota original ou tente uma foto mais legível.');
   this._photoTextPending=false;
   if(!Array.isArray(this._messages))this._messages=[];
   var previous=this._messages[this._messages.length-1];
