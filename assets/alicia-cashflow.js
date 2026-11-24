@@ -92,6 +92,7 @@
     return /(?:quanto (?:posso gastar|vai sobrar|sobra|vou ter)|quanto dinheiro (?:sobra|vai sobrar)|(?:consigo|posso) gastar quanto|previsao de saldo|saldo previsto)/.test(normalize(q));
   }
   function forecast(store,today,question){
+    if(!store||!store.userId)return 'Entre na sua conta para consultar a previsão financeira.';
     var s=summarize(store,today),q=normalize(question),end='';
     var match=q.match(/\b(?:ate (?:o )?(?:dia )?)(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?\b/);
     if(match){
@@ -109,7 +110,14 @@
     var due=s.allPending.filter(function(x){return x.due&&x.due<=end;});
     var reserved=Math.round(due.reduce(function(t,x){return t+x.amount;},0)*100)/100;
     var result=Math.round((s.cashAvailable-reserved)*100)/100;
-    return 'Até '+end.split('-').reverse().join('/')+':\nCaixa registrado: '+money(s.cashAvailable)+'.\nObrigações registradas até essa data (incluindo vencidas): '+money(reserved)+'.\n'+(result<0?'Falta estimada: '+money(-result)+'.':'Saldo após essas obrigações: '+money(result)+'.')+(s.noDueDate?'\nHá ainda '+money(s.noDueDate)+' em obrigações sem data, não abatidas nessa previsão.':'')+'\nNão incluí receitas futuras, vale-alimentação, gastos ainda não registrados ou despesas essenciais não cadastradas. Esse saldo não é uma garantia de dinheiro livre.';
+    var historical='';
+    if(store.userId&&root.AlicerceAliciaContextual&&typeof root.AlicerceAliciaContextual.recurring==='function'){
+      var patterns=root.AlicerceAliciaContextual.recurring(store,s.asOf);
+      // Historical patterns are a warning only. No automatic deduction or new debt.
+      var missing=patterns.filter(function(p){return !p.observedThisMonth;});
+      if(missing.length)historical='\nAtenção: ainda não encontrei registro neste mês de '+missing.slice(0,3).map(function(p){return p.label+' (média '+money(p.average)+')';}).join('; ')+'. Confira se já pagou ou cadastrou a obrigação. Não descontei essas estimativas novamente.';
+    }
+    return 'Até '+end.split('-').reverse().join('/')+':\nCaixa registrado: '+money(s.cashAvailable)+'.\nObrigações registradas até essa data (incluindo vencidas): '+money(reserved)+'.\n'+(result<0?'Falta estimada: '+money(-result)+'.':'Saldo após essas obrigações: '+money(result)+'.')+(s.noDueDate?'\nHá ainda '+money(s.noDueDate)+' em obrigações sem data, não abatidas nessa previsão.':'')+historical+'\nNão incluí receitas futuras, vale-alimentação, gastos ainda não registrados ou despesas essenciais não cadastradas. Esse saldo não é uma garantia de dinheiro livre.';
   }
   function matches(q){
     if(forecastIntent(q))return true;
