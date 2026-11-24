@@ -5656,20 +5656,20 @@ AlicerceIA._extractExpenseDate=function(value){
     if(date.getFullYear()!==year||date.getMonth()!==month-1||date.getDate()!==day)return '';
     return String(year)+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
   }
-  var match=raw.match(/\b(20\d{2})-(0?[1-9]|1[0-2])-([0-3]?\d)\b/);
-  if(match){var iso=toIso(match[1],match[2],match[3]);if(iso)return iso;}
-  match=raw.match(/\b(?:dia\s+)?([0-3]?\d)[\/.-]([01]?\d)(?:[\/.-](\d{2,4}))?\b/i);
+  var match=raw.match(/\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/);
+  if(match){var iso=toIso(match[1],match[2],match[3]);return iso;}
+  match=raw.match(/\b(?:dia\s+)?(\d{1,2})[\/](\d{1,2})(?:[\/](\d{2,4}))?\b/i);
   if(match){
     var year=match[3]?Number(match[3]):Number(base.slice(0,4));
     if(year<100)year+=2000;
     var localDate=toIso(year,match[2],match[1]);
-    if(localDate)return localDate;
+    return localDate;
   }
   var months={janeiro:1,fevereiro:2,marco:3,abril:4,maio:5,junho:6,julho:7,agosto:8,setembro:9,outubro:10,novembro:11,dezembro:12};
   match=normalized.match(/\b(?:dia\s+)?(\d{1,2})\s+de\s+([a-z]+)(?:\s+de\s+(\d{4}))?\b/);
   if(match&&months[match[2]]){
     var monthDate=toIso(Number(match[3]||base.slice(0,4)),months[match[2]],match[1]);
-    if(monthDate)return monthDate;
+    return monthDate;
   }
   if(/\bdepois de amanha\b/.test(normalized))return dateShift(base,2);
   if(/\banteontem\b/.test(normalized))return dateShift(base,-2);
@@ -5694,8 +5694,13 @@ AlicerceIA._parseExpenseCommand=function(value){
   var purchaseDate=this._extractExpenseDate(raw);
   var questionIntent=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque)\b/.test(normalized)||/\?\s*$/.test(raw);
   if(questionIntent)return null;
+  var familyGift=/\b(dei|doei|ajudei|mandei|enviei|passei|transferi)\b/.test(normalized)&&/\b(esposa|marido|filho|filha|filhos|filhas|mae|pai|irmao|irma)\b/.test(normalized);
+  if(familyGift&&/\b(emprestei|emprestado|devolver|reembolso|devolucao|outra conta|minha conta)\b/.test(normalized))return {error:'Este valor pode ser empréstimo, reembolso ou transferência. Confira a natureza na tela correspondente; não vou criar uma despesa.'};
+  if(familyGift&&/\b(mandei|enviei|passei|transferi)\b/.test(normalized)&&!/\b(ajuda|presente|mesada|dei|doei|sem devolucao)\b/.test(normalized))return {error:'Esse dinheiro foi uma ajuda sem devolução ou um empréstimo/transferência? Nenhum gasto foi registrado. Se foi ajuda, diga que deu o valor ao familiar.'};
   var expenseIntent=/\b(comprei|comprar|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|adiciona|adicionar)\b/.test(normalized);
-  if(!expenseIntent)return null;
+  if(!expenseIntent&&!familyGift)return null;
+  if(!purchaseDate)return {error:'A data informada não é válida. Informe a data correta (dia/mês/ano).'};
+  if(purchaseDate>today())return {error:'Essa data é futura. Para uma despesa já realizada, informe a data real; para um compromisso futuro, use Contas a pagar.'};
   if(/\b(parcelad[oa]s?|\d+\s+parcelas?)\b/.test(normalized))return{unsupported:'installments'};
   if(/\b(cartao|credito|debito)\b/.test(normalized))return{unsupported:'card'};
 
@@ -5763,6 +5768,13 @@ AlicerceIA._parseExpenseCommand=function(value){
   item=String(item||'').replace(/^\s*(?:um|uma|uns|umas|o|a|de|do|da)\s+/i,'');
   item=item.replace(/\s+/g,' ').trim();
   local=String(local||'').replace(/\s+/g,' ').trim();
+  if(familyGift){
+    var relation=normalized.match(/\b(esposa|marido|filhos?|filhas?|mae|pai|irmao|irma)\b/)[0];
+    var explicitPurpose=/\b(mesada|presente|comida|alimentacao|mercado|remedio|escola|transporte)\b/.test(normalized);
+    var sub=/\bmesada\b/.test(normalized)?'mesada':/\bpresente\b/.test(normalized)?'presentes':/esposa|marido/.test(relation)?'esposa_marido':/filh/.test(relation)?'filhos':/mae|pai/.test(relation)?'pais':'irmaos';
+    var familyPayment=/\bpix\b/.test(normalized)?'pix':/\b(dinheiro|especie)\b/.test(normalized)?'dinheiro':'';
+    return {amount:amount,item:(sub==='mesada'?'Mesada':sub==='presentes'?'Presente':'Apoio financeiro')+' — '+relation,local:'',paymentMethod:familyPayment,purpose:'Casa e família'+(explicitPurpose?' — '+(normalized.match(/\b(mesada|presente|comida|alimentacao|mercado|remedio|escola|transporte)\b/)||[])[0]:''),date:purchaseDate,needsClarification:amount===null?'amount':'',familyClassification:{category:'familia',subcategory:sub}};
+  }
   var missingField='';
   if(!item)missingField='item';
   else if(amount===null)missingField='amount';
@@ -6314,7 +6326,7 @@ AlicerceIA.enviarMensagem=async function(question){
         expenseCommand={needsClarification:draft.awaiting,amount:draft.amount,item:draft.item,local:draft.local,paymentMethod:draft.paymentMethod,date:draft.date};
       }else{
         this._pendingExpenseDraft=null;
-        expenseCommand={amount:draft.amount,item:draft.item,local:draft.local||'',paymentMethod:draft.paymentMethod||'',purpose:draft.purpose||'',date:draft.date};
+        expenseCommand={amount:draft.amount,item:draft.item,local:draft.local||'',paymentMethod:draft.paymentMethod||'',purpose:draft.purpose||'',date:draft.date,familyClassification:draft.familyClassification||null};
       }
     }else{
       expenseCommand={needsClarification:draft.awaiting,amount:draft.amount,item:draft.item,local:draft.local,paymentMethod:draft.paymentMethod,date:draft.date};
@@ -6322,7 +6334,7 @@ AlicerceIA.enviarMensagem=async function(question){
   }else{
     expenseCommand=this._parseExpenseCommand(message);
     if(expenseCommand&&expenseCommand.needsClarification){
-      this._pendingExpenseDraft={amount:expenseCommand.amount,item:expenseCommand.item,local:expenseCommand.local||'',paymentMethod:expenseCommand.paymentMethod||'',purpose:expenseCommand.purpose||'',date:expenseCommand.date||today(),awaiting:expenseCommand.needsClarification};
+      this._pendingExpenseDraft={amount:expenseCommand.amount,item:expenseCommand.item,local:expenseCommand.local||'',paymentMethod:expenseCommand.paymentMethod||'',purpose:expenseCommand.purpose||'',date:expenseCommand.date||today(),familyClassification:expenseCommand.familyClassification||null,awaiting:expenseCommand.needsClarification};
     }
   }
   if(expenseCommand){
@@ -6348,7 +6360,11 @@ AlicerceIA.enviarMensagem=async function(question){
           if(parsedInterpretation&&typeof parsedInterpretation==='object')interpretation=parsedInterpretation;
         }
         if(!interpretation||typeof interpretation!=='object')interpretation={};
-        if(ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED){
+        if(expenseCommand.familyClassification){
+          interpretation.categoria=expenseCommand.familyClassification.category;
+          interpretation.subcategoria=expenseCommand.familyClassification.subcategory;
+          interpretation.confidence='high';interpretation.source='local_family_context';
+        }else if(ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED){
           var aliciaClassification=await aliciaClassificarDespesa({item:expenseCommand.item,merchant:expenseCommand.local,context:expenseCommand.purpose});
           if(aliciaClassification){
             interpretation.categoria=aliciaClassification.category;
@@ -15117,6 +15133,7 @@ function confirmGastoInteligente(){
 
     status:'pago',
     descricao:interp.item||data.text||'',
+    createdAt:new Date().toISOString(),
     source:'app'
   };
   const movementPurpose=String(data.purpose||interp.purpose||'').trim();
@@ -15443,7 +15460,8 @@ function salvarGastoCreditoCartao(data,interp){
       status:'pendente',
       responsavel:responsavel,
       local:interp.merchant||'',
-      dataCompra:dataCompra
+      dataCompra:dataCompra,
+      purpose:String(data.purpose||interp.purpose||''),createdAt:new Date().toISOString()
     });
 
     if(item&&item.id)ids.push(item.id);
