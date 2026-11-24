@@ -6214,7 +6214,7 @@ AlicerceIA.enviarMensagem=async function(question){
   }
   // Resposta curta e contextual dentro do chat, independente do carrossel de novidades.
   if(inputSource==='text'&&!this._pendingFinancialReview&&!this._pendingExpenseDraft&&!this._pendingBenefitPurchase&&window.AlicerceAliciaContextual&&window.AlicerceAliciaContextual.matches(questionForEngine)){
-    var financialInsight=window.AlicerceAliciaContextual.report(Store,Clock.today());
+    var financialInsight=window.AlicerceAliciaContextual.report(Store,Clock.today(),questionForEngine);
     this._messages.push({role:'assistant',text:financialInsight.text});
     while(this._messages.length>8)this._messages.splice(0,2);
     this._question=message;this._answer=financialInsight.text;
