@@ -5694,7 +5694,9 @@ AlicerceIA._parseExpenseCommand=function(value){
   var purchaseDate=this._extractExpenseDate(raw);
   var questionIntent=/^(?:quanto|onde|qual|quais|como|quando|compare|analise|me mostra|me mostre|me diga|por que|porque)\b/.test(normalized)||/\?\s*$/.test(raw);
   if(questionIntent)return null;
-  var familyGift=/\b(dei|doei|ajudei|mandei|enviei|passei|transferi)\b/.test(normalized)&&/\b(esposa|marido|filho|filha|filhos|filhas|mae|pai|irmao|irma)\b/.test(normalized);
+  if(/\b(emprestei|emprestar|emprestado|reembolso|reembolsar|devolvi|devolucao)\b/.test(normalized)&&/\b(esposa|marido|filhos?|filhas?|mae|pai|irmao|irma)\b/.test(normalized))return {error:'Este lançamento pode ser empréstimo ou reembolso. Use a movimentação correspondente; não vou criar uma despesa.'};
+  if(/\b(nao dei|nao doei|nao paguei|vou dar|vou pagar|pretendo dar|quero dar)\b/.test(normalized))return {error:'Não identifiquei uma despesa já realizada. Confirme quando o pagamento ocorrer.'};
+  var familyGift=/\b(dei|doei|ajudei|mandei|enviei|passei|transferi)\b/.test(normalized)&&/\b(esposa|marido|filho|filha|filhos|filhas|mae|pai|irmao|irma|mesada)\b/.test(normalized);
   if(familyGift&&/\b(emprestei|emprestado|devolver|reembolso|devolucao|outra conta|minha conta)\b/.test(normalized))return {error:'Este valor pode ser empréstimo, reembolso ou transferência. Confira a natureza na tela correspondente; não vou criar uma despesa.'};
   if(familyGift&&/\b(mandei|enviei|passei|transferi)\b/.test(normalized)&&!/\b(ajuda|presente|mesada|dei|doei|sem devolucao)\b/.test(normalized))return {error:'Esse dinheiro foi uma ajuda sem devolução ou um empréstimo/transferência? Nenhum gasto foi registrado. Se foi ajuda, diga que deu o valor ao familiar.'};
   var expenseIntent=/\b(comprei|comprar|compra|gastei|paguei|pagar|registra|registre|registrar|anota|anote|anotar|lanca|lancar|adiciona|adicionar)\b/.test(normalized);
@@ -5769,7 +5771,8 @@ AlicerceIA._parseExpenseCommand=function(value){
   item=item.replace(/\s+/g,' ').trim();
   local=String(local||'').replace(/\s+/g,' ').trim();
   if(familyGift){
-    var relation=normalized.match(/\b(esposa|marido|filhos?|filhas?|mae|pai|irmao|irma)\b/)[0];
+    var relationMatch=normalized.match(/\b(esposa|marido|filhos?|filhas?|mae|pai|irmao|irma)\b/);
+    var relation=relationMatch?relationMatch[0]:'família';
     var explicitPurpose=/\b(mesada|presente|comida|alimentacao|mercado|remedio|escola|transporte)\b/.test(normalized);
     var sub=/\bmesada\b/.test(normalized)?'mesada':/\bpresente\b/.test(normalized)?'presentes':/esposa|marido/.test(relation)?'esposa_marido':/filh/.test(relation)?'filhos':/mae|pai/.test(relation)?'pais':'irmaos';
     var familyPayment=/\bpix\b/.test(normalized)?'pix':/\b(dinheiro|especie)\b/.test(normalized)?'dinheiro':'';
