@@ -71,3 +71,34 @@ test("A tela e o menu estão conectados ao aplicativo",()=>{
  assert.match(html,/alicerceBeneficioAdicionar/);
  assert.match(html,/Meus benefícios/);
 });
+
+test("Projeção central inclui somente compras de benefício e não duplica saldo",()=>{
+ const store=st(), w=B.addWallet(store,"pluxee",true).wallet;
+ B.addEntry(store,w.id,"credit","500","2026-11-01","Recarga");
+ B.addEntry(store,w.id,"debit","80","2026-11-23","Mercado",{category:"comida",subcategory:"mercado",purpose:"familia"});
+ B.setBalance(store,w.id,"400","2026-11-23");
+ const before=JSON.stringify(store.settings), saves=store.count;
+ const rows=B.spendingEntries(store);
+ assert.equal(rows.length,1);
+ assert.equal(rows[0].valor,80);
+ assert.equal(rows[0].categoria,"comida");
+ assert.equal(rows[0].purpose,"familia");
+ assert.equal(rows[0].benefitWalletId,w.id);
+ assert.equal(B.spendingEntries(store)[0].id,rows[0].id);
+ assert.equal(JSON.stringify(store.settings),before);
+ assert.equal(store.count,saves);
+ assert.equal(B.balance(w),400);
+ assert.equal(store.movements.length,0);
+ assert.equal(B.spendingEntries(st("outro")).length,0);
+ const debit=w.entries.find(e=>e.kind==="debit");
+ B.updateEntry(store,w.id,debit.id,"65","2026-11-23","Mercado corrigido");
+ assert.equal(B.spendingEntries(store)[0].valor,65);
+ assert.equal(B.spendingEntries(store)[0].id,rows[0].id);
+ assert.equal(B.removeEntry(store,w.id,debit.id),true);
+ assert.equal(B.spendingEntries(store).length,0);
+});
+test("Tela de gastos e categorias consultam a mesma projeção",()=>{
+ assert.match(html,/const spendingItems=Store\.getAnalysisEntries\(\)/);
+ assert.match(html,/this\.getAnalysisEntries\(\)\.filter\(r=>r\.data\.slice/);
+ assert.match(html,/gastosAcoesCorrecao\(m\)/);
+});
