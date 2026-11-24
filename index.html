@@ -4960,11 +4960,12 @@ const detalhes={
   },
   _uid(){return Math.random().toString(36).substr(2,9)+Date.now().toString(36)},
   learnCorrection(estab,cat,sub,item){
-    if(!estab||!alicerClassificationPairIsValid(cat,sub))return false;
+    if(!this.userId||!estab||!alicerClassificationPairIsValid(cat,sub))return false;
     const key=alicerLearningKey(estab,item);
     if(!key)return false;
     this.learning=this.learning||{};
     this.learning[key]={
+      ownerId:String(this.userId),
       categoria:cat,subcategoria:sub,
       itemKey:normalizeAlicerClassificationText(item),
       scope:normalizeAlicerClassificationText(item)?'merchant_item':'merchant',
@@ -4974,17 +4975,17 @@ const detalhes={
     return true;
   },
   getLearned(estab,item){
-    if(!estab)return null;
+    if(!this.userId||!estab)return null;
     this.learning=this.learning||{};
     const itemKey=normalizeAlicerClassificationText(item);
     const key=alicerLearningKey(estab,item);
     if(itemKey){
       const exact=this.learning[key];
-      return exact&&alicerClassificationPairIsValid(exact.categoria,exact.subcategoria)?exact:null;
+      return exact&&(!exact.ownerId||exact.ownerId===String(this.userId))&&alicerClassificationPairIsValid(exact.categoria,exact.subcategoria)?exact:null;
     }
     const merchantKey=alicerLearningKey(estab,'');
     const legacy=this.learning[merchantKey]||this.learning[String(estab).toLowerCase()];
-    return legacy&&alicerClassificationPairIsValid(legacy.categoria,legacy.subcategoria)?legacy:null;
+    return legacy&&(!legacy.ownerId||legacy.ownerId===String(this.userId))&&alicerClassificationPairIsValid(legacy.categoria,legacy.subcategoria)?legacy:null;
   }
 };
 
@@ -6387,6 +6388,10 @@ AlicerceIA.enviarMensagem=async function(question){
           interpretation.categoria=expenseCommand.familyClassification.category;
           interpretation.subcategoria=expenseCommand.familyClassification.subcategory;
           interpretation.confidence='high';interpretation.source='local_family_context';
+        }else if(!expenseCommand.purpose&&expenseCommand.local&&expenseCommand.item&&Store.getLearned(expenseCommand.local,expenseCommand.item)){
+          var learned=Store.getLearned(expenseCommand.local,expenseCommand.item);
+          interpretation.categoria=learned.categoria;interpretation.subcategoria=learned.subcategoria;
+          interpretation.confidence='high';interpretation.source='private_correction';
         }else if(ALICIA_KNOWLEDGE_CLASSIFIER_ENABLED){
           var aliciaClassification=await aliciaClassificarDespesa({item:expenseCommand.item,merchant:expenseCommand.local,context:expenseCommand.purpose});
           if(aliciaClassification){
@@ -6477,7 +6482,7 @@ AlicerceIA.enviarMensagem=async function(question){
           aliciaOrigin:true
         };
         var classificationMessage=classificationValid
-          ? ' Categoria sugerida: '+Interpreter.catDisplay(interpretation.categoria)+'. Subcategoria: '+Interpreter.subDisplay(interpretation.subcategoria)+'.'
+          ? (interpretation.source==='private_correction'?' Usei uma classificação que você corrigiu anteriormente.':'')+' Categoria sugerida: '+Interpreter.catDisplay(interpretation.categoria)+'. Subcategoria: '+Interpreter.subDisplay(interpretation.subcategoria)+'.'
           : ' Ainda não consegui identificar categoria e subcategoria com segurança; você poderá escolhê-las na conferência.';
         actionAnswer='Preparei o lançamento de '+fmtMoney(expenseCommand.amount)+'.'+classificationMessage+' Confira os dados; nada será salvo até você tocar em “Confirmar e salvar gasto”.';
         this._messages.push({role:'assistant',text:actionAnswer});
