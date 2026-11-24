@@ -214,13 +214,102 @@
     return '';
   }
 
+  function billLabel(description) {
+    var label = String(description || 'Conta sem descrição');
+    if (label.length > 120 || /\b(DANFE|CNPJ|CPF|chave de acesso)\b/i.test(label)) {
+      return /energia|kwh|consumo.te/i.test(label) ? 'Conta de energia' : 'Conta importada';
+    }
+    return label;
+  }
+
+  function reviewBill(assistant, n, raw) {
+    var state = assistant._billReview;
+    var deleting = /^(?:apague|apagar|apaga|exclua|excluir|exclui|remova|remover) (?:essa|esta|a) (?:conta|fatura|divida)$/.test(n);
+    var disputed = /^(?:essa|esta|a) (?:conta|fatura|divida) (?:esta|ta|veio) (?:errada|incorreta)$/.test(n);
+    if (!state && !deleting && !disputed) return null;
+    if (state && state.user !== Store.userId) state = assistant._billReview = null;
+    if (!Store.userId || (!state && !deleting && !disputed)) return null;
+    if (state && (CANCEL_WORDS.test(n) || n === 'nao')) {
+      assistant._billReview = null;
+      return 'Revisão cancelada.';
+    }
+    var rows = getObligations().filter(function (row) { return row.id; });
+    var keys = state ? state.keys : rows.map(function (row) { return row.key; });
+    if (!keys.length) return 'Não encontrei uma conta para revisar.';
+    if (state && state.step === 'choose' && /^\d+$/.test(n) && keys[Number(n) - 1]) {
+      keys = [keys[Number(n) - 1]];
+      deleting = state.deleting;
+      disputed = !deleting;
+    }
+    if (keys.length > 1) {
+      if (!deleting && !disputed) {
+        assistant._billReview = null;
+        return null;
+      }
+      assistant._billReview = {user: Store.userId, step: 'choose', keys: keys, deleting: deleting};
+      return 'Qual conta? Responda com o número.\n' + keys.map(function (key, i) {
+        var row = rows.find(function (item) { return item.key === key; });
+        return (i + 1) + '. ' + (row ? billSummary(row) : 'Indisponível');
+      }).join('\n');
+    }
+    var row = rows.find(function (item) { return item.key === keys[0]; });
+    assistant._billReview = null;
+    if (!row) return 'Essa conta já saiu da lista. Consulte as contas novamente.';
+    var record = row.record;
+    if (row.source === 'installment' || record.cardId || record.benefitWalletId || record.benefitId || record.benefitCardId || record.loanId) {
+      return 'Encontrei ' + billSummary(row) + '. Abra o cadastro de origem para revisar esse lançamento vinculado.';
+    }
+    var linked = row.source === 'commitment' ? (Store.movements || []).filter(function (m) {
+      return m && (!m.userId || m.userId === Store.userId) &&
+        (String(m.commitmentId || '') === row.id || (record.expenseMovementId && m.id === record.expenseMovementId));
+    }) : [];
+    var signature = JSON.stringify([row.key, row.amount, row.dueDate, row.status, row.description, linked.map(function (m) { return [m.id, m.valor]; })]);
+    var next = {user: Store.userId, keys: keys, signature: signature};
+    if (deleting || disputed) {
+      next.step = deleting ? 'delete' : 'review';
+      assistant._billReview = next;
+      return billSummary(row) + '. ' + (deleting ? 'Confirma excluir essa conta' +
+        (linked.length ? ' e o pagamento vinculado' : '') + '? Responda sim ou não.' :
+        'Qual é o valor correto? Se preferir excluir, diga “apague essa conta”.');
+    }
+    if (state.signature !== signature) return 'A conta mudou desde a revisão. Confira os dados novamente.';
+    if (state.step === 'review' && /^(?:r\$\s*)?\d+(?:[.]\d{3})*(?:,\d{1,2})?(?: reais)?$/i.test(raw)) {
+      var amount = parseMoney('R$ ' + raw.replace(/^r\$\s*/i, ''));
+      if (amount) {
+        next.step = 'amount';
+        next.amount = amount;
+        assistant._billReview = next;
+        return 'Alterar ' + billSummary(row) + ' para ' + formatMoney(amount) + '? Responda sim ou não.';
+      }
+    }
+    if (n !== 'sim' && n !== 'confirmo') return null;
+    if (state.step === 'delete') {
+      var field = row.source === 'movement' ? 'movements' : 'commitments';
+      Store[field] = Store[field].filter(function (item) { return item !== record; });
+      if (linked.length) Store.movements = Store.movements.filter(function (item) { return linked.indexOf(item) < 0; });
+      Store.save();
+      return 'Excluí ' + billSummary(row) + '.';
+    }
+    if (state.step === 'amount') {
+      record.valor = state.amount;
+      linked.forEach(function (item) { item.valor = state.amount; });
+      Store.save();
+      return 'Valor atualizado para ' + formatMoney(state.amount) + '.';
+    }
+    return null;
+  }
+
+  function billSummary(row) {
+    return row.description + ' · ' + formatMoney(row.amount) + ' · vencimento ' + formatDate(row.dueDate);
+  }
+
   function getObligations() {
     var result = [];
     var seen = {};
     var todayValue = today();
 
     function push(source, record, id, description, amount, dueDate, status) {
-      if (!record || !validIso(String(dueDate || ''))) return;
+      if (!record || (record.userId && record.userId !== Store.userId) || !validIso(String(dueDate || ''))) return;
       var key = source + ':' + String(id || record.id || '');
       if (seen[key]) return;
       seen[key] = true;
@@ -233,7 +322,7 @@
         key: key,
         source: source,
         id: String(id || record.id || ''),
-        description: String(description || 'Conta sem descrição'),
+        description: billLabel(description),
         amount: Number(amount) || 0,
         dueDate: due,
         status: isPaid ? 'pago' : 'pendente',
@@ -665,6 +754,9 @@
     if (!raw) return null;
     var n = normalize(stripWakeWord(raw));
 
+    var review = reviewBill(assistant, n, raw);
+    if (review !== null) return review;
+
     if (assistant._pendingPaymentCheck) return replyToPaymentCheck(assistant, raw);
 
     if (assistant._pendingAppointmentDraft) {
@@ -788,6 +880,7 @@
         var previous = String(this._userId || '');
         var result = originalReset.apply(this, arguments);
         if (previous !== String(this._userId || '')) {
+          this._billReview = null;
           this._pendingPaymentCheck = null;
           this._pendingDebtDraft = null;
           this._pendingAppointmentDraft = null;

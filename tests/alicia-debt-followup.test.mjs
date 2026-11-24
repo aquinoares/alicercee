@@ -397,3 +397,37 @@ testCase('usa a hora local na abertura e no oi, respeita o cumprimento explícit
   await AlicerceIA.enviarMensagem('bom dia');
   assert.equal(AlicerceIA._answer,'Bom dia! Quanto você pagou nessa compra?');
 });
+
+testCase('revisa conta importada e exige confirmação para excluir o pagamento vinculado', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  const say = message => api.handleMessage(AlicerceIA, message);
+  const bill = { id: 'energia', tipo: 'conta', descricao: 'DANFE energia CNPJ exemplo', valor: 0.25, data: '2026-10-14', status: 'concluido', dataPagamento: '2026-11-12' };
+  Store.commitments.push(bill);
+  Store.movements.push({ id: 'pagamento', commitmentId: bill.id, valor: 0.25 }, { id: 'outro' });
+  assert.doesNotMatch(say('Quais minhas contas?'), /CNPJ/);
+  assert.match(say('Essa conta está errada'), /Conta de energia.*0,25/);
+  assert.match(say('280,25'), /Alterar/);
+  assert.equal(bill.valor, 0.25);
+  assert.match(say('sim'), /280,25/);
+  assert.equal(Store.movements[0].valor, 280.25);
+  assert.match(say('Apague essa conta'), /Confirma excluir.*pagamento vinculado/);
+  assert.match(say('não'), /cancelada/);
+  assert.equal(Store.commitments.length, 1);
+  say('Apague essa conta');
+  assert.match(say('sim'), /Excluí/);
+  assert.equal(Store.commitments.length, 0);
+  assert.deepEqual(Store.movements.map(row => row.id), ['outro']);
+});
+
+testCase('escolhe pelo número e revalida a conta antes da confirmação', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  const say = message => api.handleMessage(AlicerceIA, message);
+  for (const id of ['Água', 'Luz']) {
+    Store.commitments.push({ id, tipo: 'conta', descricao: id, valor: 75, data: '2026-10-14' });
+  }
+  assert.match(say('Apague essa conta'), /1\. Água[\s\S]*2\. Luz/);
+  assert.match(say('2'), /Luz.*Confirma/);
+  Store.commitments[1].valor = 80;
+  assert.match(say('sim'), /mudou/);
+  assert.equal(Store.commitments.length, 2);
+});
