@@ -102,3 +102,25 @@ test("Tela de gastos e categorias consultam a mesma projeção",()=>{
  assert.match(html,/this\.getAnalysisEntries\(\)\.filter\(r=>r\.data\.slice/);
  assert.match(html,/gastosAcoesCorrecao\(m\)/);
 });
+
+test("Leitura fiscal conserva produtos repetidos e rejeita identificadores explícitos",()=>{
+ const context={Store:{userId:"synthetic-test",settings:{}},Intl,Date,Math,Map};context.window=context;
+ vm.runInNewContext(readFileSync(new URL("../assets/alicia-consumo-pastas.js",import.meta.url),"utf8"),context);
+ const parsed=context.AlicerceConsumo.parse([
+ "CPF: 000.000.000-00","Qtde:1 Vl. Total 9,99",
+ "FAROFA PRONTA 400G (Código: 12345)","Qtde:1 UN Vl. Unit.: 7,99 Vl. Total","7,99",
+ "FAROFA PRONTA 400G (Código: 12345)","Qtde:1 UN Vl. Total 7,99",
+ "Email: exemplo@example.invalid","Qtde:1 Vl. Total 1,00",
+ "Nome: Pessoa Fictícia","Qtde:1 Vl. Total 1,00"
+ ].join("\n"));
+ assert.equal(parsed.length,2);
+ assert.equal(parsed[0].name,"FAROFA PRONTA 400G");
+ assert.equal(parsed[0].total,7.99);
+ assert.equal(parsed[1].total,7.99);
+ assert.equal(parsed.some(x=>/cpf|email|pessoa/i.test(x.name)),false);
+});
+test("Fluxo de documentos não envia OCR bruto ao interpretador remoto",()=>{
+ assert.doesNotMatch(html,/input_source:\s*['"]ocr['"]/);
+ assert.doesNotMatch(html,/_receiptOCR\s*=\s*String\(/);
+ assert.match(html,/return \{amount:amount,recipient:'',date:date,incoming:incoming\}/);
+});
