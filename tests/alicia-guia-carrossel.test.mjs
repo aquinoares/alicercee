@@ -44,3 +44,10 @@ test('Feature catalogue is wired to the existing slider below the menu',()=>{
  assert.match(page,/dynamic-card-track/);
  assert.match(page,/startDynamicRotation\(count\)/);
 });
+
+test('os posts do carrossel ensinam fluxos disponíveis no app', () => {
+ const cards=guide.cards(store()).filter(card=>card.id.startsWith('guia-'));
+ assert.equal(cards.length, 5);
+ assert.ok(cards.every(card => card.go==="go('atualizacoes')"));
+ assert.ok(guide.posts.some(post=>/filho ontem/.test(post.prompt||'')));
+});

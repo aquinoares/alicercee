@@ -108,17 +108,18 @@
   function esc(s){return String(s).replace(/[&<>"']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];});}
   function renderCards(store,today){
     var s=summarize(store,today);
-    var max=Math.max(1,s.definitivePaid,s.pendingTotal,s.receivable);
     var cards=[
-      {label:"Já saiu · mês",amount:s.definitivePaid,note:"Pagamentos definitivos",color:"#e59e6a"},
-      {label:"Ainda vou pagar",amount:s.pendingTotal,note:s.overdue?"Inclui "+money(s.overdue)+" vencidos":"Contas e parcelas pendentes",color:"#b4a2e7"},
-      {label:"Tenho a receber",amount:s.receivable,note:"Créditos registrados",color:"#77bdb4"}
+      {label:"Pago neste mês",amount:s.definitivePaid},
+      {label:"A pagar",amount:s.pendingTotal,note:s.overdue?money(s.overdue)+" vencidos":""},
+      {label:"A receber",amount:s.receivable}
     ];
-    var html='<section class="alicia-cashflow" aria-label="Análise financeira durante a conversa"><div class="alicia-cashflow-head"><strong>Seu dinheiro, em três situações</strong><span>'+esc(s.period)+'</span></div><div class="alicia-cashflow-grid">';
-    cards.forEach(function(c){html+='<article class="alicia-cashflow-card"><small>'+esc(c.label)+'</small><strong>'+esc(money(c.amount))+'</strong><div class="alicia-cashflow-track"><i style="width:'+Math.round(c.amount/max*100)+'%;background:'+c.color+'"></i></div><span>'+esc(c.note)+'</span></article>';});
-    html+='</div>';
-    if(s.hasUnknownTransfers)html+='<p class="alicia-cashflow-caveat">Transferências sem finalidade definida: '+esc(money(s.transferUnconfirmed))+' (não classificadas como gasto).</p>';
-    html+='<p class="alicia-cashflow-caveat">Leitura da conta: valores pagos e valores futuros não se misturam. O total só inclui registros salvos.</p></section>';
+    var html='<section class="visao-caixa" aria-label="Caixa e pendências"><h2>Caixa e pendências</h2><dl>';
+    cards.forEach(function(card){
+      html+='<div><dt>'+esc(card.label)+'</dt><dd>'+esc(money(card.amount))+'</dd>'+(card.note?'<small>'+esc(card.note)+'</small>':'')+'</div>';
+    });
+    html+='</dl>';
+    if(s.hasUnknownTransfers)html+='<p>Transferências sem finalidade definida · '+esc(money(s.transferUnconfirmed))+'</p>';
+    html+='</section>';
     return html;
   }
   root.AlicerceCashflow={summarize:summarize,matches:matches,answer:answer,renderCards:renderCards};

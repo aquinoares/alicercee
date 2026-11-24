@@ -16,24 +16,32 @@ var FEATURES=[
  {id:"visao",title:"Entenda sua visão financeira",text:"Consulte os gastos, compromissos e resumos financeiros. Peça também gráficos à Alicia no chat.",go:"visao",label:"Ver relatórios"},
  {id:"atualizacoes",title:"Conheça as atualizações",text:"Em Atualizações você encontra informações sobre recursos e melhorias do Alicerce. Avisos push com o app fechado ainda não estão ativos.",go:"atualizacoes",label:"Ver atualizações"}
 ];
+var POSTS=[
+ {id:"familia",title:"Como registrar uma ajuda à família",text:"Diga à Alícia quanto você deu e para quem foi. Confira a categoria Família e a data antes de salvar.",prompt:"Dei R$ 50 para meu filho ontem",link:"Experimentar no chat"},
+ {id:"pix",title:"Como conferir um Pix pela foto",text:"No chat, toque no botão de foto e escolha a imagem do comprovante. Confira o valor e a data antes de registrar.",go:"assistente",link:"Abrir o chat"},
+ {id:"consumo",title:"Como comparar preços de mercado",text:"Envie a foto de uma nota, revise os produtos e arquive. Depois, peça à Alícia para comparar o preço e diga a marca e o tamanho.",prompt:"Compare o preço da farofa Yoki 400g nas minhas pastas",link:"Experimentar no chat"},
+ {id:"beneficios",title:"Como lançar uma compra no Sodexo",text:"Informe o valor e o que comprou. O saldo do vale diminui quando você confirma a compra.",prompt:"Comprei R$ 35 no mercado com Sodexo",link:"Experimentar no chat"},
+ {id:"caixa",title:"Como ler a Visão Financeira",text:"Confira o caixa registrado, os pagamentos do mês, os valores a pagar e os valores a receber. Toque em Pedir resumo à Alícia para conversar sobre esses números.",go:"visao",link:"Abrir Visão Financeira"}
+];
 function cards(store){
  if(!store||!store.userId)return [];
  var hasBenefits=!!(root.AlicerceBeneficios&&root.AlicerceBeneficios.wallets(store).length);
- var hasExpenses=!!(Array.isArray(store.movements)&&store.movements.length);
- var options=FEATURES.slice(); // Inclui também recursos que o usuário ainda pode configurar.
- // No início, mostre primeiro funções úteis a quem ainda não registrou despesas.
- if(!hasExpenses&&!hasBenefits){
-   options=options.slice().sort(function(a,b){
-     var priorities={chat:0,gasto:1,beneficios:2,beneficiochat:3,corrigir:4,cartoes:5,calendario:6,visao:7,atualizacoes:8};
-     return priorities[a.id]-priorities[b.id];
-   });
- }else{
-   options=options.slice().sort(function(a,b){
-     var priorities={chat:0,beneficios:1,beneficiochat:2,corrigir:3,visao:4,gasto:5,cartoes:6,calendario:7,atualizacoes:8};
-     return priorities[a.id]-priorities[b.id];
-   });
- }
- return options.map(function(f){return {pr:6,type:"alicia-guia",id:f.id,title:f.title,text:f.text,lbl:f.label,go:"go('"+f.go+"')",guide:true};});
+ var priorities=hasBenefits?["chat","beneficios","beneficiochat","corrigir","visao"]:["chat","gasto","beneficios","visao"];
+ var ordered=priorities.map(function(id){return FEATURES.find(function(f){return f.id===id;});});
+ ordered=ordered.concat(FEATURES.filter(function(f){return !priorities.includes(f.id);}));
+ var posts=POSTS.map(function(post){return {
+   id:"guia-"+post.id,title:post.title,text:post.text,lbl:"Ver passo a passo",go:"go('atualizacoes')"
+ };});
+ var features=ordered.map(function(f){return {id:f.id,title:f.title,text:f.text,lbl:f.label,go:"go('"+f.go+"')"};});
+ return features.slice(0,1).concat(posts,features.slice(1)).map(function(card){
+   return Object.assign({pr:6,type:"alicia-guia",guide:true},card);
+ });
 }
-root.AlicerceGuiaAlicia={cards:cards,features:FEATURES};
+function openPost(id){
+ var post=POSTS.find(function(item){return item.id===id;});
+ if(!post)return;
+ if(post.prompt)AlicerceIA.experimentar(post.prompt);
+ else root.go(post.go);
+}
+root.AlicerceGuiaAlicia={cards:cards,features:FEATURES,posts:POSTS,openPost:openPost};
 })(typeof window!=="undefined"?window:globalThis);

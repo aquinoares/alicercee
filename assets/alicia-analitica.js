@@ -59,7 +59,7 @@
     var finance=/\b(gastos?|gastei|despesas?|consumo|dinheiro|financeir\w*|divida|devo|pagar|receber|vencimento|categorias?|compar|evolucao|mes|meses|semana|contas)\b/.test(q);
     if(!display||!finance)return null;
     if(/\b(divida|dividas|pagar|pendente|vencimento|contas a vencer)\b/.test(q))return "obligations";
-    if(/\b(compar|evolucao|tendencia|ultimos meses|mes a mes|meses)\b/.test(q))return "months";
+    if(/\b(comparar|compare|comparacao|evolucao|tendencia|ultimos meses|mes a mes|meses)\b/.test(q))return "months";
     if(/\b(saiu|pagas|paguei|gasto real|gastos reais|dinheiro que nao volta)\b/.test(q))return "outflows";
     if(/\b(categoria|categorias|onde|distribuicao|pizza|rosca)\b/.test(q))return "categories";
     return "overview";
@@ -68,7 +68,10 @@
     var type=intent(question);
     if(!type)return null;
     var date=String(today||new Date().toISOString().slice(0,10));
+    var q=norm(question);
+    if(/\b(?:semana|hoje|ontem|ultimos 7 dias)\b/.test(q))return null;
     var month=date.slice(0,7);
+    if(/\bmes (?:passado|anterior)\b/.test(q)&&["categories","outflows","benefits"].includes(type))month=monthOffset(month,-1);
     var data=[],total=0,title="",note="",mode="bars",basis="";
     if(type==="benefits"){
       if(root.AlicerceBeneficios&&typeof root.AlicerceBeneficios.wallets==="function"){
@@ -85,13 +88,18 @@
       note="Compras pagas com benefício, separadas do saldo bancário e sem somá-las outra vez às despesas do caixa.";
       total=sum(data);
     }else if(type==="months"){
-      data=Array.from({length:6},function(_,i){
-        var key=monthOffset(month,i-5);
-        return {label:monthLabel(key),value:sum(entries(store).filter(function(e){return e.data.slice(0,7)===key;})),month:key};
+      var compareTwo=/\b(?:comparar|compare|comparacao)\b/.test(q)&&/\bmes (?:passado|anterior)\b/.test(q);
+      var count=compareTwo?2:/\b(?:trimestre|ultimos 3 meses)\b/.test(q)?3:6;
+      var cutoff=date.slice(8,10);
+      var recorded=entries(store);
+      data=Array.from({length:count},function(_,i){
+        var key=monthOffset(month,i-count+1);
+        var rows=recorded.filter(function(e){return e.data.slice(0,7)===key&&(!compareTwo||e.data.slice(8,10)<=cutoff);});
+        return {label:monthLabel(key),value:sum(rows),month:key};
       });
       total=sum(data);
-      title="Evolução das despesas registradas · 6 meses";
-      note="Compras no cartão são consideradas pelo mês da parcela. Não é um extrato bancário nem previsão.";
+      title=compareTwo?"Despesas registradas · até o dia "+Number(cutoff):"Evolução das despesas registradas · "+count+" meses";
+      note=compareTwo?"Os dois meses foram comparados até o mesmo dia. Parcelas entram no mês em que foram registradas.":"Parcelas entram no respectivo mês. O gráfico mostra os lançamentos registrados.";
       mode="columns";
     }else if(type==="categories"){
       data=categorize(entries(store).filter(function(e){return e.data.slice(0,7)===month;}),"categoria");
@@ -124,7 +132,7 @@
     if(c.mode==="overview")return "Montei um panorama visual no chat. As colunas representam situações diferentes do seu dinheiro e não devem ser somadas como se fossem o mesmo tipo de gasto.";
     if(c.type==="benefits")return "Mostrei os gastos do mês com vale-alimentação, no total de "+money(c.total)+". Esse valor saiu dos benefícios, não do saldo bancário.";
     if(c.type==="obligations")return "Mostrei a divisão entre contas vencidas e outras pendências registradas, totalizando "+money(c.total)+".";
-    if(c.type==="months")return "Organizei os últimos seis meses no gráfico. A soma dos registros exibidos é "+money(c.total)+". Isso não é uma projeção do futuro.";
+    if(c.type==="months")return c.data.map(function(row){return row.label+": "+money(row.value);}).join(" · ")+".";
     return "Montei o gráfico dentro da conversa. O total dos registros analisados é "+money(c.total)+".";
   }
   function renderChart(c){

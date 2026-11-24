@@ -41,3 +41,16 @@ test("carousel is updates only while chat uses contextual module",()=>{
  assert.match(html,/NOVIDADES · ALICERCE/);
  assert.doesNotMatch(html,/smartCards=tips\.concat\(/);
 });
+
+test("compares matching days and excludes future records from the period",()=>{
+ const s={userId:"a",getAnalysisEntries(){return [
+   {data:"2026-11-02",valor:100,categoria:"comida"},
+   {data:"2026-11-29",valor:500,categoria:"comida"},
+   {data:"2026-10-02",valor:80,categoria:"comida"},
+   {data:"2026-10-29",valor:400,categoria:"comida"}
+ ];}};
+ const report=A.report(s,"2026-11-23");
+ assert.equal(report.total,100);
+ assert.equal(report.previousTotal,80);
+ assert.match(report.text,/25% a mais/);
+});

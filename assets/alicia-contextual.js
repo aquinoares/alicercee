@@ -21,8 +21,9 @@ function report(store,day){
  var old=monthBefore(month);
  var entries=typeof store.getAnalysisEntries==="function"?store.getAnalysisEntries():[];
  var records=Array.isArray(entries)?entries.filter(function(x){return x&&/^\d{4}-\d{2}-\d{2}$/.test(String(x.data||""))&&amount(x.valor); }):[];
- var current=records.filter(function(x){return x.data.slice(0,7)===month;});
- var previous=records.filter(function(x){return x.data.slice(0,7)===old;});
+ var cutoff=String(day).slice(8,10);
+ var current=records.filter(function(x){return x.data.slice(0,7)===month&&x.data.slice(8,10)<=cutoff;});
+ var previous=records.filter(function(x){return x.data.slice(0,7)===old&&x.data.slice(8,10)<=cutoff;});
  var sum=function(list){return Math.round(list.reduce(function(t,x){return t+amount(x.valor);},0)*100)/100;};
  var thisTotal=sum(current),oldTotal=sum(previous);
  var bank=null;try{if(typeof store.getMotorFinanceiro==="function")bank=store.getMotorFinanceiro();}catch(e){}
@@ -54,7 +55,7 @@ function report(store,day){
  }
  if(!facts)return {text:"Não encontrei movimentações confirmadas suficientes para um diagnóstico. Não vou estimar valores sem dados.",facts:0};
  var detail="Os valores refletem apenas o que foi registrado no aplicativo.";
- if(current.length&&previous.length)detail="Comparei somente lançamentos registrados; meses incompletos podem parecer menores.";
+ if(current.length&&previous.length)detail="Comparei os dois meses até o mesmo dia.";
  return {text:lines.slice(0,5).join("\n")+"\n"+detail,facts:facts,total:thisTotal,previousTotal:oldTotal,benefitMonth:benefitMonth};
 }
 root.AlicerceAliciaContextual={matches:matches,report:report};

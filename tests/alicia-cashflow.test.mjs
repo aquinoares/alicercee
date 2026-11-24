@@ -59,12 +59,12 @@ test("sem lançamentos responde zero, não inventa movimentações",()=>{
  assert.equal(s.definitivePaid,0);
  assert.equal(s.receivable,0);
 });
-test("respostas contextualizadas e cartões disponíveis no chat",()=>{
+test("respostas contextualizadas e cartões disponíveis na Visão Financeira",()=>{
  assert.equal(api.matches("Quanto já gastei, dinheiro que não volta, e o que vou pagar?"),true);
  assert.equal(api.matches("Quanto tenho de dívidas para pagar?"),true);
  assert.equal(api.matches("Oi Alicia"),false);
  assert.match(api.answer(store(),"2026-11-23"),/Contas, dívidas e parcelas pendentes/);
- assert.match(api.renderCards(store(),"2026-11-23"),/Seu dinheiro, em três situações/);
+ assert.match(api.renderCards(store(),"2026-11-23"),/Caixa e pendências/);
  assert.match(app,/AlicerceCashflow\.renderCards\(Store,Clock\.today\(\)\)/);
  assert.match(app,/assets\/alicia-cashflow\.js/);
 });

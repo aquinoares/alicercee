@@ -31,22 +31,25 @@ var items=[];
 for(var i=0;i<lines.length;i++){
 var title=lines[i],n=norm(title);
 if(/^(qtde|qtd|vl\.|valor|total|documento|cnpj|cpf|chave|tributos|pagamento|troco|desconto|subtotal|consumidor)/.test(n))continue;
-var q=title.match(/\b(?:qtde|qtd)[.:\s]*([\d.,]+).*?(?:vl\.?\s*total|total)\s*([\d.]+,\d{2})/i);
-if(q)continue;
-var next=lines.slice(i+1,i+4).join(' ');
-var quantity=next.match(/\b(?:qtde|qtd)[.:\s]*([\d.,]+)/i);
-var total=next.match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})/i);
-if(!total){
-var j=lines.slice(i+1,i+4).findIndex(function(x){return /\bvl\.?\s*total\b/i.test(x)});
-if(j>=0){var m=lines[i+1+j].match(/([\d.]+,\d{2})/);if(m)total=m}
+var inline=title.match(/^(.+?)\s+(?=\b(?:qtde|qtd)[.:\s])/i);
+if(inline)title=inline[1].trim();
+var detail=inline?lines[i]:lines[i+1]||'';
+var quantity=detail.match(/\b(?:qtde|qtd)[.:\s]*([\d.,]+)/i);
+if(!quantity)continue;
+var nextIndex=i+(inline?1:2);
+var following=lines[nextIndex]||'';
+if(/^\s*(?:vl\.?\s*total|valor\s*total)\b/i.test(following)){
+detail+=' '+following;
+following=lines[nextIndex+1]||'';
 }
+var total=(detail+' '+(/^\s*(?:R\$\s*)?[\d.]+,\d{2}\s*$/.test(following)?following:''))
+.match(/(?:vl\.?\s*total|valor\s*total)\s*[:R$\s]*([\d.]+,\d{2})/i);
 if(!total||!/\p{L}/u.test(title)||title.length<4||title.length>115)continue;
 var desc=clean(title.replace(/\s*\((?:c[oó]digo|cod)\s*[:.]?\s*\d+\s*\)/i,''));
 var value=num(total[1]);
 var qt=quantity?Number(quantity[1].replace(',','.')):1;
 if(!value||!Number.isFinite(qt)||qt<=0||qt>10000)continue;
 if(/nota fiscal|supermercado|cnpj|documento|tributo|informac|emitid|consumidor|chave de acesso/i.test(norm(desc)))continue;
-if(items.some(function(x){return x.name===desc&&x.total===value}))continue;
 items.push({name:desc,quantity:qt,total:value,folder:folder(desc)});
 if(items.length>=120)break;
 }
@@ -98,9 +101,17 @@ if(typeof render==='function')render();
 }
 };
 }
+function receiptDate(value){
+var raw=String(value||'');
+var iso=raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+var br=raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+var date=iso?raw:br?br[3]+'-'+br[2].padStart(2,'0')+'-'+br[1].padStart(2,'0'):'';
+var instant=date?new Date(date+'T12:00:00Z'):null;
+return instant&&!isNaN(instant.getTime())&&instant.toISOString().slice(0,10)===date?date:'';
+}
 function summary(question){
 var data=records(),items=[];
-data.forEach(function(r){(r.items||[]).forEach(function(it){items.push({name:it.name,folder:it.folder,total:Number(it.total)||0,quantity:Number(it.quantity)||1,date:r.date,merchant:r.merchant})})});
+data.forEach(function(r){(r.items||[]).forEach(function(it){items.push({name:it.name,folder:it.folder||folder(it.name),total:Number(it.total)||0,quantity:Number(it.quantity)||1,date:receiptDate(r.date),receiptId:r.id||data.indexOf(r),merchant:r.merchant})})});
 if(!data.length)return 'Ainda não existem notas arquivadas. Envie a foto de uma nota à Alícia para começar seu histórico de produtos.';
 var q=norm(question),group=q.match(/alimentacao|limpeza|higiene|saude|casa|pets|outros/);
 var target=group?group[0]:null;
@@ -111,7 +122,20 @@ var by={};filtered.forEach(function(x){by[x.folder]=(by[x.folder]||0)+x.total});
 var ranked=Object.keys(by).sort(function(a,b){return by[b]-by[a]}).slice(0,5);
 if(ranked.length)response+='\nPastas: '+ranked.map(function(k){return (categories.find(function(c){return c[0]===k})||[k,k])[1]+' '+money(by[k])}).join(' · ')+'.';
 if(/preco|aumento|barato|caro|produto|compare|comparar/.test(q)){
-var matching=items.filter(function(x){return norm(x.name).length>3&&q.includes(norm(x.name))}).sort(function(a,b){return String(a.date).localeCompare(String(b.date))});
+var words=function(value){return norm(value).match(/[a-z0-9]+/g)||[]};
+var ignored=new Set(['compare','comparar','preco','precos','aumento','barato','caro','produto','produtos','o','a','do','da','de','os','das','dos','em','no','na','quanto','custou','custa','pastas','consumo','historico','minhas','meus','nas','nos']);
+var targetWords=words(question).filter(function(word){return !ignored.has(word)});
+var products=Object.create(null);
+items.forEach(function(item){
+var name=words(item.name).join(' ');
+if(!item.date||!targetWords.length||!targetWords.every(function(word){return name.split(' ').includes(word)}))return;
+var notes=products[name]||(products[name]=new Map());
+var entry=notes.get(item.receiptId)||{name:item.name,date:item.date,total:0,quantity:0};
+entry.total+=item.total;entry.quantity+=item.quantity;notes.set(item.receiptId,entry);
+});
+var variants=Object.keys(products);
+var matching=variants.length===1?Array.from(products[variants[0]].values()).sort(function(a,b){return a.date.localeCompare(b.date)}):[];
+if(variants.length>1)response+='\nEncontrei mais de uma versão desse produto. Informe também a marca ou o tamanho da embalagem.';
 if(matching.length>=2){var a=matching[matching.length-2],b=matching[matching.length-1];response+='\n'+b.name+': últimas duas ocorrências, '+money(a.total/a.quantity)+' e '+money(b.total/b.quantity)+' por unidade informada. Confira embalagens e quantidades antes de comparar.'}
 else response+='\nPara comparar preços, preciso de ao menos duas ocorrências do mesmo produto com unidades equivalentes.';
 }

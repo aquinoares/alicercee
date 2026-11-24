@@ -2644,8 +2644,8 @@ test('Alicia orienta o uso do microfone do teclado sem pedir acesso ao microfone
   expect(await page.evaluate(function () { return window.__speechRecognitionStarts; })).toBe(0);
 
   await page.locator('#alicerce-assistant-camera').click();
-  await expect(notice).toContainText('leitura de fotos e documentos está temporariamente desativada');
-  await expect(notice).toContainText('nenhum texto reconhecido é enviado ou registrado');
+  await expect(notice).toContainText('A foto será analisada no seu aparelho');
+  await expect(notice).toContainText('não salva automaticamente o texto completo da imagem');
   await page.locator('.alicerce-assistant-privacy-cancel').click();
   await expect(notice).toBeHidden();
 });
@@ -3822,4 +3822,34 @@ test('central de alertas identifica compromisso com aviso de 30 minutos', async 
   });
   expect(alerts.before.some(function (item) { return item.text === 'Dentista' && item.label === 'Em 30 minutos'; })).toBe(true);
   expect(alerts.after.some(function (item) { return item.text === 'Dentista'; })).toBe(false);
+});
+
+test('Alícia prepara ajuda familiar datada e abre o gasto a corrigir', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(async function () {
+    Store.userId = 'alicia-family-regression';
+    Store.movements = [{ id: 'pix-incorreto', tipo: 'despesa', descricao: 'ChatGPT', valor: 70, data: '2026-10-23', status: 'pago', pagamento: 'pix' }];
+    await AlicerceIA.enviarMensagem('Mandei um Pix de R$ 50 para minha esposa no dia 12/11/2026');
+    const draft = Store.screenData;
+    await AlicerceIA.enviarMensagem('Paguei a assinatura do ChatGPT no cartão, mas lancei no Pix');
+    AlicerceIA.abrirAcaoDaConversa(AlicerceIA._messages.length - 1);
+    return { draft, navigation: Store.screenData, count: Store.movements.length };
+  });
+  expect(result.draft).toMatchObject({ amountInput: 50, date: '2026-11-12', paymentMethod: 'pix', interpretation: { categoria: 'familia', subcategoria: 'esposa_marido' } });
+  expect(result.navigation).toMatchObject({ year: 2026, month: 10, movementId: 'pix-incorreto' });
+  expect(result.count).toBe(1);
+  await expect(page.locator('details[open]').filter({ hasText: 'ChatGPT' })).toHaveCount(1);
+});
+
+test('Pix não confunde tarifa, varejo e valores conflitantes', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'assistente');
+  const result = await page.evaluate(function () {
+    return [
+      AlicerceIA._lerComprovantePix('Comprovante Pix\nValor da tarifa: R$ 1,00\nValor transferido: R$ 50,00'),
+      AlicerceIA._lerComprovantePix('Comprovante Pix\nValor da tarifa: R$ 1,00'),
+      AlicerceIA._lerComprovantePix('Comprovante Pix\nValor enviado: R$ 50,00\nValor transferido: R$ 80,00'),
+      AlicerceIA._lerComprovantePix('PIX pagamento aprovado\nSUPERMERCADO EXEMPLO\nValor pago: R$ 50,00')
+    ];
+  });
+  expect(result.map(item => item && item.amount)).toEqual([50, null, null, null]);
 });
