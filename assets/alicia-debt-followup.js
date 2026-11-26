@@ -892,7 +892,7 @@
       h+=v.future.map(function(r){return row(r.month,r.count?formatMoney(r.pending):'Sem registros',r.count?r.count+' obrigação(ões) cadastrada(s)':'');}).join('');
       h+='<p class="text-muted text-sm">Valores variáveis são estimativas cadastradas. Não há promessa de receita nem reserva automática.</p>';
     }
-    h+='<div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px"><strong>Visão da Alicia</strong><p class="text-muted text-sm">'+(planningTab===0?'Organize as prioridades e simule novos ganhos antes de gastar.':planningTab===1?'Compare a quitação e os atrasos com base nas datas confirmadas.':'Prepare as contas futuras com valores e datas cadastrados.')+'</p><button type="button" class="btn btn-secondary btn-block" onclick="AliciaDebtFollowup.planningAsk()">Conversar com Alicia</button></div><p class="text-muted text-sm" style="text-align:center;margin:12px 0 0">Deslize para navegar entre as visões</p></section>';
+    h+='<div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px">'+planningBrand()+'<strong>Visão da Alicia</strong><p class="text-muted text-sm">'+(planningTab===0?'Organize as prioridades e simule novos ganhos antes de gastar.':planningTab===1?'Compare a quitação e os atrasos com base nas datas confirmadas.':'Prepare as contas futuras com valores e datas cadastrados.')+'</p><button type="button" class="btn btn-secondary btn-block" onclick="AliciaDebtFollowup.planningAsk()">Conversar com Alicia</button></div><p class="text-muted text-sm" style="text-align:center;margin:12px 0 0">Deslize para navegar entre as visões</p></section>';
     return h;
   }
   function planningSimHTML(value,view){
@@ -968,10 +968,12 @@
     return financialAnswer(raw);
   }
 
+  function planningBrand() { return typeof root.aliciaOrb === 'function' ? '<span class="alicia-brand-inline" aria-hidden="true">' + root.aliciaOrb() + '</span>' : ''; }
+
   function renderFinancialSummary() {
     var view = getOverview();
     var html = '<section class="card mt-3" aria-label="Contas e dívidas acompanhadas pela Alicia">';
-    html += '<div style="font-weight:750;margin-bottom:10px">Contas e dívidas acompanhadas pela Alicia</div>';
+    html += '<div style="font-weight:750;margin-bottom:10px">'+planningBrand()+'Contas e dívidas acompanhadas pela Alicia</div>';
     html += '<div class="list-item"><div class="li-info"><div class="li-name">Em atraso</div><div class="li-sub">' + view.overdue.length + ' conta(s)</div></div><div class="li-amount text-red">' + formatMoney(view.overdueTotal) + '</div></div>';
     html += '<div class="list-item"><div class="li-info"><div class="li-name">Vencem hoje</div><div class="li-sub">' + view.dueToday.length + ' conta(s)</div></div><div class="li-amount">' + formatMoney(view.dueTodayTotal) + '</div></div>';
     html += '<div class="list-item"><div class="li-info"><div class="li-name">Quitadas</div><div class="li-sub">' + view.paid.length + ' conta(s)</div></div><div class="li-amount">' + formatMoney(view.paidTotal) + '</div></div>';
