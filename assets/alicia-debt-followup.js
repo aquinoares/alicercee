@@ -763,7 +763,13 @@
     return rows.reduce(function (sum, row) { return sum + cents(row.amount); }, 0) / 100;
   }
   function planningRows() {
-    return getObligations().filter(function (r) { return cents(r.amount) > 0; });
+    var rows=getObligations().filter(function (r) { return cents(r.amount) > 0; });
+    (Store.installments||[]).forEach(function (r) {
+      if (!r || !r.id || r.tipo!=='cartao' || (r.userId&&r.userId!==Store.userId) || !validIso(r.data) || !cents(r.valor)) return;
+      var paid=r.status==='pago'||r.paymentStatus==='pago'||r.status==='recebido';
+      rows.push({key:'card:'+r.id,source:'card',id:String(r.id),description:billLabel(obligationDescription(r)),amount:Number(r.valor),dueDate:r.data,status:paid?'pago':'pendente',paidDate:paid?paymentDateFor(r,'installment'):'',record:r});
+    });
+    return rows;
   }
   function essential(row) {
     return row.record.planningKind === 'essential' ||
@@ -780,13 +786,13 @@
     });
     var history = Array.from({length: 12}, function (_, i) {
       var m = key.slice(0,4) + '-' + String(i + 1).padStart(2, '0'), monthRows = rows.filter(function (r) { return r.dueDate.slice(0, 7) === m; });
-      var known = monthRows.filter(function (r) { return r.status === 'pago' && validIso(r.paidDate); });
+      var known = monthRows.filter(function (r) { return r.status === 'pago' && validIso(r.paidDate) && r.paidDate <= asOf; });
       var onTime = known.filter(function (r) { return r.paidDate <= r.dueDate; });
       var cutoff = monthOffset(m, 1) + '-01';
       var lateCarry = monthRows.filter(function (r) {
         return r.status !== 'pago' || validIso(r.paidDate) && r.paidDate >= cutoff;
       });
-      var missingDate = monthRows.some(function (r) { return r.status === 'pago' && !validIso(r.paidDate); });
+      var missingDate = monthRows.some(function (r) { return r.status === 'pago' && (!validIso(r.paidDate) || r.paidDate > asOf); });
       var complete = monthRows.length > 0 && known.length === monthRows.length;
       var last = complete ? known.map(function (r) { return r.paidDate; }).sort().pop() : '';
       var days = last ? Math.max(0, Math.round((Date.parse(last+'T00:00:00Z') - Date.parse(m+'-01T00:00:00Z'))/86400000)+1) : null;
@@ -813,7 +819,7 @@
   }
   function planningAnswer(message) {
     var n = normalize(stripWakeWord(message)), view, result;
-    var hypothetical = /\b(se eu (conseguir|ganhar|receber|tiver)|consegui|recebi|ganhei|tenho)\b/.test(n) &&
+    var hypothetical = /\b(se eu (conseguir|ganhar|receber|tiver)|consegui|recebi|ganhei|tenho (?:r )?\d+)\b/.test(n) &&
       /\b(pagar|quitar|conta|contas|obrigacoes|dividas)\b/.test(n);
     var evolution = /\b(evolucao financeira|meses positivos|melhor mes|quanto tempo|estou melhor|to indo bem|estou indo bem|paguei mais rapido|contas acumuladas)\b/.test(n);
     var future = /\b(proximo mes|proximos meses|mes que vem)\b/.test(n) && /\b(contas|pagar|obrigacoes|dividas|preciso|planejamento)\b/.test(n);
