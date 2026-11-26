@@ -749,6 +749,186 @@
     return lines.join('\n');
   }
 
+
+  // Planejamento: mesmo cadastro de contas, sem registrar dinheiro simulado.
+  function monthOffset(key, offset) {
+    var p = key.split('-').map(Number), d = new Date(p[0], p[1] - 1 + offset, 1);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  function cents(value) {
+    var n = Number(value);
+    return Number.isFinite(n) && n > 0 && n <= 100000000 ? Math.round(n * 100) : 0;
+  }
+  function totalRows(rows) {
+    return rows.reduce(function (sum, row) { return sum + cents(row.amount); }, 0) / 100;
+  }
+  function planningRows() {
+    return getObligations().filter(function (r) { return cents(r.amount) > 0; });
+  }
+  function essential(row) {
+    return row.record.planningKind === 'essential' ||
+      /\b(aluguel|energia|agua|luz|gas|feira|alimentacao|mercado|moradia|remedio|transporte)\b/.test(normalize(row.description));
+  }
+  function planningSnapshot(asOf) {
+    asOf = validIso(asOf) ? asOf : today();
+    var key = asOf.slice(0, 7), rows = planningRows();
+    var monthly = rows.filter(function (r) { return r.dueDate.slice(0, 7) === key; });
+    var pending = rows.filter(function (r) { return r.status !== 'pago' && r.dueDate.slice(0, 7) <= key; });
+    pending.sort(function (a, b) {
+      return Number(b.dueDate < asOf) - Number(a.dueDate < asOf) ||
+        Number(essential(b)) - Number(essential(a)) || a.dueDate.localeCompare(b.dueDate);
+    });
+    var history = Array.from({length: 12}, function (_, i) {
+      var m = key.slice(0,4) + '-' + String(i + 1).padStart(2, '0'), monthRows = rows.filter(function (r) { return r.dueDate.slice(0, 7) === m; });
+      var known = monthRows.filter(function (r) { return r.status === 'pago' && validIso(r.paidDate); });
+      var onTime = known.filter(function (r) { return r.paidDate <= r.dueDate; });
+      var cutoff = monthOffset(m, 1) + '-01';
+      var lateCarry = monthRows.filter(function (r) {
+        return r.status !== 'pago' || validIso(r.paidDate) && r.paidDate >= cutoff;
+      });
+      var missingDate = monthRows.some(function (r) { return r.status === 'pago' && !validIso(r.paidDate); });
+      var complete = monthRows.length > 0 && known.length === monthRows.length;
+      var last = complete ? known.map(function (r) { return r.paidDate; }).sort().pop() : '';
+      var days = last ? Math.max(0, Math.round((Date.parse(last+'T00:00:00Z') - Date.parse(m+'-01T00:00:00Z'))/86400000)+1) : null;
+      var state = m > key ? 'future' : m === key ? 'open' : !monthRows.length ? 'empty' : lateCarry.length ? 'carried' : missingDate ? 'unknown' : 'closed';
+      return {month:m, state:state, count:monthRows.length, total:totalRows(monthRows), carried: m < key ? totalRows(lateCarry) : null, days:days, onTime:onTime.length, dated:known.length};
+    });
+    var future = Array.from({length: 12}, function (_, i) {
+      var m = monthOffset(key, i+1), upcoming = rows.filter(function (r) { return r.dueDate.slice(0,7) === m; });
+      return {month:m,total:totalRows(upcoming),pending:totalRows(upcoming.filter(function (r) { return r.status !== 'pago'; })),count:upcoming.length};
+    });
+    return {month:key, total:totalRows(monthly), paid:totalRows(monthly.filter(function (r) { return r.status === 'pago'; })),
+      pending:pending, remaining:totalRows(pending), overdue:totalRows(pending.filter(function (r) {return r.dueDate < asOf;})),
+      carry:totalRows(pending.filter(function (r) {return r.dueDate.slice(0,7)<key;})),
+      history:history,future:future};
+  }
+  function simulatePlanning(amount, snapshot) {
+    var remaining = cents(amount), covered = [], blocked = [];
+    (snapshot || planningSnapshot()).pending.forEach(function (r) {
+      var cost = cents(r.amount);
+      if (cost <= remaining && !blocked.length) { covered.push(r); remaining -= cost; }
+      else blocked.push(r);
+    });
+    return {covered:covered, blocked:blocked, remaining:remaining/100};
+  }
+  function planningAnswer(message) {
+    var n = normalize(stripWakeWord(message)), view, result;
+    var hypothetical = /\b(se eu (conseguir|ganhar|receber|tiver)|consegui|recebi|ganhei|tenho)\b/.test(n) &&
+      /\b(pagar|quitar|conta|contas|obrigacoes|dividas)\b/.test(n);
+    var evolution = /\b(evolucao financeira|meses positivos|melhor mes|quanto tempo|estou melhor|to indo bem|estou indo bem|paguei mais rapido|contas acumuladas)\b/.test(n);
+    var future = /\b(proximo mes|proximos meses|mes que vem)\b/.test(n) && /\b(contas|pagar|obrigacoes|dividas|preciso|planejamento)\b/.test(n);
+    var monthly = /\b(esse mes|este mes|do mes|neste mes|nesse mes)\b/.test(n) && /\b(pagar|contas|dividas|obrigacoes|preciso|compromissos)\b/.test(n);
+    if (/\b(anote|anota|cadastre|cadastra|registre|registra|adicione|adiciona|inclua|crie|marque|quite|paguei)\b/.test(n) && !evolution) return null;
+    if (/\b(quanto tempo|melhor mes)\b/.test(n) && !/\b(contas|obrigacoes|pagar|quitar|financeir[oa]|mes)\b/.test(n)) evolution=false;
+    if (/\b(todo mes|todos os meses|mensalmente|recorrente|se repetem)\b/.test(n) && /\b(conta|contas|aluguel|obrigacoes|feira|energia|dividas)\b/.test(n))
+      return 'Para cadastrar uma obrigação recorrente com valor e vencimento, abra Minha evolução > Meu mês > Adicionar obrigação. Você pode programar até 12 ocorrências sem lançar pagamentos.';
+    if (!hypothetical && !evolution && !future && !monthly) return null;
+    view = planningSnapshot();
+    if (hypothetical) {
+      var amount = parseMoney(message);
+      if (!amount) {
+        var match = String(message).match(/(?:conseguir|ganhar|receber|tiver|consegui|recebi|ganhei|tenho)\s+(\d+(?:[.,]\d{1,2})?)/i);
+        if (match) amount = Number(match[1].replace(',','.'));
+      }
+      if (!cents(amount)) return 'Qual valor você quer simular para pagar suas obrigações?';
+      result = simulatePlanning(amount,view);
+      return 'Simulação de '+formatMoney(amount)+': '+(result.covered.length ? result.covered.map(function(r){return r.description+' ('+formatMoney(r.amount)+')';}).join('; ') : 'nenhuma obrigação prioritária pode ser quitada integralmente com esse valor')+'. Restante na simulação: '+formatMoney(result.remaining)+'.'+(result.blocked.length?' Próxima prioridade: '+result.blocked[0].description+' ('+formatMoney(result.blocked[0].amount)+').':'')+' Não registrei pagamentos nem entradas.';
+    }
+    if (evolution) {
+      var closed = view.history.filter(function(r){return r.state==='closed';});
+      var known = view.history.filter(function(r){return r.month<view.month&&r.days!==null;});
+      return 'Neste ano, '+closed.length+' mês(es) encerrados com todas as obrigações cadastradas pagas até o fim do mês. '+(known.length?'Tempo de quitação registrado: '+known.map(function(r){return r.month+': '+r.days+' dias';}).join('; ')+'.':'Ainda não há histórico completo com datas de pagamento para medir a velocidade.')+' Isso mede obrigações registradas, não comprova saldo financeiro positivo.';
+    }
+    if (future) return 'Próximos meses (somente obrigações cadastradas): '+view.future.slice(0,4).map(function(r){return r.month+': '+formatMoney(r.pending);}).join('; ')+'. Atrasos anteriores ainda pendentes: '+formatMoney(view.carry)+'. Não contei receitas previstas como dinheiro disponível.';
+    return 'Neste mês: '+formatMoney(view.total)+' em obrigações cadastradas, '+formatMoney(view.paid)+' já pagas. Falta '+formatMoney(view.remaining)+' incluindo '+formatMoney(view.carry)+' de meses anteriores.'+(view.pending.length?'\nPrioridades:\n'+view.pending.slice(0,8).map(function(r){return '- '+r.description+' — '+formatMoney(r.amount)+' — '+formatDate(r.dueDate);}).join('\n'):'')+' Valores previstos não são pagamentos.';
+  }
+  function createPlanningObligations(description, amount, firstDue, occurrences, kind) {
+    if (!Store.userId || !String(description||'').trim() || String(description).length>100 || !cents(amount) || !validIso(firstDue) || firstDue<today() ||
+      !Number.isInteger(occurrences) || occurrences<1 || occurrences>12 || ['essential','fixed','variable','installment'].indexOf(kind)<0) throw new Error('Confira descrição, valor, data e quantidade (1 a 12).');
+    var name = String(description).trim(), existing = planningRows(), dates=[];
+    var day = Number(firstDue.slice(8));
+    for (var i=0;i<occurrences;i++) {
+      var m=monthOffset(firstDue.slice(0,7),i), p=m.split('-').map(Number);
+      var due=m+'-'+String(Math.min(day,new Date(p[0],p[1],0).getDate())).padStart(2,'0');
+      if (!existing.some(function(r){return normalize(r.description)===normalize(name)&&r.dueDate.slice(0,7)===m;})) dates.push(due);
+    }
+    var count=0;
+    dates.forEach(function(due){
+      if (!addCommitment({tipo:'compromisso',descricao:name,valor:cents(amount)/100,data:due,dataVencimento:due,status:'pendente',paymentStatus:'pendente',naturezaFinanceira:'divida',origem:'alicia-planejamento',planningKind:kind, dataPagamento:''})) throw new Error('Cadastro interrompido. Confira as obrigações já adicionadas antes de tentar novamente.');
+      count++;
+    });
+    return count;
+  }
+  var planningTab = 0, planningUser = '', planningValue = '', touchOrigin = null;
+  function renderPlanning() {
+    if (planningUser !== Store.userId) {planningUser=Store.userId;planningTab=0;planningValue='';}
+    var v=planningSnapshot(), tabs=['Meu mês','Evolução','Futuro'];
+    var h='<section id="alicerce-planning" class="card mt-3" aria-label="Minha evolução financeira" style="border-radius:22px;overflow:hidden;touch-action:pan-y;padding:16px">';
+    h+='<div style="font-size:11px;letter-spacing:.12em;opacity:.7">ALICERCE · PLANEJAMENTO</div><h2 style="margin:8px 0 14px;font-size:23px">Minha evolução</h2>';
+    h+='<div role="group" aria-label="Visões do planejamento" style="display:flex;gap:5px;margin-bottom:16px">'+tabs.map(function(t,i){return '<button type="button" aria-pressed="'+(i===planningTab)+'" class="btn '+(i===planningTab?'btn-primary':'btn-secondary')+'" style="flex:1;padding:8px 4px;font-size:12px" onclick="AliciaDebtFollowup.planningSwitch('+i+')">'+t+'</button>';}).join('')+'</div>';
+    var row=function(label,value,sub){return '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)"><div style="min-width:0;overflow-wrap:anywhere">'+escaped(label)+(sub?'<div class="text-muted text-sm">'+escaped(sub)+'</div>':'')+'</div><strong style="white-space:nowrap">'+escaped(value)+'</strong></div>';};
+    var hero=function(label,value){return '<div style="border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;background:rgba(81,139,240,.09)"><div class="text-muted text-sm">'+escaped(label)+'</div><strong style="font-size:28px;display:block;margin-top:6px">'+escaped(value)+'</strong></div>';};
+    if(planningTab===0){
+      h+=hero('Falta pagar · inclui atrasos',formatMoney(v.remaining))+row('Obrigações do mês',formatMoney(v.total))+row('Já pago neste mês de vencimento',formatMoney(v.paid))+row('Em atraso',formatMoney(v.overdue));
+      h+='<h3 style="margin:20px 0 5px;font-size:16px">Próximas obrigações</h3>';
+      h+=v.pending.length?v.pending.map(function(r){return row(r.description,formatMoney(r.amount),formatDate(r.dueDate)+(essential(r)?' · Essencial':''));}).join(''):'<p class="text-muted text-sm">Nenhuma obrigação pendente cadastrada para este mês.</p>';
+      h+='<button type="button" class="btn btn-secondary btn-block" style="margin-top:12px" onclick="AliciaDebtFollowup.planningAdd()">Adicionar obrigação</button>';
+      h+='<div style="border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:18px"><strong>Se eu conseguir...</strong><label for="alicerce-planning-value" class="text-muted text-sm" style="display:block;margin:8px 0">Valor a simular (R$)</label><input id="alicerce-planning-value" type="number" min="0" max="100000000" step="0.01" inputmode="decimal" value="'+escaped(planningValue)+'" style="width:100%;padding:10px;border-radius:10px;background:transparent;color:inherit;border:1px solid var(--line)" oninput="AliciaDebtFollowup.planningSim(this.value)"><div id="alicerce-planning-result" aria-live="polite">'+planningSimHTML(planningValue,v)+'</div></div>';
+    }else if(planningTab===1){
+      var closed=v.history.filter(function(r){return r.state==='closed';}).length;
+      h+=hero('Meses com obrigações quitadas até o fim do mês',closed+' de '+v.history.filter(function(r){return r.month<v.month;}).length);
+      h+='<div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin:14px 0">'+v.history.map(function(r){var colors={closed:'#20866b',carried:'#a95454',open:'#466ba0',unknown:'#877448',empty:'#697382',future:'#697382'};var labels={closed:'Quitado',carried:'Pendência',open:'Em curso',unknown:'Sem data',empty:'Sem dados',future:'Futuro'};return '<div title="'+labels[r.state]+'" style="min-width:0;text-align:center;background:'+colors[r.state]+';color:white;border-radius:9px;padding:8px 1px;font-size:10px">'+['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][Number(r.month.slice(5))-1]+'<div style="font-size:9px;overflow-wrap:anywhere">'+labels[r.state]+'</div></div>';}).join('')+'</div>';
+      h+='<p class="text-muted text-sm">Quitação de obrigações não é o mesmo que saldo financeiro positivo.</p><h3 style="font-size:16px">Histórico de quitação</h3>';
+      h+=v.history.filter(function(r){return r.month<=v.month&&r.count;}).map(function(r){return row(r.month,r.days===null?'Sem quitação medida':r.days+' dias',(r.dated?r.onTime+' de '+r.dated+' pagamentos datados no prazo':'Sem datas de pagamento')+(r.carried?' · Passou ao mês seguinte: '+formatMoney(r.carried):''));}).join('');
+    }else{
+      h+=hero('Próximo mês · pendências cadastradas',formatMoney(v.future[0].pending))+row('Atrasos de meses anteriores',formatMoney(v.carry));
+      h+='<h3 style="font-size:16px">Projeção dos próximos 12 meses</h3>';
+      h+=v.future.map(function(r){return row(r.month,r.count?formatMoney(r.pending):'Sem registros',r.count?r.count+' obrigação(ões) cadastrada(s)':'');}).join('');
+      h+='<p class="text-muted text-sm">Valores variáveis são estimativas cadastradas. Não há promessa de receita nem reserva automática.</p>';
+    }
+    h+='<div style="border-top:1px solid var(--line);margin-top:18px;padding-top:14px"><strong>Visão da Alicia</strong><p class="text-muted text-sm">'+(planningTab===0?'Organize as prioridades e simule novos ganhos antes de gastar.':planningTab===1?'Compare a quitação e os atrasos com base nas datas confirmadas.':'Prepare as contas futuras com valores e datas cadastrados.')+'</p><button type="button" class="btn btn-secondary btn-block" onclick="AliciaDebtFollowup.planningAsk()">Conversar com Alicia</button></div><p class="text-muted text-sm" style="text-align:center;margin:12px 0 0">Deslize para navegar entre as visões</p></section>';
+    return h;
+  }
+  function planningSimHTML(value,view){
+    if(!cents(value))return '<p class="text-muted text-sm">Informe um valor para simular. Nenhum lançamento será criado.</p>';
+    var result=simulatePlanning(Number(value),view);
+    return '<p><strong>'+result.covered.length+' obrigação(ões) cobertas</strong></p>'+result.covered.map(function(r){return '<div class="text-sm">'+escaped(r.description)+' · '+escaped(formatMoney(r.amount))+'</div>';}).join('')+'<p class="text-sm">Restante: '+escaped(formatMoney(result.remaining))+'</p>'+(result.blocked.length?'<p class="text-sm">Próxima prioridade: '+escaped(result.blocked[0].description)+' · '+escaped(formatMoney(result.blocked[0].amount))+'</p>':'')+'<p class="text-muted text-sm">Simulação, não pagamento.</p>';
+  }
+  function planningSwitch(i){
+    planningTab=Math.max(0,Math.min(2,i));
+    var node=document.getElementById('alicerce-planning');
+    if(node)node.outerHTML=renderPlanning();
+  }
+  function planningSim(value){
+    planningValue=String(value||'');
+    var node=document.getElementById('alicerce-planning-result');
+    if(node)node.innerHTML=planningSimHTML(planningValue,planningSnapshot());
+  }
+  function planningAdd(){
+    if(!Store.userId||typeof dialog!=='function')return;
+    dialog('Adicionar obrigação','<form id="alicerce-planning-form" onsubmit="event.preventDefault();AliciaDebtFollowup.planningSave(this)"><label>Descrição<input name="description" required maxlength="100" placeholder="Ex.: Feira da família"></label><label>Valor previsto (R$)<input name="amount" type="number" required min="0.01" max="100000000" step="0.01" inputmode="decimal"></label><label>Primeiro vencimento<input name="due" type="date" required min="'+today()+'" value="'+today()+'"></label><label>Tipo<select name="kind"><option value="essential">Essencial / família</option><option value="fixed">Conta fixa</option><option value="variable">Conta variável (estimativa)</option><option value="installment">Parcela</option></select></label><label>Ocorrências mensais<select name="occurrences">'+Array.from({length:12},function(_,i){return '<option value="'+(i+1)+'">'+(i+1)+' mês(es)</option>';}).join('')+'</select></label><p class="text-muted text-sm">O cadastro cria apenas compromissos pendentes. Ocorrências com a mesma descrição no mesmo mês são ignoradas.</p><button class="btn btn-primary btn-block" type="submit">Confirmar cadastro</button><p id="alicerce-planning-feedback" role="status"></p></form>');
+  }
+  function planningSave(form){
+    var feedback=document.getElementById('alicerce-planning-feedback'), fields=form.elements;
+    try{
+      var count=createPlanningObligations(fields.description.value,Number(fields.amount.value),fields.due.value,Number(fields.occurrences.value),fields.kind.value);
+      if(feedback)feedback.textContent=count+' obrigação(ões) cadastrada(s). Nenhum pagamento realizado.';
+      var node=document.getElementById('alicerce-planning');if(node)node.outerHTML=renderPlanning();
+    }catch(e){if(feedback)feedback.textContent=e.message;}
+  }
+  function planningAsk(){
+    var q=['Quais contas tenho que pagar este mês?','Como está minha evolução financeira?','Quais contas preciso pagar no próximo mês?'][planningTab];
+    if(typeof AlicerceIA.experimentar==='function')AlicerceIA.experimentar(q);
+    else if(typeof go==='function')go('assistente');
+  }
+  function installPlanningGestures(){
+    if(typeof document==='undefined'||!document.addEventListener||root._alicercePlanningGestures)return;
+    root._alicercePlanningGestures=true;
+    document.addEventListener('touchstart',function(e){touchOrigin=null;if(e.touches.length!==1||!e.target.closest||!e.target.closest('#alicerce-planning')||e.target.closest('input,select,button,textarea'))return;touchOrigin={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+    document.addEventListener('touchcancel',function(){touchOrigin=null;},{passive:true});
+    document.addEventListener('touchend',function(e){if(!touchOrigin||!e.changedTouches.length)return;var dx=e.changedTouches[0].clientX-touchOrigin.x,dy=e.changedTouches[0].clientY-touchOrigin.y;touchOrigin=null;if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.5)planningSwitch(planningTab+(dx<0?1:-1));},{passive:true});
+  }
+
   function handleMessage(assistant, message) {
     var raw = String(message || '').trim();
     if (!raw) return null;
@@ -767,6 +947,9 @@
       if (CANCEL_WORDS.test(n)) return cancelDraft(assistant);
       return handleDebt(assistant, raw);
     }
+
+    var planning = planningAnswer(raw);
+    if (planning !== null) return planning;
 
     var appointmentIntent = /\b(marcar|marca|marque|agendar|agenda|agende|criar|crie|anotar|anote|registrar|registre)\b/.test(n) &&
       APPOINTMENT_WORDS.test(n);
@@ -810,6 +993,7 @@
     if (typeof original !== 'function' || original._aliciaPaymentWrapped) return;
     var wrapped = function () {
       var cards = original.apply(this, arguments) || [];
+      if (Store.userId) cards.unshift({pr:-1,type:'alicia-planning',title:'Minha evolução financeira',text:'Organize suas obrigações, simule ganhos e acompanhe os próximos 12 meses.',go:"go('visao')",lbl:'Abrir planejamento'});
       var view = getOverview();
       var candidates = view.dueToday.concat(view.overdue).filter(function (item) {
         return !item.record.paymentCheck || item.record.paymentCheck.askedAt !== today();
@@ -955,13 +1139,14 @@
     }
 
     addHomeCard();
+    installPlanningGestures();
 
     if (typeof renderVisao === 'function' && !renderVisao._aliciaDebtWrapped) {
       var originalVision = renderVisao;
       var visionWrapped = function () {
         var html = originalVision.apply(this, arguments);
         var marker = '<button class="btn btn-secondary btn-block visao-pdf"';
-        var summary = renderFinancialSummary();
+        var summary = renderPlanning() + renderFinancialSummary();
         if (html.indexOf(marker) >= 0) return html.replace(marker, summary + marker);
         return html.replace(/<\/div>\s*$/, summary + '</div>');
       };
@@ -987,7 +1172,16 @@
     markPaid: markPaid,
     renderFinancialSummary: renderFinancialSummary,
     openPaymentCheck: openPaymentCheck,
-    paymentQuestion: paymentQuestion
+    paymentQuestion: paymentQuestion,
+    planningSnapshot: planningSnapshot,
+    simulatePlanning: simulatePlanning,
+    planningAnswer: planningAnswer,
+    createPlanningObligations: createPlanningObligations,
+    planningSwitch: planningSwitch,
+    planningSim: planningSim,
+    planningAdd: planningAdd,
+    planningSave: planningSave,
+    planningAsk: planningAsk
   };
 
   root.AliciaDebtFollowup = api;
