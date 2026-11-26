@@ -5598,6 +5598,7 @@ AlicerceIA.iniciarDigitacaoLauncher=function(text){
   this._launcherAnimationTimer=timer;
 };
 
+document.addEventListener('click',function(event){var menu=document.getElementById('alicia-chat-tools');if(menu&&menu.open&&!menu.contains(event.target))menu.open=false;});
 function aliciaOrb(){return "<svg class=\"alicia-orb\" viewBox=\"0 0 100 100\" aria-hidden=\"true\" focusable=\"false\"><circle cx=\"50\" cy=\"50\" r=\"45\" fill=\"#0c192a\"/><circle cx=\"50\" cy=\"50\" r=\"33\" fill=\"#11243a\" opacity=\".58\"/><g class=\"alicia-orb-spin\"><circle cx=\"50\" cy=\"50\" r=\"35\" fill=\"none\" stroke=\"#456a8c\" stroke-width=\"1.2\"/><path d=\"M 15 50 A 35 35 0 0 0 63 82.5\" fill=\"none\" stroke=\"#85caff\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M 84.7 45 A 35 35 0 0 1 63 82.5\" fill=\"none\" stroke=\"#ffc08a\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><circle cx=\"52\" cy=\"15.1\" r=\"2.5\" fill=\"#e2f4ff\"/><circle cx=\"82\" cy=\"35.8\" r=\"1.9\" fill=\"#e2f4ff\"/><circle cx=\"78\" cy=\"71\" r=\"3.2\" fill=\"#ffc08a\"/><circle cx=\"25.2\" cy=\"74.7\" r=\"3\" fill=\"#e2f4ff\"/></g></svg>";}
 
 AlicerceIA.renderCard=function(){
@@ -7712,7 +7713,7 @@ function renderAssistente(){
   html+='<form class="alicerce-assistant-composer" onsubmit="AlicerceIA.enviarMensagem();return false;">';
   html+='<input type="file" id="alicerce-assistant-photo" accept="image/jpeg,image/png,image/webp,image/bmp" capture="environment" style="display:none" onchange="AlicerceIA.processarFoto(this)">';
   html+='<input type="file" id="alicerce-assistant-gallery" accept="image/jpeg,image/png,image/webp,image/bmp" style="display:none" onchange="AlicerceIA.processarFoto(this)">';
-  html+='<details class="alicia-tools" id="alicia-chat-tools"><summary id="alicia-chat-plus" aria-label="Abrir ferramentas da Alicia">+</summary><div class="alicia-tools-menu" aria-label="Ferramentas da Alicia">';
+  html+='<details class="alicia-tools" id="alicia-chat-tools" onkeydown="if(event.key===\'Escape\'){this.open=false;this.querySelector(\'summary\').focus()}"><summary id="alicia-chat-plus" aria-label="Abrir ferramentas da Alicia">+</summary><div class="alicia-tools-menu" aria-label="Ferramentas da Alicia" onclick="if(event.target.closest(\'button\'))this.parentElement.open=false;">';
   html+='<button class="alicerce-assistant-camera" type="button" aria-label="Anexar comprovante da galeria" title="Anexar comprovante da galeria" onclick="AlicerceIA.solicitarFoto(\'gallery\')">'+icon('file')+'<span>Galeria e comprovantes</span></button>';
   html+='<button class="alicerce-assistant-camera" id="alicerce-assistant-camera" type="button" aria-label="'+esc(ui.camera)+'" title="'+esc(ui.camera)+'" onclick="AlicerceIA.solicitarFoto()">'+icon('camera')+'<span>'+esc(ui.camera)+'</span></button>';
   html+='<button class="alicerce-assistant-mic" id="alicerce-assistant-mic" type="button" aria-label="'+esc(ui.mic)+'" title="'+esc(ui.mic)+'" aria-pressed="false" onclick="AlicerceIA.toggleMicrofone()"><svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"></path></svg><span>'+esc(ui.mic)+'</span></button>';
