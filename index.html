@@ -2593,6 +2593,42 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 .al-benefit-editbox{padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface2)}.al-benefit-editbox h3{font-size:14px;margin:0 0 9px}.al-benefit-editbox .input{width:100%;box-sizing:border-box}.al-benefit-actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}.al-benefit-actions .btn{min-height:30px;padding:5px 9px;font-size:11px}.al-benefit-history-item>div{min-width:0;overflow-wrap:anywhere}.al-benefit-history-item>strong{white-space:nowrap}.al-benefit-danger{border-color:#ac6565!important;color:#b45b5b!important}
 @media(max-width:385px){.al-benefit-home-card{flex-wrap:wrap}.al-benefit-home-value{margin-left:56px}}
 </style>
+
+<style id="alicia-orb-premium">
+.alicia-orb{display:block;width:100%;height:100%;aspect-ratio:1;overflow:visible;flex-shrink:0;filter:drop-shadow(0 0 5px rgba(108,177,240,.18))}
+.alicia-orb-spin{transform-origin:50px 50px;animation:alicia-orb-rotate 12s linear infinite}
+.alicia-orb-spin circle:not(:first-child){filter:drop-shadow(0 0 3px rgba(171,221,255,.65))}
+@keyframes alicia-orb-rotate{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.alicia-orb-spin{animation:none}}
+.alicerce-ai-launcher-icon,.alicerce-assistant-avatar,.alicerce-assistant-message-avatar{border:0!important;padding:0!important;background:transparent!important;aspect-ratio:1;overflow:visible!important}
+.alicerce-ai-launcher-icon{height:48px!important}
+.alicerce-assistant-avatar{height:52px!important;width:52px!important;flex-basis:52px!important}
+.alicerce-assistant-message-avatar{height:32px!important;align-self:flex-start;margin-top:3px}
+.alicia-guide-heading .alicia-orb{width:34px;height:34px}
+.alicia-brand-inline{display:inline-flex;width:24px;height:24px;vertical-align:middle;margin-right:6px;align-items:center}
+.alicerce-assistant-page .alicerce-assistant-heading{box-shadow:none;border:0;background:transparent;padding:5px 0}
+.alicerce-assistant-page .alicerce-assistant-chat-panel{box-shadow:none;border:0;background:transparent;padding:7px 0 4px;min-height:min(620px,70dvh)}
+.alicerce-assistant-page .alicerce-assistant-line.assistant .alicerce-assistant-message{background:transparent;border-color:transparent;padding:6px 4px 12px;font-size:14px}
+.alicerce-assistant-page .alicerce-assistant-line.user .alicerce-assistant-message{border:0;border-radius:18px}
+.alicerce-assistant-page .alicerce-assistant-composer{border:1px solid var(--line);border-radius:24px;background:var(--surface);padding:6px;gap:6px;box-shadow:0 5px 20px rgba(0,0,0,.08)}
+.alicerce-assistant-page .alicerce-assistant-input{background:transparent;border:0;padding:0 6px;outline-offset:0}
+.alicerce-assistant-page .alicerce-assistant-send{border-radius:50%;width:40px;height:40px;flex-basis:40px}
+.alicia-tools{position:relative;flex:0 0 40px}
+.alicia-tools>summary{display:flex;list-style:none;width:40px;height:40px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:50%;font-size:26px;font-weight:400;color:var(--text);cursor:pointer}
+.alicia-tools>summary::-webkit-details-marker{display:none}
+.alicia-tools[open]>summary{background:var(--surface2)}
+.alicia-tools>summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.alicia-tools-menu{position:absolute;left:0;bottom:calc(100% + 12px);width:min(280px,calc(100vw - 44px));max-height:min(54dvh,420px);overflow:auto;z-index:20;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:18px;padding:8px;box-shadow:0 12px 34px rgba(0,0,0,.22)}
+.alicia-tools-menu .alicerce-assistant-camera,.alicia-tools-menu .alicerce-assistant-mic,.alicia-tools-menu .alicerce-assistant-financial,.alicia-tools-menu .alicerce-assistant-clear,.alicia-tools-menu .alicia-tools-action{display:flex;width:100%;min-height:44px;height:auto;align-items:center;justify-content:flex-start;gap:12px;background:transparent;border:0;padding:10px 12px;color:var(--text);font-size:13px;font-weight:600;text-align:left;border-radius:10px;white-space:normal;cursor:pointer}
+.alicia-tools-menu button:hover,.alicia-tools-menu button:focus-visible{background:var(--surface2)}
+.alicia-tools-menu .ico,.alicia-tools-menu svg{width:20px;height:20px;flex:0 0 20px}
+.alicia-tools-menu .alicerce-assistant-prompts{margin:4px 0;padding:4px 8px}
+.alicia-tools-menu .alicerce-assistant-prompt{width:100%;border-radius:9px;min-height:40px}
+.alicia-tools-menu .alicia-tools-divider{border-top:1px solid var(--line);margin:4px 8px}
+.alicerce-assistant-status:not(:empty){display:flex;align-items:center;gap:7px}
+.alicerce-assistant-status:not(:empty)::before{content:"";width:18px;height:18px;flex:0 0 18px;border:1.5px solid #85caff;border-right-color:#ffc08a;border-radius:50%;animation:alicia-orb-rotate 2s linear infinite;transform-origin:center}
+@media(prefers-reduced-motion:reduce){.alicerce-assistant-status:not(:empty)::before{animation:none}}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -5562,6 +5598,8 @@ AlicerceIA.iniciarDigitacaoLauncher=function(text){
   this._launcherAnimationTimer=timer;
 };
 
+function aliciaOrb(){return "<svg class=\"alicia-orb\" viewBox=\"0 0 100 100\" aria-hidden=\"true\" focusable=\"false\"><circle cx=\"50\" cy=\"50\" r=\"45\" fill=\"#0c192a\"/><circle cx=\"50\" cy=\"50\" r=\"33\" fill=\"#11243a\" opacity=\".58\"/><g class=\"alicia-orb-spin\"><circle cx=\"50\" cy=\"50\" r=\"35\" fill=\"none\" stroke=\"#456a8c\" stroke-width=\"1.2\"/><path d=\"M 15 50 A 35 35 0 0 0 63 82.5\" fill=\"none\" stroke=\"#85caff\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><path d=\"M 84.7 45 A 35 35 0 0 1 63 82.5\" fill=\"none\" stroke=\"#ffc08a\" stroke-width=\"1.5\" stroke-linecap=\"round\"/><circle cx=\"52\" cy=\"15.1\" r=\"2.5\" fill=\"#e2f4ff\"/><circle cx=\"82\" cy=\"35.8\" r=\"1.9\" fill=\"#e2f4ff\"/><circle cx=\"78\" cy=\"71\" r=\"3.2\" fill=\"#ffc08a\"/><circle cx=\"25.2\" cy=\"74.7\" r=\"3\" fill=\"#e2f4ff\"/></g></svg>";}
+
 AlicerceIA.renderCard=function(){
   this._resetUser();
   this.pararDigitacaoLauncher();
@@ -5585,7 +5623,7 @@ AlicerceIA.renderCard=function(){
   html+='</style>';
   html+='<section class="alicerce-ai-launcher" id="alicerce-ai-card" aria-label="Assistente Alicerce">';
   html+='<button class="alicerce-ai-launcher-action" id="alicerce-ai-open-assistant" type="button" onclick="AlicerceIA.abrir()">';
-  html+='<span class="alicerce-ai-launcher-icon"><span class="alicerce-ai-orbit" aria-hidden="true">'+Array.from({length:8},function(_,i){return '<span class="alicerce-ai-orbit-dot" style="--angle:'+(i*45)+'deg"></span>';}).join('')+'</span></span>';
+  html+='<span class="alicerce-ai-launcher-icon">'+aliciaOrb()+'</span>';
   html+='<span class="alicerce-ai-launcher-title'+(notice?' is-proactive':'')+'" id="alicerce-ai-launcher-title"'+(notice?' data-full-text="'+esc(callout)+'" aria-live="off"':'')+'>'+(notice?'':esc(this.saudacao()))+'</span>';
   html+='<span class="alicerce-ai-launcher-cta">'+esc(label)+icon('arrowRight','ico-xs')+'</span>';
   html+='</button></section>';
@@ -7628,37 +7666,37 @@ function renderAssistente(){
   html+='@supports (padding: max(0px)){.alicerce-assistant-page{padding-bottom:max(118px,calc(90px + env(safe-area-inset-bottom)))}.alicerce-assistant-composer{bottom:calc(62px + env(safe-area-inset-bottom))}}';
   html+='</style>';
   html+='<div class="content alicerce-assistant-page" id="alicerce-assistant-page">';
-  html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back','ico-xs')+esc(ui.back)+'</button><div class="alicerce-assistant-top-actions"><button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-voice-toggle" title="'+esc(ui.voiceTitle)+'" aria-pressed="'+(AlicerceIA._voiceEnabled()?'true':'false')+'" onclick="AlicerceIA.toggleVoz()">'+(AlicerceIA._voiceEnabled()?esc(ui.voiceOn):esc(ui.voiceOff))+'</button><button type="button" class="alicerce-assistant-financial" id="alicerce-assistant-financial" title="'+esc(ui.financialTitle)+'" onclick="go(\'visao\')">'+esc(ui.financial)+'</button>';
-  if(messages.length)html+='<button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-clear" aria-label="'+esc(ui.clear)+'" title="'+esc(ui.clear)+'" onclick="AlicerceIA.limparConversa()">'+esc(ui.clear)+'</button>';
-  html+='</div></div>';
-  html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar"><img src="/assets/alicia-assistente.webp" width="62" height="66" alt=""></span><div class="alicerce-assistant-heading-copy"><h2>Alicia</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
-  html+='<button type="button" class="btn btn-secondary btn-sm mt-2 mb-2" onclick="window.AlicerceConsumo&&window.AlicerceConsumo.open()">Minhas pastas de consumo</button>';
+  html+='<div class="alicerce-assistant-topbar"><button type="button" class="alicerce-assistant-back" onclick="go(\'home\')">'+icon('back','ico-xs')+esc(ui.back)+'</button></div>';
+
+
+  html+='<section class="alicerce-assistant-heading"><span class="alicerce-assistant-avatar">'+aliciaOrb()+'</span><div class="alicerce-assistant-heading-copy"><h2>Alicia</h2><p>'+esc(ui.subtitle)+'</p></div></section>';
+
   html+='<section class="alicerce-assistant-chat-panel">';
 
   html+='<section class="alicerce-assistant-messages" id="alicerce-assistant-messages" aria-live="polite">';
   if(!messages.length){
-    html+='<div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span></div>';
+    html+='<div class="alicerce-assistant-line assistant"><span class="alicerce-assistant-message-avatar">'+aliciaOrb()+'</span><div class="alicerce-assistant-message assistant alicerce-assistant-welcome"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text" id="alicerce-assistant-welcome-text">'+(animateWelcome?'':esc(welcomeText))+'</span></div></div>';
     if(animateWelcome)window.requestAnimationFrame(function(){AlicerceIA.iniciarDigitacaoAbertura(welcomeText);});
   }else{
     messages.forEach(function(item,index){
       if(!item||!item.text)return;
       var role=item.role==='user'?'user':'assistant';
       if(role==='assistant'){
-        html+='<div class="alicerce-assistant-line assistant"><img class="alicerce-assistant-message-avatar" src="/assets/alicia-assistente.webp" width="36" height="42" alt=""><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?'<details class="mt-2"'+(index===messages.length-1?' open':'')+'><summary>Gráfico da resposta</summary>'+window.AlicerceAnalitica.renderChart(item.chart)+'</details>':'')+renderAcaoDaConversa(item.moneyAction,index)+renderConferenciaEdicao(item.expenseEdit)+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
+        html+='<div class="alicerce-assistant-line assistant"><span class="alicerce-assistant-message-avatar">'+aliciaOrb()+'</span><div class="alicerce-assistant-message assistant"><span class="alicerce-assistant-message-label">ALICIA</span><span class="alicerce-assistant-message-text">'+esc(item.text)+'</span>'+(item.chart&&window.AlicerceAnalitica?'<details class="mt-2"'+(index===messages.length-1?' open':'')+'><summary>Gráfico da resposta</summary>'+window.AlicerceAnalitica.renderChart(item.chart)+'</details>':'')+renderAcaoDaConversa(item.moneyAction,index)+renderConferenciaEdicao(item.expenseEdit)+(item.benefitReview&&index===messages.length-1&&AlicerceIA._pendingBenefitPurchase&&window.AlicerceCompraBeneficioChat?window.AlicerceCompraBeneficioChat.renderDraft(AlicerceIA._pendingBenefitPurchase,Store):'')+'</div></div>';
       }else{
         html+='<div class="alicerce-assistant-line user"><div class="alicerce-assistant-message user"><span class="alicerce-assistant-message-label">VOCÊ</span>'+esc(item.text)+'</div></div>';
       }
     });
   }
   html+='</section>';
-  if(!messages.length){
-    html+='<div class="alicerce-assistant-prompts"><span class="alicerce-assistant-message-label" style="width:100%">'+esc(ui.suggestions)+'</span>';
-    ui.prompts.forEach(function(question){
-      var safeQuestion=JSON.stringify(question).replace(/"/g,'&quot;');
-      html+='<button type="button" class="alicerce-assistant-prompt" onclick="AlicerceIA.enviarMensagem('+safeQuestion+')">'+esc(question)+'</button>';
-    });
-    html+='</div>';
-  }
+
+
+
+
+
+
+
+
   if(AlicerceIA._pixProofDraft&&AlicerceIA._pixProofDraft.ownerId===String(Store.userId||'')){
     if(!AlicerceIA._pixProofDraft.incoming&&AlicerceIA._pixProofDraft.amount)html+='<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="AlicerceIA.conferirPixDespesa()">Conferir Pix como despesa</button>';
   }
@@ -7674,9 +7712,22 @@ function renderAssistente(){
   html+='<form class="alicerce-assistant-composer" onsubmit="AlicerceIA.enviarMensagem();return false;">';
   html+='<input type="file" id="alicerce-assistant-photo" accept="image/jpeg,image/png,image/webp,image/bmp" capture="environment" style="display:none" onchange="AlicerceIA.processarFoto(this)">';
   html+='<input type="file" id="alicerce-assistant-gallery" accept="image/jpeg,image/png,image/webp,image/bmp" style="display:none" onchange="AlicerceIA.processarFoto(this)">';
-  html+='<button class="alicerce-assistant-camera" type="button" aria-label="Anexar comprovante da galeria" title="Anexar comprovante da galeria" onclick="AlicerceIA.solicitarFoto(\'gallery\')">'+icon('file')+'</button>';
-  html+='<button class="alicerce-assistant-camera" id="alicerce-assistant-camera" type="button" aria-label="'+esc(ui.camera)+'" title="'+esc(ui.camera)+'" onclick="AlicerceIA.solicitarFoto()">'+icon('camera')+'</button>';
-  html+='<button class="alicerce-assistant-mic" id="alicerce-assistant-mic" type="button" aria-label="'+esc(ui.mic)+'" title="'+esc(ui.mic)+'" aria-pressed="false" onclick="AlicerceIA.toggleMicrofone()"><svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"></path></svg></button>';
+  html+='<details class="alicia-tools" id="alicia-chat-tools"><summary id="alicia-chat-plus" aria-label="Abrir ferramentas da Alicia">+</summary><div class="alicia-tools-menu" aria-label="Ferramentas da Alicia">';
+  html+='<button class="alicerce-assistant-camera" type="button" aria-label="Anexar comprovante da galeria" title="Anexar comprovante da galeria" onclick="AlicerceIA.solicitarFoto(\'gallery\')">'+icon('file')+'<span>Galeria e comprovantes</span></button>';
+  html+='<button class="alicerce-assistant-camera" id="alicerce-assistant-camera" type="button" aria-label="'+esc(ui.camera)+'" title="'+esc(ui.camera)+'" onclick="AlicerceIA.solicitarFoto()">'+icon('camera')+'<span>'+esc(ui.camera)+'</span></button>';
+  html+='<button class="alicerce-assistant-mic" id="alicerce-assistant-mic" type="button" aria-label="'+esc(ui.mic)+'" title="'+esc(ui.mic)+'" aria-pressed="false" onclick="AlicerceIA.toggleMicrofone()"><svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7"></path></svg><span>'+esc(ui.mic)+'</span></button>';
+  html+='<div class="alicia-tools-divider"></div><button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-voice-toggle" title="'+esc(ui.voiceTitle)+'" aria-pressed="'+(AlicerceIA._voiceEnabled()?'true':'false')+'" onclick="AlicerceIA.toggleVoz()">'+(AlicerceIA._voiceEnabled()?esc(ui.voiceOn):esc(ui.voiceOff))+'</button><button type="button" class="alicerce-assistant-financial" id="alicerce-assistant-financial" title="'+esc(ui.financialTitle)+'" onclick="go(\'visao\')">'+esc(ui.financial)+'</button>';
+  if(messages.length)html+='<button type="button" class="alicerce-assistant-clear" id="alicerce-assistant-clear" aria-label="'+esc(ui.clear)+'" title="'+esc(ui.clear)+'" onclick="AlicerceIA.limparConversa()">'+esc(ui.clear)+'</button>';
+  html+='<button type="button" class="alicia-tools-action" onclick="window.AlicerceConsumo&&window.AlicerceConsumo.open()">'+icon('file')+'<span>Minhas pastas de consumo</span></button>';
+  if(!messages.length){
+    html+='<div class="alicerce-assistant-prompts"><span class="alicerce-assistant-message-label" style="width:100%">'+esc(ui.suggestions)+'</span>';
+    ui.prompts.forEach(function(question){
+      var safeQuestion=JSON.stringify(question).replace(/"/g,'&quot;');
+      html+='<button type="button" class="alicerce-assistant-prompt" onclick="AlicerceIA.enviarMensagem('+safeQuestion+')">'+esc(question)+'</button>';
+    });
+    html+='</div>';
+  }
+  html+='</div></details>';
   html+='<input class="alicerce-assistant-input" id="alicerce-assistant-input" type="text" maxlength="5000" inputmode="text" autocomplete="off" autocapitalize="sentences" enterkeyhint="send" aria-label="'+esc(ui.placeholder)+'" placeholder="'+esc(ui.placeholder)+'" onkeydown="if(event.key===\'Enter\'){event.preventDefault();AlicerceIA.enviarMensagem()}">';
   html+='<button class="alicerce-assistant-send" id="alicerce-assistant-send" type="submit" aria-label="'+esc(ui.send)+'">'+icon('arrowRight')+'</button>';
   html+='</form>';
@@ -10893,7 +10944,7 @@ function renderHome(){
   let html='<div class="content">';
   html+='<div class="mt-4"><p class="text-muted text-sm">'+greeting+'</p></div>';
   if(smartCards.length>0){html+='<div class="dynamic-card-wrap mt-2"><div class="dynamic-card-track" id="dc-track" tabindex="0" role="region" aria-label="'+esc(Store.lang==='en'?'Smart cards':Store.lang==='es'?'Tarjetas inteligentes':'Cartões inteligentes')+'">';
-  smartCards.forEach(c=>{html+='<div class="dynamic-card'+(c.guide?' alicia-guide-card':'')+'">'+(c.guide?'<div class="alicia-guide-heading"><img src="/assets/alicia-assistente.webp" width="34" height="38" alt=""><span>NOVIDADES · ALICERCE</span></div>':'')+'<div class="dc-title">'+esc(c.title)+'</div><div class="dc-text">'+esc(c.text)+'</div>'+(c.go&&c.lbl?'<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="'+esc(c.go)+'">'+esc(c.lbl)+'</button>':'')+'</div>'});
+  smartCards.forEach(c=>{html+='<div class="dynamic-card'+(c.guide?' alicia-guide-card':'')+'">'+((c.guide||String(c.type||'').indexOf('alicia-')===0)?'<div class="alicia-guide-heading">'+aliciaOrb()+'<span>'+(c.guide?'NOVIDADES · ALICERCE':'ALICIA')+'</span></div>':'')+'<div class="dc-title">'+esc(c.title)+'</div><div class="dc-text">'+esc(c.text)+'</div>'+(c.go&&c.lbl?'<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="'+esc(c.go)+'">'+esc(c.lbl)+'</button>':'')+'</div>'});
   html+='</div>';
   if(smartCards.length>1)html+='<div class="dynamic-dots">'+smartCards.map((_,i)=>'<div class="dynamic-dot'+(i===0?' active':'')+'" onclick="scrollToDC('+i+')"></div>').join('')+'</div>';
   html+='</div>';}
