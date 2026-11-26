@@ -431,3 +431,67 @@ testCase('escolhe pelo número e revalida a conta antes da confirmação', () =>
   assert.match(say('sim'), /mudou/);
   assert.equal(Store.commitments.length, 2);
 });
+
+
+testCase('planejamento separa mês atual, atrasos, pagamentos e projeções sem duplicar movimentações', () => {
+  const {Store, api} = createContext();
+  Store.commitments.push(
+    {id:'old',tipo:'conta',descricao:'Energia',valor:150,data:'2026-10-20',status:'pendente'},
+    {id:'rent',tipo:'conta',descricao:'Aluguel',valor:600,data:'2026-11-30',status:'pendente'},
+    {id:'net',tipo:'conta',descricao:'Internet',valor:100,data:'2026-11-02',status:'concluido',paymentStatus:'pago',dataPagamento:'2026-11-01'},
+    {id:'future',tipo:'conta',descricao:'Feira',valor:400,data:'2026-12-10',status:'pendente'},
+    {id:'other-user',userId:'different',tipo:'conta',descricao:'Privado',valor:900,data:'2026-11-10',status:'pendente'}
+  );
+  Store.movements.push({id:'linked',tipo:'despesa',commitmentId:'net',valor:100,data:'2026-11-01',status:'pago'});
+  const view=api.planningSnapshot('2026-11-04');
+  assert.equal(view.total,700);
+  assert.equal(view.paid,100);
+  assert.equal(view.remaining,750);
+  assert.equal(view.carry,150);
+  assert.equal(view.future[0].pending,400);
+  assert.equal(view.history[9].state,'carried');
+  assert.equal(view.history[11].state,'future');
+  const result=api.simulatePlanning(300,view);
+  assert.equal(result.covered.length,1);
+  assert.equal(result.covered[0].id,'old');
+  assert.equal(result.remaining,150);
+  assert.equal(Store.saveCalls,0);
+  assert.equal(Store.movements.length,1);
+});
+
+testCase('recorrência explícita respeita fim do mês e não recria contas nem pagamentos', () => {
+  const {Store,api}=createContext();
+  assert.equal(api.createPlanningObligations('Feira',400,'2026-11-30',4,'essential'),4);
+  assert.equal(Store.commitments.map(x=>x.data).join(','),'2026-11-30,2026-12-30,2027-01-30,2027-02-28');
+  assert.equal(api.createPlanningObligations('Feira',400,'2026-11-30',4,'essential'),0);
+  assert.equal(Store.movements.length,0);
+  assert.ok(Store.commitments.every(x=>x.status==='pendente'));
+});
+
+testCase('histórico distingue pagamento em outro mês e data desconhecida de quitação mensal', () => {
+  const {Store,api}=createContext();
+  Store.commitments.push(
+    {id:'early',tipo:'conta',descricao:'Água',valor:80,data:'2026-08-15',status:'concluido',paymentStatus:'pago',dataPagamento:'2026-08-08'},
+    {id:'late',tipo:'conta',descricao:'Energia',valor:150,data:'2026-09-28',status:'concluido',paymentStatus:'pago',dataPagamento:'2026-10-03'},
+    {id:'legacy',tipo:'conta',descricao:'Internet',valor:100,data:'2026-10-10',status:'concluido',paymentStatus:'pago'}
+  );
+  const v=api.planningSnapshot('2026-11-04');
+  assert.equal(v.history[7].state,'closed');
+  assert.equal(v.history[7].days,8);
+  assert.equal(v.history[8].state,'carried');
+  assert.equal(v.history[8].carried,150);
+  assert.equal(v.history[9].state,'unknown');
+  assert.equal(v.history[9].days,null);
+  assert.equal(v.history[0].state,'empty');
+});
+
+testCase('Alicia responde simulação sem cadastrar dívida, receita ou pagamento', () => {
+  const {Store,AlicerceIA,api}=createContext();
+  Store.commitments.push({id:'energy',tipo:'conta',descricao:'Energia',valor:150,data:'2026-11-10',status:'pendente'});
+  const reply=api.handleMessage(AlicerceIA,'Alicia, se eu conseguir 300 reais o que consigo pagar?');
+  assert.match(reply,/Simulação/);
+  assert.match(reply,/Energia/);
+  assert.equal(Store.saveCalls,0);
+  assert.equal(Store.commitments.length,1);
+  assert.equal(Store.movements.length,0);
+});
