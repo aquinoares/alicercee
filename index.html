@@ -3205,6 +3205,48 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 @media(max-width:360px){#app[data-al-skin="unified"]>.content{padding-inline:11px!important}#app[data-al-skin="unified"]>.content>h2{font-size:22px}#app[data-al-skin="unified"] .btn{padding-inline:9px;font-size:12px}#app[data-al-skin]:not([data-al-skin="auth"])>.header{padding-inline:8px}}
 @media(prefers-reduced-motion:reduce){#app[data-al-skin="unified"] .btn,#app[data-al-skin="unified"] .list-item{transition:none}}
 </style>
+<style id="al-add-premium-v2">
+#app .al-add-premium{box-sizing:border-box;min-width:0;width:100%;max-width:420px!important;margin:0 auto;padding:16px 16px calc(105px + env(safe-area-inset-bottom,0px))!important;align-self:stretch}
+#app .al-add-premium *{box-sizing:border-box}
+#app .al-add-head{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:11px;margin:0 0 22px}
+#app .al-add-head-copy{min-width:0}
+#app .al-add-head h2{font-size:clamp(21px,6vw,25px);font-weight:750;line-height:1.15;letter-spacing:-.04em;margin:4px 0 0;overflow-wrap:anywhere}
+#app .al-add-head p{font-size:12px;line-height:1.4;color:var(--text2);margin:6px 0 0}
+#app .al-add-kicker{font-size:10px;letter-spacing:.12em;font-weight:700;color:var(--text2)}
+#app .al-add-back{width:44px;height:44px;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface2);color:var(--text);border-radius:13px}
+#app .al-add-orb{width:44px;height:44px;border:0;background:none;padding:0}
+#app .al-add-group{margin:0 0 21px}
+#app .al-add-group h3{font-size:13px;font-weight:700;color:var(--text2);letter-spacing:0;margin:0 0 10px}
+#app .al-add-list{border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:4px 12px}
+#app .al-add-list .al-add-option{width:100%;display:grid;grid-template-columns:40px minmax(0,1fr) 20px;gap:11px;align-items:center;text-align:left;padding:12px 0;margin:0;min-height:65px;border:0;border-radius:0;box-shadow:none;background:transparent;color:var(--text)}
+#app .al-add-list .al-add-option+.al-add-option{border-top:1px solid var(--line)}
+#app .al-add-icon{display:grid;place-items:center;width:40px;height:40px;border:1px solid var(--line);border-radius:12px;background:var(--tint-accent);color:var(--accent)}
+#app .al-add-option-copy{display:grid;gap:4px;min-width:0}
+#app .al-add-option-copy strong{font-size:14px;font-weight:700;line-height:1.25;overflow-wrap:anywhere}
+#app .al-add-option-copy small{font-size:11px;color:var(--text2);line-height:1.35;overflow-wrap:anywhere}
+#app .al-add-chevron{color:var(--text2);display:grid;place-items:center}
+#app .al-add-fields{padding:16px;border:1px solid var(--line);border-radius:20px;background:var(--surface);min-width:0}
+#app .al-add-fields .form-group{margin:0 0 16px;min-width:0}
+#app .al-add-fields .form-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:end}
+#app .al-add-fields .form-label{font-size:12px;line-height:1.35;font-weight:650;min-width:0;overflow-wrap:anywhere;color:var(--text2);margin:0 0 7px}
+#app .al-add-fields :is(input:not([type=checkbox]):not([type=hidden]),select,textarea){width:100%;min-width:0;max-width:100%;min-height:48px;border-radius:12px;border:1px solid var(--line);background-color:var(--surface2);padding:10px 11px;font-size:16px}
+#app .al-add-fields :is(input[type=date],input[type=time]){display:block;appearance:none;-webkit-appearance:none;text-align:left;min-width:0}
+#app .al-add-fields input::-webkit-date-and-time-value{text-align:left;min-width:0}
+#app .al-add-fields .radio-group{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+#app .al-add-fields .radio-item{font:inherit;min-width:0;min-height:55px;padding:9px 8px;border-radius:13px;background:var(--surface2);color:var(--text);font-size:12px;text-align:left;white-space:normal}
+#app .al-add-fields .radio-item.active{background:var(--tint-accent);border-color:var(--accent)}
+#app .al-add-fields .al-add-check{display:flex;align-items:center;gap:9px;min-height:42px;font-size:13px;border-bottom:1px solid var(--line)}
+#app .al-add-fields .al-add-check input{width:19px!important;height:19px;flex:0 0 19px;accent-color:var(--accent)}
+#app .al-add-premium .btn-primary,#app .al-add-gasto button[onclick="processGastoText()"],#app .al-add-review .gr-primary{background:#345ca5!important;color:white!important;border:1px solid #345ca5!important;box-shadow:none!important;min-height:48px!important;border-radius:13px!important;font-size:13px!important}
+#app .al-add-gasto button[onclick="processGastoText()"]{position:static!important;z-index:auto!important}
+#app .al-add-review .gasto-review{width:100%;min-width:0;max-width:100%}
+#app .al-add-review .gr-line{gap:8px;align-items:flex-start}
+#app .al-add-review .gr-value{min-width:0;overflow-wrap:anywhere}
+#app .al-add-insurance .list-item{width:100%;min-width:0;margin-bottom:8px}
+#app .al-add-premium :is(button,input,select,textarea):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:390px){#app .al-add-fields .form-row:has(input[type=date]),#app .al-add-fields .form-row:has(input[type=time]){grid-template-columns:1fr}}
+@media(max-width:360px){#app .al-add-premium{padding-inline:11px!important}#app .al-add-fields{padding:12px}#app .al-add-head{gap:8px}#app .al-add-list{padding-inline:10px}#app .al-add-list .al-add-option{grid-template-columns:36px minmax(0,1fr) 18px;gap:8px}#app .al-add-icon{width:36px;height:36px}}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -15775,21 +15817,24 @@ function deleteAccountData(){
 }
 
 /* ADD */
+function alAddPremiumHead(title,ico,back,sub){
+  return '<div class="al-add-head"><button type="button" class="al-add-back" onclick="go(\''+back+'\')" aria-label="'+esc(t('voltar'))+'">'+icon('back','ico-sm')+'</button><div class="al-add-head-copy"><span class="al-add-kicker">ALICERCE</span><h2>'+esc(title)+'</h2>'+(sub?'<p>'+esc(sub)+'</p>':'')+'</div><button type="button" class="al-add-orb" onclick="go(\'assistente\')" aria-label="Conversar com Alicia">'+aliciaOrb()+'</button></div>';
+}
 function renderAdd(){
-  let html='<div class="content"><h2 class="mt-4">'+t('oQueAdicionar')+'</h2><div class="mt-4">';
-  [['addGasto','gastos',t('gasto'),t('registrarPagou')],['addEntrada','trend',t('entrada'),t('registrarRecebeu')],
-   ['addEmprestimo','emprestimos',t('emprestimos'),t('empresteiPeguei')],
-   ['addCompromisso','calendario',t('compromisso'),t('algoFuturo')],['addLembrete','alert',t('lembrete'),t('algoLembrar')]]
-   .forEach(([scr,ic,nm,sub])=>{
-    html+='<div class="list-item" onclick="go(\''+scr+'\')"><div class="li-left">'+icon(ic,'ico-sm')+'<div class="li-info"><div class="li-name">'+nm+'</div><div class="li-sub">'+sub+'</div></div></div></div>';
+  const groups=[
+    {title:Store.lang==='en'?'Daily records':Store.lang==='es'?'Registros diarios':'Dia a dia',items:[['addGasto','gastos',t('gasto'),t('registrarPagou')],['addEntrada','trend',t('entrada'),t('registrarRecebeu')],['addEmprestimo','emprestimos',t('emprestimos'),t('empresteiPeguei')],['addCompromisso','calendario',t('compromisso'),t('algoFuturo')],['addLembrete','alert',t('lembrete'),t('algoLembrar')]]},
+    {title:Store.lang==='en'?'Planning and protection':Store.lang==='es'?'Planificación y protección':'Planejamento e proteção',items:[['rendaExtra','trend',t('rendaExtra'),''],['financiamento','credit',t('financiamento'),''],['consorcio','handshake',t('consorcio'),''],['insurance','shield',t('seguroVeiculo'),'']]}
+  ];
+  let html='<div class="content al-add-premium al-add-menu">'+alAddPremiumHead(t('oQueAdicionar'),'plus','home','');
+  groups.forEach(function(group){
+    html+='<section class="al-add-group"><h3>'+esc(group.title)+'</h3><div class="al-add-list">';
+    group.items.forEach(function(item){
+      const [scr,ic,nm,sub]=item;
+      html+='<button type="button" class="al-add-option list-item" onclick="go(\''+scr+'\')"><span class="al-add-icon">'+icon(ic,'ico-sm')+'</span><span class="al-add-option-copy"><strong>'+esc(nm)+'</strong>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</span><span class="al-add-chevron">'+icon('arrowRight','ico-sm')+'</span></button>';
+    });
+    html+='</div></section>';
   });
-  html+='<div class="section-divider"></div>';
-  [['rendaExtra','trend',t('rendaExtra')],['financiamento','credit',t('financiamento')],
-   ['consorcio','handshake',t('consorcio')],['insurance','shield',t('seguroVeiculo')]]
-   .forEach(([scr,ic,nm])=>{
-    html+='<div class="list-item" onclick="go(\''+scr+'\')"><div class="li-left">'+icon(ic,'ico-sm')+'<div class="li-info"><div class="li-name">'+nm+'</div></div></div></div>';
-  });
-  html+='</div></div>';return html;
+  return html+'</div>';
 }
 
 /* ADD GASTO */
@@ -15817,7 +15862,7 @@ function selectGastoCardType(tipo){
 function renderAddGasto(){
   const data=Store.screenData||{};
   const html=[];
-  html.push('<div id="alicerce-add-gasto" class="content'+(data.novaCompraFlow?' al-card-sub al-card-purchase':'')+'" style="width:100%;max-width:420px;margin:0 auto;padding:0 16px 110px;box-sizing:border-box;position:relative;z-index:1;overflow-x:hidden">');
+  html.push('<div id="alicerce-add-gasto" class="content al-add-premium al-add-gasto'+(data.novaCompraFlow?' al-card-sub al-card-purchase':'')+'" style="width:100%;max-width:420px;margin:0 auto;padding:0 16px 110px;box-sizing:border-box;position:relative;z-index:1;overflow-x:hidden">');
   html.push('<style id="alicerce-add-gasto-layout">#alicerce-add-gasto{min-width:0}#alicerce-add-gasto .gasto-payment-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:stretch}#alicerce-add-gasto .gasto-payment-grid .btn{box-sizing:border-box;display:flex;width:100%;min-width:0;min-height:50px;padding:7px 3px;flex-direction:row;align-items:center;justify-content:center;gap:4px;border:1px solid var(--line);border-radius:11px;background:var(--surface2);font-size:.72rem;font-weight:700;line-height:1.1;text-align:center;white-space:nowrap}#alicerce-add-gasto .gasto-payment-grid .btn.btn-primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}#alicerce-add-gasto .gasto-payment-grid .ico{width:16px;height:16px;flex:0 0 16px}#alicerce-add-gasto .gasto-option-grid{align-items:stretch}#alicerce-add-gasto .gasto-option-grid .btn{box-sizing:border-box;display:flex;width:100%;min-width:0;min-height:48px;padding:8px 7px;align-items:center;justify-content:center;line-height:1.2;text-align:center;white-space:normal}#alicerce-add-gasto .form-group{min-width:0}#alicerce-add-gasto input,#alicerce-add-gasto select{max-width:100%;min-width:0}</style>');
   html.push('<button type="button" class="btn btn-secondary btn-sm mt-4" onclick="go(\''+(data.novaCompraFlow?'cartoes':'add')+'\')">'+icon('back','ico-sm')+' '+(data.novaCompraFlow?'Voltar aos cartoes':'Voltar')+'</button>');
   html.push('<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:22px">');
@@ -16185,7 +16230,7 @@ function renderAddGastoDoubt(){
   html+='.gasto-review .gr-hint{color:var(--text2);font-size:12px;line-height:1.5;margin-top:8px}.gasto-review .gr-step{display:flex;justify-content:space-between;align-items:center;color:var(--text2);font-size:12px;margin-bottom:15px}';
   html+='</style>';
 
-  html+='<div class="content" style="padding-bottom:150px">';
+  html+='<div class="content al-add-premium al-add-review" style="padding-bottom:150px">';
   html+='<button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\'addGasto\')">'+icon('back','ico-sm')+' Voltar aos dados</button>';
   html+='<div class="gasto-review">';
   html+='<div class="gr-step"><span>ALICERCE · CONFERÊNCIA</span><span>ETAPA 2 DE 2</span></div>';
@@ -16701,7 +16746,7 @@ function renderGastoManual(){
   manualGastoSuggestionBusy=false;
   manualGastoSuggestionPromise=null;
   manualGastoClassificationTouched=false;
-  let html='<div class="content">';
+  let html='<div class="content al-add-premium al-add-form">';
   html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'addGasto\')">'+icon('back','ico-sm')+' '+t('gasto')+'</button>';
   html+='<h2 class="mt-4">'+t('manual')+'</h2>';
   html+='<div class="form-group mt-4"><label class="form-label">'+t('descricao')+'</label><input id="gm-desc" onblur="sugerirClassificacaoGastoManual()"></div>';
@@ -16748,26 +16793,22 @@ async function saveManualGasto(){
 }
 
 function renderAddEntrada(){
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'add\')">'+icon('back','ico-sm')+' '+t('add')+'</button>';
-  html+='<h2 class="mt-4">'+t('entrada')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('descricao')+'</label><input id="ae-desc"></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('valor')+'</label><input id="ae-val" type="number" step="0.01"></div><div class="form-group"><label class="form-label">'+t('data')+'</label><input id="ae-date" type="date" value="'+today()+'"></div></div>';
-  html+='<button class="btn btn-primary btn-block" onclick="saveEntrada()">'+t('salvar')+'</button></div>';
+  let html='<div class="content al-add-premium al-add-form">'+alAddPremiumHead(t('entrada'),'trend','add','')+'<section class="al-add-fields">';
+  html+='<div class="form-group mt-4"><label class="form-label" for="ae-desc">'+t('descricao')+'</label><input id="ae-desc"></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="ae-val">'+t('valor')+'</label><input id="ae-val" type="number" step="0.01" inputmode="decimal"></div><div class="form-group"><label class="form-label" for="ae-date">'+t('data')+'</label><input id="ae-date" type="date" value="'+today()+'"></div></div>';
+  html+='<button class="btn btn-primary btn-block" onclick="saveEntrada()">'+t('salvar')+'</button></section></div>';
   return html;
 }
 function saveEntrada(){const desc=document.getElementById('ae-desc').value.trim();const val=parseFloat(document.getElementById('ae-val').value)||0;const date=document.getElementById('ae-date').value||today();if(val<=0)return;Store.addMovement({tipo:'receita',descricao:desc,valor:val,data:date,status:'pago',categoria:'renda',subcategoria:'outras'});showToast(t('salvoDireto'));go('home')}
 
 function renderAddEmprestimo(){
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'add\')">'+icon('back','ico-sm')+' '+t('add')+'</button>';
-  html+='<h2 class="mt-4">'+t('novoEmprestimo')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('quemPaga')+'</label><div class="radio-group"><div class="radio-item active" onclick="selectLoanType(this,\'emprestei\')"><div class="radio-circle"></div><span>'+t('emprestei')+'</span></div><div class="radio-item" onclick="selectLoanType(this,\'peguei\')"><div class="radio-circle"></div><span>'+t('pegueiEmprestado')+'</span></div></div></div>';
+  let html='<div class="content al-add-premium al-add-form">'+alAddPremiumHead(t('novoEmprestimo'),'emprestimos','add','')+'<section class="al-add-fields">';
+  html+='<div class="form-group mt-4"><label class="form-label">'+t('quemPaga')+'</label><div class="radio-group"><button type="button" class="radio-item active" onclick="selectLoanType(this,\'emprestei\')"><div class="radio-circle"></div><span>'+t('emprestei')+'</span></button><button type="button" class="radio-item" onclick="selectLoanType(this,\'peguei\')"><div class="radio-circle"></div><span>'+t('pegueiEmprestado')+'</span></button></div></div>';
   html+='<input type="hidden" id="al-type" value="emprestei">';
-  html+='<div class="form-group"><label class="form-label">'+t('pessoa')+'</label><input id="al-pessoa"></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('valor')+'</label><input id="al-val" type="number" step="0.01"></div><div class="form-group"><label class="form-label">'+t('parcelas')+'</label><input id="al-parc" type="number" value="1"></div></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('primeiraParcela')+'</label><input id="al-date" type="date"></div>';
-  html+='<button class="btn btn-primary btn-block" id="al-save" onclick="saveEmprestimo()">'+t('salvar')+'</button></div>';
+  html+='<div class="form-group"><label class="form-label" for="al-pessoa">'+t('pessoa')+'</label><input id="al-pessoa"></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="al-val">'+t('valor')+'</label><input id="al-val" type="number" step="0.01" inputmode="decimal"></div><div class="form-group"><label class="form-label" for="al-parc">'+t('parcelas')+'</label><input id="al-parc" type="number" value="1"></div></div>';
+  html+='<div class="form-group"><label class="form-label" for="al-date">'+t('primeiraParcela')+'</label><input id="al-date" type="date"></div>';
+  html+='<button class="btn btn-primary btn-block" id="al-save" onclick="saveEmprestimo()">'+t('salvar')+'</button></section></div>';
   return html;
 }
 function selectLoanType(el,type){el.parentElement.querySelectorAll('.radio-item').forEach(r=>r.classList.remove('active'));el.classList.add('active');document.getElementById('al-type').value=type}
@@ -16796,12 +16837,10 @@ function saveEmprestimo(){
 }
 
 function renderAddCompromisso(){
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'add\')">'+icon('back','ico-sm')+' '+t('add')+'</button>';
-  html+='<h2 class="mt-4">'+t('compromisso')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('descricao')+'</label><input id="ac-desc"></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('valor')+'</label><input id="ac-val" type="number" step="0.01"></div><div class="form-group"><label class="form-label">'+t('data')+'</label><input id="ac-date" type="date"></div></div>';
-  html+='<button class="btn btn-primary btn-block" id="ac-save" onclick="saveCompromisso()">'+t('salvar')+'</button></div>';
+  let html='<div class="content al-add-premium al-add-form">'+alAddPremiumHead(t('compromisso'),'calendario','add','')+'<section class="al-add-fields">';
+  html+='<div class="form-group mt-4"><label class="form-label" for="ac-desc">'+t('descricao')+'</label><input id="ac-desc"></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="ac-val">'+t('valor')+'</label><input id="ac-val" type="number" step="0.01" inputmode="decimal"></div><div class="form-group"><label class="form-label" for="ac-date">'+t('data')+'</label><input id="ac-date" type="date"></div></div>';
+  html+='<button class="btn btn-primary btn-block" id="ac-save" onclick="saveCompromisso()">'+t('salvar')+'</button></section></div>';
   return html;
 }
 function saveCompromisso(){const desc=document.getElementById('ac-desc').value.trim();const val=parseFloat(document.getElementById('ac-val').value)||null;const date=document.getElementById('ac-date').value||today();if(!desc)return;if(!travarSalvar('novoCompromisso',desc+'|'+val+'|'+date,'ac-save'))return;Store.addCommitment({tipo:'compromisso',descricao:desc,valor:val,data:date,status:'pendente'});showToast(t('salvoDireto'));go('home')}
@@ -16810,23 +16849,19 @@ function renderAddLembrete(){
   reminderSaving=false;
   const c=Store.screenData&&Store.screenData.id?Store.commitments.find(x=>x.id===Store.screenData.id&&!x.personId):null;
   const avisos=c&&c.avisos||[];
-  let html='<div class="content">';
+  let html='<div class="content al-add-premium al-add-form">'+alAddPremiumHead((c?t('editarLembrete'):t('lembrete')),'alert','add','')+'<section class="al-add-fields">';
 
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'add\')">'+icon('back','ico-sm')+' '+t('add')+'</button>';
+  html+='<div class="form-group mt-4"><label class="form-label" for="al2-desc">'+t('descricao')+'</label><input id="al2-desc" value="'+esc(c&&c.descricao||'')+'"></div>';
 
-  html+='<h2 class="mt-4">'+(c?t('editarLembrete'):t('lembrete'))+'</h2>';
+  html+='<div class="form-group"><label class="form-label" for="al2-date">'+t('data')+'</label><input id="al2-date" type="date" value="'+(c?c.data:today())+'"></div>';
 
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('descricao')+'</label><input id="al2-desc" value="'+esc(c&&c.descricao||'')+'"></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="al2-time">'+t('hora')+'</label><input id="al2-time" type="time" value="'+(c&&c.hora||'')+'"></div><div class="form-group"><label class="form-label" for="al2-repeat">'+t('repeticao')+'</label><select id="al2-repeat">'+['nenhuma','diaria','semanal','mensal','anual'].map(x=>'<option value="'+x+'"'+((c&&c.repeticao||'nenhuma')===x?' selected':'')+'>'+t(x)+'</option>').join('')+'</select></div></div>';
 
-  html+='<div class="form-group"><label class="form-label">'+t('data')+'</label><input id="al2-date" type="date" value="'+(c?c.data:today())+'"></div>';
+  html+='<div class="form-group"><label class="form-label" for="al2-details">'+t('detalhes')+'</label><textarea id="al2-details">'+esc(c&&c.detalhes||'')+'</textarea></div>';
 
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('hora')+'</label><input id="al2-time" type="time" value="'+(c&&c.hora||'')+'"></div><div class="form-group"><label class="form-label">'+t('repeticao')+'</label><select id="al2-repeat">'+['nenhuma','diaria','semanal','mensal','anual'].map(x=>'<option value="'+x+'"'+((c&&c.repeticao||'nenhuma')===x?' selected':'')+'>'+t(x)+'</option>').join('')+'</select></div></div>';
+  html+='<div class="form-group"><label class="form-label">'+t('avisos')+'</label>'+[[0,'naHora'],[10,'dezMin'],[60,'umaHora'],[1440,'umDia'],[10080,'umaSemana']].map(x=>'<label class="al-add-check"><input type="checkbox" name="al2-warning" value="'+x[0]+'"'+(avisos.indexOf(x[0])>-1?' checked':'')+' style="width:auto"> '+t(x[1])+'</label>').join('')+'</div>';
 
-  html+='<div class="form-group"><label class="form-label">'+t('detalhes')+'</label><textarea id="al2-details">'+esc(c&&c.detalhes||'')+'</textarea></div>';
-
-  html+='<div class="form-group"><label class="form-label">'+t('avisos')+'</label>'+[[0,'naHora'],[10,'dezMin'],[60,'umaHora'],[1440,'umDia'],[10080,'umaSemana']].map(x=>'<label style="display:block"><input type="checkbox" name="al2-warning" value="'+x[0]+'"'+(avisos.indexOf(x[0])>-1?' checked':'')+' style="width:auto"> '+t(x[1])+'</label>').join('')+'</div>';
-
-  html+='<button class="btn btn-primary btn-block" onclick="saveLembrete()">'+t('salvar')+'</button></div>';
+  html+='<button class="btn btn-primary btn-block" onclick="saveLembrete()">'+t('salvar')+'</button></section></div>';
 
   return html;
 }
@@ -17121,25 +17156,21 @@ function renderPlanoDetalhe(){
 /* INSURANCE */
 function renderInsurance(){
   const policies=Store.insurance;
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'add\')">'+icon('back','ico-sm')+' '+t('add')+'</button>';
-  html+='<h2 class="mt-4">'+t('seguroVeiculo')+'</h2>';
+  let html='<div class="content al-add-premium al-add-insurance">'+alAddPremiumHead(t('seguroVeiculo'),'shield','add','');
   if(policies.length===0)html+='<div class="card mt-4"><p class="text-muted">'+t('semDados')+'</p></div>';
   policies.forEach(p=>{
-    html+='<div class="list-item" onclick="go(\'insuranceDetail\','+JSON.stringify({id:p.id})+')"><div class="li-left">'+icon('shield','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(p.veiculo||'')+'</div><div class="li-sub">'+esc(p.seguradora||'')+'</div></div></div><div class="li-right"><div class="li-amount">'+fmtMoney(p.premioTotal||0)+'</div></div></div>';
+    html+='<div class="list-item" onclick="go(\'insuranceDetail\','+esc(JSON.stringify({id:p.id}))+')"><div class="li-left">'+icon('shield','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(p.veiculo||'')+'</div><div class="li-sub">'+esc(p.seguradora||'')+'</div></div></div><div class="li-right"><div class="li-amount">'+fmtMoney(p.premioTotal||0)+'</div></div></div>';
   });
   html+='<button class="btn btn-primary btn-block mt-4" onclick="go(\'insuranceAdd\')">'+icon('plus','ico-sm')+' '+t('novaApolice')+'</button></div>';
   return html;
 }
 function renderInsuranceAdd(){
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'insurance\')">'+icon('back','ico-sm')+' '+t('seguroVeiculo')+'</button>';
-  html+='<h2 class="mt-4">'+t('novaApolice')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('tipoVeiculo')+'</label><input id="in-veiculo"></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('seguradora')+'</label><input id="in-seguradora"></div><div class="form-group"><label class="form-label">'+t('premioTotal')+'</label><input id="in-premio" type="number" step="0.01"></div></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('parcelas')+'</label><input id="in-parcelas" type="number" value="1"></div><div class="form-group"><label class="form-label">'+t('inicioVigencia')+'</label><input id="in-inicio" type="date"></div></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('fimVigencia')+'</label><input id="in-fim" type="date"></div><div class="form-group"><label class="form-label">'+t('pagamento')+'</label><select id="in-pagamento"><option value="a_vista">'+t('aVista')+'</option><option value="parcelado">'+t('parcelado')+'</option><option value="cartao">'+t('noCartao')+'</option></select></div></div>';
-  html+='<button class="btn btn-primary btn-block" onclick="saveInsurance()">'+t('salvar')+'</button></div>';
+  let html='<div class="content al-add-premium al-add-form">'+alAddPremiumHead(t('novaApolice'),'shield','insurance','')+'<section class="al-add-fields">';
+  html+='<div class="form-group mt-4"><label class="form-label" for="in-veiculo">'+t('tipoVeiculo')+'</label><input id="in-veiculo"></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="in-seguradora">'+t('seguradora')+'</label><input id="in-seguradora"></div><div class="form-group"><label class="form-label" for="in-premio">'+t('premioTotal')+'</label><input id="in-premio" type="number" step="0.01" inputmode="decimal"></div></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="in-parcelas">'+t('parcelas')+'</label><input id="in-parcelas" type="number" value="1"></div><div class="form-group"><label class="form-label" for="in-inicio">'+t('inicioVigencia')+'</label><input id="in-inicio" type="date"></div></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="in-fim">'+t('fimVigencia')+'</label><input id="in-fim" type="date"></div><div class="form-group"><label class="form-label" for="in-pagamento">'+t('pagamento')+'</label><select id="in-pagamento"><option value="a_vista">'+t('aVista')+'</option><option value="parcelado">'+t('parcelado')+'</option><option value="cartao">'+t('noCartao')+'</option></select></div></div>';
+  html+='<button class="btn btn-primary btn-block" onclick="saveInsurance()">'+t('salvar')+'</button></section></div>';
   return html;
 }
 function saveInsurance(){
@@ -17164,9 +17195,7 @@ function renderInsuranceDetail(){
   const id=Store.screenData&&Store.screenData.id;
   const p=Store.insurance.find(i=>i.id===id);
   if(!p)return '<div class="content"><p class="text-muted">'+t('semDados')+'</p></div>';
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'insurance\')">'+icon('back','ico-sm')+' '+t('seguroVeiculo')+'</button>';
-  html+='<h2 class="mt-4">'+esc(p.veiculo||'')+'</h2>';
+  let html='<div class="content al-add-premium al-add-insurance">'+alAddPremiumHead(p.veiculo||t('seguroVeiculo'),'shield','insurance','');
   html+='<div class="card mt-4"><div class="card-row"><span class="card-row-label">'+t('seguradora')+'</span><span class="card-row-value">'+esc(p.seguradora||'')+'</span></div><div class="card-row"><span class="card-row-label">'+t('premioTotal')+'</span><span class="card-row-value">'+fmtMoney(p.premioTotal)+'</span></div><div class="card-row"><span class="card-row-label">'+t('parcelas')+'</span><span class="card-row-value">'+p.totalParcelas+'x '+fmtMoney(p.valorParcela)+'</span></div><div class="card-row"><span class="card-row-label">'+t('fimVigencia')+'</span><span class="card-row-value">'+fmtDate(p.fimVigencia)+'</span></div></div>';
   html+='<button class="btn btn-primary btn-block mt-4" onclick="renewInsurance(\''+id+'\')">'+icon('refresh','ico-sm')+' '+t('renovar')+'</button></div>';
   return html;
@@ -17180,21 +17209,21 @@ function renewInsurance(id){
 
 /* Renda Extra, Financiamento, Consorcio - compactos */
 function renderRendaExtra(){
-  let html='<div class="content"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'add\')">'+icon('back','ico-sm')+' '+t('add')+'</button><h2 class="mt-4">'+t('rendaExtra')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('descricao')+'</label><input id="re-desc"></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('valor')+'</label><input id="re-val" type="number" step="0.01"></div><div class="form-group"><label class="form-label">'+t('data')+'</label><input id="re-date" type="date" value="'+today()+'"></div></div>';
-  html+='<button class="btn btn-primary btn-block" onclick="saveRendaExtra()">'+t('salvar')+'</button></div>';
+  let html='<div class="content al-add-premium al-add-form">'+alAddPremiumHead(t('rendaExtra'),'trend','add','')+'<section class="al-add-fields">';
+  html+='<div class="form-group mt-4"><label class="form-label" for="re-desc">'+t('descricao')+'</label><input id="re-desc"></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="re-val">'+t('valor')+'</label><input id="re-val" type="number" step="0.01" inputmode="decimal"></div><div class="form-group"><label class="form-label" for="re-date">'+t('data')+'</label><input id="re-date" type="date" value="'+today()+'"></div></div>';
+  html+='<button class="btn btn-primary btn-block" onclick="saveRendaExtra()">'+t('salvar')+'</button></section></div>';
   return html;
 }
 function saveRendaExtra(){const desc=document.getElementById('re-desc').value.trim();const val=parseFloat(document.getElementById('re-val').value)||0;const date=document.getElementById('re-date').value||today();if(val<=0)return;Store.extraIncome.push({descricao:desc,valor:val,data:date,status:'pendente',id:Store._uid()});Store.save();Store.addMovement({tipo:'receita',descricao:desc,valor:val,data:date,status:'pago',categoria:'renda',subcategoria:'outras'});showToast(t('salvoDireto'));render()}
 
 function renderFinanciamento(){
-  let html='<div class="content"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'add\')">'+icon('back','ico-sm')+' '+t('add')+'</button><h2 class="mt-4">'+t('financiamento')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('bemFinanciado')+'</label><input id="fi-bem"></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('instituicao')+'</label><input id="fi-inst"></div><div class="form-group"><label class="form-label">'+t('valorFinanciado')+'</label><input id="fi-val" type="number" step="0.01"></div></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('totalParcelas')+'</label><input id="fi-parc" type="number"></div><div class="form-group"><label class="form-label">'+t('valorParcela')+'</label><input id="fi-valParcela" type="number" step="0.01"></div></div>';
-  html+='<div class="form-group"><label class="form-label">'+t('vencimento')+'</label><input id="fi-venc" type="date"></div>';
-  html+='<button class="btn btn-primary btn-block" onclick="saveFinanciamento()">'+t('salvar')+'</button></div>';
+  let html='<div class="content al-add-premium al-add-form">'+alAddPremiumHead(t('financiamento'),'credit','add','')+'<section class="al-add-fields">';
+  html+='<div class="form-group mt-4"><label class="form-label" for="fi-bem">'+t('bemFinanciado')+'</label><input id="fi-bem"></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="fi-inst">'+t('instituicao')+'</label><input id="fi-inst"></div><div class="form-group"><label class="form-label" for="fi-val">'+t('valorFinanciado')+'</label><input id="fi-val" type="number" step="0.01" inputmode="decimal"></div></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="fi-parc">'+t('totalParcelas')+'</label><input id="fi-parc" type="number"></div><div class="form-group"><label class="form-label" for="fi-valParcela">'+t('valorParcela')+'</label><input id="fi-valParcela" type="number" step="0.01" inputmode="decimal"></div></div>';
+  html+='<div class="form-group"><label class="form-label" for="fi-venc">'+t('vencimento')+'</label><input id="fi-venc" type="date"></div>';
+  html+='<button class="btn btn-primary btn-block" onclick="saveFinanciamento()">'+t('salvar')+'</button></section></div>';
   return html;
 }
 function saveFinanciamento(){
@@ -17227,11 +17256,11 @@ function saveFinanciamento(){
   render()
 }
 function renderConsorcio(){
-  let html='<div class="content"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'add\')">'+icon('back','ico-sm')+' '+t('add')+'</button><h2 class="mt-4">'+t('consorcio')+'</h2>';
-  html+='<div class="form-group mt-4"><label class="form-label">'+t('administradora')+'</label><input id="co-admin"></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('valorCarta')+'</label><input id="co-carta" type="number" step="0.01"></div><div class="form-group"><label class="form-label">'+t('valorParcela')+'</label><input id="co-parcVal" type="number" step="0.01"></div></div>';
-  html+='<div class="form-row"><div class="form-group"><label class="form-label">'+t('totalParcelas')+'</label><input id="co-total" type="number"></div><div class="form-group"><label class="form-label">'+t('vencimento')+'</label><input id="co-venc" type="date"></div></div>';
-  html+='<button class="btn btn-primary btn-block" onclick="saveConsorcio()">'+t('salvar')+'</button></div>';
+  let html='<div class="content al-add-premium al-add-form">'+alAddPremiumHead(t('consorcio'),'handshake','add','')+'<section class="al-add-fields">';
+  html+='<div class="form-group mt-4"><label class="form-label" for="co-admin">'+t('administradora')+'</label><input id="co-admin"></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="co-carta">'+t('valorCarta')+'</label><input id="co-carta" type="number" step="0.01" inputmode="decimal"></div><div class="form-group"><label class="form-label" for="co-parcVal">'+t('valorParcela')+'</label><input id="co-parcVal" type="number" step="0.01" inputmode="decimal"></div></div>';
+  html+='<div class="form-row"><div class="form-group"><label class="form-label" for="co-total">'+t('totalParcelas')+'</label><input id="co-total" type="number"></div><div class="form-group"><label class="form-label" for="co-venc">'+t('vencimento')+'</label><input id="co-venc" type="date"></div></div>';
+  html+='<button class="btn btn-primary btn-block" onclick="saveConsorcio()">'+t('salvar')+'</button></section></div>';
   return html;
 }
 function saveConsorcio(){
