@@ -1546,6 +1546,34 @@ async function abrirFerramentasAlicia(page) {
   await expect(menu).toHaveAttribute('open', '');
 }
 
+test('Home premium preserva anúncios publicados, posição, identificação e observação de visibilidade', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () {
+    const now=Date.now();
+    const base={owner:'anunciante-teste',negocio:'Loja de teste',titulo:'Anúncio de teste',descricao:'Oferta de teste',destino:'https://example.com/',imagem:'',status:'publicado',inicioEm:new Date(now-60000).toISOString(),fimEm:new Date(now+600000).toISOString()};
+    Trafego._remoto=[
+      Object.assign({},base,{id:'11111111-1111-4111-8111-111111111111'}),
+      Object.assign({},base,{id:'22222222-2222-4222-8222-222222222222',titulo:'Anúncio expirado',fimEm:new Date(now-1000).toISOString()}),
+      Object.assign({},base,{id:'33333333-3333-4333-8333-333333333333',titulo:'Anúncio em análise',status:'analise'})
+    ];
+    document.getElementById('app').innerHTML=renderHeader()+renderHome()+renderBottomNav();
+  });
+  const slot=page.locator('#home-feed-slot');
+  await expect(slot.locator('.al-home-sponsored')).toHaveCount(1);
+  await expect(slot.locator('.al-home-sponsored')).toContainText('Anúncio de teste');
+  await expect(slot.locator('.tf-badge')).toContainText(/patrocinado/i);
+  await expect(slot.locator('.tf-card-cta')).toBeVisible();
+  await expect(slot).not.toContainText('Anúncio expirado');
+  await expect(slot).not.toContainText('Anúncio em análise');
+  expect(await slot.evaluate(function(el){
+    return !!(el.compareDocumentPosition(document.querySelector('.al-home-upcoming'))&Node.DOCUMENT_POSITION_FOLLOWING);
+  })).toBe(true);
+  expect(await page.evaluate(function(){
+    homeObservarAnuncios();
+    return _tfObservadorAnuncios&&_tfObservadorAnuncios.root===null;
+  })).toBe(true);
+});
+
 test('Menu premium organiza acessos e abre Alicia pelo símbolo orbital', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   await page.evaluate(function () { renderMenu(); if(!document.getElementById('menu-panel').classList.contains('open'))toggleMenu(); });
