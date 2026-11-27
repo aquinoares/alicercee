@@ -2954,6 +2954,69 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 .al-gastos-premium button:focus-visible,.al-gastos-premium summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media(max-width:360px){.al-gastos-premium{padding-left:11px;padding-right:11px}.ag-hero{padding:16px}.ag-item>summary{grid-template-columns:28px minmax(0,1fr) minmax(0,auto);gap:7px}.ag-item-icon{width:28px;height:28px}.gastos-item-details{padding-left:35px}.gastos-item-amount{max-width:92px}}
 </style>
+
+<style id="al-cartoes-premium-v1">
+.app:has(.al-cartoes-premium),.al-cartoes-premium{--accent:#8ab2f3;--accent-light:#a4c4fa;--on-accent:#10213a;--tint-accent:rgba(85,127,203,.14);--chrome:#274c83}
+[data-theme="claro"] .app:has(.al-cartoes-premium),[data-theme="marinho"] .app:has(.al-cartoes-premium),[data-theme="claro"] .al-cartoes-premium,[data-theme="marinho"] .al-cartoes-premium{--accent:#345ca5;--accent-light:#345ca5;--on-accent:#fff;--chrome:#345ca5}
+.app:has(.al-cartoes-premium){width:100%;max-width:420px;min-width:0}
+.cc2-page.cc2-redesign.al-cartoes-premium{width:100%;max-width:100%;min-width:0;align-self:stretch;margin:0;padding:16px 16px calc(105px + env(safe-area-inset-bottom,0px));font-family:var(--font);box-sizing:border-box}
+.al-cartoes-premium>*{min-width:0;max-width:100%;box-sizing:border-box}
+.al-cartoes-premium .ccr-head{align-items:center;margin:0 0 16px}
+.al-cartoes-premium .ccr-title{font-size:25px;letter-spacing:-.04em;font-weight:750;margin:4px 0}
+.al-cartoes-premium .ccr-kicker{font-size:11px;letter-spacing:.08em;color:var(--text2);font-weight:700}
+.al-cartoes-premium .ccr-sub{font-size:11px;color:var(--text2);font-weight:500}
+.al-cartoes-premium .ccr-head-acts{gap:8px;align-items:center}
+.al-cartoes-premium .ccr-iconbtn{width:42px;height:42px;border-radius:12px;color:var(--accent)}
+.al-cartoes-premium .ccr-orb{width:49px;height:49px;flex:0 0 49px;border:0;background:none;padding:0}
+.al-cartoes-premium .cc2-track{width:100%;min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+.cc2-page.cc2-redesign.al-cartoes-premium .cc2-card{width:100%!important;min-width:100%!important;max-width:100%!important;flex:0 0 100%!important;box-sizing:border-box;overflow:hidden;position:relative;padding:16px;border-radius:23px;min-height:0;background:radial-gradient(circle at 100% 0%,transparent 67px,rgba(164,208,255,.17) 68px,rgba(164,208,255,.04) 69px,rgba(164,208,255,.04) 90px,rgba(164,208,255,.025) 91px,rgba(164,208,255,.025) 112px,transparent 113px),linear-gradient(135deg,#10243d,#152f49 60%,#193b50)!important;border:1px solid rgba(137,182,236,.23)!important;color:#f3f8ff!important}
+.cc2-page.cc2-redesign.al-cartoes-premium .cc2-name{font-size:17px;letter-spacing:-.015em;overflow-wrap:anywhere;color:#f3f8ff!important}
+.cc2-page.cc2-redesign.al-cartoes-premium .cc2-cardtop{padding:0 0 9px;gap:9px}
+.cc2-page.cc2-redesign.al-cartoes-premium .cc2-art{display:flex;width:35px;height:35px;flex:0 0 35px;align-items:center;justify-content:center;border-radius:10px;background:rgba(255,255,255,.09)!important;border:1px solid rgba(255,255,255,.15);font-size:12px;font-weight:750;color:#dcecff!important}
+.cc2-page.cc2-redesign.al-cartoes-premium .cc2-chip{font-size:10px;color:#dcecff!important;background:rgba(255,255,255,.08)!important;border-color:rgba(255,255,255,.18)!important}
+.cc2-page.cc2-redesign.al-cartoes-premium .cc2-eyebtn{width:35px;height:35px;background:rgba(255,255,255,.08)!important;color:#dcecff!important;border-color:rgba(255,255,255,.18)!important}
+.cc2-page.cc2-redesign.al-cartoes-premium .ccr-panel{padding:0!important;margin:2px 0 0!important;background:transparent!important;border:0!important;min-width:0}
+.al-cartoes-premium .ccr-csum{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.al-cartoes-premium .ccr-csum-cell:first-child{grid-column:1/-1;padding:3px 0 11px;border-bottom:1px solid rgba(187,217,255,.17)}
+.cc2-page.cc2-redesign.al-cartoes-premium .ccr-csum-cell span{font-size:11px;letter-spacing:0;text-transform:none;font-weight:500;color:#b9cde4!important}
+.cc2-page.cc2-redesign.al-cartoes-premium .ccr-csum-cell strong{font-size:15px;white-space:normal;overflow-wrap:anywhere;overflow:visible;text-overflow:clip;color:#f3f8ff!important}
+.cc2-page.cc2-redesign.al-cartoes-premium .ccr-csum-cell:first-child strong{font-size:clamp(25px,7vw,36px);letter-spacing:-.045em}
+.cc2-page.cc2-redesign.al-cartoes-premium .cc2-bar{height:8px;margin:12px 0 6px;background:rgba(255,255,255,.16)!important}
+.cc2-page.cc2-redesign.al-cartoes-premium .cc2-bar-fill{background:#83aaf0!important}
+.cc2-page.cc2-redesign.al-cartoes-premium .cc2-bar-fill.danger,.cc2-page.cc2-redesign.al-cartoes-premium .cc2-bar-fill.over{background:#ff9595!important}
+.cc2-page.cc2-redesign.al-cartoes-premium .ccr-barmeta,.cc2-page.cc2-redesign.al-cartoes-premium .ccr-best,.cc2-page.cc2-redesign.al-cartoes-premium .cc2-seu{color:#c5daf4!important;font-size:11px;overflow-wrap:anywhere}
+.cc2-page.cc2-redesign.al-cartoes-premium .ccr-barmeta span{min-width:0}
+.cc2-page.cc2-redesign.al-cartoes-premium .cc2-deg.ok{color:#79d9bb!important}.cc2-page.cc2-redesign.al-cartoes-premium .cc2-deg.warn{color:#f2d3a5!important}.cc2-page.cc2-redesign.al-cartoes-premium .cc2-deg.danger{color:#ffb5b5!important}
+.al-cartoes-premium .cc2-gear{position:static!important;align-self:flex-end;margin-top:9px;width:34px;height:34px;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(255,255,255,.08);color:#dcecff}
+.al-cartoes-premium .cc2-nolimit,.al-cartoes-premium .cc2-nolimit-t{color:#c5daf4!important}
+.al-cartoes-premium .cc2-setlim button{color:#dcecff!important}
+.al-cartoes-premium .cc2-dots{padding:11px 0 5px;flex-wrap:wrap}
+.al-cartoes-premium .ccr-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0 14px}
+.al-cartoes-premium .ccr-actions .btn{min-width:0;min-height:44px;padding:8px 5px;border-radius:13px;font-size:12px}
+.al-cartoes-premium .ccr-primary,.al-cartoes-premium .cc2-empty .btn-primary{background:#345ca5;color:#fff;box-shadow:none!important}
+.al-cartoes-premium .cc2-empty{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:24px 15px;color:var(--text2)}
+.al-cartoes-premium .cc2-empty .btn{margin-top:14px}
+.al-cartoes-premium .cc-stories{margin-top:16px;min-width:0}
+.al-cartoes-premium .cc-stories-head{align-items:center;margin-bottom:10px}
+.al-cartoes-premium .cc-stories-filters{gap:6px;margin-bottom:10px}
+.al-cartoes-premium .cc-stories-filter{border-radius:10px;min-height:37px;border-color:var(--line);font-size:11px}
+.al-cartoes-premium .cc-stories-filter.is-active{background:var(--tint-accent);color:var(--text);border-color:var(--accent)}
+.al-cartoes-premium .cc-stories-list{gap:8px}
+.al-cartoes-premium .cc-story{border-color:var(--line);border-radius:16px;padding:12px}
+.al-cartoes-premium .cc-story-summary{gap:8px;min-width:0}
+.al-cartoes-premium .cc-story-pill{border-color:var(--line);border-radius:7px}
+.al-cartoes-premium .cc-story-pill.orange{color:var(--text2);background:var(--surface2);border-color:var(--line)}
+.al-cartoes-premium .cc-story-pill.green{color:var(--positive);background:var(--tint-positive);border-color:var(--line)}
+.al-cartoes-premium .cc-story-total{min-width:0;max-width:43%}
+.al-cartoes-premium .cc-story-total strong{white-space:normal;overflow-wrap:anywhere;text-align:right}
+.al-cartoes-premium .cc-story-detail{border-color:var(--line)}
+.al-cartoes-premium .cc-story-progress{background:var(--line);height:7px}
+.al-cartoes-premium .cc-story-progress>span{background:#719eec}
+.al-cartoes-premium .cc-story-bubble.done{color:var(--positive);background:var(--tint-positive);border-color:var(--positive);box-shadow:none}
+.al-cartoes-premium .cc-story-bubble-date{white-space:normal;overflow-wrap:anywhere;text-align:center}
+.al-cartoes-premium button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:360px){.cc2-page.cc2-redesign.al-cartoes-premium{padding-left:11px;padding-right:11px}.cc2-page.cc2-redesign.al-cartoes-premium .cc2-card{padding:13px}.al-cartoes-premium .ccr-title{font-size:22px}.al-cartoes-premium .ccr-csum{gap:8px}.al-cartoes-premium .cc-story{padding:10px}}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -11875,7 +11938,7 @@ function renderCardPurchaseStories(cardId){
   if(filter==='terceiros')groups=groups.filter(function(g){return g.terceiros;});
   let expanded=data.cardStoriesExpanded;
   if(expanded===undefined||expanded===null||(expanded!=='__none__'&&!groups.some(function(g){return g.key===expanded;}))){
-    expanded=groups.length?groups[0].key:'__none__';
+    expanded='__none__';
     Store.screenData=Store.screenData||{};
     Store.screenData.cardStoriesExpanded=expanded;
   }
@@ -11945,13 +12008,13 @@ function renderCardPurchaseStories(cardId){
       const encodedKey=encodeURIComponent(group.key);
 
       html+='<article class="cc-story">';
-      html+='<button type="button" class="cc-story-summary" onclick="ccStoriesSetExpanded(\''+encodedKey+'\')">';
+      html+='<button type="button" class="cc-story-summary" aria-expanded="'+(open?'true':'false')+'" onclick="ccStoriesSetExpanded(\''+encodedKey+'\')">';
       html+='<div class="cc-story-main"><span class="cc-story-name">'+esc(main)+'</span>';
       html+='<span class="cc-story-meta">'+esc(meta)+'</span>';
-      html+='<span class="cc-story-pills"><span class="cc-story-pill orange">'+totalParts+'x de '+fmtMoney(group.total/totalParts)+'</span>';
+      html+='<span class="cc-story-pills"><span class="cc-story-pill orange">'+totalParts+'x de '+cc2Money(group.total/totalParts)+'</span>';
       html+='<span class="cc-story-pill'+(done?' green':'')+'">'+done+' '+ownerDone+'</span>';
       html+='<span class="cc-story-pill'+(left===0?' green':'')+'">'+left+' '+ownerLeft+'</span></span></div>';
-      html+='<div class="cc-story-total"><strong>'+fmtMoney(group.total)+'</strong><small>Total da compra</small><span class="cc-story-chevron'+(open?' open':'')+'">&#9662;</span></div>';
+      html+='<div class="cc-story-total"><strong>'+cc2Money(group.total)+'</strong><small>Total da compra</small><span class="cc-story-chevron'+(open?' open':'')+'">&#9662;</span></div>';
       html+='</button>';
 
       if(open){
@@ -11976,19 +12039,19 @@ function renderCardPurchaseStories(cardId){
 function renderCartoes(){
   const cards=Array.isArray(Store.cards)?Store.cards:[];
 
-  let html='<div class="content cc2-page cc2-redesign ccr-page">';
+  let html='<div class="content cc2-page cc2-redesign ccr-page al-cartoes-premium">';
   html+='<div class="ccr-head">';
   html+='<div class="ccr-head-txt">';
-  html+='<div class="ccr-title">'+t('cartoesTitulo')+'</div>';
+  html+='<div class="ccr-kicker">ALICERCE</div><h1 class="ccr-title">'+t('cartoesTitulo')+'</h1>';
   html+='<div class="ccr-sub">'+cards.length+' '+t('cartoes')+'</div>';
   html+='</div>';
   html+='<div class="ccr-head-acts">';
-  html+='<button type="button" class="ccr-iconbtn" title="Novo cartão" aria-label="Novo cartão" onclick="go(\'addCard\')">'+icon('credit','ico-sm')+'</button>';
+  html+='<button type="button" class="ccr-iconbtn" title="Novo cartão" aria-label="Novo cartão" onclick="go(\'addCard\')">'+icon('plus','ico-sm')+'</button><button type="button" class="ccr-orb" aria-label="Conversar com Alicia" onclick="go(\'assistente\')">'+aliciaOrb()+'</button>';
   html+='</div>';
   html+='</div>';
 
   if(cards.length===0){
-    html+='<div class="cc2-empty">'+t('semCartao')+'</div>';
+    html+='<div class="cc2-empty">'+t('semCartao')+'<br><button type="button" class="btn btn-primary btn-block" onclick="go(\'addCard\')">'+icon('plus','ico-sm')+' Novo cartão</button></div>';
     html+='</div>';
     return html;
   }
@@ -12019,7 +12082,7 @@ function renderCartoes(){
     html+='</div>';
     html+='<div class="cc2-panel ccr-panel">';
     if(lim){
-      const degCls=lim.degrau==='acima'?'over':(lim.degrau==='no_limite'||lim.degrau==='atencao')?'danger':'';
+      const degCls=lim.degrau==='acima'?'over':lim.degrau==='no_limite'?'danger':lim.degrau==='atencao'?'warn':'';
       const degWordCls=lim.degrau==='acima'||lim.degrau==='no_limite'?'danger':(lim.degrau==='atencao'?'warn':'ok');
       const degIco=lim.degrau==='folgado'?'check':'alert';
       const vencTxt=(view.datas&&view.datas.vencEm)?fmtDate(view.datas.vencEm):'--';
