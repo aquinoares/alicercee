@@ -1512,6 +1512,7 @@ test('Alícia lê a nota localmente, mostra os dados para revisão e libera o ar
   });
 
   await page.locator('#alicerce-ai-open-assistant').click();
+  await abrirFerramentasAlicia(page);
   await expect(page.locator('#alicerce-assistant-camera')).toBeVisible();
   await page.locator('#alicerce-assistant-photo').setInputFiles({
     name: 'nota.jpg',
@@ -1538,6 +1539,12 @@ test('Alícia lê a nota localmente, mostra os dados para revisão e libera o ar
   expect(state.filename).toBe('nota.jpg');
   expect(state.terminated).toBe(true);
 });
+
+async function abrirFerramentasAlicia(page) {
+  const menu = page.locator('#alicia-chat-tools');
+  if (await menu.getAttribute('open') === null) await page.locator('#alicia-chat-plus').click();
+  await expect(menu).toHaveAttribute('open', '');
+}
 
 test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, conversa organizada e isolamento por conta', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
@@ -1592,19 +1599,18 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('.alicerce-assistant-heading')).toContainText('Alicia');
   await expect(page.locator('.alicerce-assistant-heading')).toContainText('Sua assistente financeira');
   await expect(page.locator('.alicerce-assistant-back')).toContainText('Início');
-  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveAttribute('src', '/assets/alicia-assistente.webp');
-  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('object-fit', 'contain');
-  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('width', '54px');
-  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCSS('height', '54px');
-  await expect(page.locator('.alicerce-assistant-avatar')).toHaveCSS('border-width', '2px');
-  await expect(page.locator('.alicerce-assistant-avatar')).toHaveCSS('border-radius', '13px');
-  await expect(page.locator('.alicerce-assistant-heading')).toHaveCSS('border-width', '1px');
-  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Oi, Maria! Tudo bem com você?');
-  await expect(page.locator('#alicerce-assistant-messages')).toContainText('Estou aqui para ajudar a entender seu dinheiro.');
+  await expect(page.locator('.alicerce-assistant-avatar .alicia-orb')).toBeVisible();
+  await expect(page.locator('.alicerce-assistant-avatar img')).toHaveCount(0);
+  await expect(page.locator('.alicerce-assistant-welcome')).toBeVisible();
+  await expect(page.locator('.alicerce-assistant-message-avatar .alicia-orb')).toHaveCount(1);
+  await expect(page.locator('#alicia-chat-plus')).toBeVisible();
+  await expect(page.locator('#alicerce-assistant-camera')).toBeHidden();
+  await expect(page.locator('#alicerce-assistant-messages')).toContainText(/(?:Bom dia|Boa tarde|Boa noite), Maria!/);
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('O que vamos olhar hoje?');
   await expect(page.locator('#alicerce-assistant-voice-toggle')).toHaveText('Desativar voz');
   await expect(page.locator('.alicerce-assistant-speak')).toHaveCount(0);
   await expect(page.locator('.alicerce-assistant-chat-panel')).toBeVisible();
+  await abrirFerramentasAlicia(page);
   await expect(page.locator('#alicerce-assistant-camera')).toBeVisible();
   await expect(page.locator('#alicerce-assistant-input')).toBeVisible();
 
@@ -1613,7 +1619,7 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('48,50');
   await expect(page.locator('.alicerce-assistant-message.user')).toContainText('Quanto gastei com lanche este mês?');
   await expect(page.locator('.alicerce-assistant-message.assistant')).toContainText('48,50');
-  await expect(page.locator('.alicerce-assistant-message-avatar')).toHaveCount(1);
+  await expect(page.locator('.alicerce-assistant-message-avatar .alicia-orb')).toHaveCount(1);
 
   const stateAfterSwitch = await page.evaluate(function () {
     Store.userId = 'ia-conta-teste-b';
@@ -2277,6 +2283,7 @@ test('Alicia fala automaticamente as respostas e permite desligar a voz sem conf
     return page.evaluate(function () { return window.__alicerceRemoteVoiceTest.plays; });
   }).toBe(1);
 
+  await abrirFerramentasAlicia(page);
   await voiceToggle.click();
   await expect(voiceToggle).toHaveText('Ativar voz');
   await expect(voiceToggle).toHaveAttribute('aria-pressed', 'false');
@@ -2585,6 +2592,7 @@ test('Alícia mantém as respostas recentes, permite limpar e leva à Visão Fin
     document.getElementById('app').innerHTML = renderHeader() + renderScreen() + renderBottomNav();
   });
 
+  await abrirFerramentasAlicia(page);
   await expect(page.locator('#alicerce-assistant-financial')).toBeVisible();
   for (const question of ['Quanto gastei este mês?', 'Onde gastei mais?', 'Compare com o mês passado']) {
     await page.locator('#alicerce-assistant-input').fill(question);
@@ -2599,6 +2607,7 @@ test('Alícia mantém as respostas recentes, permite limpar e leva à Visão Fin
   await expect(graph).toHaveAttribute('open', '');
   await graph.locator('summary').click();
   await expect(graph).not.toHaveAttribute('open');
+  await abrirFerramentasAlicia(page);
   await expect(page.locator('#alicerce-assistant-clear')).toBeVisible();
 
   const mobileLayout = await page.evaluate(function () {
@@ -2613,6 +2622,7 @@ test('Alícia mantém as respostas recentes, permite limpar e leva à Visão Fin
   expect(mobileLayout.scrollWidth).toBeLessThanOrEqual(mobileLayout.width);
   expect(mobileLayout.inputFontSize).toBe('16px');
 
+  await abrirFerramentasAlicia(page);
   await page.locator('#alicerce-assistant-clear').click();
   await expect(page.locator('#alicerce-assistant-clear')).toHaveCount(0);
   const cleared = await page.evaluate(function () { return AlicerceIA._messages.length; });
@@ -2621,6 +2631,7 @@ test('Alícia mantém as respostas recentes, permite limpar e leva à Visão Fin
   await page.locator('#alicerce-assistant-input').fill('Quero um relatório em PDF');
   await page.locator('#alicerce-assistant-send').click();
   await expect(page.locator('#alicerce-assistant-messages')).toContainText('Visão financeira');
+  await abrirFerramentasAlicia(page);
   await page.locator('#alicerce-assistant-financial').click();
   await expect(page.locator('.visao-financeira')).toBeVisible();
 });
@@ -2643,12 +2654,14 @@ test('Alicia orienta o uso do microfone do teclado sem pedir acesso ao microfone
   await page.locator('#alicerce-assistant-input').focus();
   await expect(notice).toBeHidden();
 
+  await abrirFerramentasAlicia(page);
   await page.locator('#alicerce-assistant-mic').click();
   await expect(notice).toContainText('Fale usando o microfone do teclado do seu celular.');
   await expect(notice.locator('button')).toHaveCount(0);
   await expect(page.locator('#alicerce-assistant-input')).toBeFocused();
   expect(await page.evaluate(function () { return window.__speechRecognitionStarts; })).toBe(0);
 
+  await abrirFerramentasAlicia(page);
   await page.locator('#alicerce-assistant-camera').click();
   await expect(notice).toContainText('A foto será analisada no seu aparelho');
   await expect(notice).toContainText('não salva automaticamente o texto completo da imagem');
@@ -3928,6 +3941,7 @@ test('Alícia acompanha várias perguntas curtas, compara períodos e esquece o 
   await perguntar('E com meu filho?');
   await expect(last).toContainText('Filhos');
   await expect(last).toContainText('50,00');
+  await abrirFerramentasAlicia(page);
   await page.locator('#alicerce-assistant-clear').click();
   await perguntar('E no mês passado?');
   await expect(last).toContainText('Qual gasto você quer consultar?');
