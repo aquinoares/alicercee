@@ -1546,6 +1546,29 @@ async function abrirFerramentasAlicia(page) {
   await expect(menu).toHaveAttribute('open', '');
 }
 
+test('Home mobile respeita a largura da tela e mantém os controles dentro do viewport', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  for (const width of [320,375,390,430]) {
+    await page.setViewportSize({width,height:844});
+    const layout=await page.evaluate(function () {
+      const home=document.querySelector('.al-home-premium');
+      const app=document.getElementById('app');
+      const limit=app.getBoundingClientRect();
+      const selectors=['.balance-grid','.bi-saldo','.al-home-actions','#alicerce-ai-card','.al-home-upcoming','.dynamic-card-wrap','#home-feed-slot'];
+      const outside=selectors.flatMap(function(selector){
+        return Array.from(home.querySelectorAll(selector)).filter(function(node){
+          const r=node.getBoundingClientRect();
+          return r.width>0&&(r.right>limit.right+1||r.left<limit.left-1||node.scrollWidth>node.clientWidth+2);
+        }).map(function(){return selector;});
+      });
+      return {outside,homeWidth:home.getBoundingClientRect().width,appWidth:limit.width,documentWidth:document.documentElement.scrollWidth,viewport:window.innerWidth};
+    });
+    expect(layout.homeWidth).toBeLessThanOrEqual(layout.appWidth+1);
+    expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewport+1);
+    expect(layout.outside).toEqual([]);
+  }
+});
+
 test('Home premium preserva anúncios publicados, posição, identificação e observação de visibilidade', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   await page.evaluate(function () {
