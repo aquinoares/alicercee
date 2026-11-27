@@ -351,9 +351,12 @@
     });
 
     (Array.isArray(Store.commitments) ? Store.commitments : []).forEach(function (item) {
-      if (!item || item.tipo === 'lembrete' || item.personId) return;
+      if (!item || item.tipo === 'lembrete' || item.personId || item.familyCategoryId) return;
       var label = obligationDescription(item);
+      // The manual calendar form saves monetary commitments without naturezaFinanceira.
+      // A positive amount is a financial commitment; a reminder or personal appointment without value is not.
       var financial = item.naturezaFinanceira === 'divida' || item.tipo === 'conta' ||
+        (item.tipo === 'compromisso' && Number(item.valor) > 0 && item.status !== 'concluido') ||
         (Number(item.valor) > 0 && DEBT_KEYWORDS.test(normalize(label)));
       if (!financial) return;
       push('commitment', item, item.id, label, item.valor, item.dataVencimento || item.data, item.status);
@@ -972,6 +975,9 @@
       return 'Neste ano, '+closed.length+' mês(es) encerrados com todas as obrigações cadastradas pagas até o fim do mês. '+(known.length?'Tempo de quitação registrado: '+known.map(function(r){return r.month+': '+r.days+' dias';}).join('; ')+'.':'Ainda não há histórico completo com datas de pagamento para medir a velocidade.')+' Isso mede obrigações registradas, não comprova saldo financeiro positivo.';
     }
     if (future) return 'Próximos meses (somente obrigações cadastradas): '+view.future.slice(0,4).map(function(r){return r.month+': '+formatMoney(r.pending);}).join('; ')+'. Atrasos anteriores ainda pendentes: '+formatMoney(view.carry)+'. Não contei receitas previstas como dinheiro disponível.';
+    if (!view.total && !view.remaining) {
+      return 'Não encontrei obrigações financeiras cadastradas com vencimento neste mês nem pendências de meses anteriores. Isso não significa que você não tenha dívidas: confira os registros em Visão Financeira > Conferir pagamentos e se a conta está sincronizada.';
+    }
     return 'Neste mês: '+formatMoney(view.total)+' em obrigações cadastradas, '+formatMoney(view.paid)+' já pagas. Falta '+formatMoney(view.remaining)+' incluindo '+formatMoney(view.carry)+' de meses anteriores.'+(view.pending.length?'\nPrioridades:\n'+view.pending.slice(0,8).map(function(r){return '- '+r.description+' — '+formatMoney(r.amount)+' — '+formatDate(r.dueDate);}).join('\n'):'')+' Valores previstos não são pagamentos.';
   }
   function createPlanningObligations(description, amount, firstDue, occurrences, kind) {
