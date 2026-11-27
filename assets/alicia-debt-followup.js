@@ -383,11 +383,64 @@
     return output;
   }
 
-  function paymentQuestion(item) {
-    if (item.dueToday) {
-      return 'Hoje era o dia do pagamento de "' + item.description + '" (' + formatMoney(item.amount) + '). A casa conseguiu pagar?';
+  var paymentFilter = 'pendentes';
+  var paymentFilters = {pendentes:'Pendentes', vencidas:'Vencidas', hoje:'Vencem hoje', futuras:'A vencer', pagas:'Pagas'};
+  function filterPayments(filter) {
+    var rows = getObligations();
+    return rows.filter(function (item) {
+      if (filter === 'pagas') return item.status === 'pago';
+      if (item.status !== 'pendente' || !(item.amount > 0)) return false;
+      if (filter === 'vencidas') return item.overdue;
+      if (filter === 'hoje') return item.dueToday;
+      if (filter === 'futuras') return item.dueDate > today();
+      return true;
+    });
+  }
+  function paymentFilterFromMessage(n) {
+    if (!/^(?:verificar|verifique|conferir|confira|revisar|revise|confirmar|confirme|filtrar|filtre)\s+(?:(?:meus|minhas|os|as)\s+)?(?:pagamentos|contas|dividas)\b/.test(n)) return '';
+    if (/\b(vencidas|vencidos|atrasadas|atrasados|em atraso)\b/.test(n)) return 'vencidas';
+    if (/\bhoje\b/.test(n)) return 'hoje';
+    if (/\b(futuras|futuros|a vencer)\b/.test(n)) return 'futuras';
+    if (/\b(pagas|pagos|quitadas|quitados)\b/.test(n)) return 'pagas';
+    return 'pendentes';
+  }
+  function startPaymentReview(assistant, filter) {
+    var rows = filterPayments(filter);
+    assistant._paymentReview = null;
+    if (!rows.length) return 'Não encontrei contas no filtro "' + paymentFilters[filter] + '".';
+    if (filter === 'pagas') return 'Pagamentos confirmados:\n' + rows.map(function (item) {
+      return '- ' + item.description + ' · ' + formatMoney(item.amount) + ' · ' + (item.paidDate ? 'paga em ' + formatDate(item.paidDate) : 'data de pagamento não informada');
+    }).join('\n');
+    if (rows.length === 1) {
+      assistant._pendingPaymentCheck = {key: rows[0].key, requireDate: true};
+      return paymentQuestion(rows[0]);
     }
-    return 'A conta "' + item.description + '" venceu em ' + formatDate(item.dueDate) + ' e continua pendente. A casa conseguiu pagar ou ainda está em atraso?';
+    assistant._paymentReview = {keys: rows.map(function (item) { return item.key; })};
+    return paymentFilters[filter] + ' para conferir:\n' + rows.map(function (item, i) {
+      return (i + 1) + '. ' + billSummary(item);
+    }).join('\n') + '\nQual conta você quer conferir? Responda com o número.';
+  }
+  function replyToPaymentReview(assistant, n) {
+    var review = assistant._paymentReview;
+    if (!review) return null;
+    if (CANCEL_WORDS.test(n) || n === 'nao') { assistant._paymentReview = null; return 'Conferência encerrada. Nenhum pagamento foi alterado.'; }
+    if (!/^\d+$/.test(n) || !review.keys[Number(n) - 1]) return 'Escolha o número da conta que quer conferir ou diga cancelar.';
+    var item = findObligation(review.keys[Number(n) - 1]);
+    assistant._paymentReview = null;
+    if (!item || item.status !== 'pendente') return 'Essa conta não está mais pendente. Consulte o filtro novamente.';
+    assistant._pendingPaymentCheck = {key: item.key, requireDate: true};
+    return paymentQuestion(item);
+  }
+  function setPaymentFilter(filter) {
+    if (!Object.prototype.hasOwnProperty.call(paymentFilters, filter)) return false;
+    paymentFilter = filter;
+    if (typeof render === 'function') render();
+    return true;
+  }
+
+  function paymentQuestion(item) {
+    var due = item.dueToday ? 'Vence hoje' : item.overdue ? 'Venceu em ' + formatDate(item.dueDate) : 'Vence em ' + formatDate(item.dueDate);
+    return 'Conta: ' + item.description + '\nValor: ' + formatMoney(item.amount) + '\n' + due + '\nEssa dívida já foi paga? Responda sim, ainda não ou depois.';
   }
 
   function findObligation(key) {
@@ -730,6 +783,14 @@
       return 'Não consegui localizar essa conta na sua agenda financeira. Nenhuma alteração foi feita.';
     }
     var n = normalize(message);
+    if (item.status === 'pago') {
+      assistant._pendingPaymentCheck = null;
+      return 'Essa conta já está registrada como paga. Não criei outro lançamento.';
+    }
+    if (CANCEL_WORDS.test(n) || /^(depois|agora nao|mais tarde|pular|proxima)$/.test(n)) {
+      assistant._pendingPaymentCheck = null;
+      return 'Tudo bem. Deixei a conta como está, sem registrar pagamento.';
+    }
     var partial = /\b(parcial|uma parte|metade|sinal)\b/.test(n);
     var no = /^(nao|nao consegui|ainda nao|nao paguei|continua pendente|vou pagar|vou tentar|nao foi possivel|nao deu)$/.test(n) ||
       /\b(ainda nao paguei|nao consegui pagar|nao foi paga|nao foi pago)\b/.test(n);
@@ -748,8 +809,18 @@
         ? 'Tudo bem. Mantive "' + item.description + '" como pendente e em atraso na Visão Financeira. Não registrei saída de dinheiro.'
         : 'Tudo bem. Mantive "' + item.description + '" como pendente. Não registrei saída de dinheiro.';
     }
+    var explicitDate = parseDate(message);
+    if (pending.requireDate && pending.awaitingDate && explicitDate && !/[\?]/.test(message) &&
+        !/\b(nao sei|talvez|acho|vou|pretendo|se|quando)\b/.test(n)) {
+      yes = true;
+    }
+    if (pending.requireDate && /^(?:sim|paguei|ja paguei|sim paguei)\b/.test(n) && explicitDate) yes = true;
     if (yes || intent === 'pago') {
-      var paidDate = parseDate(message) || today();
+      if (pending.requireDate && !explicitDate) {
+        pending.awaitingDate = true;
+        return 'Em que dia você pagou "' + item.description + '"? Pode dizer hoje, ontem ou informar a data. Ainda não alterei seu saldo.';
+      }
+      var paidDate = explicitDate || today();
       if (paidDate > today()) return 'Essa data ainda está no futuro. Você já pagou ou pretende pagar nessa data?';
       try {
         markPaid(item, paidDate);
@@ -1006,7 +1077,13 @@
     var review = reviewBill(assistant, n, raw);
     if (review !== null) return review;
 
+    var requestedFilter = paymentFilterFromMessage(n);
+    if (requestedFilter && !assistant._pendingAppointmentDraft && !assistant._pendingDebtDraft) {
+      assistant._pendingPaymentCheck = null;
+      return startPaymentReview(assistant, requestedFilter);
+    }
     if (assistant._pendingPaymentCheck) return replyToPaymentCheck(assistant, raw);
+    if (assistant._paymentReview) return replyToPaymentReview(assistant, n);
 
     if (assistant._pendingAppointmentDraft) {
       if (CANCEL_WORDS.test(n)) return cancelDraft(assistant);
@@ -1058,7 +1135,24 @@
       });
       html += '</div>';
     }
-    html += '</section>';
+    html += '<div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px"><div style="font-weight:750">Conferir pagamentos</div><p class="text-sm">Selecione uma conta para confirmar com a Alícia.</p>';
+    html += '<div role="group" aria-label="Filtrar pagamentos" style="display:flex;gap:6px;flex-wrap:wrap;margin:10px 0">';
+    Object.keys(paymentFilters).forEach(function (filter) {
+      var active = filter === paymentFilter;
+      html += '<button type="button" class="btn '+(active?'btn-primary':'btn-secondary')+'" aria-pressed="'+active+'" onclick="AliciaDebtFollowup.setPaymentFilter(\''+filter+'\')">'+escaped(paymentFilters[filter])+'</button>';
+    });
+    html += '</div>';
+    var filtered = filterPayments(paymentFilter);
+    html += '<p class="text-sm">'+filtered.length+' conta(s) · '+formatMoney(filtered.reduce(function (sum,item) {return sum+item.amount;},0))+'</p>';
+    if (!filtered.length) html += '<p class="text-sm">Nenhuma conta neste filtro.</p>';
+    filtered.forEach(function (item) {
+      var key = encodeURIComponent(item.key).replace(/'/g,'%27');
+      var label = item.status === 'pago' ? (item.paidDate?'Paga em '+formatDate(item.paidDate):'Paga · data não informada') : item.overdue?'Venceu em '+formatDate(item.dueDate):item.dueToday?'Vence hoje':'Vence em '+formatDate(item.dueDate);
+      html += '<div style="padding:12px 0;border-top:1px solid var(--line)"><div class="list-item"><div class="li-info"><div class="li-name">'+escaped(item.description)+'</div><div class="li-sub">'+escaped(label)+'</div></div><div class="li-amount">'+formatMoney(item.amount)+'</div></div>';
+      if (item.status === 'pendente') html += '<button type="button" class="btn btn-secondary btn-block" onclick="AliciaDebtFollowup.openPaymentCheck(\''+key+'\')">Essa dívida já foi paga? Conferir</button>';
+      html += '</div>';
+    });
+    html += '</div></section>';
     return html;
   }
 
@@ -1107,8 +1201,8 @@
     var key = '';
     try { key = decodeURIComponent(String(encodedKey || '')); } catch (ignore) {}
     var item = findObligation(key);
-    if (!item) {
-      if (typeof showToast === 'function') showToast('Não encontrei essa conta. Atualize a Visão Financeira.');
+    if (!item || item.status !== 'pendente') {
+      if (typeof showToast === 'function') showToast('Essa conta não está mais pendente. Atualize a Visão Financeira.');
       return false;
     }
     if (typeof go === 'function') go('assistente');
@@ -1117,7 +1211,8 @@
       if (typeof render === 'function') render();
     }
     var assistant = AlicerceIA;
-    assistant._pendingPaymentCheck = {key: key};
+    assistant._paymentReview = null;
+    assistant._pendingPaymentCheck = {key: key, requireDate: true};
     assistant._messages = Array.isArray(assistant._messages) ? assistant._messages : [];
     var prompt = paymentQuestion(item);
     assistant._messages.push({role: 'assistant', text: prompt});
@@ -1140,6 +1235,8 @@
         if (previous !== String(this._userId || '')) {
           this._billReview = null;
           this._pendingPaymentCheck = null;
+          this._paymentReview = null;
+          paymentFilter = 'pendentes';
           this._pendingDebtDraft = null;
           this._pendingAppointmentDraft = null;
         }
@@ -1254,6 +1351,8 @@
     renderFinancialSummary: renderFinancialSummary,
     openPaymentCheck: openPaymentCheck,
     paymentQuestion: paymentQuestion,
+    filterPayments: filterPayments,
+    setPaymentFilter: setPaymentFilter,
     planningSnapshot: planningSnapshot,
     simulatePlanning: simulatePlanning,
     planningAnswer: planningAnswer,
