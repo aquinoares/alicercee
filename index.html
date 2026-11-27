@@ -2731,7 +2731,11 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 </style>
 
 <style id="visao-refinement-v4">
-.visao-financeira{--accent:#557fcb;--accent-light:#83aaf0;--on-accent:#fff;--tint-accent:rgba(85,127,203,.12);--glow:rgba(85,127,203,.16)}
+body:has(.visao-financeira),.app:has(.visao-financeira),.visao-financeira{--accent:#8ab2f3;--accent-light:#a4c4fa;--on-accent:#10213a;--tint-accent:rgba(85,127,203,.14);--glow:rgba(85,127,203,.16);--chrome:#274c83;--bar:#719eec}
+[data-theme="claro"] .app:has(.visao-financeira),[data-theme="marinho"] .app:has(.visao-financeira),[data-theme="claro"] .visao-financeira,[data-theme="marinho"] .visao-financeira{--accent:#345ca5;--accent-light:#345ca5;--on-accent:#fff;--chrome:#345ca5}
+body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.visao-financeira){--accent:#345ca5;--accent-light:#345ca5;--on-accent:#fff;--chrome:#345ca5}
+.visao-financeira .btn-primary{background:#345ca5;color:#fff}
+
 .visao-financeira .visao-ai-dashboard,.visao-financeira .visao-ai-kpi,.visao-financeira .visao-ai-breakdown,.visao-financeira .visao-ai-merchant{color:var(--text)}
 .visao-financeira .visao-ai-kpi,.visao-financeira .visao-ai-alert,.visao-financeira .visao-ai-panel,.visao-financeira .visao-ai-recurring,.visao-financeira .visao-ai-answer,.visao-financeira .visao-ai-empty{background:var(--surface2);border-color:var(--line)}
 .visao-financeira .visao-ai-heading h2,.visao-financeira .visao-ai-kpi strong,.visao-financeira .visao-ai-breakdown strong,.visao-financeira .visao-ai-merchant strong{color:var(--text)}
@@ -2784,7 +2788,7 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 .vf-plan-ask .alicia-brand-inline{width:25px;height:25px;margin:0}
 .vf-plan-bar{display:block;height:6px;background:var(--line);border-radius:6px;margin:8px 0;overflow:hidden}
 .vf-plan-bar i{display:block;height:100%;background:var(--vf-out);border-radius:6px}
-#alicerce-planning-form{--accent:#557fcb;--on-accent:#fff;display:grid;gap:12px}
+#alicerce-planning-form{--accent:#345ca5;--on-accent:#fff;display:grid;gap:12px}
 #alicerce-planning-form label{display:grid;gap:5px;font-size:12px}
 #alicerce-planning-form input,#alicerce-planning-form select{min-height:42px;font-size:16px;width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface2);color:var(--text)}
 </style>
@@ -14537,7 +14541,7 @@ function visaoObligationCards(){
   if(!window.AliciaDebtFollowup||typeof AliciaDebtFollowup.planningSnapshot!=='function')return '';
   const p=AliciaDebtFollowup.planningSnapshot();
   const percent=p.total>0?Math.min(100,Math.max(0,Math.round(100*p.paid/p.total))):0;
-  let h='<section class="vf-card" id="vf-obligations"><div class="vf-head"><div><h2>Obrigações do mês</h2><p>Pagamentos confirmados e atrasos</p></div></div><div class="vf-obligation-grid"><div><small>Pago no mês de vencimento</small><strong>'+fmtMoney(p.paid)+'</strong></div><div><small>Falta pagar, com atrasos</small><strong>'+fmtMoney(p.remaining)+'</strong></div></div>';
+  let h='<section class="vf-card" id="vf-obligations"><div class="vf-head"><div><h2>Obrigações do mês</h2><p>Pagamentos confirmados e atrasos</p></div></div><div class="vf-obligation-grid"><div><small>Quitado das contas do mês</small><strong>'+fmtMoney(p.paid)+'</strong></div><div><small>Falta pagar, com atrasos</small><strong>'+fmtMoney(p.remaining)+'</strong></div></div>';
   h+='<div class="vf-progress" role="progressbar" aria-label="Obrigações do mês quitadas" aria-valuenow="'+percent+'" aria-valuemin="0" aria-valuemax="100"><i style="width:'+percent+'%"></i></div><div class="vf-progress-caption">'+(p.total>0?percent+'% do valor das obrigações do mês quitado':'Sem obrigações do mês cadastradas')+' · Atrasos anteriores '+fmtMoney(p.carry)+'</div>';
   h+='<button type="button" class="vf-action" onclick="visaoOpenArea(\'visao-planejamento\')">Planejar pagamentos '+icon('arrowRight','ico-xs')+'</button></section>';
   const statuses={closed:'Quitado',carried:'Pendente',open:'Em curso',unknown:'Sem data',empty:'Sem dados',future:'Futuro'};
