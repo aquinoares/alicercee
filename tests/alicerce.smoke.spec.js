@@ -615,6 +615,8 @@ test('envia cadastro com sucesso usando autenticação simulada', async function
     window.history.replaceState({}, '', '/?ref=convite123');
   });
   await page.locator('#signupBtn').click();
+  await expect(page.locator('#al-auth-title')).toHaveText('Crie sua conta');
+  await page.locator('#loginLiving .login-btn').click();
 
   await expect(page.locator('#alicerce-auth-feedback')).toContainText('Cadastro enviado.');
   const chamada = await page.evaluate(function () { return window.__alicerceMockSignUp; });
@@ -634,6 +636,9 @@ test('solicita recuperação de senha e usa o endereço de retorno do app', asyn
 
   await page.locator('#login-email').fill('recuperar@exemplo.com');
   await page.locator('#forgotBtn').click();
+  await expect(page.locator('#al-auth-title')).toHaveText('Recupere seu acesso');
+  await expect(page.locator('#login-pass')).toBeHidden();
+  await page.locator('#loginLiving .login-btn').click();
 
   await expect(page.locator('#alicerce-auth-feedback')).toContainText('Se este e-mail estiver cadastrado');
   const chamada = await page.evaluate(function () { return window.__alicerceMockPasswordReset; });

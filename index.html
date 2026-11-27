@@ -3252,11 +3252,51 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 .al-cash-note{font-size:12px;line-height:1.4;color:#c5daf4;margin:0 0 9px;overflow-wrap:anywhere}
 .al-cash-action{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:8px 12px;border:1px solid rgba(187,217,255,.35);border-radius:11px;background:rgba(133,202,255,.12);color:#e2f4ff;font-size:12px;font-weight:650;margin-bottom:11px}
 .al-cash-action:focus-visible{outline:2px solid #85caff;outline-offset:2px}
+</style><style id="al-auth-orb-v2">
+#loading.loading-screen{background:#080a11;color:#e2f4ff;gap:9px;text-align:center}
+.al-auth-loading-content{width:min(100%,320px);margin:auto;display:grid;justify-items:center;gap:9px}
+.al-auth-loading-orb{width:86px;height:86px;margin:0 auto 8px}
+.al-auth-fallback-orb{width:44px;height:44px;display:inline-block}
+.al-auth-wordmark{font-family:var(--font);font-size:27px;font-weight:750;letter-spacing:-.055em;line-height:1.1;color:#d5e9ff;text-shadow:0 0 18px rgba(133,202,255,.25)}
+@supports(-webkit-background-clip:text){.al-auth-wordmark{background:linear-gradient(110deg,#e2f4ff,#85caff,#c9dcf5);-webkit-background-clip:text;-webkit-text-fill-color:transparent}}
+.al-auth-loading-text{font-size:12px;color:#a8bed6;line-height:1.5}
+.alicerce-login-flow .fluxo-container{width:100%;max-width:480px;height:100dvh;max-height:100dvh;border:0;border-radius:0;box-shadow:none}
+.alicerce-login-flow .living-dim{background:rgba(5,12,24,.05)}
+.alicerce-login-flow .living-gradient{background:linear-gradient(180deg,rgba(4,10,18,.24),transparent 28%,transparent 48%,rgba(4,10,18,.28) 74%,rgba(4,10,18,.76))}
+.alicerce-login-flow .login{padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;min-height:0}
+.alicerce-login-flow .login [hidden]{display:none!important}
+.alicerce-login-flow .login-back{left:16px;top:calc(14px + env(safe-area-inset-top,0px));width:44px;height:44px;z-index:2;border-color:rgba(210,231,255,.25);background:rgba(7,16,28,.35)}
+.al-auth-brand{display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;margin:0 auto;flex-shrink:0}
+.al-auth-brand-orb{width:36px;height:36px;flex:0 0 36px}
+.al-auth-brand .al-auth-wordmark{font-size:24px}
+.alicerce-login-flow .login-center{flex:1 0 auto;min-height:0;display:flex;justify-content:flex-end;align-items:center;padding-top:clamp(90px,23vh,220px);width:100%}
+.alicerce-login-flow .login-card{width:100%;max-width:350px;margin:0;border-radius:23px;padding:17px 16px 12px;background:rgba(8,18,33,.53);border:1px solid rgba(196,222,255,.24);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 10px 28px rgba(0,0,0,.18)}
+.alicerce-login-flow .login-title{font-size:23px;font-weight:750;letter-spacing:-.035em;line-height:1.15;margin:0;text-align:left;color:#f3f8ff}
+.alicerce-login-flow .login-subtitle{margin:6px 0 0;text-align:left;font-size:12px;line-height:1.4;color:#d1ddeb}
+.alicerce-login-flow .login-form{margin-top:14px}
+.alicerce-login-flow .login-input{height:46px;border-radius:12px;border-color:rgba(196,222,255,.28);background:rgba(220,235,255,.09);font-size:16px;padding:0 12px;margin:0 0 9px;color:#fff}
+.alicerce-login-flow .login-input:focus{border-color:#85caff;background:rgba(220,235,255,.13)}
+.alicerce-login-flow .login-btn{height:46px;border-radius:12px;background:linear-gradient(110deg,#345ca5,#274c83);box-shadow:none;border:1px solid rgba(196,222,255,.23);color:#fff;font-size:14px;font-weight:700}
+.alicerce-login-flow .login-btn:disabled{opacity:.65;cursor:wait}
+.alicerce-login-flow .login-actions{display:flex;justify-content:space-between;gap:6px;margin-top:5px}
+.alicerce-login-flow .login-link{min-height:44px;font-size:12px;line-height:1.3;padding:8px 3px}
+.alicerce-login-flow .login-actions .login-link{width:auto;flex:1}
+.alicerce-login-flow .login-link.primary{color:#b9d9ff}
+.alicerce-login-flow .al-auth-label{display:block;font-size:12px;color:#d1ddeb;margin:0 0 5px}
+.alicerce-login-flow .cal-card:focus-visible,.alicerce-login-flow button:focus-visible,.alicerce-login-flow input:focus-visible{outline:2px solid #85caff;outline-offset:2px}
+.alicerce-login-flow .splash{justify-content:flex-end;padding:18px 16px calc(32px + env(safe-area-inset-bottom,0px))}
+.alicerce-login-flow .cal-card{width:100%;max-width:350px;background:rgba(8,18,33,.42);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 10px 28px rgba(0,0,0,.2)}
+.alicerce-login-flow .cal-inner{padding:16px}.alicerce-login-flow .cal-grid{margin-top:14px}
+.alicerce-login-flow .cal-cell.active{background:#8ab2f3;color:#10213a;box-shadow:none}.alicerce-login-flow .cal-event-bar{background:#85caff}
+.alicerce-login-flow .cal-events{margin-top:12px}.alicerce-login-flow .cal-event{padding:10px 12px}.alicerce-login-flow .cal-event-bar{height:28px}
+@media(max-height:650px){.alicerce-login-flow .login-center{padding-top:18px}.alicerce-login-flow .login-card{padding:14px}.alicerce-login-flow .login{padding-bottom:12px}}
+@media(min-width:600px){.alicerce-login-flow .fluxo-container{max-width:480px;border-radius:26px;height:min(900px,100dvh)}}
+@media(prefers-reduced-motion:reduce){.al-auth-loading-orb .alicia-orb-spin{animation:none}}
 </style></head>
 <body data-theme="azul">
 
-<div id="loading" class="loading-screen"><div class="logo-text">Alicerce</div><p class="text-muted mt-2">...</p></div>
-<div id="app" class="app hidden"><main class="al-login-screen"><video class="al-login-video" autoplay="" muted="" playsinline="" loop="" preload="auto" aria-hidden="true"><source src="videos/noite.mp4" type="video/mp4"></video><div class="al-login-overlay"></div><header class="al-login-brand"><span class="al-brand-mark">A</span><span>Alicer<span class="al-brand-accent">ce</span></span></header><section class="al-login-layout"><div class="al-login-story"><span class="al-login-eyebrow"><i></i> SUA VIDA FINANCEIRA, COM MAIS INTENÇÃO</span><h1>O futuro que você quer começa <em>nas escolhas de hoje.</em></h1><p>Organize seu dinheiro, acompanhe seus objetivos e construa uma relação mais tranquila com cada escolha financeira.</p><div class="al-login-points"><span><b>01</b> Entenda seu dinheiro</span><span><b>02</b> Planeje seus próximos passos</span><span><b>03</b> Avance no seu ritmo</span></div></div><div class="al-login-card"><div class="al-login-card-top"><span class="al-login-kicker">BEM-VINDO AO ALICIA</span><span class="al-login-orb" aria-hidden="true">↗</span></div><h2>Entrar na sua conta</h2><p class="al-login-description">Digite seu e-mail e senha para continuar.</p><form class="al-login-form" onsubmit="event.preventDefault();doLogin()"><label for="login-email">Seu e-mail</label><div class="al-login-input"><span aria-hidden="true">✉</span><input id="login-email" type="email" autocomplete="email" placeholder="seu@email.com" required=""></div><div class="al-login-password-label"><label for="login-pass">Senha</label></div><div class="al-login-input"><span aria-hidden="true">⌑</span><input id="login-pass" type="password" autocomplete="current-password" placeholder="Sua senha" required=""><button type="button" class="al-login-eye" onclick="alternarVisibilidade('login-pass',this)" aria-label="Mostrar senha">◉</button></div><button type="submit" class="al-login-submit"><span>Entrar</span><span aria-hidden="true">→</span></button></form><div class="al-login-divider"><span>AINDA NÃO TEM CONTA?</span></div><button type="button" class="al-login-signup" onclick="doSignup()">Criar conta<span aria-hidden="true">↗</span></button><p class="al-login-privacy"><span aria-hidden="true">◈</span> Seus dados financeiros merecem cuidado.</p></div></section><footer class="al-login-footer"><span>ALICERCE © 2026</span><span>PEQUENAS ESCOLHAS. GRANDES CONSTRUÇÕES.</span></footer></main></div>
+<div id="loading" class="loading-screen" role="status"><div class="al-auth-loading-orb"><svg class="alicia-orb" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><circle cx="50" cy="50" r="45" fill="#0c192a"/><circle cx="50" cy="50" r="33" fill="#11243a" opacity=".58"/><g class="alicia-orb-spin"><circle cx="50" cy="50" r="35" fill="none" stroke="#456a8c" stroke-width="1.2"/><path d="M15 50 A35 35 0 0 0 63 82.5" fill="none" stroke="#85caff" stroke-width="1.5"/><path d="M84.7 45 A35 35 0 0 1 63 82.5" fill="none" stroke="#ffc08a" stroke-width="1.5"/><circle cx="52" cy="15.1" r="2.5" fill="#e2f4ff"/><circle cx="82" cy="35.8" r="1.9" fill="#e2f4ff"/><circle cx="78" cy="71" r="3.2" fill="#ffc08a"/><circle cx="25.2" cy="74.7" r="3" fill="#e2f4ff"/></g></svg></div><div class="al-auth-wordmark">Alicerce</div><p class="al-auth-loading-text">Carregando sua experiência</p></div>
+<div id="app" class="app hidden"><main class="al-login-screen"><video class="al-login-video" autoplay="" muted="" playsinline="" loop="" preload="auto" aria-hidden="true"><source src="videos/noite.mp4" type="video/mp4"></video><div class="al-login-overlay"></div><header class="al-login-brand"><span class="al-auth-fallback-orb"><svg class="alicia-orb" viewBox="0 0 100 100" aria-hidden="true" focusable="false"><circle cx="50" cy="50" r="45" fill="#0c192a"/><circle cx="50" cy="50" r="33" fill="#11243a" opacity=".58"/><g class="alicia-orb-spin"><circle cx="50" cy="50" r="35" fill="none" stroke="#456a8c" stroke-width="1.2"/><path d="M15 50 A35 35 0 0 0 63 82.5" fill="none" stroke="#85caff" stroke-width="1.5"/><path d="M84.7 45 A35 35 0 0 1 63 82.5" fill="none" stroke="#ffc08a" stroke-width="1.5"/><circle cx="52" cy="15.1" r="2.5" fill="#e2f4ff"/><circle cx="82" cy="35.8" r="1.9" fill="#e2f4ff"/><circle cx="78" cy="71" r="3.2" fill="#ffc08a"/><circle cx="25.2" cy="74.7" r="3" fill="#e2f4ff"/></g></svg></span><span>Alicer<span class="al-brand-accent">ce</span></span></header><section class="al-login-layout"><div class="al-login-story"><span class="al-login-eyebrow"><i></i> SUA VIDA FINANCEIRA, COM MAIS INTENÇÃO</span><h1>O futuro que você quer começa <em>nas escolhas de hoje.</em></h1><p>Organize seu dinheiro, acompanhe seus objetivos e construa uma relação mais tranquila com cada escolha financeira.</p><div class="al-login-points"><span><b>01</b> Entenda seu dinheiro</span><span><b>02</b> Planeje seus próximos passos</span><span><b>03</b> Avance no seu ritmo</span></div></div><div class="al-login-card"><div class="al-login-card-top"><span class="al-login-kicker">BEM-VINDO AO ALICIA</span><span class="al-login-orb" aria-hidden="true">↗</span></div><h2>Entrar na sua conta</h2><p class="al-login-description">Digite seu e-mail e senha para continuar.</p><form class="al-login-form" onsubmit="event.preventDefault();doLogin()"><label for="login-email">Seu e-mail</label><div class="al-login-input"><span aria-hidden="true">✉</span><input id="login-email" type="email" autocomplete="email" placeholder="seu@email.com" required=""></div><div class="al-login-password-label"><label for="login-pass">Senha</label></div><div class="al-login-input"><span aria-hidden="true">⌑</span><input id="login-pass" type="password" autocomplete="current-password" placeholder="Sua senha" required=""><button type="button" class="al-login-eye" onclick="alternarVisibilidade('login-pass',this)" aria-label="Mostrar senha">◉</button></div><button type="submit" class="al-login-submit"><span>Entrar</span><span aria-hidden="true">→</span></button></form><div class="al-login-divider"><span>AINDA NÃO TEM CONTA?</span></div><button type="button" class="al-login-signup" onclick="doSignup()">Criar conta<span aria-hidden="true">↗</span></button><p class="al-login-privacy"><span aria-hidden="true">◈</span> Seus dados financeiros merecem cuidado.</p></div></section><footer class="al-login-footer"><span>ALICERCE © 2026</span><span>PEQUENAS ESCOLHAS. GRANDES CONSTRUÇÕES.</span></footer></main></div>
 <div id="menu-overlay" class="menu-overlay"></div>
 <div id="menu-panel" class="menu-panel"></div>
 <div id="toast" class="toast"></div>
@@ -11000,15 +11040,42 @@ function loginAnimStart(){
     _lg.tickId=registerTimer(setInterval(loginTick,100));
   }catch(e){loginAnimStop()}
 }
+function alicerceAuthMode(mode){
+  const section=document.getElementById('loginLiving'),form=document.getElementById('al-auth-form');
+  if(!section||!form)return;
+  if(window.__alicerceLoginBusy||window.__alicerceSignupBusy||window.__alicerceResetBusy)return;
+  if(!['login','signup','forgot'].includes(mode))mode='login';
+  section.dataset.authMode=mode;
+  const pass=document.getElementById('login-pass'),passRow=document.getElementById('al-auth-password-row');
+  const title=document.getElementById('al-auth-title'),subtitle=document.getElementById('al-auth-subtitle'),submit=document.getElementById('al-auth-submit-copy');
+  title.textContent=mode==='signup'?'Crie sua conta':mode==='forgot'?'Recupere seu acesso':'Entre na sua conta';
+  subtitle.textContent=mode==='signup'?'Comece a organizar sua vida financeira.':mode==='forgot'?'Enviaremos um link para seu e-mail.':'Organize seu dinheiro. Avance no seu ritmo.';
+  submit.textContent=mode==='signup'?'Criar minha conta':mode==='forgot'?'Enviar link de recuperação':'Entrar';
+  passRow.hidden=mode==='forgot';pass.disabled=mode==='forgot';pass.required=mode!=='forgot';
+  pass.autocomplete=mode==='signup'?'new-password':'current-password';
+  if(mode==='forgot')pass.value='';
+  document.getElementById('al-auth-login-actions').hidden=mode!=='login';
+  document.getElementById('al-auth-return').hidden=mode==='login';
+  const feedback=document.getElementById('alicerce-auth-feedback');if(feedback)feedback.remove();
+}
+function alicerceAuthSubmit(){
+  const section=document.getElementById('loginLiving'),mode=section&&section.dataset.authMode;
+  if(mode==='signup')return doSignup();
+  if(mode==='forgot')return alicerceLoginForgotPassword();
+  return doLogin();
+}
 function alicerceLoginVoltar(){
   var splash=document.getElementById('livingSplash');
   var login=document.getElementById('loginLiving');
   if(!splash || !login) return;
+  if(window.__alicerceLoginBusy||window.__alicerceSignupBusy||window.__alicerceResetBusy)return;
+  if(login.dataset.authMode&&login.dataset.authMode!=='login'){alicerceAuthMode('login');return;}
   login.classList.add('hidden');
   splash.classList.remove('hidden');
   window.__alicerceSplashSeen=false;
 }
 async function alicerceLoginForgotPassword(){
+  if(window.__alicerceResetBusy)return;
   var campo=document.getElementById('login-email');
   var email=campo?String(campo.value||'').trim():'';
   if(!email){
@@ -11021,6 +11088,8 @@ async function alicerceLoginForgotPassword(){
     alicerceAuthFeedback('A recuperação de senha não está disponível neste momento.',true);
     return;
   }
+  window.__alicerceResetBusy=true;
+  var resetButton=document.querySelector('#loginLiving .login-btn');if(resetButton)resetButton.disabled=true;
   try{
     var pageUrl=new URL(window.location.href);
     pageUrl.search='';
@@ -11038,7 +11107,7 @@ async function alicerceLoginForgotPassword(){
     }else{
       alicerceAuthFeedback(mensagem||'Não foi possível solicitar a recuperação agora. Tente novamente.',true);
     }
-  }
+  }finally{window.__alicerceResetBusy=false;var resetButton=document.querySelector('#loginLiving .login-btn');if(resetButton)resetButton.disabled=false;}
 }
 
 
@@ -11073,21 +11142,14 @@ function alicerceRecoveryFeedback(message, erro){
 
 function renderPasswordRecovery(){
   window.__alicerceSplashSeen=true;
-  return '<main class="recovery-wrap" style="min-height:100vh;box-sizing:border-box;background:var(--bg);padding:24px;">'+
-    '<section style="width:100%;max-width:420px;box-sizing:border-box;padding:22px;border:1px solid var(--line);border-radius:20px;background:var(--surface);text-align:left;">'+
-    '<div style="font-size:.72rem;font-weight:800;letter-spacing:.14em;color:var(--accent);margin-bottom:12px;">ALICERCE</div>'+
-    '<h2 style="color:var(--text);font-size:1.5rem;line-height:1.2;margin:0 0 10px;">Defina sua nova senha</h2>'+
-    '<p style="color:var(--text2);font-size:.92rem;line-height:1.5;margin:0 0 20px;">Escolha uma senha nova com pelo menos 8 caracteres.</p>'+
-    '<form id="alicerce-password-recovery-form" onsubmit="event.preventDefault();alicerceSalvarNovaSenha();return false;">'+
-    '<label for="alicerce-recovery-password" style="display:block;font-size:.85rem;font-weight:700;margin:0 0 6px;">Nova senha</label>'+
-    '<input id="alicerce-recovery-password" class="login-input" type="password" autocomplete="new-password" minlength="8" required style="width:100%;box-sizing:border-box;margin-bottom:14px;">'+
-    '<label for="alicerce-recovery-confirm" style="display:block;font-size:.85rem;font-weight:700;margin:0 0 6px;">Confirmar nova senha</label>'+
-    '<input id="alicerce-recovery-confirm" class="login-input" type="password" autocomplete="new-password" minlength="8" required style="width:100%;box-sizing:border-box;margin-bottom:14px;">'+
-    '<button type="submit" class="btn btn-primary" style="width:100%;min-height:48px;">Salvar nova senha</button>'+
-    '<div id="alicerce-recovery-feedback" role="status" style="display:none;margin-top:12px;padding:11px 12px;border-radius:10px;font-size:13px;line-height:1.45;overflow-wrap:anywhere;"></div>'+
-    '</form>'+
-    '<button type="button" class="btn btn-secondary mt-2" onclick="alicerceCancelarRecuperacao()" style="width:100%;min-height:44px;">Voltar para entrar</button>'+
-    '</section></main>';
+  return '<main class="alicerce-login-flow al-auth-recovery" id="alicerceLoginFlow"><div class="fluxo-container"><div class="living-video-wrap" aria-hidden="true"><video class="living-bg" autoplay muted playsinline loop preload="auto"><source src="'+alicerceSplashVideo()+'" type="video/mp4"></video><div class="living-dim"></div><div class="living-gradient"></div></div>'+
+    '<section class="login" id="loginLiving"><button type="button" class="login-back" onclick="alicerceCancelarRecuperacao()" aria-label="Voltar para entrar">'+icon('back','ico-sm')+'</button><div class="al-auth-brand"><div class="al-auth-brand-orb">'+aliciaOrb()+'</div><span class="al-auth-wordmark">Alicerce</span></div><div class="login-center"><div class="login-card">'+
+    '<h1 class="login-title">Defina sua nova senha</h1><p class="login-subtitle">Escolha uma senha de pelo menos 8 caracteres.</p>'+
+    '<form class="login-form" id="alicerce-password-recovery-form" onsubmit="event.preventDefault();alicerceSalvarNovaSenha();return false;">'+
+    '<label class="al-auth-label" for="alicerce-recovery-password">Nova senha</label><input id="alicerce-recovery-password" class="login-input" type="password" autocomplete="new-password" minlength="8" required>'+
+    '<label class="al-auth-label" for="alicerce-recovery-confirm">Confirmar nova senha</label><input id="alicerce-recovery-confirm" class="login-input" type="password" autocomplete="new-password" minlength="8" required>'+
+    '<button type="submit" class="login-btn">Salvar nova senha</button><div id="alicerce-recovery-feedback" role="status" style="display:none;margin-top:12px;padding:11px 12px;border-radius:10px;font-size:13px;line-height:1.45;overflow-wrap:anywhere;"></div></form>'+
+    '<button type="button" class="login-link" onclick="alicerceCancelarRecuperacao()">Voltar para entrar</button></div></div></section></div></main>';
 }
 
 async function alicerceSalvarNovaSenha(){
@@ -11179,24 +11241,24 @@ function renderLogin(){
         </button>
       </section>
 
-      <section class="${loginClass}" id="loginLiving" aria-label="Entrar na conta">
+      <section class="${loginClass}" id="loginLiving" data-auth-mode="login" aria-label="Acesso à conta">
         <button type="button" id="backBtn" class="login-back" onclick="alicerceLoginVoltar()" aria-label="Voltar para a abertura">&#8592;</button>
+        <div class="al-auth-brand"><div class="al-auth-brand-orb">${aliciaOrb()}</div><span class="al-auth-wordmark">Alicerce</span></div>
         <div class="login-center">
           <div class="login-card">
-            <div class="login-welcome">BEM-VINDO AO ALICERCE</div>
-            <h1 class="login-title">O futuro que voc&ecirc; quer<br>come&ccedil;a <em>hoje.</em></h1>
-            <p class="login-subtitle">Organize seu dinheiro. Avance no seu ritmo.</p>
-            <form class="login-form" onsubmit="event.preventDefault();doLogin();return false;" autocomplete="on">
+            <h1 class="login-title" id="al-auth-title">Entre na sua conta</h1>
+            <p class="login-subtitle" id="al-auth-subtitle">Organize seu dinheiro. Avance no seu ritmo.</p>
+            <form class="login-form" id="al-auth-form" onsubmit="event.preventDefault();alicerceAuthSubmit();return false;" autocomplete="on">
               <div class="login-fields">
-                <input class="login-input" placeholder="seu@email.com" type="email" id="login-email" name="email" autocomplete="email" aria-label="Seu e-mail" required>
-                <input class="login-input" placeholder="Sua senha" type="password" id="login-pass" name="password" autocomplete="current-password" aria-label="Sua senha" required>
-                <button class="login-btn" type="submit"><span>Come&ccedil;ar agora</span><span aria-hidden="true">&#8594;</span></button>
+                <input class="login-input" placeholder="Seu e-mail" type="email" id="login-email" name="email" autocomplete="email" aria-label="Seu e-mail" required>
+                <div id="al-auth-password-row"><input class="login-input" placeholder="Sua senha" type="password" id="login-pass" name="password" autocomplete="current-password" aria-label="Sua senha" required></div>
+                <button class="login-btn" type="submit"><span id="al-auth-submit-copy">Entrar</span></button>
               </div>
-              <div class="login-actions">
-                <button type="button" class="login-link" id="forgotBtn" onclick="alicerceLoginForgotPassword()">Esqueceu a senha?</button>
-                <div class="login-divider"><span></span><p>AINDA N&Atilde;O TEM CONTA?</p><span></span></div>
-                <button type="button" class="login-link primary" id="signupBtn" onclick="doSignup()">Criar conta &#8599;</button>
+              <div class="login-actions" id="al-auth-login-actions">
+                <button type="button" class="login-link" id="forgotBtn" onclick="alicerceAuthMode('forgot')">Esqueci minha senha</button>
+                <button type="button" class="login-link primary" id="signupBtn" onclick="alicerceAuthMode('signup')">Criar conta</button>
               </div>
+              <button type="button" class="login-link" id="al-auth-return" onclick="alicerceAuthMode('login')" hidden>Voltar para entrar</button>
             </form>
           </div>
         </div>
@@ -11255,6 +11317,9 @@ async function doLogin(){
 
 
 async function doSignup(){
+  if(window.__alicerceSignupBusy)return;
+  window.__alicerceSignupBusy=true;
+  const button=document.querySelector('#loginLiving .login-btn');if(button)button.disabled=true;
   try{
     var email=document.getElementById('login-email').value.trim();
     var password=document.getElementById('login-pass').value;
@@ -11294,7 +11359,7 @@ async function doSignup(){
   }catch(erro){
     var mensagem=String(erro&&erro.message||'');
     alicerceAuthFeedback(mensagem||'Não foi possível criar a conta. Confira os dados e tente novamente.',true);
-  }
+  }finally{window.__alicerceSignupBusy=false;const button=document.querySelector('#loginLiving .login-btn');if(button)button.disabled=false;}
 }
 
 
@@ -19057,7 +19122,7 @@ async function alicerceInicializarSessaoPersistida(){
     gate.setAttribute('role','status');
     gate.setAttribute('aria-live','polite');
     gate.style.cssText='position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:#080A11;color:#F6F6F7;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:center;';
-    gate.innerHTML='<div style="width:min(100%,320px);margin:0 auto"><div style="width:62px;height:62px;border-radius:20px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(200,169,98,.55);background:linear-gradient(145deg,#211f18,#101010);color:#C8A962;font-size:30px;font-weight:800;letter-spacing:-1px;margin:0 auto 18px;box-shadow:0 10px 30px rgba(0,0,0,.28)">A</div><div style="font-size:24px;font-weight:800;letter-spacing:-.04em">Alicerce</div><div style="font-size:14px;line-height:1.5;color:#B8B8BF;margin-top:8px">Restaurando sua sessão...</div><div style="height:3px;width:132px;border-radius:999px;background:rgba(200,169,98,.18);overflow:hidden;margin:22px auto 0"><div style="height:100%;width:42%;border-radius:999px;background:#C8A962"></div></div></div>';
+    gate.innerHTML='<div class="al-auth-loading-content"><div class="al-auth-loading-orb">'+aliciaOrb()+'</div><div class="al-auth-wordmark">Alicerce</div><div class="al-auth-loading-text">Restaurando sua sessão</div></div>';
     document.body.appendChild(gate);
 
     const sb=window.alicerceSupabase;
