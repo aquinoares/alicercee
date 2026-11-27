@@ -2629,6 +2629,106 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 .alicerce-assistant-status:not(:empty)::before{content:"";width:18px;height:18px;flex:0 0 18px;border:1.5px solid #85caff;border-right-color:#ffc08a;border-radius:50%;animation:alicia-orb-rotate 2s linear infinite;transform-origin:center}
 @media(prefers-reduced-motion:reduce){.alicerce-assistant-status:not(:empty)::before{animation:none}}
 </style>
+
+<style id="visao-premium-v3">
+.visao-financeira{max-width:720px;margin:auto;padding:14px 16px 110px!important;box-sizing:border-box}
+.visao-financeira .visao-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 18px}
+.visao-financeira .visao-logo{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text2)!important}
+.visao-financeira .visao-subtitulo{font-size:25px;font-weight:750;letter-spacing:-.035em;line-height:1.15;margin:5px 0}
+.visao-alicia-open{width:56px;height:56px;flex:0 0 56px;border:0;border-radius:50%;background:transparent;padding:0;cursor:pointer}
+.visao-alicia-open:focus-visible,.visao-premium-section>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.visao-financeira .visao-hero{box-sizing:border-box;width:100%;min-height:0;margin:0 0 12px;padding:22px;border-radius:24px;background:linear-gradient(145deg,var(--surface2),var(--surface))!important;box-shadow:0 10px 28px rgba(0,0,0,.07)}
+.visao-financeira .visao-hero:before,.visao-financeira .visao-hero:after{display:none}
+.visao-financeira .visao-pill{padding:0;background:transparent!important;color:var(--text2)!important;font-size:12px}
+.visao-financeira .visao-saldo{white-space:normal;overflow-wrap:anywhere;font-size:clamp(26px,8vw,40px);margin-top:9px}
+.visao-financeira .visao-atualizado{font-size:11px}
+.visao-financeira .visao-caixa{margin:0 0 16px;padding:13px 12px;border-radius:20px;box-shadow:none}
+.visao-financeira .visao-caixa h2{font-size:12px;color:var(--text2);font-weight:650;margin:0 0 12px}
+.visao-financeira .visao-caixa dl{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.visao-financeira .visao-caixa dl>div{min-width:0;padding:0 5px}
+.visao-financeira .visao-caixa dl>div+div{border-left:1px solid var(--line)}
+.visao-financeira .visao-caixa dt,.visao-financeira .visao-caixa small{font-size:10px;line-height:1.3}
+.visao-financeira .visao-caixa dd{font-size:clamp(11px,3.4vw,17px);line-height:1.35;font-variant-numeric:tabular-nums}
+.visao-financeira .visao-caixa small{display:block;margin-top:4px}
+.visao-financeira .visao-premium-section{box-sizing:border-box;background:var(--surface);border:1px solid var(--line);border-radius:18px;margin:10px 0;overflow:hidden}
+.visao-premium-section>summary{display:flex;align-items:center;gap:11px;min-height:68px;padding:12px 14px;list-style:none;cursor:pointer;color:var(--text)}
+.visao-premium-section>summary::-webkit-details-marker{display:none}
+.visao-premium-section>summary::marker{content:""}
+.visao-premium-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex:0 0 36px;background:var(--tint-accent);color:var(--accent);border-radius:12px}
+.visao-premium-icon .ico{width:18px;height:18px}
+.visao-premium-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.visao-premium-copy strong{font-size:14px;font-weight:700}
+.visao-premium-copy small{font-size:11px;font-weight:400;color:var(--text2);line-height:1.3}
+.visao-premium-chevron{width:9px;height:9px;border-right:1.5px solid var(--text2);border-bottom:1.5px solid var(--text2);transform:rotate(45deg);margin:0 3px 4px 4px;flex:0 0 9px}
+.visao-premium-section[open]>summary .visao-premium-chevron{transform:rotate(225deg);margin-bottom:-4px}
+.visao-premium-body{padding:0 12px 12px;min-width:0}
+.visao-premium-body #alicerce-planning{margin:0!important;padding:10px 2px!important;border:0!important;background:transparent!important;box-shadow:none}
+.visao-premium-body .visao-ai-dashboard{margin:0;padding:4px 0;border:0;background:transparent;box-shadow:none}
+.visao-premium-body .visao-ai-heading{margin-bottom:12px}
+.visao-premium-body .visao-ai-kpis{gap:6px}
+.visao-premium-body .visao-ai-kpi{min-width:0;overflow-wrap:anywhere}
+.visao-financeira .visao-item{min-height:49px}
+.visao-financeira .visao-icone{width:32px;height:32px;flex-basis:32px;border:0;border-radius:10px}
+.visao-financeira .visao-item-nome,.visao-financeira .visao-item-valor{font-size:13px}
+.visao-financeira .visao-pdf{margin:0!important;border:0!important;box-shadow:none;min-height:45px}
+.visao-section-eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);font-weight:700;margin:19px 2px 5px}
+.visao-alicia-hint{display:flex;justify-content:flex-end;margin-top:-13px;margin-bottom:12px;color:var(--text2);font-size:10px}
+@media(max-width:350px){.visao-financeira{padding-left:11px!important;padding-right:11px!important}.visao-financeira .visao-caixa dl{grid-template-columns:repeat(3,minmax(0,1fr))}.visao-premium-section>summary{padding:10px;gap:8px}.visao-premium-body{padding:0 8px 10px}}
+</style>
+
+<style id="visao-financeira-advanced">
+.visao-financeira{--vf-in:#41b99b;--vf-out:#719eec;--vf-amber:#d8a36d}
+.visao-financeira .visao-hero{background:linear-gradient(135deg,#10243d,#152f49 60%,#193b50)!important;color:#f1f7ff;border:1px solid rgba(137,182,236,.23)!important;padding:22px 20px;position:relative;box-shadow:0 14px 34px rgba(4,13,28,.18)}
+.visao-financeira .visao-hero:after{display:block;content:"";width:170px;height:170px;right:-63px;top:-70px;border-radius:50%;background:transparent!important;border:1px solid rgba(164,208,255,.17);box-shadow:0 0 0 22px rgba(164,208,255,.04),0 0 0 46px rgba(164,208,255,.03)!important}
+.visao-financeira .visao-hero .visao-saldo{color:#f3f8ff!important;font-size:clamp(27px,8vw,40px);letter-spacing:-.05em}
+.visao-financeira .visao-hero .visao-pill,.visao-financeira .visao-hero .visao-atualizado{color:#b9cde4!important}
+.vf-hero-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid rgba(187,217,255,.15);margin-top:18px;padding-top:13px;font-size:11px;color:#b9cde4}
+.vf-hero-foot strong{color:#f3f8ff;font-size:15px;font-variant-numeric:tabular-nums}
+.vf-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:15px 13px;margin:12px 0;min-width:0;box-sizing:border-box}
+.vf-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px}
+.vf-head h2{font-size:16px;font-weight:750;margin:0;letter-spacing:-.02em;line-height:1.3}
+.vf-head p{margin:4px 0 0;font-size:11px;color:var(--text2);line-height:1.4}
+.vf-period{display:flex;align-items:center;gap:3px;border:1px solid var(--line);border-radius:11px;padding:3px;flex-shrink:0}
+.vf-period button{border:0;border-radius:8px;min-width:34px;min-height:30px;font-size:11px;background:transparent;color:var(--text2);cursor:pointer}
+.vf-period button[aria-pressed=true]{background:var(--tint-accent);color:var(--text);font-weight:750}
+.vf-flow-totals{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 15px}
+.vf-flow-totals>div{background:var(--surface2);border-radius:12px;padding:10px;min-width:0}
+.vf-flow-totals small{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)}
+.vf-flow-totals strong{font-size:clamp(13px,4.1vw,20px);display:block;margin-top:4px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.vf-dot{width:8px;height:8px;border-radius:3px;display:inline-block;flex:0 0 8px}
+.vf-in{background:var(--vf-in)}.vf-out{background:var(--vf-out)}
+.vf-chart{display:flex;gap:6px;align-items:flex-end;height:133px;padding-top:5px}
+.vf-month{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.vf-month button{display:flex;gap:3px;align-items:flex-end;justify-content:center;width:100%;height:108px;min-width:0;border:0;border-radius:7px;background:linear-gradient(to top,var(--line) 1px,transparent 1px);cursor:pointer;padding:0 2px}
+.vf-month button[aria-pressed=true]{background:var(--surface2);outline:1px solid var(--line)}
+.vf-month button i{display:block;width:34%;max-width:18px;border-radius:5px 5px 1px 1px;min-width:2px}
+.vf-month>span{font-size:10px;color:var(--text2);white-space:nowrap}
+.vf-chart[data-count="12"]{gap:3px}
+.vf-chart[data-count="12"] .vf-month button{gap:2px;padding:0 1px}
+.vf-chart[data-count="12"] .vf-month>span{font-size:8px}
+.vf-chart-detail{border-top:1px solid var(--line);padding-top:10px;margin-top:10px;font-size:11px;color:var(--text2);line-height:1.5;min-height:31px}
+.vf-empty{display:block;text-align:center;padding:20px 6px;font-size:12px;color:var(--text2)}
+.vf-obligation-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.vf-obligation-grid>div{min-width:0}
+.vf-obligation-grid small{font-size:11px;color:var(--text2);display:block}
+.vf-obligation-grid strong{font-size:clamp(15px,5vw,22px);display:block;margin-top:4px;overflow-wrap:anywhere}
+.vf-progress{height:9px;border-radius:20px;background:var(--line);overflow:hidden;margin:10px 0 8px}
+.vf-progress i{display:block;height:100%;background:var(--vf-in);border-radius:20px}
+.vf-progress-caption{font-size:11px;color:var(--text2);line-height:1.4}
+.vf-action{margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;border:1px solid var(--line);background:var(--surface2);color:var(--text);font-size:12px;font-weight:650;border-radius:12px;padding:10px 12px;min-height:40px;cursor:pointer}
+.vf-category{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 8px;margin:11px 0;font-size:12px}
+.vf-category span{overflow-wrap:anywhere}.vf-category strong{font-variant-numeric:tabular-nums}
+.vf-category-track{grid-column:1/-1;height:6px;border-radius:6px;background:var(--line);overflow:hidden}.vf-category-track i{display:block;height:100%;border-radius:6px;background:var(--vf-out)}
+.vf-year-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:5px;margin-top:10px}
+.vf-year-cell{border-radius:9px;background:var(--surface2);padding:7px 2px;text-align:center;font-size:10px;color:var(--text2);min-width:0}
+.vf-year-cell b{display:block;color:var(--text);font-size:11px;font-weight:650;margin-bottom:4px}
+.vf-year-cell[data-state=closed]{border:1px solid var(--vf-in)}.vf-year-cell[data-state=carried]{border:1px solid var(--vf-amber)}.vf-year-cell[data-state=open]{border:1px solid var(--vf-out)}
+.vf-year-cell small{display:block;font-size:9px;overflow-wrap:anywhere}
+.vf-orb-action{display:flex;align-items:center;gap:10px;text-align:left;width:100%;background:transparent;color:var(--text);border:0;cursor:pointer;padding:0}
+.vf-orb-action .alicia-orb{width:44px;height:44px;flex:0 0 44px}
+.vf-orb-action span{flex:1;min-width:0}.vf-orb-action strong{display:block;font-size:13px}.vf-orb-action small{display:block;color:var(--text2);font-size:11px;line-height:1.4;margin-top:3px}
+.vf-card button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -14309,16 +14409,108 @@ AlicerceIA.renderDashboard=function(){
 };
 AlicerceIA.perguntarDashboard=function(question){
   this._resetUser();
+  this._visaoOpenedFor=String(Store.userId||'');
   this._question=String(question||'').trim();
   if(!this._question)return;
   this._answer=this.responder(this._question);
   render();
 };
 
+function visaoPremiumSection(id,title,description,ico,body,open,extraClass){
+  return '<details id="'+esc(id)+'" class="visao-premium-section '+esc(extraClass||'')+'"'+(open?' open':'')+'><summary><span class="visao-premium-icon" aria-hidden="true">'+icon(ico,'ico-sm')+'</span><span class="visao-premium-copy"><strong>'+esc(title)+'</strong><small>'+esc(description)+'</small></span><span class="visao-premium-chevron" aria-hidden="true"></span></summary><div class="visao-premium-body">'+body+'</div></details>';
+}
+
+// Finance overview is derived from existing data; no simulated values or writes.
+function visaoCashSeries(store, now, count){
+  const today=Clock.today();
+  const rows=Array.isArray(store.movements)?store.movements:[];
+  const months=Array.from({length:count},function(_,i){
+    const date=new Date(now.getFullYear(),now.getMonth()-count+1+i,1);
+    const key=date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0');
+    return {key:key,label:['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][date.getMonth()],incoming:0,outgoing:0,count:0};
+  });
+  const by=Object.fromEntries(months.map(m=>[m.key,m]));
+  rows.forEach(function(r){
+    if(!r||(r.userId&&r.userId!==store.userId)||!['pago','recebido'].includes(r.status))return;
+    const date=String(r.data||''); const amount=Number(r.valor);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||date>today||!Number.isFinite(amount)||amount<=0)return;
+    const m=by[date.slice(0,7)]; if(!m)return;
+    const n=Math.round(amount*100);
+    if(r.tipo==='receita'||r.tipo==='transferencia'&&r.direction==='entrada')m.incoming+=n;
+    else if(r.tipo==='despesa'||r.tipo==='transferencia'&&r.direction==='saida')m.outgoing+=n;
+    else return;
+    m.count++;
+  });
+  return months.map(m=>Object.assign(m,{incoming:m.incoming/100,outgoing:m.outgoing/100}));
+}
+function visaoFlowCard(months,count){
+  const selected=months.slice(-count), current=selected[selected.length-1];
+  const max=Math.max(1,...selected.map(m=>Math.max(m.incoming,m.outgoing)));
+  const any=selected.some(m=>m.count);
+  let html='<section class="vf-card" id="vf-flow"><div class="vf-head"><div><h2>Fluxo financeiro</h2><p>Entradas e saídas registradas</p></div><div class="vf-period" role="group" aria-label="Período do gráfico"><button type="button" aria-pressed="'+(count===6)+'" onclick="visaoChangePeriod(6)">6M</button><button type="button" aria-pressed="'+(count===12)+'" onclick="visaoChangePeriod(12)">12M</button></div></div>';
+  html+='<div class="vf-flow-totals"><div><small><i class="vf-dot vf-in"></i>Entradas do mês</small><strong>'+fmtMoney(current.incoming)+'</strong></div><div><small><i class="vf-dot vf-out"></i>Saídas do mês</small><strong>'+fmtMoney(current.outgoing)+'</strong></div></div>';
+  if(!any)html+='<p class="vf-empty">Nenhum movimento confirmado neste período.</p>';
+  html+='<div class="vf-chart" data-count="'+count+'" role="group" aria-label="Entradas e saídas por mês">';
+  selected.forEach(function(m,i){
+    const description=m.key+' · Entradas '+fmtMoney(m.incoming)+' · Saídas '+fmtMoney(m.outgoing)+(m.count?' · Fluxo líquido '+fmtMoney(m.incoming-m.outgoing):' · Sem registros');
+    const inHeight=m.incoming?Math.max(2,100*m.incoming/max):0;
+    const outHeight=m.outgoing?Math.max(2,100*m.outgoing/max):0;
+    html+='<div class="vf-month"><button type="button" aria-label="'+esc(description)+'" title="'+esc(description)+'" data-detail="'+esc(description)+'" aria-pressed="'+(i===selected.length-1)+'" onclick="visaoSelectMonth(this)"><i class="vf-in" style="height:'+inHeight+'%"></i><i class="vf-out" style="height:'+outHeight+'%"></i></button><span>'+m.label+'</span></div>';
+  });
+  html+='</div><div class="vf-chart-detail" id="vf-chart-detail" aria-live="polite">'+esc(current.key+' · '+(current.count?'Fluxo líquido registrado: '+fmtMoney(current.incoming-current.outgoing):'Sem movimentos confirmados'))+'</div><p class="vf-progress-caption">Inclui transferências registradas. Fluxo líquido não equivale a contas quitadas ou lucro.</p></section>';
+  return html;
+}
+function visaoSelectMonth(button){
+  const chart=button.closest('.vf-chart');
+  if(chart)chart.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+  const detail=document.getElementById('vf-chart-detail');if(detail)detail.textContent=button.dataset.detail||'';
+}
+function visaoChangePeriod(count){
+  if(count!==6&&count!==12)return;
+  const node=document.getElementById('vf-flow');if(node)node.outerHTML=visaoFlowCard(visaoCashSeries(Store,Clock.now(),12),count);
+}
+function visaoOpenArea(id){
+  const node=document.getElementById(id);if(!node)return;
+  node.open=true;
+  if(typeof node.scrollIntoView==='function')node.scrollIntoView({block:'start'});
+}
+function visaoObligationCards(){
+  if(!window.AliciaDebtFollowup||typeof AliciaDebtFollowup.planningSnapshot!=='function')return '';
+  const p=AliciaDebtFollowup.planningSnapshot();
+  const percent=p.total>0?Math.min(100,Math.max(0,Math.round(100*p.paid/p.total))):0;
+  let h='<section class="vf-card" id="vf-obligations"><div class="vf-head"><div><h2>Obrigações do mês</h2><p>Pagamentos confirmados e atrasos</p></div></div><div class="vf-obligation-grid"><div><small>Pago no mês de vencimento</small><strong>'+fmtMoney(p.paid)+'</strong></div><div><small>Falta pagar, com atrasos</small><strong>'+fmtMoney(p.remaining)+'</strong></div></div>';
+  h+='<div class="vf-progress" role="progressbar" aria-label="Obrigações do mês quitadas" aria-valuenow="'+percent+'" aria-valuemin="0" aria-valuemax="100"><i style="width:'+percent+'%"></i></div><div class="vf-progress-caption">'+(p.total>0?percent+'% do valor das obrigações do mês quitado':'Sem obrigações do mês cadastradas')+' · Atrasos anteriores '+fmtMoney(p.carry)+'</div>';
+  h+='<button type="button" class="vf-action" onclick="visaoOpenArea(\'visao-planejamento\')">Planejar pagamentos e simular ganhos '+icon('arrowRight','ico-xs')+'</button></section>';
+  const statuses={closed:'Quitado',carried:'Pendente',open:'Em curso',unknown:'Sem data',empty:'Sem dados',future:'Futuro'};
+  const done=p.history.filter(m=>m.state==='closed').length;
+  h+='<section class="vf-card" id="vf-year"><div class="vf-head"><div><h2>Evolução anual</h2><p>'+done+' mês(es) com obrigações cadastradas quitadas até o fim do mês</p></div></div><div class="vf-year-grid">';
+  p.history.forEach(function(m){
+    const label=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][Number(m.month.slice(5))-1];
+    h+='<div class="vf-year-cell" data-state="'+esc(m.state)+'"><b>'+label+'</b><small>'+esc(statuses[m.state]||'Sem dados')+'</small>'+(m.days!==null&&m.state!=='future'&&m.state!=='open'?'<small>'+m.days+'d</small>':'')+'</div>';
+  });
+  h+='</div><p class="vf-progress-caption" style="margin-top:12px">Quitação de contas registradas não comprova saldo positivo. Meses sem registros não contam como sucesso.</p><button type="button" class="vf-action" onclick="visaoOpenArea(\'visao-planejamento\');AliciaDebtFollowup.planningSwitch(1)">Ver histórico e velocidade de quitação '+icon('arrowRight','ico-xs')+'</button></section>';
+  return h;
+}
+function visaoCategoryCard(){
+  const rows=AlicerceIA._periodRows(0), total=AlicerceIA._sum(rows), categories=AlicerceIA._groups(rows,'categoria');
+  if(!categories.length||total<=0)return '<section class="vf-card"><div class="vf-head"><div><h2>Para onde vai seu dinheiro</h2><p>Despesas registradas neste mês</p></div></div><p class="vf-empty">Sem despesas registradas para analisar.</p></section>';
+  const top=categories.slice(0,4), other=categories.slice(4).reduce((sum,item)=>sum+item.total,0);
+  if(other>0)top.push({key:'demais categorias',total:other});
+  let h='<section class="vf-card" id="vf-categories"><div class="vf-head"><div><h2>Para onde vai seu dinheiro</h2><p>Consumo registrado · '+fmtMoney(total)+'</p></div></div>';
+  top.forEach(function(c){const pct=Math.min(100,Math.max(0,c.total/total*100));h+='<div class="vf-category"><span>'+esc(AlicerceIA._nice(c.key))+'</span><strong>'+fmtMoney(c.total)+'</strong><div class="vf-category-track"><i style="width:'+pct+'%"></i></div></div>';});
+  return h+'<button type="button" class="vf-action" onclick="visaoOpenArea(\'visao-analises\')">Explorar análise de gastos '+icon('arrowRight','ico-xs')+'</button></section>';
+}
+
 function renderVisao(){
   const v=getVisaoFinanceira();
   const agora=Clock.now();
   const hora=String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0');
+  const lang=Store.lang||'pt';
+  const labels=({
+    pt:{title:'Visão financeira',available:'Disponível agora',updated:'Atualizado hoje, ',ask:'Conversar com Alicia',areas:'Explore suas finanças',analytics:'Análise de gastos',analyticsSub:'Categorias, comparações e realidade financeira',commitments:'Compromissos e projeções',commitmentsSub:'Cartão, custos fixos e financiamentos',report:'Relatório financeiro',reportSub:'Gerar e consultar o PDF mensal'},
+    en:{title:'Financial view',available:'Available now',updated:'Updated today, ',ask:'Chat with Alicia',areas:'Explore your finances',analytics:'Spending analysis',analyticsSub:'Categories, comparisons and financial picture',commitments:'Commitments and projections',commitmentsSub:'Cards, fixed costs and financing',report:'Financial report',reportSub:'Generate the monthly PDF'},
+    es:{title:'Visión financiera',available:'Disponible ahora',updated:'Actualizado hoy, ',ask:'Conversar con Alicia',areas:'Explora tus finanzas',analytics:'Análisis de gastos',analyticsSub:'Categorías, comparaciones y realidad financiera',commitments:'Compromisos y proyecciones',commitmentsSub:'Tarjetas, costes fijos y financiación',report:'Informe financiero',reportSub:'Generar el PDF mensual'}
+  })[lang]||{title:'Visão financeira',available:'Disponível agora',updated:'Atualizado hoje, ',ask:'Conversar com Alicia',areas:'Explore suas finanças',analytics:'Análise de gastos',analyticsSub:'Categorias, comparações e realidade financeira',commitments:'Compromissos e projeções',commitmentsSub:'Cartão, custos fixos e financiamentos',report:'Relatório financeiro',reportSub:'Gerar o PDF mensal'};
   const itens=[
     {nome:'Mês atual',valor:v.mesAtual,icone:'clock'},
     {nome:'Custos fixos',valor:v.custosFixos,icone:'refresh'},
@@ -14328,19 +14520,24 @@ function renderVisao(){
     {nome:'Seguro',valor:v.seguro,icone:'shield'}
   ];
   let html='<div class="content visao-financeira">';
-  html+='<div class="visao-topo"><div class="visao-logo">Alicerce</div><div class="visao-subtitulo">Visão financeira</div></div>';
-  html+='<section class="visao-hero"><div class="visao-pill">Disponível agora</div><div class="visao-saldo">'+fmtMoney(v.disponivel)+'</div><div class="visao-atualizado">Atualizado hoje, '+hora+'</div></section>';
-  if(Store.userId&&Store.lang==='pt'&&window.AlicerceCashflow){
-    html+=window.AlicerceCashflow.renderCards(Store,Clock.today());
-    html+='<button type="button" class="btn btn-secondary btn-block mb-3" onclick="AlicerceIA.experimentar(\'Me dá um resumo financeiro\')">Pedir resumo à Alícia</button>';
+  html+='<div class="visao-topo"><div><div class="visao-logo">Alicerce</div><h1 class="visao-subtitulo">'+esc(labels.title)+'</h1></div><button type="button" id="visao-alicia-open" class="visao-alicia-open" aria-label="'+esc(labels.ask)+'" title="'+esc(labels.ask)+'" onclick="go(\'assistente\')">'+aliciaOrb()+'</button></div><div class="visao-alicia-hint">'+esc(labels.ask)+'</div>';
+  html+='<section class="visao-hero"><div class="visao-pill">'+esc(labels.available)+'</div><div class="visao-saldo">'+fmtMoney(v.disponivel)+'</div><div class="visao-atualizado">'+esc(labels.updated)+hora+'</div></section>';
+  if(Store.userId&&lang==='pt'&&window.AlicerceCashflow)html+=window.AlicerceCashflow.renderCards(Store,Clock.today());
+  if(lang==='pt'&&Store.userId){
+    html+=visaoFlowCard(visaoCashSeries(Store,agora,12),6);
+    html+=visaoObligationCards();
+    html+=visaoCategoryCard();
+    html+='<section class="vf-card"><button type="button" class="vf-orb-action" onclick="AlicerceIA.experimentar(\'Como está minha evolução financeira?\')">'+aliciaOrb()+'<span><strong>Visão da Alicia</strong><small>Entenda seus números, prioridades e próximos passos.</small></span>'+icon('arrowRight','ico-xs')+'</button></section>';
   }
-  html+=AlicerceIA.renderDashboard();
-  html+='<details class="visao-details"><summary>'+esc((Store.lang==='en'?'Commitments and projections':Store.lang==='es'?'Compromisos y proyecciones':'Compromissos e projeções'))+'</summary><div class="visao-lista">';
+  html+='<h2 class="visao-section-eyebrow">'+esc(labels.areas)+'</h2><!-- alicia-planning-premium-slot -->';
+  html+=visaoPremiumSection('visao-analises',labels.analytics,labels.analyticsSub,'trend',AlicerceIA.renderDashboard(),AlicerceIA._visaoOpenedFor===String(Store.userId||''));
+  let list='<div class="visao-lista">';
   itens.forEach(function(item){
-    html+='<div class="visao-item"><div class="visao-icone">'+icon(item.icone,'')+'</div><div class="visao-item-nome">'+esc(item.nome)+'</div><div class="visao-item-valor">'+fmtMoney(item.valor? -Math.abs(Number(item.valor)||0):0)+'</div></div>';
+    list+='<div class="visao-item"><div class="visao-icone">'+icon(item.icone,'')+'</div><div class="visao-item-nome">'+esc(item.nome)+'</div><div class="visao-item-valor">'+fmtMoney(item.valor? -Math.abs(Number(item.valor)||0):0)+'</div></div>';
   });
-  html+='</div></details>';
-  html+='<button class="btn btn-secondary btn-block visao-pdf" onclick="generateMonthlyPDF()">'+icon('file','ico-sm')+' '+t('impressao')+'</button>';
+  list+='</div>';
+  html+=visaoPremiumSection('visao-compromissos',labels.commitments,labels.commitmentsSub,'wallet',list,false,'visao-details');
+  html+=visaoPremiumSection('visao-relatorio',labels.report,labels.reportSub,'file','<button class="btn btn-secondary btn-block visao-pdf" onclick="generateMonthlyPDF()">'+icon('file','ico-sm')+' '+t('impressao')+'</button>',false);
   html+='</div>';
   return html;
 }
