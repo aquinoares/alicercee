@@ -1791,6 +1791,18 @@ test('Visão Financeira apresenta pontos principais e permite abrir análises co
   await expect(page.locator('#visao-ai-answer')).toContainText('150,00');
   await page.locator('#visao-planejamento > summary').click();
   await expect(page.locator('#alicerce-planning')).toBeVisible();
+  await expect(page.locator('#alicerce-planning .vf-plan-tabs button')).toHaveCount(3);
+  await expect(page.locator('#alicerce-planning-value')).toBeHidden();
+  await page.locator('#alicerce-planning .vf-plan-sim > summary').click();
+  await expect(page.locator('#alicerce-planning-value')).toBeVisible();
+  await page.locator('#alicerce-planning-value').fill('300');
+  await expect(page.locator('#alicerce-planning-result')).toContainText('Simulação');
+  await page.locator('#alicerce-planning .vf-plan-tabs button').filter({hasText:'Histórico'}).click();
+  await expect(page.locator('#alicerce-planning .vf-plan-hero')).toContainText('Tempo médio');
+  await page.locator('#alicerce-planning .vf-plan-tabs button').filter({hasText:'Futuro'}).click();
+  await expect(page.locator('#alicerce-planning .vf-plan-hero')).toContainText('Próximo mês',{ignoreCase:true});
+  await expect(page.locator('#alicerce-planning .vf-plan-more')).not.toHaveAttribute('open','');
+
   await page.locator('#visao-alicia-open').click();
   await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
 });
