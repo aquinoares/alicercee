@@ -810,6 +810,14 @@
         : 'Tudo bem. Mantive "' + item.description + '" como pendente. Não registrei saída de dinheiro.';
     }
     var explicitDate = parseDate(message);
+    // Do not interpret questions, uncertain replies or another bill as confirmation.
+    if (pending.requireDate && (yes || intent === 'pago' || pending.awaitingDate)) {
+      var dateOnly = String(message).trim().replace(/\b\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g, ' ');
+      var answerWords = normalize(dateOnly).replace(/\b(?:sim|ja|paguei|pagamos|quitei|quitamos|foi|pago|paga|quitado|quitada|hoje|ontem|anteontem|semana|passada|ha|dias?|no|em|de|dia|na|segunda|terca|quarta|quinta|sexta|sabado|domingo|feira|janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|\d+)\b/g, ' ').trim();
+      if (/\?/.test(message) || (answerWords && !normalize(item.description).includes(answerWords.replace(/\s+/g, ' ')))) {
+        return 'Estamos conferindo "' + item.description + '". Responda sim, ainda não ou informe a data em que pagou essa conta.';
+      }
+    }
     if (pending.requireDate && pending.awaitingDate && explicitDate && !/[\?]/.test(message) &&
         !/\b(nao sei|talvez|acho|vou|pretendo|se|quando)\b/.test(n)) {
       yes = true;
