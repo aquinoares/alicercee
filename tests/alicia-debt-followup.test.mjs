@@ -557,3 +557,59 @@ testCase('pagamento explícito preserva data real e não fica pendente', () => {
   assert.equal(Store.movements.length, 1);
   assert.equal(Store.movements[0].data, '2026-11-03');
 });
+
+
+testCase('filtros separam dívidas vencidas, de hoje, futuras e pagas', () => {
+  const { Store, api } = createContext();
+  Store.commitments.push(
+    {id:'old',tipo:'conta',descricao:'Energia',valor:150,data:'2026-10-30',status:'pendente'},
+    {id:'today',tipo:'conta',descricao:'Internet',valor:100,data:'2026-11-04',status:'pendente'},
+    {id:'future',tipo:'conta',descricao:'Aluguel',valor:700,data:'2026-11-30',status:'pendente'},
+    {id:'paid',tipo:'conta',descricao:'Água',valor:90,data:'2026-11-01',status:'pago',dataPagamento:'2026-11-01'}
+  );
+  assert.equal(api.filterPayments('pendentes').length,3);
+  assert.equal(api.filterPayments('vencidas')[0].id,'old');
+  assert.equal(api.filterPayments('hoje')[0].id,'today');
+  assert.equal(api.filterPayments('futuras')[0].id,'future');
+  assert.equal(api.filterPayments('pagas')[0].id,'paid');
+  assert.match(api.renderFinancialSummary(),/Conferir pagamentos/);
+});
+
+testCase('conferência exige data real antes de baixar uma dívida', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.commitments.push({id:'bill',tipo:'conta',descricao:'Energia',valor:150,data:'2026-10-30',status:'pendente'});
+  const question = api.handleMessage(AlicerceIA,'Conferir pagamentos');
+  assert.match(question,/Essa dívida já foi paga/);
+  assert.match(question,/Energia/);
+  assert.match(api.handleMessage(AlicerceIA,'Sim'),/Em que dia/);
+  assert.equal(Store.movements.length,0);
+  api.handleMessage(AlicerceIA,'Ontem');
+  assert.equal(Store.movements.length,1);
+  assert.equal(Store.commitments[0].paymentStatus,'pago');
+  assert.equal(Store.commitments[0].dataPagamento,'2026-11-03');
+  assert.equal(api.filterPayments('pendentes').length,0);
+  assert.equal(api.openPaymentCheck(encodeURIComponent('commitment:bill')),false);
+  assert.equal(Store.movements.length,1);
+});
+
+testCase('escolher conta específica no filtro e adiar não altera valores', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.commitments.push(
+    {id:'a',tipo:'conta',descricao:'Energia',valor:150,data:'2026-11-04',status:'pendente'},
+    {id:'b',tipo:'conta',descricao:'Aluguel',valor:700,data:'2026-11-30',status:'pendente'}
+  );
+  assert.match(api.handleMessage(AlicerceIA,'Verificar pagamentos'),/Responda com o número/);
+  assert.match(api.handleMessage(AlicerceIA,'2'),/Aluguel/);
+  assert.match(api.handleMessage(AlicerceIA,'Depois'),/sem registrar pagamento/);
+  assert.equal(Store.movements.length,0);
+  assert.equal(api.filterPayments('pendentes').length,2);
+});
+
+testCase('pergunta sobre outra conta não quita a dívida selecionada', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.commitments.push({id:'bill',tipo:'conta',descricao:'Energia',valor:150,data:'2026-10-30',status:'pendente'});
+  api.handleMessage(AlicerceIA,'Conferir pagamentos');
+  api.handleMessage(AlicerceIA,'Paguei aluguel ontem');
+  assert.equal(Store.movements.length,0);
+  assert.equal(Store.commitments[0].status,'pendente');
+});
