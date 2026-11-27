@@ -636,3 +636,49 @@ testCase('consulta mensal vazia explica o limite dos registros cadastrados', () 
   assert.match(reply,/Não encontrei obrigações financeiras cadastradas/);
   assert.match(reply,/sincronizada/);
 });
+
+
+testCase('linguajar popular: contas que faltas serem pagas usa mês atual, sem histórico ou futuro misturado',()=>{
+ const {Store,AlicerceIA,api,sandbox}=createContext();
+ sandbox.Clock.today=()=> '2026-11-27';
+ Store.installments.push(
+  {id:'dec',tipo:'pagar',descricao:'Leandro',valor:50,data:'2026-12-05',status:'pendente'},
+  {id:'jan',tipo:'pagar',descricao:'Parcela janeiro',valor:366.67,data:'2027-01-20',status:'pendente'},
+  {id:'feb',tipo:'pagar',descricao:'Parcela fevereiro',valor:366.67,data:'2027-02-20',status:'pendente'}
+ );
+ Store.commitments.push({id:'paid',tipo:'conta',descricao:'Energia antiga',valor:0.25,data:'2026-10-14',status:'pago',dataPagamento:'2026-11-12'});
+ for(const message of ['Contas que faltas serem pagas ?', 'oq falta pagar?', 'contas q faltam ser pagas', 'Tem boleto pra pagar?', 'minhas contas', 'Dívidas para eu pagar esse mês']){
+  const reply=api.handleMessage(AlicerceIA,message);
+  assert.match(reply,/novembro de 2026/);
+  assert.match(reply,/Não encontrei obrigações financeiras cadastradas/);
+  assert.match(reply,/Próximo vencimento, fora deste mês: Leandro/);
+  assert.doesNotMatch(reply,/Parcela janeiro|Parcela fevereiro|Energia antiga/);
+ }
+ assert.equal(Store.saveCalls,0);assert.equal(Store.movements.length,0);
+});
+testCase('período explícito e continuação curta mantêm intenção e não misturam meses',()=>{
+ const {Store,AlicerceIA,api,sandbox}=createContext();
+ sandbox.Clock.today=()=> '2026-11-27';
+ Store.installments.push(
+  {id:'nov',tipo:'pagar',descricao:'Aluguel',valor:500,data:'2026-11-30',status:'pendente'},
+  {id:'dec',tipo:'pagar',descricao:'Internet',valor:100,data:'2026-12-10',status:'pendente'},
+  {id:'jan',tipo:'pagar',descricao:'IPVA',valor:200,data:'2027-01-10',status:'pendente'}
+ );
+ Store.commitments.push({id:'paid',tipo:'conta',descricao:'Água',valor:90,data:'2026-10-20',status:'pago',dataPagamento:'2026-11-12'});
+ const say=m=>api.handleMessage(AlicerceIA,m);
+ assert.match(say('oq falta pagar?'),/Aluguel/);
+ const next=say('E mês que vem?');assert.match(next,/dezembro de 2026/);assert.match(next,/Internet/);assert.doesNotMatch(next,/Aluguel|IPVA/);
+ const jan=say('E janeiro de 2027?');assert.match(jan,/IPVA/);assert.doesNotMatch(jan,/Internet/);
+ const paid=say('Quais contas já paguei esse mês?');assert.match(paid,/Água/);assert.doesNotMatch(paid,/IPVA|Aluguel/);
+ const all=say('Todas as contas');assert.match(all,/Aluguel/);assert.match(all,/Internet/);assert.match(all,/IPVA/);
+ assert.equal(Store.saveCalls,0);
+});
+testCase('atrasos anteriores são destacados sem compor o total do mês',()=>{
+ const {Store,AlicerceIA,api}=createContext();
+ Store.commitments.push({id:'old',tipo:'conta',descricao:'Energia',valor:150,data:'2026-10-20',status:'pendente'},{id:'new',tipo:'conta',descricao:'Aluguel',valor:500,data:'2026-11-30',status:'pendente'});
+ const reply=api.handleMessage(AlicerceIA,'oq falta pagar?');
+ assert.match(reply,/Total: R\$ 500,00/);
+ assert.match(reply,/meses anteriores ainda em atraso/);
+ assert.match(reply,/150,00/);
+ assert.equal(Store.saveCalls,0);
+});
