@@ -132,9 +132,11 @@ function renderPage(store,today){
  var selected=state.benefitWalletId,w=items.find(function(x){return String(x.id)===String(selected);})||items[0];
  var arg=function(id,view,more){return "go('beneficios',{benefitWalletId:"+JSON.stringify(id)+",benefitSection:"+JSON.stringify(view)+(more?",benefitEditEntryId:"+JSON.stringify(more):"")+"})";};
  var button=function(label,target,style){return '<button type="button" class="al-v2-action '+(style||'')+'" onclick="'+esc(target)+'">'+esc(label)+'</button>';};
- var html='<div class="content al-benefits-page al-benefits-v2">';
- html+='<header class="al-v2-header"><button type="button" class="al-v2-back" onclick="go(\'home\')" aria-label="Voltar para o início">‹</button><div><span class="al-v2-eyebrow">ALICERCE FINANCEIRO</span><h2>Meus benefícios</h2></div></header>';
- html+='<p class="al-v2-intro">Seus vales-alimentação, organizados em um só lugar.</p>';
+ var icons={topup:'<path d="M12 5v14M5 12h14"/>',purchase:'<rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18"/>',balance:'<path d="M4 8h14l-3-3m3 3-3 3M20 16H6l3-3m-3 3 3 3"/>',settings:'<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="currentColor"/><circle cx="15" cy="17" r="2" fill="currentColor"/>'};
+ var quick=function(label,view){return '<button type="button" class="al-v2-action'+(section===view?' active':'')+'" onclick="'+esc(arg(w.id,view))+'" aria-pressed="'+(section===view)+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+icons[view]+'</svg><span>'+esc(label)+'</span></button>';};
+ var html='<div class="content al-benefits-page al-benefits-v2 al-benefits-v3">';
+ html+='<header class="al-v2-header"><button type="button" class="al-v2-back" onclick="go(\'home\')" aria-label="Voltar para o início">‹</button><div><span class="al-v2-eyebrow">ALICERCE FINANCEIRO</span><h2>Meus benefícios</h2></div>'+ (typeof root.aliciaOrb==="function"?'<button type="button" class="al-v3-orb" onclick="go(\'assistente\')" aria-label="Conversar com Alicia">'+root.aliciaOrb()+'</button>':'') +'</header>';
+ html+='<p class="al-v2-intro">Acompanhe o saldo dos seus vales-alimentação.</p>';
  if(!items.length||section==="add"){
    html+='<section class="al-v2-panel al-v2-onboard"><div class="al-v2-panel-head"><h3>Adicionar cartão</h3>'+ (items.length?button("Voltar",arg(w.id,"overview"),"quiet"):"") +'</div><p>Escolha o benefício. Você poderá incluir a recarga e acompanhar o saldo.</p>';
    html+='<label for="benefit-provider">Operadora</label><select id="benefit-provider" class="input"><option value="pluxee">Sodexo / Pluxee</option><option value="solides">Sólides Benefícios</option></select>';
@@ -152,11 +154,12 @@ function renderPage(store,today){
  var value=balance(w);
  html+='<section class="al-v2-hero" aria-label="Cartão de vale-alimentação"><div class="al-v2-hero-top"><span class="al-v2-card-symbol">VA</span><span class="al-v2-hero-type">ALIMENTAÇÃO</span></div>';
  html+='<div class="al-v2-card-name">'+esc(w.alias||PROVIDERS[w.provider])+'</div><div class="al-v2-balance-label">Saldo registrado</div><div class="al-v2-balance">'+esc(money(value))+'</div>';
- html+='<div class="al-v2-hero-footer"><span>Carteira separada do banco</span><span>● Disponível</span></div></section>';
+ html+='<div class="al-v2-hero-footer"><span>Carteira separada do banco</span></div></section>';
  html+='<div class="al-v2-quick">';
- html+=button("＋ Nova recarga",arg(w.id,"topup"),section==="topup"?"active":"");
- html+=button("↗ Registrar compra",arg(w.id,"purchase"),section==="purchase"?"active":"");
- html+=button("⇄ Corrigir saldo",arg(w.id,"balance"),section==="balance"?"active":"");
+ html+=quick("Nova recarga","topup");
+ html+=quick("Registrar compra","purchase");
+ html+=quick("Corrigir saldo","balance");
+ html+=quick("Configurar cartão","settings");
  html+='</div>';
  if(section==="topup"||section==="purchase"){
    var credit=section==="topup";
@@ -179,6 +182,7 @@ function renderPage(store,today){
    html+='<label for="benefit-wallet-alias">Nome do cartão (opcional)</label><input id="benefit-wallet-alias" class="input" maxlength="50" value="'+esc(w.alias||"")+'" placeholder="Ex.: Meu Sodexo">';
    html+='<button class="al-v2-secondary" onclick="alicerceBeneficioSalvarNome('+esc(JSON.stringify(w.id))+')">Salvar nome</button><div class="al-v2-danger-zone"><button type="button" class="al-v2-danger" onclick="alicerceBeneficioExcluirCartao('+esc(JSON.stringify(w.id))+')">Excluir cartão e histórico</button></div></section>';
  }
+ if(section==="overview"||section==="history"){
  var month=String(today||"").slice(0,7);
  var monthly=(w.entries||[]).filter(function(e){return String(e.date||"").slice(0,7)===month;});
  var paid=Math.round(monthly.filter(function(e){return e.kind==="debit";}).reduce(function(n,e){return n+Number(e.amount||0);},0)*100)/100;
@@ -197,7 +201,7 @@ function renderPage(store,today){
    var id=JSON.stringify(e.id),walletId=JSON.stringify(w.id);
    var htmlRow='<div class="al-v2-entry"><span class="al-v2-entry-icon '+(credit?"credit":"debit")+'">'+iconText+'</span><div class="al-v2-entry-copy"><strong>'+esc(e.description)+'</strong><small>'+esc(kind)+' · '+esc(String(e.date||"").split("-").reverse().join("/"))+'</small></div><strong class="al-v2-entry-amount '+(credit?"credit":"debit")+'">'+(credit?"+":"−")+esc(money(Math.abs(e.amount)))+'</strong></div>';
 
-   return '<div class="al-v2-entry-wrap">'+htmlRow+'</div>'+ (section==="history"?'<div class="al-v2-control-row">'+(e.kind!=="adjustment"?button("Editar",arg(w.id,"history",e.id),"quiet"):"")+'<button type="button" class="al-v2-tiny-danger" onclick="alicerceBeneficioExcluirLancamento('+esc(walletId)+','+esc(id)+')">Excluir</button></div>':"");
+   return '<div class="al-v2-entry-wrap">'+htmlRow+ (section==="history"?'<div class="al-v2-control-row">'+(e.kind!=="adjustment"?button("Editar",arg(w.id,"history",e.id),"quiet"):"")+'<button type="button" class="al-v2-tiny-danger" onclick="alicerceBeneficioExcluirLancamento('+esc(walletId)+','+esc(id)+')">Excluir</button></div>':"")+'</div>';
  }).join("")+'</div>';
  var editId=state.benefitEditEntryId;
  var editRow=section==="history"&&w.entries.find(function(e){return e.kind!=="adjustment"&&String(e.id)===String(editId);});
@@ -208,7 +212,8 @@ function renderPage(store,today){
    html+='<label for="benefit-edit-description">Descrição</label><input id="benefit-edit-description" class="input" maxlength="120" value="'+esc(editRow.description)+'">';
    html+='<button class="al-v2-primary" onclick="alicerceBeneficioSalvarEdicao('+esc(JSON.stringify(w.id))+','+esc(JSON.stringify(editRow.id))+')">Salvar correção</button></div>';
  }
- html+='</section><div class="al-v2-bottom-settings">'+button("⚙ Configurar cartão",arg(w.id,"settings"),"quiet")+'</div>';
+ html+='</section>';
+ }
  html+='<p class="al-v2-footnote">Saldo calculado a partir dos registros no Alicerce. Não há sincronização automática com a operadora.</p></div>';
  return html;
 }

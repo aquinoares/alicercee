@@ -64,3 +64,51 @@
 .al-v2-footnote{text-align:center;font-size:10px;line-height:1.6;color:var(--text2);margin:22px 9px 0}
 @media(max-width:370px){.al-v2-hero{padding:18px}.al-v2-quick{gap:6px}.al-v2-quick .al-v2-action{font-size:10px}.al-v2-mini-metrics strong{font-size:14px}}
 @media(prefers-reduced-motion:reduce){.al-v2-hero,.al-v2-action{transition:none!important}}
+
+/* AL-BENEFITS-V3 — orbital premium palette, scoped to the benefits module */
+.app:has(.al-benefits-v3),.al-benefits-v3{--accent:#8ab2f3;--accent-light:#a4c4fa;--on-accent:#10213a;--tint-accent:rgba(85,127,203,.14);--chrome:#274c83}
+[data-theme="claro"] .app:has(.al-benefits-v3),[data-theme="marinho"] .app:has(.al-benefits-v3),[data-theme="claro"] .al-benefits-v3,[data-theme="marinho"] .al-benefits-v3{--accent:#345ca5;--accent-light:#345ca5;--on-accent:#fff;--chrome:#345ca5}
+.app:has(.al-benefits-v3){width:100%;max-width:420px;min-width:0}
+.al-benefits-v3{width:100%;max-width:420px;min-width:0;align-self:stretch;margin:0 auto;padding:16px 16px calc(105px + env(safe-area-inset-bottom,0px))!important}
+.al-benefits-v3>*{min-width:0;max-width:100%}
+.al-benefits-v3 .al-v2-header{padding:0;gap:10px}
+.al-benefits-v3 .al-v2-header>div{flex:1;min-width:0}
+.al-benefits-v3 .al-v2-header h2{font-size:25px;font-weight:750;letter-spacing:-.04em;overflow-wrap:anywhere}
+.al-benefits-v3 .al-v2-eyebrow{letter-spacing:.08em;font-size:10px;font-weight:650}
+.al-benefits-v3 .al-v2-back{width:44px;height:44px;flex:0 0 44px}
+.al-benefits-v3 .al-v3-orb{width:48px;height:48px;flex:0 0 48px;background:none;border:0;padding:0}
+.al-benefits-v3 .al-v2-intro{margin:9px 0 16px;line-height:1.45;font-size:12px}
+.al-benefits-v3 .al-v2-wallets{gap:7px;padding:2px 0 12px;overscroll-behavior-x:contain}
+.al-benefits-v3 .al-v2-wallet-choice{border-radius:12px;min-height:44px;padding:9px 11px;max-width:85%;white-space:normal;text-align:left;overflow-wrap:anywhere}
+.al-benefits-v3 .al-v2-wallet-choice.selected{background:var(--tint-accent);border-color:var(--accent)}
+.al-benefits-v3 .al-v2-wallet-dot{background:var(--accent);flex:0 0 7px}
+.al-benefits-v3 .al-v2-hero{min-height:0;padding:19px;border-radius:23px;background:radial-gradient(circle at 100% 0%,rgba(133,202,255,.17),transparent 55%),linear-gradient(135deg,#10243d,#152f49 62%,#193b50);border:1px solid rgba(137,182,236,.23);box-shadow:0 12px 28px rgba(4,13,28,.17);color:#f3f8ff}
+.al-benefits-v3 .al-v2-card-symbol{color:#e2f4ff;border-color:rgba(187,217,255,.3);background:rgba(133,202,255,.1)}
+.al-benefits-v3 .al-v2-card-name{margin-top:15px;font-size:15px;overflow-wrap:anywhere}
+.al-benefits-v3 .al-v2-balance-label{color:#b9cde4;opacity:1}
+.al-benefits-v3 .al-v2-balance{font-size:clamp(27px,8vw,39px);font-weight:750}
+.al-benefits-v3 .al-v2-hero-footer{margin-top:17px;line-height:1.3;color:#c5daf4;opacity:1;border-top:1px solid rgba(187,217,255,.17);padding-top:11px}
+.al-benefits-v3 .al-v2-quick{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.al-benefits-v3 .al-v2-quick .al-v2-action{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:8px 6px;border-radius:13px;font-size:12px;line-height:1.25;white-space:normal}
+.al-benefits-v3 .al-v2-quick svg{width:19px;height:19px;flex:0 0 19px;color:var(--accent)}
+.al-benefits-v3 .al-v2-quick .al-v2-action.active{background:var(--tint-accent);border-color:var(--accent)}
+.al-benefits-v3 .al-v2-action,.al-benefits-v3 .al-v2-secondary,.al-benefits-v3 .al-v2-tiny-danger,.al-benefits-v3 .al-v2-danger{min-height:44px;box-shadow:none}
+.al-benefits-v3 .al-v2-primary{background:#345ca5;color:white;border-color:#345ca5;min-height:48px;box-shadow:none}
+.al-benefits-v3 .al-v2-panel{background:var(--surface);border-radius:18px;padding:16px;margin-top:14px}
+.al-benefits-v3 .al-v2-panel .input{min-height:46px;font-size:16px;max-width:100%;background:var(--surface2);color:var(--text)}
+.al-benefits-v3 .al-v2-panel label:not(.al-v2-check){font-size:12px}
+.al-benefits-v3 .al-v2-mini-metrics{gap:8px;margin-top:14px}
+.al-benefits-v3 .al-v2-mini-metrics>div{background:var(--surface);border-radius:15px;padding:13px 10px}
+.al-benefits-v3 .al-v2-mini-metrics strong{font-size:clamp(13px,4.4vw,18px)}
+.al-benefits-v3 .al-v2-history{margin-top:20px}
+.al-benefits-v3 .al-v2-entries{border-radius:16px;background:var(--surface)}
+.al-benefits-v3 .al-v2-entry{gap:8px;padding:12px 10px}
+.al-benefits-v3 .al-v2-entry-icon{flex-basis:32px;height:32px;border-radius:10px}
+.al-benefits-v3 .al-v2-entry-icon.debit{background:var(--tint-accent);color:var(--accent)}
+.al-benefits-v3 .al-v2-entry-icon.credit,.al-benefits-v3 .al-v2-entry-amount.credit{color:var(--positive)}
+.al-benefits-v3 .al-v2-entry-amount{max-width:43%;white-space:normal;overflow-wrap:anywhere;text-align:right}
+.al-benefits-v3 .al-v2-control-row{margin:0 9px 6px}
+.al-benefits-v3 .al-v2-danger,.al-benefits-v3 .al-v2-tiny-danger{color:var(--negative)}
+.al-benefits-v3 .al-v2-footnote{margin:16px 4px 0;font-size:11px}
+.al-benefits-v3 button:focus-visible,.al-benefits-v3 input:focus-visible,.al-benefits-v3 select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:360px){.al-benefits-v3{padding-left:11px!important;padding-right:11px!important}.al-benefits-v3 .al-v2-header h2{font-size:22px}.al-benefits-v3 .al-v2-hero{padding:15px}.al-benefits-v3 .al-v2-quick .al-v2-action{font-size:11px;gap:5px}.al-benefits-v3 .al-v2-quick svg{width:16px;height:16px;flex-basis:16px}}
