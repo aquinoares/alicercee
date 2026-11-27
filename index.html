@@ -7042,6 +7042,9 @@ AlicerceIA._tratarEdicao=function(message,row){
     var cards=Store.cards||[];
     if(!cards.length){
       this._pendingExpenseEdit=null;
+      // An explicitly identified existing expense should remain accessible for review.
+      // Returning false allows the caller to render the original expense action.
+      if(row&&this._entenderMovimentacao(message))return false;
       this._responderNoChat('Cadastre o cartão em Cartões e depois peça a correção pelo nome da despesa.');
       return true;
     }
