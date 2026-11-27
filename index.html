@@ -3017,6 +3017,61 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 .al-cartoes-premium button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media(max-width:360px){.cc2-page.cc2-redesign.al-cartoes-premium{padding-left:11px;padding-right:11px}.cc2-page.cc2-redesign.al-cartoes-premium .cc2-card{padding:13px}.al-cartoes-premium .ccr-title{font-size:22px}.al-cartoes-premium .ccr-csum{gap:8px}.al-cartoes-premium .cc-story{padding:10px}}
 </style>
+
+<style id="al-loans-calendar-premium">
+.app:has(.al-fin-premium),.al-fin-premium{--accent:#8ab2f3;--accent-light:#a4c4fa;--on-accent:#10213a;--tint-accent:rgba(85,127,203,.14);--chrome:#274c83}
+[data-theme="claro"] .app:has(.al-fin-premium),[data-theme="marinho"] .app:has(.al-fin-premium),[data-theme="claro"] .al-fin-premium,[data-theme="marinho"] .al-fin-premium{--accent:#345ca5;--accent-light:#345ca5;--on-accent:#fff;--chrome:#345ca5}
+.app:has(.al-fin-premium){width:100%;max-width:420px;min-width:0}
+.al-fin-premium{width:100%;max-width:100%;min-width:0;align-self:stretch;margin:0;padding:16px 16px calc(105px + env(safe-area-inset-bottom,0px));box-sizing:border-box;color:var(--text)}
+.al-fin-premium>*{min-width:0;max-width:100%;box-sizing:border-box}
+.af-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 16px}
+.af-head>div{flex:1;min-width:0}.af-head small{font-size:11px;letter-spacing:.08em;color:var(--text2);font-weight:700}
+.af-head h1{font-size:25px;line-height:1.2;letter-spacing:-.04em;margin:4px 0 0;font-weight:750;overflow-wrap:anywhere}
+.af-orb{width:50px;height:50px;padding:0;border:0;background:none;flex:0 0 50px}
+.af-hero{padding:20px;border-radius:23px;background:radial-gradient(circle at 100% 0%,transparent 67px,rgba(164,208,255,.17) 68px,rgba(164,208,255,.04) 69px,rgba(164,208,255,.04) 90px,rgba(164,208,255,.025) 91px,rgba(164,208,255,.025) 112px,transparent 113px),linear-gradient(135deg,#10243d,#152f49 60%,#193b50);border:1px solid rgba(137,182,236,.23);color:#f3f8ff}
+.af-hero small{display:block;color:#b9cde4;font-size:11px}
+.af-hero strong{display:block;font-size:clamp(24px,7vw,34px);letter-spacing:-.04em;overflow-wrap:anywhere;font-weight:750;margin:5px 0}
+.af-hero .af-hero-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border-top:1px solid rgba(187,217,255,.17);margin-top:13px;padding-top:13px}
+.af-hero-grid>div{min-width:0}.af-hero-grid strong{font-size:clamp(14px,4.6vw,21px);letter-spacing:-.015em}
+.af-green{color:#79d9bb}.af-blue{color:#b5d6ff}
+.af-bar{height:8px;display:flex;overflow:hidden;border-radius:8px;background:rgba(255,255,255,.15);margin-top:14px}
+.af-bar span{display:block;height:100%;min-width:0}.af-bar .af-in{background:#79d9bb}.af-bar .af-out{background:#83aaf0}
+.af-card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 12px;margin:12px 0;min-width:0}
+.af-card h2{font-size:15px;font-weight:750;margin:0 0 8px}
+.af-section-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.af-section-head h2{margin:0}.af-section-head small,.af-note{font-size:11px;color:var(--text2);line-height:1.45}
+.af-row{display:flex;align-items:center;justify-content:space-between;gap:9px;width:100%;min-height:50px;text-align:left;padding:10px 0;border-top:1px solid var(--line);color:var(--text)}
+.af-row:first-of-type{border-top:0}.af-row-copy{flex:1;min-width:0;overflow-wrap:anywhere}
+.af-row-copy strong{display:block;font-size:13px}.af-row-copy small{display:block;color:var(--text2);font-size:11px;margin-top:3px}
+.af-row-value{font-size:13px;font-weight:750;text-align:right;max-width:46%;overflow-wrap:anywhere}
+.af-row .af-chevron{color:var(--text2);flex-shrink:0}
+.af-row-icon{width:32px;height:32px;flex:0 0 32px;border-radius:10px;background:var(--tint-accent);color:var(--accent);display:flex;align-items:center;justify-content:center}
+.af-primary{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:46px;border-radius:13px;background:#345ca5!important;color:#fff!important;font-weight:700;font-size:13px;margin:12px 0;border:0}
+.af-back{display:flex;gap:8px;align-items:center;color:var(--text2);min-height:42px;font-size:12px;margin-bottom:8px}
+.af-cal-card{padding:13px 10px}
+.af-cal-period{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:9px}
+.af-cal-period button{width:39px;height:39px;border-radius:10px;background:var(--surface2);color:var(--text);font-size:22px}
+.af-cal-period strong{font-size:15px;text-transform:capitalize;text-align:center}
+.al-fin-premium .cal-grid{grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;margin:6px 0}
+.al-fin-premium .cal-header-cell{font-size:10px;padding:5px 0}
+.al-fin-premium .cal-day{min-width:0;min-height:38px;aspect-ratio:auto;border-radius:10px;font-size:12px;color:var(--text);background:transparent;border:1px solid transparent}
+.al-fin-premium .cal-day.today{background:var(--surface2);border-color:var(--accent);color:var(--text)}
+.al-fin-premium .cal-day[aria-pressed=true]{background:#345ca5;color:#fff;font-weight:750;border-color:#345ca5}
+.al-fin-premium .cal-day.has-event::after{background:var(--accent);bottom:3px;width:4px;height:4px}
+.al-fin-premium .cal-day[aria-pressed=true].has-event::after{background:#dcecff}
+.af-cal-legend{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 2px 0;font-size:10px;color:var(--text2)}
+.af-cal-legend span:first-child{display:flex;align-items:center;gap:5px}.af-cal-legend i{width:6px;height:6px;background:var(--accent);border-radius:50%}
+.af-day-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0 0}
+.af-day-grid>div{min-width:0;background:var(--surface2);border-radius:12px;padding:11px}
+.af-day-grid small{display:block;color:var(--text2);font-size:11px}.af-day-grid strong{font-size:15px;display:block;margin-top:4px;overflow-wrap:anywhere}
+.af-day-result{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:12px;margin-top:12px;border-top:1px solid var(--line);font-size:12px}
+.af-day-result strong{font-size:17px;overflow-wrap:anywhere;text-align:right;min-width:0}
+.af-check{display:flex;align-items:center;gap:9px;width:100%;padding:11px 0;border-top:1px solid var(--line);text-align:left;min-height:44px;color:var(--text)}
+.af-check .check-box{flex-shrink:0}.af-check>span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere;font-size:12px}
+.af-check>strong{font-size:12px;max-width:40%;text-align:right;overflow-wrap:anywhere}
+.al-fin-premium button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:360px){.al-fin-premium{padding-left:11px;padding-right:11px}.af-hero{padding:16px}.af-head h1{font-size:22px}.af-card{padding:12px 9px}.al-fin-premium .cal-grid{gap:2px}.al-fin-premium .cal-day{min-height:35px}}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -14300,6 +14355,9 @@ function saveCompraExistente(cardId){
 }
 
 /* EMPRESTIMOS */
+function alFinHeader(title){
+  return '<header class="af-head"><div><small>ALICERCE</small><h1>'+esc(title)+'</h1></div><button type="button" class="af-orb" aria-label="Conversar com Alicia" onclick="go(\'assistente\')">'+aliciaOrb()+'</button></header>';
+}
 function renderEmprestimos(){
   const loans=(Store.loans||[]).filter(l=>l&&l.fromCard!==true);
   const aReceber=loans.filter(l=>l.tipo==='emprestei');
@@ -14307,42 +14365,41 @@ function renderEmprestimos(){
   const lp=Store.calcLoanPending();
   const totalReceber=aReceber.reduce((s,l)=>s+Number((lp.byLoan[l.id]||{}).receber||0),0);
   const totalPagar=aPagar.reduce((s,l)=>s+Number((lp.byLoan[l.id]||{}).pagar||0),0);
-  let html='<div class="content">';
-  html+='<div class="balance-grid mt-4"><div class="balance-item"><div class="bi-label">'+t('aReceber')+'</div><div class="bi-value text-green">'+fmtMoney(totalReceber)+'</div></div><div class="balance-item"><div class="bi-label">'+t('aPagar')+'</div><div class="bi-value text-red">'+fmtMoney(totalPagar)+'</div></div></div>';
-  html+='<div class="section-title">'+t('emprestei')+'</div>';
-  if(aReceber.length===0)html+='<p class="text-muted text-sm">'+t('semDados')+'</p>';
-  aReceber.forEach(l=>{
-    const remaining=(lp.byLoan[l.id]||{receber:0}).receber;
-    html+='<div class="list-item" onclick="go(\'loanDetail\',{id:\''+esc(l.id)+'\'})"><div class="li-left"><div class="li-info"><div class="li-name">'+esc(l.pessoa)+'</div><div class="li-sub">'+(l.parcelas||1)+'x</div></div></div><div class="li-right"><div class="li-amount text-green">'+fmtMoney(remaining)+'</div></div></div>';
+  const total=Math.max(0,totalReceber)+Math.max(0,totalPagar);
+  let html='<div class="content al-fin-premium al-loans-premium" id="al-loans-premium">'+alFinHeader(t('emprestimos'));
+  html+='<section class="af-hero"><small>'+esc(t('aReceber'))+'</small><strong class="af-green">'+fmtMoney(totalReceber)+'</strong><div class="af-hero-grid"><div><small>'+esc(t('aPagar'))+'</small><strong class="af-blue">'+fmtMoney(totalPagar)+'</strong></div><div><small>Empréstimos cadastrados</small><strong>'+loans.length+'</strong></div></div>';
+  if(total>0)html+='<div class="af-bar" role="img" aria-label="Proporção dos valores a receber e a pagar"><span class="af-in" style="width:'+Math.max(0,totalReceber)/total*100+'%"></span><span class="af-out" style="width:'+Math.max(0,totalPagar)/total*100+'%"></span></div>';
+  html+='</section><button type="button" class="af-primary" onclick="go(\'addEmprestimo\')">'+icon('plus','ico-sm')+' '+esc(t('novoEmprestimo'))+'</button>';
+  [[aReceber,'receber',t('emprestei')],[aPagar,'pagar',t('pegueiEmprestado')]].forEach(function(group){
+    html+='<section class="af-card"><div class="af-section-head"><h2>'+esc(group[2])+'</h2><small>'+group[0].length+' registro(s)</small></div>';
+    if(!group[0].length)html+='<p class="af-note">'+esc(t('semDados'))+'</p>';
+    group[0].forEach(function(l){
+      const remaining=Number((lp.byLoan[l.id]||{})[group[1]]||0);
+      html+='<button type="button" class="af-row" data-loan-id="'+esc(l.id)+'" onclick="go(\'loanDetail\',{id:this.dataset.loanId})"><span class="af-row-icon">'+icon(group[1]==='receber'?'arrowLeft':'arrowRight','ico-sm')+'</span><span class="af-row-copy"><strong>'+esc(l.pessoa||t('pessoa'))+'</strong><small>'+(l.parcelas||1)+' parcela(s) · '+(remaining<=0?'Quitado':'Pendente')+'</small></span><strong class="af-row-value">'+fmtMoney(remaining)+'</strong><span class="af-chevron" aria-hidden="true">›</span></button>';
+    });
+    html+='</section>';
   });
-  html+='<div class="section-title">'+t('pegueiEmprestado')+'</div>';
-  if(aPagar.length===0)html+='<p class="text-muted text-sm">'+t('semDados')+'</p>';
-  aPagar.forEach(l=>{
-    const remaining=(lp.byLoan[l.id]||{pagar:0}).pagar;
-    html+='<div class="list-item" onclick="go(\'loanDetail\',{id:\''+esc(l.id)+'\'})"><div class="li-left"><div class="li-info"><div class="li-name">'+esc(l.pessoa)+'</div></div></div><div class="li-right"><div class="li-amount text-red">'+fmtMoney(remaining)+'</div></div></div>';
-  });
-  html+='<button class="btn btn-primary btn-block mt-4" onclick="go(\'addEmprestimo\')">'+t('novoEmprestimo')+'</button></div>';
-  return html;
+  return html+'</div>';
 }
-
 function renderLoanDetail(){
   const id=Store.screenData&&Store.screenData.id;
   const loan=(Store.loans||[]).find(l=>l&&l.id===id);
-  if(!loan)return '<div class="content"><button class="btn btn-secondary btn-sm mt-4" onclick="go(\'emprestimos\')">'+icon('back','ico-sm')+' '+t('emprestimos')+'</button><div class="card mt-4"><p class="text-muted">'+t('semDados')+'</p></div></div>';
+  let html='<div class="content al-fin-premium al-loans-premium"><button type="button" class="af-back" onclick="go(\'emprestimos\')">'+icon('back','ico-sm')+' '+esc(t('emprestimos'))+'</button>';
+  if(!loan)return html+'<section class="af-card"><p class="af-note">'+esc(t('semDados'))+'</p></section></div>';
   const insts=(Store.installments||[]).filter(i=>i&&i.loanId===id).slice().sort((a,b)=>(Number(a.parcelaAtual)||0)-(Number(b.parcelaAtual)||0));
   const total=Number(loan.valorTotal)||0;
   const paid=insts.filter(i=>(i.tipo==='cartao'&&i.loanId)?i.recebido===true:(i.status==='pago'||i.status==='recebido')).reduce((s,i)=>s+(Number(i.valor)||0),0);
   const remaining=total-paid;
-  let html='<div class="content">';
-  html+='<button class="btn btn-secondary btn-sm mt-4" onclick="go(\'emprestimos\')">'+icon('back','ico-sm')+' '+t('emprestimos')+'</button>';
-  html+='<h2 class="mt-4">'+esc(loan.pessoa||t('pessoa'))+'</h2>';
-  html+='<div class="card mt-4"><div class="card-row"><span class="card-row-label">'+t('valorEmprestado')+'</span><span class="card-row-value">'+fmtMoney(total)+'</span></div><div class="card-row"><span class="card-row-label">'+t('recebido')+'</span><span class="card-row-value text-green">'+fmtMoney(paid)+'</span></div><div class="card-row"><span class="card-row-label">'+t('restante')+'</span><span class="card-row-value text-red">'+fmtMoney(remaining)+'</span></div></div>';
-  html+='<div class="section-title">'+t('parcelas')+'</div>';
-  insts.forEach(i=>{
+  const pct=total>0?Math.max(0,Math.min(100,100*paid/total)):0;
+  html+=alFinHeader(loan.pessoa||t('pessoa'));
+  html+='<section class="af-hero"><small>'+esc(t('restante'))+'</small><strong>'+fmtMoney(remaining)+'</strong><div class="af-hero-grid"><div><small>'+esc(t('valorEmprestado'))+'</small><strong>'+fmtMoney(total)+'</strong></div><div><small>'+(loan.tipo==='peguei'?'Pago':esc(t('recebido')))+'</small><strong class="af-green">'+fmtMoney(paid)+'</strong></div></div><div class="af-bar" role="progressbar" aria-label="Progresso das parcelas" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(pct)+'"><span class="af-in" style="width:'+pct+'%"></span></div><small style="margin-top:8px">'+Math.round(pct)+'% concluído</small></section>';
+  html+='<section class="af-card"><div class="af-section-head"><h2>'+esc(t('parcelas'))+'</h2><small>'+insts.length+' parcela(s)</small></div>';
+  if(!insts.length)html+='<p class="af-note">'+esc(t('semDados'))+'</p>';
+  insts.forEach(function(i){
     const done=(i.tipo==='cartao'&&i.loanId)?i.recebido===true:(i.status==='pago'||i.status==='recebido');
-    html+='<div class="check-item" onclick="Store.processInstallmentPayment(\''+i.id+'\');render()"><div class="check-box'+(done?' checked':'')+'">'+icon('check','ico-sm')+'</div><span>'+t('parcela')+' '+(i.parcelaAtual!=null?i.parcelaAtual:'-')+' - '+(i.data?fmtDate(i.data):'—')+'</span><span style="margin-left:auto;font-weight:600">'+fmtMoney(Number(i.valor)||0)+'</span></div>';
+    html+='<button type="button" class="af-check" role="checkbox" aria-checked="'+done+'" data-installment-id="'+esc(i.id)+'" onclick="Store.processInstallmentPayment(this.dataset.installmentId);render()"><span class="check-box'+(done?' checked':'')+'">'+icon('check','ico-sm')+'</span><span>'+esc(t('parcela'))+' '+(i.parcelaAtual!=null?esc(i.parcelaAtual):'-')+' · '+(i.data?fmtDate(i.data):'—')+'</span><strong>'+fmtMoney(Number(i.valor)||0)+'</strong></button>';
   });
-  html+='<button class="btn btn-primary btn-block mt-4" onclick="registerPayment(\''+id+'\')">'+t('registrarPagamento')+'</button></div>';
+  html+='</section><button type="button" class="af-primary" data-loan-id="'+esc(id)+'" onclick="registerPayment(this.dataset.loanId)">'+esc(t('registrarPagamento'))+'</button></div>';
   return html;
 }
 function registerPayment(loanId){
@@ -14352,38 +14409,51 @@ function registerPayment(loanId){
 }
 
 /* CALENDARIO */
+function alCalendarPeriod(){
+  const now=Clock.now(),data=Store.screenData||{};
+  const m=Number(data.month),y=Number(data.year);
+  return {month:Number.isInteger(m)&&m>=1&&m<=12?m:now.getMonth()+1,year:Number.isInteger(y)&&y>=1900&&y<=9999?y:now.getFullYear()};
+}
 function renderCalendario(){
-  const now=Clock.now();
-  const d=Store.screenData||{month:now.getMonth()+1,year:now.getFullYear()};
-  const month=d.month,year=d.year;
+  const d=alCalendarPeriod(),month=d.month,year=d.year;
   const mn=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-  const daysInMonth=new Date(year,month,0).getDate();
-  const firstDay=new Date(year,month-1,1).getDay();
-  const todayStr=today();
-  let html='<div class="content">';
-  html+='<div class="cat-header"><button class="header-btn" onclick="changeCalMonth(-1)">'+icon('arrowLeft')+'</button><div style="text-align:center"><div class="text-sm text-muted">'+t(mn[month-1])+' '+year+'</div></div><button class="header-btn" onclick="changeCalMonth(1)">'+icon('arrowRight')+'</button></div>';
-  html+='<div class="cal-grid">';
-  [t('dom'),t('seg'),t('ter'),t('qua'),t('qui'),t('sex'),t('sab')].forEach(h=>{html+='<div class="cal-header-cell">'+h+'</div>'});
-  for(let i=0;i<firstDay;i++)html+='<div class="cal-day out"></div>';
-  for(let day=1;day<=daysInMonth;day++){
-    const dateStr=year+'-'+String(month).padStart(2,'0')+'-'+String(day).padStart(2,'0');
-    const events=Store.getDayEvents(dateStr);const isToday=dateStr===todayStr;
-    html+='<div class="cal-day'+(isToday?' today':'')+(events.length>0?' has-event':'')+'" onclick="selectDay(\''+dateStr+'\')">'+day+'</div>';
-  }
-  html+='</div>';
-  const selectedDate=Store.screenData&&Store.screenData.selectedDate;
-  if(selectedDate){
-    const dc=Store.getDayClose(selectedDate);
-    html+='<div class="section-title">'+fmtDate(selectedDate)+'</div>';
-    Store.getDayEvents(selectedDate).forEach(e=>{html+='<div class="list-item"'+(e.tipo==='lembrete'?' onclick="go(\'lembreteDetail\',{id:\''+e.id+'\',date:\''+selectedDate+'\'})"':'')+'><div class="li-info"><div class="li-name">'+esc(e.descricao)+'</div>'+(e.concluido?'<div class="li-sub">'+t('feito')+'</div>':'')+'</div></div>'});
-    html+='<div class="day-close"><div class="day-close-row"><span class="text-green">'+t('entrar')+'</span><span class="text-green">'+fmtMoney(dc.entradas)+'</span></div><div class="day-close-row"><span class="text-red">'+t('sair')+'</span><span class="text-red">-'+fmtMoney(dc.saidas)+'</span></div><div class="day-close-total"><span>'+t('resultado')+'</span><span class="'+(dc.resultado>=0?'text-green':'text-red')+'">'+(dc.resultado>=0?'+':'')+fmtMoney(dc.resultado)+'</span></div></div>';
-    html+='<div class="section-title">'+t('impacto')+'</div><div class="card"><p class="text-muted text-sm">'+t('impacto')+': '+fmtMoney(dc.resultado)+'</p></div>';
-  }
-  html+='<button class="btn btn-primary btn-block mt-4" onclick="go(\'addCompromisso\')">'+t('novoCompromisso')+'</button></div>';
+  const daysInMonth=new Date(year,month,0).getDate(),firstDay=new Date(year,month-1,1).getDay();
+  const todayStr=today(),prefix=year+'-'+String(month).padStart(2,'0');
+  const dates=Array.from({length:daysInMonth},(_,i)=>prefix+'-'+String(i+1).padStart(2,'0'));
+  const byDate=Object.fromEntries(dates.map(date=>[date,Store.getDayEvents(date)]));
+  const eventDays=dates.filter(date=>byDate[date].length>0);
+  const wanted=Store.screenData&&Store.screenData.selectedDate;
+  const selectedDate=dates.includes(wanted)?wanted:dates.includes(todayStr)?todayStr:eventDays[0]||dates[0];
+  let html='<div class="content al-fin-premium al-calendar-premium" id="al-calendar-premium">'+alFinHeader(t('calendario'));
+  html+='<section class="af-card af-cal-card"><div class="af-cal-period"><button type="button" aria-label="Mês anterior" onclick="changeCalMonth(-1)">‹</button><strong>'+esc(t(mn[month-1]))+' '+year+'</strong><button type="button" aria-label="Próximo mês" onclick="changeCalMonth(1)">›</button></div><div class="cal-grid">';
+  [t('dom'),t('seg'),t('ter'),t('qua'),t('qui'),t('sex'),t('sab')].forEach(h=>{html+='<div class="cal-header-cell">'+esc(h)+'</div>'});
+  for(let i=0;i<firstDay;i++)html+='<div class="cal-day out" aria-hidden="true"></div>';
+  dates.forEach(function(dateStr,index){
+    const events=byDate[dateStr],isToday=dateStr===todayStr;
+    html+='<button type="button" class="cal-day'+(isToday?' today':'')+(events.length?' has-event':'')+'" data-date="'+dateStr+'" aria-pressed="'+(dateStr===selectedDate)+'" aria-label="'+esc(fmtDate(dateStr)+' · '+events.length+' registro(s)')+'"'+(isToday?' aria-current="date"':'')+' onclick="selectDay(this.dataset.date)">'+(index+1)+'</button>';
+  });
+  html+='</div><div class="af-cal-legend"><span><i></i> Dia com registros</span><span>'+eventDays.length+' dias neste mês</span></div></section>';
+  html+='<button type="button" class="af-primary" onclick="go(\'addCompromisso\')">'+icon('plus','ico-sm')+' '+esc(t('novoCompromisso'))+'</button>';
+  const dc=Store.getDayClose(selectedDate),events=byDate[selectedDate]||[];
+  html+='<section class="af-card"><div class="af-section-head"><h2>'+esc(fmtDate(selectedDate))+'</h2><small>'+events.length+' registro(s)</small></div>';
+  if(!events.length)html+='<p class="af-note">Nenhum compromisso ou lançamento neste dia.</p>';
+  events.forEach(function(e){
+    const reminder=e.tipo==='lembrete';
+    const labels={entrada:'Entrada registrada',gasto:'Saída registrada',parcela:'Parcela pendente',compromisso:'Compromisso',lembrete:e.concluido?t('feito'):'Lembrete'};
+    const action=reminder?'button':'div';
+    html+='<'+action+' class="af-row"'+(reminder?' type="button" data-event-id="'+esc(e.id)+'" data-date="'+selectedDate+'" onclick="go(\'lembreteDetail\',{id:this.dataset.eventId,date:this.dataset.date})"':'')+'><span class="af-row-icon">'+icon(e.tipo==='entrada'?'arrowLeft':e.tipo==='gasto'?'arrowRight':'calendario','ico-sm')+'</span><span class="af-row-copy"><strong>'+esc(e.descricao||labels[e.tipo]||'Registro')+'</strong><small>'+esc(labels[e.tipo]||'Registro')+'</small></span>'+(Number(e.valor)?'<strong class="af-row-value">'+fmtMoney(Number(e.valor))+'</strong>':'')+(reminder?'<span class="af-chevron" aria-hidden="true">›</span>':'')+'</'+action+'>';
+  });
+  html+='</section><section class="af-card"><h2>Movimento realizado no dia</h2><div class="af-day-grid"><div><small>'+esc(t('entrar'))+'</small><strong class="text-green">'+fmtMoney(dc.entradas)+'</strong></div><div><small>'+esc(t('sair'))+'</small><strong>'+fmtMoney(dc.saidas)+'</strong></div></div><div class="af-day-result"><span>'+esc(t('resultado'))+'</span><strong class="'+(dc.resultado>=0?'text-green':'text-red')+'">'+fmtMoney(dc.resultado)+'</strong></div><p class="af-note" style="margin-top:8px">Compromissos pendentes não entram no caixa realizado.</p></section></div>';
   return html;
 }
-function changeCalMonth(dir){const d=Store.screenData||{month:Clock.now().getMonth()+1,year:Clock.now().getFullYear()};d.month+=dir;if(d.month>12){d.month=1;d.year++}if(d.month<1){d.month=12;d.year--}Store.screenData=d;render()}
-function selectDay(dateStr){if(!Store.screenData)Store.screenData={};Store.screenData.selectedDate=dateStr;render()}
+function changeCalMonth(dir){
+  const d=alCalendarPeriod(),next=new Date(d.year,d.month-1+Number(dir),1);
+  Store.screenData={month:next.getMonth()+1,year:next.getFullYear()};render();
+}
+function selectDay(dateStr){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr)))return;
+  Store.screenData={month:Number(dateStr.slice(5,7)),year:Number(dateStr.slice(0,4)),selectedDate:dateStr};render();
+}
 
 /* ============================================================
    VISAO FINANCEIRA — NOVO MOTOR
