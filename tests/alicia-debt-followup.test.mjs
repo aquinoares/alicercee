@@ -495,3 +495,144 @@ testCase('Alicia responde simulação sem cadastrar dívida, receita ou pagament
   assert.equal(Store.commitments.length,1);
   assert.equal(Store.movements.length,0);
 });
+
+
+testCase('negação não confirma pagamento nem cria saída de caixa', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  const reply = api.handleMessage(AlicerceIA, 'Ainda não paguei a conta de energia de R$ 150,00 que venceu em 20/10');
+  assert.match(reply, /Cadastrei/);
+  assert.equal(Store.commitments.length, 1);
+  assert.equal(Store.commitments[0].paymentStatus, 'pendente');
+  assert.equal(Store.movements.length, 0);
+  assert.equal(api.getOverview().overdueTotal, 150);
+});
+
+testCase('vou pagar no dia 30 é obrigação futura, não gasto realizado', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  api.handleMessage(AlicerceIA, 'Vou pagar aluguel de R$ 700 dia 30');
+  assert.equal(Store.commitments.length, 1);
+  assert.equal(Store.commitments[0].data, '2026-11-30');
+  assert.equal(Store.commitments[0].paymentStatus, 'pendente');
+  assert.equal(Store.movements.length, 0);
+});
+
+testCase('negação em complemento de cadastro permanece pendente', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  api.handleMessage(AlicerceIA, 'Tenho uma conta antiga de internet de R$ 100');
+  api.handleMessage(AlicerceIA, 'Venceu em 20/10 e não paguei');
+  assert.equal(Store.commitments.length, 1);
+  assert.equal(Store.commitments[0].paymentStatus, 'pendente');
+  assert.equal(Store.movements.length, 0);
+});
+
+testCase('intenção de pagar amanhã não quita conta acompanhada', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.installments.push({ id: 'future', tipo: 'pagar', descricao: 'Parcela', valor: 500, data: '2026-11-04', status: 'pendente' });
+  AlicerceIA._pendingPaymentCheck = { key: 'installment:future' };
+  api.handleMessage(AlicerceIA, 'Vou pagar amanhã');
+  assert.equal(Store.installments[0].status, 'pendente');
+  assert.equal(Store.movements.length, 0);
+});
+
+testCase('pergunta sobre contas pagas não inicia um novo cadastro', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  api.handleMessage(AlicerceIA, 'Quais contas eu já paguei?');
+  assert.equal(AlicerceIA._pendingDebtDraft, null);
+  assert.equal(Store.commitments.length, 0);
+  assert.equal(Store.movements.length, 0);
+});
+
+testCase('pagamento parcial não quita a dívida integral', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  api.handleMessage(AlicerceIA, 'Paguei metade da conta de energia de R$ 150');
+  assert.equal(Store.commitments.length, 0);
+  assert.equal(Store.movements.length, 0);
+});
+
+testCase('pagamento explícito preserva data real e não fica pendente', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  api.handleMessage(AlicerceIA, 'Paguei ontem aluguel de R$ 700');
+  assert.equal(Store.commitments.length, 1);
+  assert.equal(Store.commitments[0].paymentStatus, 'pago');
+  assert.equal(Store.movements.length, 1);
+  assert.equal(Store.movements[0].data, '2026-11-03');
+});
+
+
+testCase('filtros separam dívidas vencidas, de hoje, futuras e pagas', () => {
+  const { Store, api } = createContext();
+  Store.commitments.push(
+    {id:'old',tipo:'conta',descricao:'Energia',valor:150,data:'2026-10-30',status:'pendente'},
+    {id:'today',tipo:'conta',descricao:'Internet',valor:100,data:'2026-11-04',status:'pendente'},
+    {id:'future',tipo:'conta',descricao:'Aluguel',valor:700,data:'2026-11-30',status:'pendente'},
+    {id:'paid',tipo:'conta',descricao:'Água',valor:90,data:'2026-11-01',status:'pago',dataPagamento:'2026-11-01'}
+  );
+  assert.equal(api.filterPayments('pendentes').length,3);
+  assert.equal(api.filterPayments('vencidas')[0].id,'old');
+  assert.equal(api.filterPayments('hoje')[0].id,'today');
+  assert.equal(api.filterPayments('futuras')[0].id,'future');
+  assert.equal(api.filterPayments('pagas')[0].id,'paid');
+  assert.match(api.renderFinancialSummary(),/Conferir pagamentos/);
+});
+
+testCase('conferência exige data real antes de baixar uma dívida', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.commitments.push({id:'bill',tipo:'conta',descricao:'Energia',valor:150,data:'2026-10-30',status:'pendente'});
+  const question = api.handleMessage(AlicerceIA,'Conferir pagamentos');
+  assert.match(question,/Essa dívida já foi paga/);
+  assert.match(question,/Energia/);
+  assert.match(api.handleMessage(AlicerceIA,'Sim'),/Em que dia/);
+  assert.equal(Store.movements.length,0);
+  api.handleMessage(AlicerceIA,'Ontem');
+  assert.equal(Store.movements.length,1);
+  assert.equal(Store.commitments[0].paymentStatus,'pago');
+  assert.equal(Store.commitments[0].dataPagamento,'2026-11-03');
+  assert.equal(api.filterPayments('pendentes').length,0);
+  assert.equal(api.openPaymentCheck(encodeURIComponent('commitment:bill')),false);
+  assert.equal(Store.movements.length,1);
+});
+
+testCase('escolher conta específica no filtro e adiar não altera valores', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.commitments.push(
+    {id:'a',tipo:'conta',descricao:'Energia',valor:150,data:'2026-11-04',status:'pendente'},
+    {id:'b',tipo:'conta',descricao:'Aluguel',valor:700,data:'2026-11-30',status:'pendente'}
+  );
+  assert.match(api.handleMessage(AlicerceIA,'Verificar pagamentos'),/Responda com o número/);
+  assert.match(api.handleMessage(AlicerceIA,'2'),/Aluguel/);
+  assert.match(api.handleMessage(AlicerceIA,'Depois'),/sem registrar pagamento/);
+  assert.equal(Store.movements.length,0);
+  assert.equal(api.filterPayments('pendentes').length,2);
+});
+
+testCase('pergunta sobre outra conta não quita a dívida selecionada', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.commitments.push({id:'bill',tipo:'conta',descricao:'Energia',valor:150,data:'2026-10-30',status:'pendente'});
+  api.handleMessage(AlicerceIA,'Conferir pagamentos');
+  api.handleMessage(AlicerceIA,'Paguei aluguel ontem');
+  assert.equal(Store.movements.length,0);
+  assert.equal(Store.commitments[0].status,'pendente');
+});
+
+
+testCase('consulta do mês inclui compromissos manuais com valor e exclui lembretes', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.commitments.push(
+    {id:'manual',tipo:'compromisso',descricao:'Assinatura ChatGPT',valor:100,data:'2026-11-30',status:'pendente'},
+    {id:'reminder',tipo:'lembrete',descricao:'Lembrete',valor:80,data:'2026-11-15',status:'pendente'},
+    {id:'appointment',tipo:'compromisso',descricao:'Reunião',valor:null,data:'2026-11-20',status:'pendente'}
+  );
+  assert.equal(api.planningSnapshot().remaining,100);
+  assert.equal(api.filterPayments('pendentes').length,1);
+  const reply=api.handleMessage(AlicerceIA,'Alicia dívidas para eu pagar ? Esse mês');
+  assert.match(reply,/Assinatura ChatGPT/);
+  assert.match(reply,/100,00/);
+  assert.equal(Store.movements.length,0);
+});
+
+testCase('consulta mensal vazia explica o limite dos registros cadastrados', () => {
+  const { AlicerceIA, api } = createContext();
+  const reply=api.handleMessage(AlicerceIA,'Dívidas para eu pagar esse mês');
+  assert.match(reply,/Não encontrei obrigações financeiras cadastradas/);
+  assert.match(reply,/sincronizada/);
+});
