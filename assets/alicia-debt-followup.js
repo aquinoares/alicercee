@@ -922,6 +922,13 @@
       var node=document.getElementById('alicerce-planning');if(node)node.outerHTML=renderPlanning();
     }catch(e){if(feedback)feedback.textContent=e.message;}
   }
+  function openPlanning(){
+    if (typeof go !== 'function') return;
+    go('visao');
+    if (typeof document === 'undefined') return;
+    var section=document.getElementById('visao-planejamento');
+    if(section){section.open=true; if(typeof section.scrollIntoView==='function') section.scrollIntoView({block:'start'});}
+  }
   function planningAsk(){
     var q=['Quais contas tenho que pagar este mês?','Como está minha evolução financeira?','Quais contas preciso pagar no próximo mês?'][planningTab];
     if(typeof AlicerceIA.experimentar==='function')AlicerceIA.experimentar(q);
@@ -1001,7 +1008,7 @@
     if (typeof original !== 'function' || original._aliciaPaymentWrapped) return;
     var wrapped = function () {
       var cards = original.apply(this, arguments) || [];
-      if (Store.userId) cards.unshift({pr:-1,type:'alicia-planning',title:'Minha evolução financeira',text:'Organize suas obrigações, simule ganhos e acompanhe os próximos 12 meses.',go:"go('visao')",lbl:'Abrir planejamento'});
+      if (Store.userId) cards.unshift({pr:-1,type:'alicia-planning',title:'Minha evolução financeira',text:'Organize suas obrigações, simule ganhos e acompanhe os próximos 12 meses.',go:"AliciaDebtFollowup.openPlanning()",lbl:'Abrir planejamento'});
       var view = getOverview();
       var candidates = view.dueToday.concat(view.overdue).filter(function (item) {
         return !item.record.paymentCheck || item.record.paymentCheck.askedAt !== today();
@@ -1156,7 +1163,6 @@
         var marker = '<button class="btn btn-secondary btn-block visao-pdf"';
         var slot = '<!-- alicia-planning-premium-slot -->';
         if (html.indexOf(slot) >= 0 && typeof root.visaoPremiumSection === 'function') {
-          var planning = planningSnapshot();
           var panel = root.visaoPremiumSection('visao-planejamento','Minha evolução','Obrigações do mês, histórico e próximos meses','calendar',renderPlanning(),false);
           panel += root.visaoPremiumSection('visao-dividas','Contas e dívidas','Vencimentos, atrasos e pagamentos confirmados','clock',renderFinancialSummary(),false);
           return html.replace(slot,panel);
@@ -1196,6 +1202,7 @@
     planningSim: planningSim,
     planningAdd: planningAdd,
     planningSave: planningSave,
+    openPlanning: openPlanning,
     planningAsk: planningAsk
   };
 
