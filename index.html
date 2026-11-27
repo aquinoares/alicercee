@@ -2629,6 +2629,52 @@ body:has(.visao-financeira){background:var(--bg)!important;color:var(--text)!imp
 .alicerce-assistant-status:not(:empty)::before{content:"";width:18px;height:18px;flex:0 0 18px;border:1.5px solid #85caff;border-right-color:#ffc08a;border-radius:50%;animation:alicia-orb-rotate 2s linear infinite;transform-origin:center}
 @media(prefers-reduced-motion:reduce){.alicerce-assistant-status:not(:empty)::before{animation:none}}
 </style>
+
+<style id="visao-premium-v3">
+.visao-financeira{max-width:720px;margin:auto;padding:14px 16px 110px!important;box-sizing:border-box}
+.visao-financeira .visao-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 18px}
+.visao-financeira .visao-logo{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--text2)!important}
+.visao-financeira .visao-subtitulo{font-size:25px;font-weight:750;letter-spacing:-.035em;line-height:1.15;margin:5px 0}
+.visao-alicia-open{width:56px;height:56px;flex:0 0 56px;border:0;border-radius:50%;background:transparent;padding:0;cursor:pointer}
+.visao-alicia-open:focus-visible,.visao-premium-section>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.visao-financeira .visao-hero{box-sizing:border-box;width:100%;min-height:0;margin:0 0 12px;padding:22px;border-radius:24px;background:linear-gradient(145deg,var(--surface2),var(--surface))!important;box-shadow:0 10px 28px rgba(0,0,0,.07)}
+.visao-financeira .visao-hero:before,.visao-financeira .visao-hero:after{display:none}
+.visao-financeira .visao-pill{padding:0;background:transparent!important;color:var(--text2)!important;font-size:12px}
+.visao-financeira .visao-saldo{white-space:normal;overflow-wrap:anywhere;font-size:clamp(26px,8vw,40px);margin-top:9px}
+.visao-financeira .visao-atualizado{font-size:11px}
+.visao-financeira .visao-caixa{margin:0 0 16px;padding:13px 12px;border-radius:20px;box-shadow:none}
+.visao-financeira .visao-caixa h2{font-size:12px;color:var(--text2);font-weight:650;margin:0 0 12px}
+.visao-financeira .visao-caixa dl{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.visao-financeira .visao-caixa dl>div{min-width:0;padding:0 5px}
+.visao-financeira .visao-caixa dl>div+div{border-left:1px solid var(--line)}
+.visao-financeira .visao-caixa dt,.visao-financeira .visao-caixa small{font-size:10px;line-height:1.3}
+.visao-financeira .visao-caixa dd{font-size:clamp(11px,3.4vw,17px);line-height:1.35;font-variant-numeric:tabular-nums}
+.visao-financeira .visao-caixa small{display:block;margin-top:4px}
+.visao-financeira .visao-premium-section{box-sizing:border-box;background:var(--surface);border:1px solid var(--line);border-radius:18px;margin:10px 0;overflow:hidden}
+.visao-premium-section>summary{display:flex;align-items:center;gap:11px;min-height:68px;padding:12px 14px;list-style:none;cursor:pointer;color:var(--text)}
+.visao-premium-section>summary::-webkit-details-marker{display:none}
+.visao-premium-section>summary::marker{content:""}
+.visao-premium-icon{width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex:0 0 36px;background:var(--tint-accent);color:var(--accent);border-radius:12px}
+.visao-premium-icon .ico{width:18px;height:18px}
+.visao-premium-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.visao-premium-copy strong{font-size:14px;font-weight:700}
+.visao-premium-copy small{font-size:11px;font-weight:400;color:var(--text2);line-height:1.3}
+.visao-premium-chevron{width:9px;height:9px;border-right:1.5px solid var(--text2);border-bottom:1.5px solid var(--text2);transform:rotate(45deg);margin:0 3px 4px 4px;flex:0 0 9px}
+.visao-premium-section[open]>summary .visao-premium-chevron{transform:rotate(225deg);margin-bottom:-4px}
+.visao-premium-body{padding:0 12px 12px;min-width:0}
+.visao-premium-body #alicerce-planning{margin:0!important;padding:10px 2px!important;border:0!important;background:transparent!important;box-shadow:none}
+.visao-premium-body .visao-ai-dashboard{margin:0;padding:4px 0;border:0;background:transparent;box-shadow:none}
+.visao-premium-body .visao-ai-heading{margin-bottom:12px}
+.visao-premium-body .visao-ai-kpis{gap:6px}
+.visao-premium-body .visao-ai-kpi{min-width:0;overflow-wrap:anywhere}
+.visao-financeira .visao-item{min-height:49px}
+.visao-financeira .visao-icone{width:32px;height:32px;flex-basis:32px;border:0;border-radius:10px}
+.visao-financeira .visao-item-nome,.visao-financeira .visao-item-valor{font-size:13px}
+.visao-financeira .visao-pdf{margin:0!important;border:0!important;box-shadow:none;min-height:45px}
+.visao-section-eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text2);font-weight:700;margin:19px 2px 5px}
+.visao-alicia-hint{display:flex;justify-content:flex-end;margin-top:-13px;margin-bottom:12px;color:var(--text2);font-size:10px}
+@media(max-width:350px){.visao-financeira{padding-left:11px!important;padding-right:11px!important}.visao-financeira .visao-caixa dl{grid-template-columns:repeat(3,minmax(0,1fr))}.visao-premium-section>summary{padding:10px;gap:8px}.visao-premium-body{padding:0 8px 10px}}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -14309,16 +14355,27 @@ AlicerceIA.renderDashboard=function(){
 };
 AlicerceIA.perguntarDashboard=function(question){
   this._resetUser();
+  this._visaoOpenedFor=String(Store.userId||'');
   this._question=String(question||'').trim();
   if(!this._question)return;
   this._answer=this.responder(this._question);
   render();
 };
 
+function visaoPremiumSection(id,title,description,ico,body,open,extraClass){
+  return '<details id="'+esc(id)+'" class="visao-premium-section '+esc(extraClass||'')+'"'+(open?' open':'')+'><summary><span class="visao-premium-icon" aria-hidden="true">'+icon(ico,'ico-sm')+'</span><span class="visao-premium-copy"><strong>'+esc(title)+'</strong><small>'+esc(description)+'</small></span><span class="visao-premium-chevron" aria-hidden="true"></span></summary><div class="visao-premium-body">'+body+'</div></details>';
+}
+
 function renderVisao(){
   const v=getVisaoFinanceira();
   const agora=Clock.now();
   const hora=String(agora.getHours()).padStart(2,'0')+':'+String(agora.getMinutes()).padStart(2,'0');
+  const lang=Store.lang||'pt';
+  const labels=({
+    pt:{title:'Visão financeira',available:'Disponível agora',updated:'Atualizado hoje, ',ask:'Conversar com Alicia',areas:'Explore suas finanças',analytics:'Análise de gastos',analyticsSub:'Categorias, comparações e realidade financeira',commitments:'Compromissos e projeções',commitmentsSub:'Cartão, custos fixos e financiamentos',report:'Relatório financeiro',reportSub:'Gerar e consultar o PDF mensal'},
+    en:{title:'Financial view',available:'Available now',updated:'Updated today, ',ask:'Chat with Alicia',areas:'Explore your finances',analytics:'Spending analysis',analyticsSub:'Categories, comparisons and financial picture',commitments:'Commitments and projections',commitmentsSub:'Cards, fixed costs and financing',report:'Financial report',reportSub:'Generate the monthly PDF'},
+    es:{title:'Visión financiera',available:'Disponible ahora',updated:'Actualizado hoy, ',ask:'Conversar con Alicia',areas:'Explora tus finanzas',analytics:'Análisis de gastos',analyticsSub:'Categorías, comparaciones y realidad financiera',commitments:'Compromisos y proyecciones',commitmentsSub:'Tarjetas, costes fijos y financiación',report:'Informe financiero',reportSub:'Generar el PDF mensual'}
+  })[lang]||{title:'Visão financeira',available:'Disponível agora',updated:'Atualizado hoje, ',ask:'Conversar com Alicia',areas:'Explore suas finanças',analytics:'Análise de gastos',analyticsSub:'Categorias, comparações e realidade financeira',commitments:'Compromissos e projeções',commitmentsSub:'Cartão, custos fixos e financiamentos',report:'Relatório financeiro',reportSub:'Gerar o PDF mensal'};
   const itens=[
     {nome:'Mês atual',valor:v.mesAtual,icone:'clock'},
     {nome:'Custos fixos',valor:v.custosFixos,icone:'refresh'},
@@ -14328,19 +14385,18 @@ function renderVisao(){
     {nome:'Seguro',valor:v.seguro,icone:'shield'}
   ];
   let html='<div class="content visao-financeira">';
-  html+='<div class="visao-topo"><div class="visao-logo">Alicerce</div><div class="visao-subtitulo">Visão financeira</div></div>';
-  html+='<section class="visao-hero"><div class="visao-pill">Disponível agora</div><div class="visao-saldo">'+fmtMoney(v.disponivel)+'</div><div class="visao-atualizado">Atualizado hoje, '+hora+'</div></section>';
-  if(Store.userId&&Store.lang==='pt'&&window.AlicerceCashflow){
-    html+=window.AlicerceCashflow.renderCards(Store,Clock.today());
-    html+='<button type="button" class="btn btn-secondary btn-block mb-3" onclick="AlicerceIA.experimentar(\'Me dá um resumo financeiro\')">Pedir resumo à Alícia</button>';
-  }
-  html+=AlicerceIA.renderDashboard();
-  html+='<details class="visao-details"><summary>'+esc((Store.lang==='en'?'Commitments and projections':Store.lang==='es'?'Compromisos y proyecciones':'Compromissos e projeções'))+'</summary><div class="visao-lista">';
+  html+='<div class="visao-topo"><div><div class="visao-logo">Alicerce</div><h1 class="visao-subtitulo">'+esc(labels.title)+'</h1></div><button type="button" id="visao-alicia-open" class="visao-alicia-open" aria-label="'+esc(labels.ask)+'" title="'+esc(labels.ask)+'" onclick="go(\'assistente\')">'+aliciaOrb()+'</button></div><div class="visao-alicia-hint">'+esc(labels.ask)+'</div>';
+  html+='<section class="visao-hero"><div class="visao-pill">'+esc(labels.available)+'</div><div class="visao-saldo">'+fmtMoney(v.disponivel)+'</div><div class="visao-atualizado">'+esc(labels.updated)+hora+'</div></section>';
+  if(Store.userId&&lang==='pt'&&window.AlicerceCashflow)html+=window.AlicerceCashflow.renderCards(Store,Clock.today());
+  html+='<h2 class="visao-section-eyebrow">'+esc(labels.areas)+'</h2><!-- alicia-planning-premium-slot -->';
+  html+=visaoPremiumSection('visao-analises',labels.analytics,labels.analyticsSub,'trend',AlicerceIA.renderDashboard(),AlicerceIA._visaoOpenedFor===String(Store.userId||''));
+  let list='<div class="visao-lista">';
   itens.forEach(function(item){
-    html+='<div class="visao-item"><div class="visao-icone">'+icon(item.icone,'')+'</div><div class="visao-item-nome">'+esc(item.nome)+'</div><div class="visao-item-valor">'+fmtMoney(item.valor? -Math.abs(Number(item.valor)||0):0)+'</div></div>';
+    list+='<div class="visao-item"><div class="visao-icone">'+icon(item.icone,'')+'</div><div class="visao-item-nome">'+esc(item.nome)+'</div><div class="visao-item-valor">'+fmtMoney(item.valor? -Math.abs(Number(item.valor)||0):0)+'</div></div>';
   });
-  html+='</div></details>';
-  html+='<button class="btn btn-secondary btn-block visao-pdf" onclick="generateMonthlyPDF()">'+icon('file','ico-sm')+' '+t('impressao')+'</button>';
+  list+='</div>';
+  html+=visaoPremiumSection('visao-compromissos',labels.commitments,labels.commitmentsSub,'wallet',list,false,'visao-details');
+  html+=visaoPremiumSection('visao-relatorio',labels.report,labels.reportSub,'file','<button class="btn btn-secondary btn-block visao-pdf" onclick="generateMonthlyPDF()">'+icon('file','ico-sm')+' '+t('impressao')+'</button>',false);
   html+='</div>';
   return html;
 }
