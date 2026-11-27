@@ -613,3 +613,26 @@ testCase('pergunta sobre outra conta não quita a dívida selecionada', () => {
   assert.equal(Store.movements.length,0);
   assert.equal(Store.commitments[0].status,'pendente');
 });
+
+
+testCase('consulta do mês inclui compromissos manuais com valor e exclui lembretes', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.commitments.push(
+    {id:'manual',tipo:'compromisso',descricao:'Assinatura ChatGPT',valor:100,data:'2026-11-30',status:'pendente'},
+    {id:'reminder',tipo:'lembrete',descricao:'Lembrete',valor:80,data:'2026-11-15',status:'pendente'},
+    {id:'appointment',tipo:'compromisso',descricao:'Reunião',valor:null,data:'2026-11-20',status:'pendente'}
+  );
+  assert.equal(api.planningSnapshot().remaining,100);
+  assert.equal(api.filterPayments('pendentes').length,1);
+  const reply=api.handleMessage(AlicerceIA,'Alicia dívidas para eu pagar ? Esse mês');
+  assert.match(reply,/Assinatura ChatGPT/);
+  assert.match(reply,/100,00/);
+  assert.equal(Store.movements.length,0);
+});
+
+testCase('consulta mensal vazia explica o limite dos registros cadastrados', () => {
+  const { AlicerceIA, api } = createContext();
+  const reply=api.handleMessage(AlicerceIA,'Dívidas para eu pagar esse mês');
+  assert.match(reply,/Não encontrei obrigações financeiras cadastradas/);
+  assert.match(reply,/sincronizada/);
+});
