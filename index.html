@@ -2796,7 +2796,7 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 <style id="alicerce-home-menu-premium">
 .app:has(.al-home-premium),.al-home-premium,#menu-panel{--accent:#8ab2f3;--accent-light:#a4c4fa;--on-accent:#10213a;--tint-accent:rgba(85,127,203,.14);--glow:rgba(85,127,203,.16);--chrome:#274c83}
 [data-theme="claro"] .app:has(.al-home-premium),[data-theme="marinho"] .app:has(.al-home-premium),[data-theme="claro"] .al-home-premium,[data-theme="marinho"] .al-home-premium,[data-theme="claro"] #menu-panel,[data-theme="marinho"] #menu-panel{--accent:#345ca5;--accent-light:#345ca5;--on-accent:#fff;--chrome:#345ca5}
-.al-home-premium{box-sizing:border-box;max-width:720px;margin:0 auto;padding:16px 16px 105px}
+.al-home-premium{box-sizing:border-box;width:100%;min-width:0;max-width:100%;align-self:stretch;margin:0;padding:16px 16px calc(105px + env(safe-area-inset-bottom,0px))}
 .al-home-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:1px 0 16px}
 .al-home-top small{font-size:11px;letter-spacing:.08em;color:var(--text2);font-weight:650}
 .al-home-top h1{font-size:24px;line-height:1.2;letter-spacing:-.04em;margin:5px 0 0;font-weight:750}
@@ -2863,6 +2863,39 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 .al-home-premium #home-feed-slot .tf-card-cta{border-radius:12px;border-color:var(--line);color:var(--text);background:var(--surface2);font-size:12px}
 .al-home-premium #home-feed-slot .carousel-dots{margin:9px 0}
 .al-home-premium #home-feed-slot .carousel-dot{width:8px;height:8px;min-width:8px;min-height:8px}
+</style>
+<style id="alicerce-home-mobile-fix">
+/* The home is a child of a column flex container: horizontal auto margins
+   without explicit width allow the carousel's intrinsic width to size it. */
+.app:has(.al-home-premium){width:100%;max-width:420px;min-width:0;box-sizing:border-box}
+.app:has(.al-home-premium)>.header{width:100%;min-width:0;max-width:100%}
+.al-home-premium>*{min-width:0;max-width:100%;box-sizing:border-box}
+.al-home-premium .balance-grid,.al-home-premium .al-home-actions,.al-home-premium .al-home-upcoming,.al-home-premium .dynamic-card-wrap,.al-home-premium #home-feed-slot{width:100%;min-width:0;max-width:100%}
+.al-home-premium .dynamic-card-track,.al-home-premium #home-comunicados-track{width:100%;min-width:0;max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.al-home-premium .dynamic-card,.al-home-premium .home-comunicado-slide{box-sizing:border-box;flex:0 0 100%;min-width:100%;max-width:100%;overflow-wrap:anywhere}
+.al-home-premium .dynamic-card .dc-text,.al-home-premium .dynamic-card .dc-title,.al-home-premium .tf-card-meta,.al-home-premium .tf-card-desc,.al-home-premium .tf-card-title{min-width:0;max-width:100%;overflow-wrap:anywhere}
+.al-home-premium #home-feed-slot img{max-width:100%}
+.al-home-premium .dynamic-dots,.al-home-premium #home-feed-slot .carousel-dots{flex-wrap:wrap;max-width:100%}
+.al-home-premium .alicerce-ai-launcher-action,.al-home-premium .al-benefit-home-card{min-width:0;max-width:100%}
+.al-home-premium .alicerce-ai-launcher-title{min-width:0;overflow-wrap:anywhere}
+.al-home-premium .alicerce-ai-launcher-cta{flex-shrink:0}
+.al-home-premium .al-benefit-home-value{max-width:100%;overflow-wrap:anywhere;white-space:normal}
+.al-home-premium .section-title>span{min-width:0;overflow-wrap:anywhere}
+.al-home-premium .section-title>button{flex-shrink:0}
+.al-home-premium .al-home-upcoming .li-right{flex-shrink:0;max-width:45%}
+.al-home-premium .al-home-upcoming .li-amount{white-space:normal;overflow-wrap:anywhere;text-align:right}
+.al-home-premium .balance-item .bi-value{overflow-wrap:anywhere;word-break:normal}
+.app:has(.al-home-premium) .bottom-nav{width:100%;max-width:420px;box-sizing:border-box;padding-bottom:env(safe-area-inset-bottom,0px)}
+.app:has(.al-home-premium) .bottom-nav-item{min-width:0}
+.app:has(.al-home-premium) .bottom-nav-item span{max-width:100%;text-align:center;overflow-wrap:anywhere}
+@media(max-width:360px){
+.al-home-premium{padding-left:11px;padding-right:11px}
+.al-home-premium .balance-grid,.al-home-premium .al-home-actions{gap:5px}
+.al-home-premium .balance-item:not(.bi-saldo){padding:10px 6px}
+.al-home-premium .alicerce-ai-launcher-action{gap:7px}
+.al-home-premium .alicerce-ai-launcher-cta{font-size:10px}
+.al-home-premium .al-home-hero-link{min-height:44px}
+}
 </style>
 </head>
 <body data-theme="azul">
