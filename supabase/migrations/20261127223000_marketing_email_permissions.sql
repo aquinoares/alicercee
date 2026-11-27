@@ -33,4 +33,6 @@ where e.granted and not exists (
   select 1 from public.marketing_email_suppressions s where s.user_id=e.user_id
 );
 revoke all on public.marketing_email_eligible from public, anon, authenticated;
+grant select on public.marketing_email_consent_events to service_role;
+grant select, insert, update, delete on public.marketing_email_suppressions to service_role;
 grant select on public.marketing_email_eligible to service_role;
