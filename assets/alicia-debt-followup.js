@@ -420,6 +420,7 @@
       }
       Store.processInstallmentPayment(record.id);
       record.dataPagamento = paidDate;
+      record.paymentStatus = 'pago';
       var linked = (Store.movements || []).find(function (movement) {
         return movement && String(movement.id) === String(record.cashMovementId || '') ||
           (movement && String(movement.installmentId || '') === String(record.id) &&
@@ -439,6 +440,7 @@
       record.dataPagamento = paidDate;
       record.data = paidDate;
       record.status = 'pago';
+      record.paymentStatus = 'pago';
       Store.save();
       return item;
     }
@@ -529,12 +531,39 @@
     return item;
   }
 
+  // Negative, prospective and partial statements never confirm a settlement.
+  function paymentIntent(value) {
+    var n = normalize(value);
+    if (/\b(parcial|uma parte|metade|sinal)\b/.test(n)) return 'parcial';
+    if (/\b(?:nao (?:ja )?(?:paguei|pagamos|quitei|quitamos|foi pag[oa]|consegui pagar|conseguimos pagar|esta pag[oa]|esta quitad[oa]|vou pagar)|(?:ainda )?falta pagar|continua pendente|nao foi possivel|nao deu)\b/.test(n)) return 'pendente';
+    if (/\b(?:vou pagar|vamos pagar|irei pagar|pagarei|pretendo pagar|preciso pagar|tenho que pagar|tenho de pagar|devo pagar|a pagar|vou quitar|vou tentar pagar|pagamento agendado|ainda vou pagar)\b/.test(n)) return 'pendente';
+    if (/\b(?:ja paguei|paguei|pagamos|foi pag[oa]|quitei|quitamos|quitad[oa]|consegui pagar|conseguimos pagar)\b/.test(n)) return 'pago';
+    return '';
+  }
+
+  function dueDateForMessage(raw) {
+    var parsed = parseDate(raw);
+    if (parsed) return parsed;
+    var match = normalize(raw).match(/\b(?:dia|vencimento dia)\s+(\d{1,2})\b/);
+    if (!match) return '';
+    var base = today(), day = String(Number(match[1])).padStart(2, '0');
+    var iso = base.slice(0, 7) + '-' + day;
+    if (!validIso(iso)) return '';
+    if (iso >= base) return iso;
+    var p = base.split('-').map(Number);
+    var next = new Date(p[0], p[1], 1);
+    iso = next.getFullYear() + '-' + String(next.getMonth() + 1).padStart(2, '0') + '-' + day;
+    return validIso(iso) ? iso : '';
+  }
+
   function startDebtDraft(message) {
     var raw = stripWakeWord(message);
-    var dueDate = parseDate(raw);
+    var intent = paymentIntent(raw);
+    var dueDate = intent === 'pendente' ? dueDateForMessage(raw) : parseDate(raw);
     var amount = parseMoney(raw);
-    var paid = /\b(ja paguei|paguei|foi paga|foi pago|quitada|quitado)\b/i.test(normalize(raw));
+    var paid = intent === 'pago';
     var description = raw;
+    description = description.replace(/^\s*(?:(?:ainda\s+)?n[aã]o\s+(?:paguei|quitei)|(?:ainda\s+)?vou pagar|vamos pagar|irei pagar|pagarei|pretendo pagar|preciso pagar|tenho (?:que|de) pagar|devo pagar|vou quitar|j[aá] paguei)\s+/i, '');
     description = description.replace(/^\s*(?:(?:por favor)\s*)?(?:tenho|tem|existe|anota|anote|registre|registra|cadastre|cadastra|inclua|inclui|adicione|adiciona|guarda|guarde|paguei|pagamos|quitei|quitamos)\s+/i, '');
     description = description.replace(/^\s*(?:uma|um|a|essa|esta|antiga|velha)\s+/i, '');
     description = description.replace(/\b(?:conta|divida|dividas|boleto|fatura|debito|antiga|velha|atrasada|vencida|pendente)\b/gi, ' ');
@@ -543,15 +572,20 @@
     description = description.replace(/\b(?:e\s+)?(?:j[aá] paguei|paguei|pagamos|j[aá] quitei|quitei|quitamos|foi paga|foi pago|quitada|quitado|n[aã]o paguei|ainda n[aã]o paguei)\b.*$/i, ' ');
     description = description.replace(/\b(?:no dia\s+)?\d{1,2}[\/.-]\d{1,2}(?:[\/.-]\d{2,4})?\b/g, ' ');
     description = description.replace(/\b(?:hoje|ontem|anteontem|amanha|depois de amanha|semana passada)\b/gi, ' ');
+    description = description.replace(/\b(?:e\s+)?(?:vou pagar|irei pagar|pagarei|pretendo pagar|preciso pagar|tenho que pagar|a pagar|falta pagar)\b.*$/i, ' ');
+    description = description.replace(/\b(?:no\s+)?dia\s+\d{1,2}\b/gi, ' ');
     description = description.replace(/\s+/g, ' ').replace(/^[,.:;\/\s-]+|[,.:;\/\s-]+$/g, '').trim();
     description = description.replace(/^(?:de|do|da|dos|das|para|pra)\s+/i, '').replace(/\s+(?:de|do|da|dos|das|para|pra)$/i, '').trim();
     if (/^(?:de|do|da|dos|das|para|pra)$/i.test(description)) description = '';
-    var paymentMatch = normalize(raw).match(/\b(paguei|pagamos|ja paguei|foi paga|foi pago|quitei|quitamos|quitada|quitado)\b/);
+    var paymentMatch = raw.match(/\b(paguei|pagamos|foi paga|foi pago|quitei|quitamos|quitada|quitado|consegui pagar|conseguimos pagar)\b/i);
     var paidDate = today();
     if (paid && paymentMatch) {
-      var paymentTail = normalize(raw).slice(paymentMatch.index + paymentMatch[0].length);
+      var paymentTail = raw.slice(paymentMatch.index + paymentMatch[0].length);
       paidDate = parseDate(paymentTail) || today();
     }
+    if (paidDate > today()) { paid = false; paidDate = ''; }
+    // Without an original due date, an explicitly settled new bill uses the payment date.
+    if (paid && !dueDate) dueDate = paidDate;
     return {description: description, amount: amount, dueDate: dueDate, paymentStatus: paid ? 'pago' : 'pendente', paidDate: paid ? paidDate : ''};
   }
 
@@ -658,10 +692,16 @@
         if (candidate && !parseMoney(candidate) && !parseDate(candidate)) draft.description = candidate;
       }
       if (draft.amount === null) draft.amount = parseMoney(raw);
-      if (!draft.dueDate) draft.dueDate = parseDate(raw);
-      if (/\b(ja paguei|paguei|foi paga|foi pago|quitada|quitado)\b/i.test(normalize(raw))) {
+      if (!draft.dueDate) draft.dueDate = dueDateForMessage(raw);
+      var intent = paymentIntent(raw);
+      if (intent === 'pendente' || intent === 'parcial') {
+        draft.paymentStatus = 'pendente';
+        draft.paidDate = '';
+      } else if (intent === 'pago') {
+        var paidDate = parseDate(raw) || today();
+        if (paidDate > today()) return 'Essa data ainda está no futuro. Você já pagou ou pretende pagar nessa data?';
         draft.paymentStatus = 'pago';
-        draft.paidDate = parseDate(raw) || today();
+        draft.paidDate = paidDate;
       }
     }
     assistant._pendingDebtDraft = draft;
@@ -695,20 +735,22 @@
       /\b(ainda nao paguei|nao consegui pagar|nao foi paga|nao foi pago)\b/.test(n);
     var yes = /^(sim|sim paguei|paguei|pagamos|pagou|conseguimos|consegui|foi pago|foi paga|ja paguei|quitado|quitada|pago|paga)$/.test(n) ||
       /\b(paguei|pagamos|a casa pagou|conseguimos pagar|consegui pagar|foi pago|foi paga|ja quitamos|ja quitei)\b/.test(n);
-    if (partial) {
+    var intent = paymentIntent(message);
+    if (partial || intent === 'parcial') {
       recordPaymentCheck(item, 'parcial');
       assistant._pendingPaymentCheck = null;
       return 'Entendi. Como o Alicerce ainda não controla pagamento parcial dessa conta, mantive o valor total como pendente. Atualize o valor restante no lançamento para não alterar seu saldo incorretamente.';
     }
-    if (no) {
+    if (no || intent === 'pendente') {
       recordPaymentCheck(item, 'nao_pago');
       assistant._pendingPaymentCheck = null;
       return item.dueDate < today()
         ? 'Tudo bem. Mantive "' + item.description + '" como pendente e em atraso na Visão Financeira. Não registrei saída de dinheiro.'
         : 'Tudo bem. Mantive "' + item.description + '" como pendente. Não registrei saída de dinheiro.';
     }
-    if (yes) {
+    if (yes || intent === 'pago') {
       var paidDate = parseDate(message) || today();
+      if (paidDate > today()) return 'Essa data ainda está no futuro. Você já pagou ou pretende pagar nessa data?';
       try {
         markPaid(item, paidDate);
       } catch (error) {
@@ -736,6 +778,11 @@
     } else lines.push('Não encontrei dívidas vencidas em aberto nas contas acompanhadas.');
     if (view.dueToday.length) {
       lines.push('Vencem hoje: ' + view.dueToday.length + ' conta(s), total de ' + formatMoney(view.dueTodayTotal) + '.');
+    }
+    var upcoming = view.all.filter(function (item) { return item.status === 'pendente' && item.dueDate > today(); });
+    if (upcoming.length) {
+      lines.push('A pagar (vencimentos futuros): ' + upcoming.length + ' conta(s), total de ' + formatMoney(upcoming.reduce(function (sum, item) { return sum + item.amount; }, 0)) + '.');
+      upcoming.slice(0, 5).forEach(function (item) { lines.push('- ' + item.description + ': ' + formatMoney(item.amount) + ', vence em ' + formatDate(item.dueDate) + '.'); });
     }
     if (view.paid.length) {
       lines.push('Quitadas (pagamento confirmado): ' + view.paid.length + ' conta(s), total de ' + formatMoney(view.paidTotal) + '.');
@@ -977,8 +1024,11 @@
       APPOINTMENT_WORDS.test(n);
     if (appointmentIntent) return handleAppointment(assistant, raw);
 
-    var debtIntent = DEBT_KEYWORDS.test(n) &&
-      /\b(tenho|tem|anota|anote|registre|registra|cadastre|cadastra|inclua|inclui|adicione|adiciona|guarda|guarde|venceu|vencia|vencida|atrasada|atraso|nao paguei|ficou|pendente|antiga|antigo|de antes|ja paguei|paguei)\b/.test(n);
+    // A question about previous or future payments is read-only, never a new debt.
+    if (/^(?:quais?|quanto|quantas?|como|quando|mostra|mostre|listar|liste|ver|me (?:diz|mostra|mostre))\b/.test(n)) return financialAnswer(raw);
+    if (DEBT_KEYWORDS.test(n) && paymentIntent(raw) === 'parcial') return 'Entendi que houve um pagamento parcial. Não vou marcar a conta como quitada. Confira o valor restante no cadastro de origem.';
+    var debtIntent = DEBT_KEYWORDS.test(n) && (paymentIntent(raw) !== '' ||
+      /\b(tenho|tem|anota|anote|registre|registra|cadastre|cadastra|inclua|inclui|adicione|adiciona|guarda|guarde|venceu|vencia|vencida|atrasada|atraso|nao paguei|ficou|pendente|antiga|antigo|de antes|ja paguei|paguei)\b/.test(n));
     if (debtIntent) return handleDebt(assistant, raw);
 
     return financialAnswer(raw);
@@ -1197,6 +1247,7 @@
     getObligations: getObligations,
     getOverview: getOverview,
     startDebtDraft: startDebtDraft,
+    paymentIntent: paymentIntent,
     startAppointmentDraft: startAppointmentDraft,
     handleMessage: handleMessage,
     markPaid: markPaid,
