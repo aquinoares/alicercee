@@ -4,7 +4,24 @@ import { createClient } from "npm:@supabase/supabase-js@2.118.0";
 const ALLOWED_EVENTS = new Set([
   "app_opened",
   "movement_created",
-  "first_movement_created"
+  "first_movement_created",
+  "screen_view_home",
+  "screen_view_assistente",
+  "screen_view_visao",
+  "screen_view_gastos",
+  "screen_view_cartoes",
+  "screen_view_emprestimos",
+  "screen_view_calendario",
+  "screen_view_beneficios",
+  "screen_view_insurance",
+  "screen_view_renda_extra",
+  "screen_view_financiamento",
+  "screen_view_consorcio",
+  "screen_view_planos",
+  "screen_view_indicacoes",
+  "screen_view_trafego",
+  "screen_view_add",
+  "screen_view_cash_balance"
 ]);
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -129,14 +146,13 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(req, { error: error instanceof Error ? error.message : "Requisição inválida." }, 400);
   }
 
-  if (body.action === "revoke") {
+  if (body.action === "revoke" || body.action === "revoke_screens") {
     if (Object.keys(body).length !== 1) {
       return jsonResponse(req, { error: "Requisição de revogação inválida." }, 400);
     }
-    const deletion = await adminClient
-      .from("alicerce_product_events")
-      .delete()
-      .eq("user_id", userId);
+    let deletionQuery = adminClient.from("alicerce_product_events").delete().eq("user_id", userId);
+    if (body.action === "revoke_screens") deletionQuery = deletionQuery.in("event_name", ["screen_view_home","screen_view_assistente","screen_view_visao","screen_view_gastos","screen_view_cartoes","screen_view_emprestimos","screen_view_calendario","screen_view_beneficios","screen_view_insurance","screen_view_renda_extra","screen_view_financiamento","screen_view_consorcio","screen_view_planos","screen_view_indicacoes","screen_view_trafego","screen_view_add","screen_view_cash_balance"]);
+    const deletion = await deletionQuery;
     if (deletion.error) {
       return jsonResponse(req, { error: "Não foi possível apagar os eventos anteriores." }, 503);
     }
@@ -167,6 +183,9 @@ Deno.serve(async (req: Request) => {
     return jsonResponse(req, { error: "O compartilhamento de eventos não está autorizado nesta conta." }, 403);
   }
 
+  if (eventName.startsWith("screen_view_") && settings.analyticsScreenConsent !== true) {
+    return jsonResponse(req, { error: "Visitas às telas não autorizadas." }, 403);
+  }
   const cutoff = new Date(Date.now() - 60 * 60 * 1000).toISOString();
   const recent = await adminClient
     .from("alicerce_product_events")
