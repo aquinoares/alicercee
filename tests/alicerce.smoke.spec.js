@@ -236,6 +236,39 @@ test('renderiza Home, Gastos, Cartões e Configurações com estado isolado', as
   await expect(page.locator('#alicerce-config-lang option')).toHaveCount(3);
 });
 
+test('Gastos premium exibe categorias, filtros, detalhes e cabe no mobile', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'gastos');
+  await page.evaluate(function () {
+    const data=Clock.today();
+    Store.movements=[
+      {id:'ag-1',tipo:'despesa',status:'pago',data,valor:125,categoria:'comida',subcategoria:'mercado',descricao:'Mercado com descrição longa para testar a largura da tela'},
+      {id:'ag-2',tipo:'despesa',status:'pago',data,valor:75,categoria:'transporte',subcategoria:'uber',descricao:'Transporte'}
+    ];
+    Store.installments=[];
+    document.getElementById('app').innerHTML=renderHeader()+renderGastos()+renderBottomNav();
+  });
+  await expect(page.locator('.ag-hero')).toContainText('200,00');
+  await expect(page.locator('.ag-category-bar')).toBeVisible();
+  await expect(page.locator('.ag-item')).toHaveCount(2);
+  await expect(page.locator('.ag-pending')).not.toHaveAttribute('open','');
+  for(const width of [320,375,390,430]){
+    await page.setViewportSize({width,height:844});
+    const result=await page.evaluate(function(){
+      const screen=document.querySelector('.al-gastos-premium');
+      const bounds=screen.getBoundingClientRect();
+      return {width:bounds.width,doc:document.documentElement.scrollWidth,viewport:innerWidth,overflow:Array.from(screen.querySelectorAll('.ag-hero,.ag-card,.ag-pending,.ag-item')).filter(function(el){const r=el.getBoundingClientRect();return r.right>bounds.right+1||r.left<bounds.left-1;}).length};
+    });
+    expect(result.width).toBeLessThanOrEqual(width+1);
+    expect(result.doc).toBeLessThanOrEqual(result.viewport+1);
+    expect(result.overflow).toBe(0);
+  }
+  await page.locator('.ag-filters [data-cat="comida"]').click();
+  await expect(page.locator('.ag-item')).toHaveCount(1);
+  await page.locator('.ag-item summary').click();
+  await expect(page.locator('.gastos-item-details')).toBeVisible();
+  await expect(page.locator('.ag-orb .alicia-orb')).toBeVisible();
+});
+
 test('gera prévias dos PDFs de Gastos e Visão Financeira sem abrir janela externa', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'gastos');
   await page.evaluate(function () {
