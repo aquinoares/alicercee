@@ -2898,6 +2898,62 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 .al-home-premium .al-home-hero-link{min-height:44px}
 }
 </style>
+
+<style id="al-gastos-premium-v1">
+.app:has(.al-gastos-premium),.al-gastos-premium{--accent:#8ab2f3;--accent-light:#a4c4fa;--on-accent:#10213a;--tint-accent:rgba(85,127,203,.14);--chrome:#274c83}
+[data-theme="claro"] .app:has(.al-gastos-premium),[data-theme="marinho"] .app:has(.al-gastos-premium),[data-theme="claro"] .al-gastos-premium,[data-theme="marinho"] .al-gastos-premium{--accent:#345ca5;--accent-light:#345ca5;--on-accent:#fff;--chrome:#345ca5}
+.app:has(.al-gastos-premium){width:100%;max-width:420px;min-width:0}
+.al-gastos-premium{width:100%;max-width:100%;min-width:0;align-self:stretch;margin:0;padding:16px 16px calc(105px + env(safe-area-inset-bottom,0px));box-sizing:border-box;color:var(--text)}
+.al-gastos-premium>*{min-width:0;max-width:100%;box-sizing:border-box}
+.ag-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+.ag-head small{font-size:11px;letter-spacing:.08em;color:var(--text2);font-weight:700}
+.ag-head h1{font-size:25px;font-weight:750;letter-spacing:-.04em;margin:4px 0 0}
+.ag-orb{width:52px;height:52px;padding:0;border:0;background:none;flex:0 0 52px;cursor:pointer}
+.ag-period{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 12px;padding:4px;border:1px solid var(--line);border-radius:13px;background:var(--surface)}
+.ag-period button{width:40px;height:38px;border-radius:10px;background:var(--surface2);font-size:22px;color:var(--text)}
+.ag-period strong{font-size:13px;text-transform:capitalize}
+.ag-hero{border-radius:24px;padding:20px;background:radial-gradient(circle at 100% 0%,transparent 67px,rgba(164,208,255,.17) 68px,rgba(164,208,255,.04) 69px,rgba(164,208,255,.04) 90px,rgba(164,208,255,.025) 91px,rgba(164,208,255,.025) 112px,transparent 113px),linear-gradient(135deg,#10243d,#152f49 60%,#193b50);border:1px solid rgba(137,182,236,.23);color:#f3f8ff}
+.ag-hero>small{color:#b9cde4;font-size:12px;display:block}
+.ag-hero>strong{font-size:clamp(27px,8vw,39px);font-weight:750;letter-spacing:-.045em;display:block;margin:8px 0 14px;overflow-wrap:anywhere}
+.ag-hero-foot{border-top:1px solid rgba(187,217,255,.17);display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:10px;color:#c5daf4;font-size:12px}
+.ag-hero-foot button{display:flex;align-items:center;gap:6px;border-radius:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);min-height:38px;padding:6px 12px;color:#f3f8ff}
+.ag-card,.ag-pending{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 12px;margin:12px 0;min-width:0}
+.ag-pending{padding:0}
+.ag-pending>summary{display:flex;justify-content:space-between;align-items:center;gap:9px;padding:14px 12px;list-style:none;cursor:pointer}
+.ag-pending>summary::-webkit-details-marker,.ag-item>summary::-webkit-details-marker{display:none}
+.ag-pending>summary>span:first-child{min-width:0}
+.ag-pending>summary small{font-size:11px;color:var(--text2);display:block}
+.ag-pending>summary strong{display:block;font-size:20px;margin-top:3px;overflow-wrap:anywhere}
+.ag-pending-count{font-size:10px;color:var(--text2);text-align:right;flex-shrink:0}
+.ag-pending-body{padding:0 12px 12px}
+.ag-note{font-size:11px;line-height:1.5;color:var(--text2);margin:6px 0}
+.ag-pending-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);font-size:12px}
+.ag-pending-row span{min-width:0;overflow-wrap:anywhere}.ag-pending-row small{display:block;font-size:10px;color:var(--text2)}
+.ag-pending-row strong{max-width:45%;overflow-wrap:anywhere;text-align:right}
+.ag-link{display:flex;gap:8px;align-items:center;color:var(--accent);font-size:12px;padding:10px 0}
+.ag-section-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+.ag-section-head h2{font-size:15px;font-weight:750;margin:0}.ag-section-head>span{font-size:11px;color:var(--text2);flex-shrink:0}
+.ag-category-bar{width:100%;height:12px;display:flex;overflow:hidden;border-radius:8px;background:var(--line);gap:2px}
+.ag-category-bar span{min-width:0;flex-shrink:1}
+.ag-category-legend{display:grid;gap:8px;margin:12px 0}
+.ag-category-legend>div{display:grid;grid-template-columns:8px minmax(0,1fr) auto;align-items:center;gap:8px;font-size:12px}
+.ag-color{width:8px;height:8px;border-radius:3px}.ag-category-legend strong{font-size:12px;text-align:right;overflow-wrap:anywhere}
+.ag-category-legend>div>span:nth-child(2){overflow-wrap:anywhere}
+.ag-filters{display:flex;overflow-x:auto;gap:6px;max-width:100%;min-width:0;padding:4px 0;scrollbar-width:none;overscroll-behavior-x:contain}
+.ag-filters .gastos-categoria-chip{display:flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;border:1px solid var(--line);border-radius:10px;background:var(--surface2);color:var(--text2);font-size:11px;min-height:38px;padding:7px 10px;cursor:pointer}
+.ag-filters .gastos-categoria-chip[aria-pressed=true]{background:var(--tint-accent);border-color:var(--accent);color:var(--text);font-weight:700}
+.ag-filters .gastos-categoria-chip svg{width:15px;height:15px}
+.ag-item{border-bottom:1px solid var(--line)}.ag-item:last-child{border-bottom:0}
+.ag-item>summary{display:grid;grid-template-columns:32px minmax(0,1fr) minmax(0,auto);align-items:center;gap:9px;padding:12px 0;list-style:none;cursor:pointer}
+.ag-item-icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:var(--tint-accent);color:var(--accent)}
+.gastos-item-copy{min-width:0;display:block}.gastos-item-title{font-size:13px;font-weight:700;line-height:1.3;display:block;overflow-wrap:anywhere}
+.gastos-item-subtitle{font-size:10px;color:var(--text2);display:block;line-height:1.35;margin-top:4px;overflow-wrap:anywhere}
+.gastos-item-side{min-width:0;text-align:right}.gastos-item-amount{display:block;font-size:12px;font-weight:750;overflow-wrap:anywhere;max-width:110px}
+.gastos-item-detail-hint{display:block;color:var(--text2);font-size:12px}.ag-item[open] .gastos-item-detail-hint{transform:rotate(180deg)}
+.gastos-item-details{padding:0 0 12px 41px;font-size:12px;line-height:1.6;overflow-wrap:anywhere}
+.al-gastos-premium button:focus-visible,.al-gastos-premium summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:360px){.al-gastos-premium{padding-left:11px;padding-right:11px}.ag-hero{padding:16px}.ag-item>summary{grid-template-columns:28px minmax(0,1fr) minmax(0,auto);gap:7px}.ag-item-icon{width:28px;height:28px}.gastos-item-details{padding-left:35px}.gastos-item-amount{max-width:92px}}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -11417,69 +11473,36 @@ function renderGastos(){
   const categoryKeys=Object.keys(categories).sort((a,b)=>categories[b].total-categories[a].total);
   const filtered=selected?allItems.filter(m=>(m.categoria||'outros')===selected):allItems;
 
-  let html='<div id="alicerce-gastos-screen" class="content" style="width:100%;max-width:420px;margin:0 auto;padding:14px 16px 110px;box-sizing:border-box;color:var(--text-color,#f5f5f5);overflow-x:hidden">';
-  html+='<style id="alicerce-gastos-layout">#alicerce-gastos-screen .gastos-categoria-chip{flex:0 0 64px!important;text-align:center;white-space:normal}#alicerce-gastos-screen .gastos-categoria-label{display:block;min-height:27px;font-size:11px;font-weight:750;line-height:1.2;text-align:center;white-space:normal;overflow-wrap:anywhere}#alicerce-gastos-screen .gastos-item-summary{display:grid;grid-template-columns:32px minmax(0,1fr) auto;align-items:center;gap:10px;padding:13px 1px;cursor:pointer;list-style:none}#alicerce-gastos-screen .gastos-item-summary::-webkit-details-marker{display:none}#alicerce-gastos-screen .gastos-item-copy{display:block;min-width:0}#alicerce-gastos-screen .gastos-item-title{display:block;font-size:13px;font-weight:800;line-height:1.25;white-space:normal;overflow-wrap:anywhere;word-break:normal}#alicerce-gastos-screen .gastos-item-subtitle{display:block;margin-top:4px;font-size:11px;line-height:1.3;opacity:.67;white-space:normal;overflow-wrap:anywhere;word-break:normal}#alicerce-gastos-screen .gastos-item-side{text-align:right;white-space:nowrap}#alicerce-gastos-screen .gastos-item-amount{display:block;font-size:13px;font-weight:850;white-space:nowrap}#alicerce-gastos-screen .gastos-item-detail-hint{display:block;margin-top:4px;font-size:10px;opacity:.55}#alicerce-gastos-screen .gastos-item-details{padding:0 0 13px 42px;font-size:12px;line-height:1.7;overflow-wrap:anywhere;word-break:normal}#alicerce-gastos-screen details>summary:focus-visible{outline:2px solid var(--accent,#c8a962);outline-offset:3px;border-radius:8px}@media(max-width:360px){#alicerce-gastos-screen{padding-left:12px!important;padding-right:12px!important}#alicerce-gastos-screen .gastos-item-summary{grid-template-columns:28px minmax(0,1fr) auto;gap:8px}#alicerce-gastos-screen .gastos-item-details{padding-left:36px}}</style>';
-
-  html+='<header style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:18px">';
-  html+='<div style="min-width:0">';
-  html+='<div style="font-size:11px;letter-spacing:1.5px;font-weight:800;opacity:.65">ALICERCE</div>';
-  html+='<div style="font-size:25px;font-weight:850;letter-spacing:-.7px;margin-top:3px">Meus gastos</div>';
-  html+='<div style="display:flex;align-items:center;gap:8px;margin-top:7px">';
-  html+='<button type="button" onclick="changeMonth(-1)" aria-label="Mês anterior" style="border:1px solid var(--line);border-radius:10px;background:var(--surface2);color:inherit;font-size:22px;padding:5px 13px;cursor:pointer">‹</button>';
-  html+='<span style="font-size:13px;font-weight:650;text-transform:capitalize">'+safe(mn[month-1])+' de '+year+'</span>';
-  html+='<button type="button" onclick="changeMonth(1)" aria-label="Próximo mês" style="border:1px solid var(--line);border-radius:10px;background:var(--surface2);color:inherit;font-size:22px;padding:5px 13px;cursor:pointer">›</button>';
-  html+='</div></div>';
-  html+='<button onclick="generateGastosPDF()" aria-label="Exportar extrato em PDF" title="Exportar PDF" style="flex-shrink:0;border:1px solid var(--border-color,#444);border-radius:13px;background:var(--card-bg,#202020);color:inherit;padding:10px 12px;font-size:12px;font-weight:750;cursor:pointer">'+icon('file','ico-sm')+' PDF</button>';
-  html+='</header>';
-
-  html+='<section style="padding:3px 0 18px;border-bottom:1px solid var(--border-color,#333)">';
-  html+='<div style="font-size:12px;opacity:.7;font-weight:650">Total registrado no mês</div>';
-  html+='<div style="font-size:34px;line-height:1.2;font-weight:850;letter-spacing:-1px;margin-top:5px">'+money(totalMonth)+'</div>';
-  html+='<div style="font-size:12px;opacity:.65;margin-top:6px">'+allItems.length+' lançamento(s) realizado(s)</div>';
-  html+='</section>';
-  html+='<section style="margin-top:15px;padding:14px;border:1px solid var(--line);border-radius:15px;background:var(--surface2)">';
-  html+='<div style="font-size:13px;font-weight:800">Compromissos previstos neste mês</div>';
-  html+='<div style="font-size:23px;font-weight:850;margin-top:7px">'+money(futureTotal)+'</div>';
-  html+='<div style="font-size:11px;opacity:.7;margin-top:4px">'+futurePending.length+' pendência(s) registrada(s). Não incluídas no total de gastos realizados.</div>';
+  let html='<div id="alicerce-gastos-screen" class="content al-gastos-premium">';
+  html+='<header class="ag-head"><div><small>ALICERCE</small><h1>Meus gastos</h1></div><button type="button" class="ag-orb" aria-label="Conversar com Alicia" onclick="go(\'assistente\')">'+aliciaOrb()+'</button></header>';
+  html+='<div class="ag-period"><button type="button" onclick="changeMonth(-1)" aria-label="Mês anterior">‹</button><strong>'+safe(mn[month-1])+' de '+year+'</strong><button type="button" onclick="changeMonth(1)" aria-label="Próximo mês">›</button></div>';
+  html+='<section class="ag-hero"><small>Total registrado no mês</small><strong>'+money(totalMonth)+'</strong><div class="ag-hero-foot"><span>'+allItems.length+' lançamento(s)</span><button type="button" onclick="generateGastosPDF()" aria-label="Exportar extrato em PDF">'+icon('file','ico-sm')+' PDF</button></div></section>';
+  html+='<details class="ag-pending"><summary><span><small>Compromissos previstos neste mês</small><strong>'+money(futureTotal)+'</strong></span><span class="ag-pending-count">'+futurePending.length+' pendência(s) <span aria-hidden="true">⌄</span></span></summary><div class="ag-pending-body"><p class="ag-note">As parcelas pendentes podem também aparecer no total registrado. Não some os dois valores.</p>';
   futurePending.slice().sort((a,b)=>String(a.data).localeCompare(String(b.data))).slice(0,8).forEach(i=>{
-    html+='<div style="display:flex;justify-content:space-between;gap:10px;padding-top:10px;margin-top:10px;border-top:1px solid var(--line);font-size:12px">';
-    html+='<span style="min-width:0;overflow-wrap:anywhere">'+safe(i.descricao||i.pessoa||'Compromisso')+'<span style="display:block;opacity:.65">'+safe(String(i.data||'').split('-').reverse().join('/'))+'</span></span>';
-    html+='<strong style="white-space:nowrap">'+money(i.valor)+'</strong></div>';
+    html+='<div class="ag-pending-row"><span>'+safe(i.descricao||i.pessoa||'Compromisso')+'<small>'+safe(String(i.data||'').split('-').reverse().join('/'))+'</small></span><strong>'+money(i.valor)+'</strong></div>';
   });
-  if(futurePending.length>8)html+='<div style="font-size:11px;opacity:.7;margin-top:10px">Outras '+(futurePending.length-8)+' pendência(s) no calendário.</div>';
-  html+='<button type="button" class="btn btn-secondary btn-sm mt-3" onclick="go(\'calendario\')">Abrir calendário</button>';
-  html+='</section>';
-
-  html+='<section style="margin-top:20px">';
-  html+='<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:13px">';
-  html+='<div style="font-size:17px;font-weight:800">Explore por categoria</div>';
-  html+='<div style="font-size:11px;opacity:.6">Deslize para ver</div></div>';
-
-  html+='<div style="display:flex;gap:12px;overflow-x:auto;padding:2px 1px 12px;scrollbar-width:thin">';
-  html+='<button data-cat="" onclick="filtrarGastosCategoria(this.getAttribute(\'data-cat\'))" class="gastos-categoria-chip" style="flex:0 0 72px;border:0;background:transparent;color:inherit;text-align:center;padding:0;cursor:pointer;opacity:'+(selected?'0.62':'1')+'">';
-  html+='<span style="display:flex;width:58px;height:58px;margin:0 auto 8px;border-radius:50%;align-items:center;justify-content:center;background:'+(selected?'var(--surface2)':'var(--accent)')+';color:'+(selected?'var(--text)':'var(--on-accent)')+';font-size:20px;font-weight:850;border:'+(selected?'1px solid var(--line)':'2px solid var(--accent)')+'">⌂</span>';
-  html+='<span class="gastos-categoria-label">Todas</span>';
-  html+='<span style="display:block;font-size:10px;opacity:.65;margin-top:3px">'+money(totalMonth)+'</span></button>';
-
+  if(futurePending.length>8)html+='<p class="ag-note">Outras '+(futurePending.length-8)+' pendência(s) no calendário.</p>';
+  html+='<button type="button" class="ag-link" onclick="go(\'calendario\')">Abrir calendário '+icon('arrowRight','ico-xs')+'</button></div></details>';
+  html+='<section class="ag-card" id="ag-categories"><div class="ag-section-head"><h2>Por categoria</h2><span>'+categoryKeys.length+' categorias</span></div>';
+  const catEntries=categoryKeys.filter(cat=>categories[cat].total>0);
+  const catTotal=catEntries.reduce((sum,cat)=>sum+categories[cat].total,0);
+  if(catTotal>0){
+    const colors=['#719eec','#55b69d','#9e9bd9','#7c9fb5','#b8c6df'];
+    const top=catEntries.slice(0,4).map(cat=>({cat,value:categories[cat].total}));
+    const rest=catEntries.slice(4).reduce((sum,cat)=>sum+categories[cat].total,0);
+    if(rest>0)top.push({cat:null,value:rest});
+    html+='<div class="ag-category-bar" role="img" aria-label="Distribuição dos gastos por categoria">';
+    top.forEach((item,n)=>{html+='<span style="width:'+(100*item.value/catTotal)+'%;background:'+colors[n]+'"></span>';});
+    html+='</div><div class="ag-category-legend">';
+    top.forEach((item,n)=>{html+='<div><span class="ag-color" style="background:'+colors[n]+'"></span><span>'+safe(item.cat===null?'Demais categorias':Interpreter.catDisplay(item.cat))+'</span><strong>'+money(item.value)+'</strong></div>';});
+    html+='</div>';
+  }else html+='<p class="ag-note">Sem gastos por categoria neste período.</p>';
+  html+='<div class="ag-filters" role="group" aria-label="Filtrar gastos por categoria"><button type="button" data-cat="" aria-pressed="'+(!selected)+'" onclick="filtrarGastosCategoria(this.getAttribute(\'data-cat\'))" class="gastos-categoria-chip">Todas</button>';
   categoryKeys.forEach(cat=>{
-    const info=categories[cat];
-    const label=Interpreter.catDisplay(cat);
-    const active=selected===cat;
-    const initial=String(label||'?').trim().charAt(0).toUpperCase();
-    html+='<button data-cat="'+safe(cat)+'" onclick="filtrarGastosCategoria(this.getAttribute(\'data-cat\'))" class="gastos-categoria-chip" style="flex:0 0 72px;border:0;background:transparent;color:inherit;text-align:center;padding:0;cursor:pointer;opacity:'+(selected&&!active?'0.48':'1')+'">';
-    html+='<span style="display:flex;width:58px;height:58px;margin:0 auto 8px;border-radius:50%;align-items:center;justify-content:center;background:'+(active?'var(--accent)':'var(--surface2)')+';color:'+(active?'var(--on-accent)':'var(--text)')+';font-size:21px;font-weight:850;border:'+(active?'2px solid var(--accent)':'1px solid var(--line)')+'">'+gastosIconeCategoria(cat)+'</span>';
-    html+='<span class="gastos-categoria-label">'+safe(label)+'</span>';
-    html+='<span style="display:block;font-size:10px;opacity:.7;margin-top:3px">'+money(info.total)+'</span>';
-    html+='</button>';
+    html+='<button type="button" data-cat="'+safe(cat)+'" aria-pressed="'+(selected===cat)+'" onclick="filtrarGastosCategoria(this.getAttribute(\'data-cat\'))" class="gastos-categoria-chip">'+gastosIconeCategoria(cat)+'<span>'+safe(Interpreter.catDisplay(cat))+'</span></button>';
   });
   html+='</div></section>';
-
-  html+='<section style="margin-top:13px">';
-  html+='<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:5px">';
-  html+='<div style="font-size:19px;font-weight:850;letter-spacing:-.3px">Lista de compras</div>';
-  html+='<div style="font-size:12px;opacity:.65">'+filtered.length+' itens</div></div>';
-  html+='<div style="font-size:12px;opacity:.62;margin-bottom:12px">Consulte uma compra tocando nela.</div>';
-
+  html+='<section class="ag-card ag-list"><div class="ag-section-head"><h2>Lista de compras</h2><span>'+filtered.length+' itens</span></div>';
   if(selected){
     html+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">';
     html+='<span style="font-size:12px;opacity:.75">Categoria: '+safe(Interpreter.catDisplay(selected))+'</span>';
@@ -11511,13 +11534,13 @@ function renderGastos(){
     const id='gasto-detalhe-'+index;
 
     const isSelected=filter.movementId&&String(filter.movementId)===String(m.id);
-    html+='<details'+(isSelected?' open':'')+' style="border-bottom:1px solid var(--border-color,#333);padding:0">';
+    html+='<details class="ag-item"'+(isSelected?' open':'')+'>';
     html+='<summary class="gastos-item-summary">';
-    html+='<span style="display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:50%;background:var(--card-bg,#242424);border:1px solid var(--border-color,#444);font-size:13px;font-weight:800">'+gastosIconeCategoria(m.categoria||'outros')+'</span>';
+    html+='<span class="ag-item-icon">'+gastosIconeCategoria(m.categoria||'outros')+'</span>';
     html+='<span class="gastos-item-copy">';
     html+='<span class="gastos-item-title">'+(documentoSuspeito?'Documento com leitura incorreta':safe(produto))+'</span>';
     html+='<span class="gastos-item-subtitle">'+safe(categoria)+(subcategoria&&subcategoria.toLowerCase()!=='outros'?' · '+safe(subcategoria):'')+' · '+safe(dataLabel)+'</span>';
-    html+='</span><span class="gastos-item-side"><span class="gastos-item-amount">'+money(m.valor)+'</span><span class="gastos-item-detail-hint">Detalhes⌄</span></span>';
+    html+='</span><span class="gastos-item-side"><span class="gastos-item-amount">'+money(m.valor)+'</span><span class="gastos-item-detail-hint">⌄</span></span>';
     html+='</summary>';
     html+='<div class="gastos-item-details">';
     html+='<div><span style="opacity:.65">Categoria:</span> '+safe(categoria)+(subcategoria&&subcategoria.toLowerCase()!=='outros'?' · '+safe(subcategoria):'')+'</div>';
@@ -11534,7 +11557,7 @@ function renderGastos(){
   });
 
   html+='</section>';
-  html+='<div style="font-size:10px;opacity:.5;text-align:center;margin-top:18px">Valores referentes aos lançamentos registrados neste período.</div>';
+  
   html+='</div>';
   return html;
 }
