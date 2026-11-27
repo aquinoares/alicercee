@@ -495,3 +495,65 @@ testCase('Alicia responde simulação sem cadastrar dívida, receita ou pagament
   assert.equal(Store.commitments.length,1);
   assert.equal(Store.movements.length,0);
 });
+
+
+testCase('negação não confirma pagamento nem cria saída de caixa', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  const reply = api.handleMessage(AlicerceIA, 'Ainda não paguei a conta de energia de R$ 150,00 que venceu em 20/10');
+  assert.match(reply, /Cadastrei/);
+  assert.equal(Store.commitments.length, 1);
+  assert.equal(Store.commitments[0].paymentStatus, 'pendente');
+  assert.equal(Store.movements.length, 0);
+  assert.equal(api.getOverview().overdueTotal, 150);
+});
+
+testCase('vou pagar no dia 30 é obrigação futura, não gasto realizado', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  api.handleMessage(AlicerceIA, 'Vou pagar aluguel de R$ 700 dia 30');
+  assert.equal(Store.commitments.length, 1);
+  assert.equal(Store.commitments[0].data, '2026-11-30');
+  assert.equal(Store.commitments[0].paymentStatus, 'pendente');
+  assert.equal(Store.movements.length, 0);
+});
+
+testCase('negação em complemento de cadastro permanece pendente', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  api.handleMessage(AlicerceIA, 'Tenho uma conta antiga de internet de R$ 100');
+  api.handleMessage(AlicerceIA, 'Venceu em 20/10 e não paguei');
+  assert.equal(Store.commitments.length, 1);
+  assert.equal(Store.commitments[0].paymentStatus, 'pendente');
+  assert.equal(Store.movements.length, 0);
+});
+
+testCase('intenção de pagar amanhã não quita conta acompanhada', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  Store.installments.push({ id: 'future', tipo: 'pagar', descricao: 'Parcela', valor: 500, data: '2026-11-04', status: 'pendente' });
+  AlicerceIA._pendingPaymentCheck = { key: 'installment:future' };
+  api.handleMessage(AlicerceIA, 'Vou pagar amanhã');
+  assert.equal(Store.installments[0].status, 'pendente');
+  assert.equal(Store.movements.length, 0);
+});
+
+testCase('pergunta sobre contas pagas não inicia um novo cadastro', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  api.handleMessage(AlicerceIA, 'Quais contas eu já paguei?');
+  assert.equal(AlicerceIA._pendingDebtDraft, null);
+  assert.equal(Store.commitments.length, 0);
+  assert.equal(Store.movements.length, 0);
+});
+
+testCase('pagamento parcial não quita a dívida integral', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  api.handleMessage(AlicerceIA, 'Paguei metade da conta de energia de R$ 150');
+  assert.equal(Store.commitments.length, 0);
+  assert.equal(Store.movements.length, 0);
+});
+
+testCase('pagamento explícito preserva data real e não fica pendente', () => {
+  const { Store, AlicerceIA, api } = createContext();
+  api.handleMessage(AlicerceIA, 'Paguei ontem aluguel de R$ 700');
+  assert.equal(Store.commitments.length, 1);
+  assert.equal(Store.commitments[0].paymentStatus, 'pago');
+  assert.equal(Store.movements.length, 1);
+  assert.equal(Store.movements[0].data, '2026-11-03');
+});
