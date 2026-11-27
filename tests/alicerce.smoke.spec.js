@@ -236,6 +236,37 @@ test('renderiza Home, Gastos, Cartões e Configurações com estado isolado', as
   await expect(page.locator('#alicerce-config-lang option')).toHaveCount(3);
 });
 
+test('Cartões premium preserva fatura, parcelas, privacidade e largura mobile', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'cartoes');
+  await page.evaluate(function () {
+    Store.settings.ocultarValores=false;
+    Store.cards=[{id:'cp-1',nome:'Cartão de teste com nome comprido',fechamento:10,vencimento:17,limite:2500,ativo:true},{id:'cp-2',nome:'Segundo cartão',fechamento:12,vencimento:20,limite:3000,ativo:true}];
+    Store.installments=[{id:'cp-parcela-1',compraId:'cp-compra-1',cardId:'cp-1',tipo:'cartao',descricao:'Compra de teste',valor:125,data:Clock.today(),status:'pendente',parcelaAtual:1,parcelas:2,responsavel:'Eu'}];
+    Store.screenData={cardId:'cp-1',ym:Clock.today().slice(0,7)};
+    document.getElementById('app').innerHTML=renderHeader()+renderCartoes()+renderBottomNav();
+  });
+  await expect(page.locator('.al-cartoes-premium')).toBeVisible();
+  await expect(page.locator('.ccr-orb .alicia-orb')).toBeVisible();
+  await expect(page.locator('.cc2-card')).toHaveCount(2);
+  await expect(page.locator('.cc2-card').first().locator('.ccr-csum')).toBeVisible();
+  await expect(page.locator('.cc-story-summary')).toHaveAttribute('aria-expanded','false');
+  for(const width of [320,375,390,430]){
+    await page.setViewportSize({width,height:844});
+    const result=await page.evaluate(function(){
+      const screen=document.querySelector('.al-cartoes-premium');
+      const bounds=screen.getBoundingClientRect();
+      return {width:bounds.width,doc:document.documentElement.scrollWidth,viewport:innerWidth,overflow:Array.from(screen.querySelectorAll('.ccr-head,.cc2-track,.ccr-actions,.cc-stories,.cc-story')).filter(function(el){const r=el.getBoundingClientRect();return r.right>bounds.right+1||r.left<bounds.left-1;}).length};
+    });
+    expect(result.width).toBeLessThanOrEqual(width+1);
+    expect(result.doc).toBeLessThanOrEqual(result.viewport+1);
+    expect(result.overflow).toBe(0);
+  }
+  await page.locator('.cc-story-summary').click();
+  await expect(page.locator('.cc-story-bubble')).toBeVisible();
+  await page.locator('.cc2-eyebtn').first().click();
+  await expect(page.locator('.cc-story-total strong')).toContainText('••••');
+});
+
 test('Gastos premium exibe categorias, filtros, detalhes e cabe no mobile', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'gastos');
   await page.evaluate(function () {
