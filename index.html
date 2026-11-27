@@ -2805,7 +2805,8 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 .al-home-premium .balance-item .bi-label{font-size:10px;line-height:1.4;overflow-wrap:anywhere}
 .al-home-premium .balance-item .bi-value{font-size:clamp(11px,3.3vw,17px);font-weight:750;color:var(--text)!important;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .al-home-premium .balance-item.bi-saldo{grid-column:1/-1;padding:22px 20px;border-radius:24px;background:linear-gradient(135deg,#10243d,#152f49 60%,#193b50);border:1px solid rgba(137,182,236,.23);box-shadow:0 12px 28px rgba(4,13,28,.17);position:relative;overflow:hidden}
-.al-home-premium .bi-saldo::before{display:none}.al-home-premium .bi-saldo::after{content:"";display:block;left:auto;right:-58px;top:-75px;width:170px;height:170px;border:1px solid rgba(164,208,255,.17);border-radius:50%;transform:none;background:transparent;opacity:1;box-shadow:0 0 0 22px rgba(164,208,255,.04),0 0 0 46px rgba(164,208,255,.03)}
+.al-home-premium .bi-saldo::before,.al-home-premium .bi-saldo::after{display:none;content:none}
+.al-home-premium .balance-item.bi-saldo{background:radial-gradient(circle at 100% 0%,transparent 67px,rgba(164,208,255,.17) 68px,rgba(164,208,255,.04) 69px,rgba(164,208,255,.04) 90px,rgba(164,208,255,.025) 91px,rgba(164,208,255,.025) 112px,transparent 113px),linear-gradient(135deg,#10243d,#152f49 60%,#193b50)}
 .al-home-premium .bi-saldo .bi-label{color:#b9cde4;font-size:12px}
 .al-home-premium .bi-saldo .bi-value{color:#f3f8ff!important;font-size:clamp(28px,8vw,40px);letter-spacing:-.045em;margin:8px 0 14px}
 .al-home-premium .bi-saldo .bi-value.text-red{color:#ffb5b5!important}
