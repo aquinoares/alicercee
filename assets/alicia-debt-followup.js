@@ -898,7 +898,7 @@
       h+='<h3 class="vf-plan-title">Próximos meses</h3>';
       var max=Math.max(1,...v.future.map(function(r){return r.pending;}));
       var months=v.future.map(function(r){return row(labelMonth(r.month),r.count?formatMoney(r.pending):'Sem registros','')+(r.count?'<span class="vf-plan-bar" aria-hidden="true"><i style="width:'+Math.max(0,Math.min(100,r.pending/max*100))+'%"></i></span>':'');});
-      h+=months.slice(0,3).join('')+'<details class="vf-plan-more"><summary>Ver os próximos 12 meses</summary>'+months.slice(3).join('')+'</details>';
+      h+=months.slice(1,4).join('')+'<details class="vf-plan-more"><summary>Ver demais meses</summary>'+months.slice(4).join('')+'</details>';
       h+='<p class="vf-plan-caption">Projeção das contas cadastradas, sem descontar receitas futuras.</p>';
     }
     h+='<button type="button" class="vf-plan-ask" onclick="AliciaDebtFollowup.planningAsk()">'+planningBrand()+'Perguntar à Alicia</button></section>';
