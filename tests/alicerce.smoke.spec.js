@@ -1546,6 +1546,18 @@ async function abrirFerramentasAlicia(page) {
   await expect(menu).toHaveAttribute('open', '');
 }
 
+test('Menu premium organiza acessos e abre Alicia pelo símbolo orbital', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  await page.evaluate(function () { renderMenu(); if(!document.getElementById('menu-panel').classList.contains('open'))toggleMenu(); });
+  await expect(page.locator('#menu-panel .al-menu-group')).toHaveCount(3);
+  await expect(page.locator('#menu-panel .al-menu-close')).toBeVisible();
+  const entry=page.locator('#menu-panel button.menu-item').filter({hasText:/^Alicia/});
+  await expect(entry.locator('.alicia-orb')).toBeVisible();
+  await entry.click();
+  await expect(page.locator('#alicerce-assistant-page')).toBeVisible();
+  await expect(page.locator('#menu-panel')).not.toHaveClass(/\bopen\b/);
+});
+
 test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, conversa organizada e isolamento por conta', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'home');
   const greetingChecks = await page.evaluate(function () {
@@ -1586,6 +1598,10 @@ test('Assistente Alicerce apresenta saudação personalizada, cartão compacto, 
   expect(greetingChecks.afternoon).toBe('Boa tarde, Maria');
   expect(greetingChecks.night).toBe('Boa noite, Maria');
 
+  await expect(page.locator('#alicerce-home-premium')).toBeVisible();
+  await expect(page.locator('.al-home-premium .balance-grid .balance-item')).toHaveCount(4);
+  await expect(page.locator('.al-home-hero-link')).toBeVisible();
+  await expect(page.locator('.al-home-actions button')).toHaveCount(3);
   await expect(page.locator('#alicerce-ai-card')).toBeVisible();
   await expect(page.locator('#alicerce-ai-open-assistant')).toBeVisible();
   await expect(page.locator('#alicerce-ai-card')).toContainText('Maria');
