@@ -1154,6 +1154,13 @@
       var visionWrapped = function () {
         var html = originalVision.apply(this, arguments);
         var marker = '<button class="btn btn-secondary btn-block visao-pdf"';
+        var slot = '<!-- alicia-planning-premium-slot -->';
+        if (html.indexOf(slot) >= 0 && typeof root.visaoPremiumSection === 'function') {
+          var planning = planningSnapshot();
+          var panel = root.visaoPremiumSection('visao-planejamento','Minha evolução','Obrigações do mês, histórico e próximos meses','calendar',renderPlanning(),false);
+          panel += root.visaoPremiumSection('visao-dividas','Contas e dívidas','Vencimentos, atrasos e pagamentos confirmados','clock',renderFinancialSummary(),false);
+          return html.replace(slot,panel);
+        }
         var summary = renderPlanning() + renderFinancialSummary();
         if (html.indexOf(marker) >= 0) return html.replace(marker, summary + marker);
         return html.replace(/<\/div>\s*$/, summary + '</div>');
