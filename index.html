@@ -10035,7 +10035,7 @@ function renderBottomNav(){
 }
 /* ALICERCE_LEGAL_CENTER_V1 */
 var ALICERCE_POLITICAS_TERMOS_VERSAO = '2026-10-20-v1';
-var ALICERCE_POLITICAS_PRIVACIDADE_VERSAO = '2026-10-20-v1';
+var ALICERCE_POLITICAS_PRIVACIDADE_VERSAO = '2026-11-27-v2';
 var ALICERCE_POLITICAS_TRAFEGO_VERSAO = '2026-10-20-v1';
 
 function alPolAceiteGeralValido(){
@@ -10064,6 +10064,8 @@ function alPolTextos(){
         'Preços, periodicidade, recursos, renovação e condições de cada plano são os informados na oferta e no checkout no momento da contratação. Cancelamentos, estornos e direito de arrependimento são tratados de acordo com as condições contratadas e a legislação aplicável. Nenhuma cláusula afasta direitos legais do consumidor.'
       ],
       privacyTitle:'Política de Privacidade',privacy:[
+        'Comunicações opcionais: somente mediante autorização específica, o Alicerce utiliza seu e-mail de cadastro para enviar novidades, ofertas, convites de reativação e benefícios. Autorizar não é condição para acessar o aplicativo. Você pode retirar a autorização gratuitamente a qualquer momento em Políticas e regras ou respondendo SAIR ao e-mail recebido. A retirada não afeta mensagens essenciais da conta, segurança e contratação.',
+        'Registramos a opção de receber ou não promoções, o identificador da conta, a versão da autorização e a data, para respeitar sua preferência e demonstrar o histórico. Utilizamos prestadores de e-mail estritamente para comunicação autorizada; não enviamos saldos, transações, dívidas ou conversas financeiras a serviços de marketing. O histórico é mantido enquanto necessário para respeitar a opção e demonstrar conformidade, observados os direitos do titular e obrigações legais.',
         'O Alicerce pode tratar identificadores de conta, como e-mail e ID, preferências, dados financeiros inseridos por você, informações necessárias à autenticação e sincronização na nuvem, além do conteúdo de anúncios e eventos associados à sua exibição, como visualizações e cliques.',
         'Esses dados são usados para operar a conta e os recursos solicitados, sincronizar registros, proteger o serviço, prevenir abuso, moderar anúncios, medir o funcionamento dos recursos comerciais e cumprir obrigações legais. A autenticação e a sincronização podem envolver o Supabase conforme a configuração técnica do serviço.',
         'Não insira dados de terceiros sem autorização nem informações que não sejam necessárias. Ao abrir o link de um anúncio, você passa a interagir com um site externo, sujeito às próprias regras e políticas. Não forneça senhas, códigos de autenticação ou dados financeiros completos por meio de anúncios.',
@@ -10101,6 +10103,7 @@ function alPolTextos(){
         'Plan prices, billing periods, features, renewals, and conditions are those shown in the offer and checkout at the time of purchase. Cancellations, refunds, and any right to withdraw are handled under the purchase terms and applicable law. No clause waives consumers’ statutory rights.'
       ],
       privacyTitle:'Privacy Policy',privacy:[
+        'Optional communications: only with your specific permission, Alicerce uses your account email to send news, offers, reactivation invitations and benefits. Permission is not required to use the app. Withdraw it free of charge in Policies and Rules or by replying SAIR to the promotional email. Essential account, security and contract messages are unaffected. We record your preference, account ID, permission version and date to respect your choice and demonstrate compliance. Financial transactions, balances, debts and private conversations are not used for marketing.',
         'Alicerce may process account identifiers such as email and user ID, preferences, financial data you enter, information needed for authentication and cloud synchronization, ad content, and events associated with ads, such as views and clicks.',
         'Data is used to operate the account and requested features, synchronize records, secure the service, prevent abuse, moderate ads, measure commercial features, and meet legal obligations. Authentication and synchronization may involve Supabase according to the service configuration.',
         'Do not enter third-party data without authorization or information that is not necessary. When you open an ad link, you interact with an external site subject to its own rules and privacy policy. Do not provide passwords, authentication codes, or full financial details through ads.',
@@ -10138,6 +10141,7 @@ function alPolTextos(){
         'Los precios, periodos de cobro, funciones, renovaciones y condiciones de cada plan son los mostrados en la oferta y el pago en el momento de la compra. Las cancelaciones, devoluciones y cualquier derecho de desistimiento se tratan conforme a las condiciones contratadas y la ley aplicable. Ninguna cláusula renuncia a los derechos legales del consumidor.'
       ],
       privacyTitle:'Política de Privacidad',privacy:[
+        'Comunicaciones opcionales: solo con tu autorización específica, Alicerce utiliza tu correo de cuenta para enviar novedades, ofertas, invitaciones de reactivación y beneficios. No es requisito para usar la aplicación. Puedes retirar la autorización gratuitamente en Políticas y reglas o respondiendo SAIR al correo promocional. No afecta avisos esenciales de cuenta, seguridad y contratación. Registramos tu preferencia, ID de cuenta, versión y fecha para respetar tu decisión y demostrar el cumplimiento. No utilizamos saldos, transacciones, deudas ni conversaciones privadas para marketing.',
         'Alicerce puede tratar identificadores de cuenta, como correo electrónico e ID, preferencias, datos financieros que introduces, información necesaria para autenticación y sincronización en la nube, contenido de anuncios y eventos relacionados, como visualizaciones y clics.',
         'Los datos se utilizan para operar la cuenta y las funciones solicitadas, sincronizar registros, proteger el servicio, prevenir abusos, moderar anuncios, medir funciones comerciales y cumplir obligaciones legales. La autenticación y sincronización pueden utilizar Supabase según la configuración técnica del servicio.',
         'No introduzcas datos de terceros sin autorización ni información innecesaria. Al abrir un enlace publicitario, interactúas con un sitio externo sujeto a sus propias normas y política de privacidad. No proporciones contraseñas, códigos de autenticación ni datos financieros completos a través de anuncios.',
@@ -10181,6 +10185,37 @@ function alPolAbrirContato(){
   if(n.length>=10){window.open('https://wa.me/'+n,'_blank','noopener,noreferrer');return}
   showToast(alPolTextos().contactPending);
 }
+function alMarketingCopy(){
+  var lang=Store&&Store.lang;
+  return ({
+   pt:{title:'Comunicações promocionais',desc:'Opcional. Autorizo o Alicerce a usar meu e-mail de cadastro para enviar novidades, ofertas e convites de reativação. Posso cancelar a qualquer momento sem perder acesso ao aplicativo.',allow:'Autorizar e-mails promocionais',deny:'Não receber / cancelar autorização',status:'Consultar minha preferência',yes:'Autorização registrada.',no:'Sem autorização ativa para promoções.',error:'Não foi possível confirmar a preferência. Tente novamente ou escreva para aliciaalicerce@gmail.com.'},
+   en:{title:'Promotional emails',desc:'Optional. I authorize Alicerce to use my account email for news, offers and reactivation invitations. I may withdraw at any time without losing access.',allow:'Allow promotional emails',deny:'Do not receive / withdraw permission',status:'Check my preference',yes:'Permission recorded.',no:'No active promotional permission.',error:'Could not confirm the preference. Try again or email aliciaalicerce@gmail.com.'},
+   es:{title:'Correos promocionales',desc:'Opcional. Autorizo a Alicerce a usar mi correo para novedades, ofertas e invitaciones de reactivación. Puedo retirar la autorización sin perder acceso.',allow:'Autorizar correos promocionales',deny:'No recibir / retirar autorización',status:'Consultar mi preferencia',yes:'Autorización registrada.',no:'Sin autorización promocional activa.',error:'No se pudo confirmar la preferencia. Intenta otra vez o escribe a aliciaalicerce@gmail.com.'}
+  })[lang]||({title:'Comunicações promocionais',desc:'Opcional. Autorizo o Alicerce a usar meu e-mail de cadastro para enviar novidades, ofertas e convites de reativação. Posso cancelar sem perder acesso.',allow:'Autorizar e-mails promocionais',deny:'Não receber / cancelar autorização',status:'Consultar minha preferência',yes:'Autorização registrada.',no:'Sem autorização ativa para promoções.',error:'Não foi possível confirmar a preferência. Tente novamente ou escreva para aliciaalicerce@gmail.com.'});
+}
+function alMarketingPreferencesHtml(){
+  var p=alMarketingCopy();
+  return '<section class="card mt-3" id="al-marketing-preferences" style="padding:16px"><h3 style="margin:0 0 8px">'+esc(p.title)+'</h3><p style="line-height:1.55;color:var(--text2)">'+esc(p.desc)+'</p><button type="button" class="btn btn-secondary btn-block mt-2" onclick="alMarketingPreference(true)">'+esc(p.allow)+'</button><button type="button" class="btn btn-secondary btn-block mt-2" onclick="alMarketingPreference(false)">'+esc(p.deny)+'</button><button type="button" class="btn btn-secondary btn-block mt-2" onclick="alMarketingPreference(null)">'+esc(p.status)+'</button><p id="al-marketing-status" role="status" aria-live="polite" style="margin-top:10px;line-height:1.5"></p></section>';
+}
+async function alMarketingPreference(granted){
+  var panel=document.getElementById('al-marketing-preferences'),status=document.getElementById('al-marketing-status'),p=alMarketingCopy();
+  if(!panel||!status||panel.dataset.busy==='true')return;
+  panel.dataset.busy='true';var buttons=panel.querySelectorAll('button');buttons.forEach(function(b){b.disabled=true;});
+  try{
+    var client=window.alicerceSupabase;
+    var auth=await client.auth.getUser();if(auth.error||!auth.data.user)throw Error('auth');
+    var uid=auth.data.user.id;
+    var table=client.from('marketing_email_consent_events');
+    if(typeof granted==='boolean'){
+      var write=await table.insert({user_id:uid,granted:granted,policy_version:'2026-11-27-v1'});
+      if(write.error)throw write.error;
+    }
+    var result=await client.from('marketing_email_consent_events').select('granted').eq('user_id',uid).order('id',{ascending:false}).limit(1);
+    if(result.error)throw result.error;
+    if(document.getElementById('al-marketing-status')===status)status.textContent=result.data&&result.data[0]&&result.data[0].granted===true?p.yes:p.no;
+  }catch(e){if(document.getElementById('al-marketing-status')===status)status.textContent=p.error;}
+  finally{panel.dataset.busy='false';buttons.forEach(function(b){b.disabled=false;});}
+}
 function renderPoliticas(){
   var p=alPolTextos();
   var h='<div class="content" style="max-width:760px;margin:0 auto;padding-bottom:32px">';
@@ -10188,13 +10223,14 @@ function renderPoliticas(){
   h+='<h2 class="mt-4">'+esc(p.policyTitle)+'</h2><p class="text-sm text-muted">'+esc(p.policyIntro)+'</p>';
   h+=alPolRenderSecao(p.termsTitle,p.terms);
   h+=alPolRenderSecao(p.privacyTitle,p.privacy);
+  h+=alMarketingPreferencesHtml();
   h+=alPolRenderSecao(p.trafficTitle,p.traffic);
   h+=alPolRenderSecao(p.subsTitle,p.subs);
   h+=alPolRenderSecao(p.reportingTitle,p.reporting);
   h+='<section class="card mt-3" style="padding:16px"><h3 style="margin:0 0 8px">'+esc(p.contactTitle)+'</h3><p style="line-height:1.55;color:var(--text2)">'+esc(p.contactText)+'</p>';
   if(alPolContatoConfigurado())h+='<button type="button" class="btn btn-primary btn-block mt-2" onclick="alPolAbrirContato()">'+esc(p.contactButton)+'</button>';
   else h+='<p class="text-sm" style="margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:10px">'+esc(p.contactPending)+'</p>';
-  h+='<p class="text-sm text-muted" style="margin-top:12px">'+esc(p.reviewNote)+'</p></section>';
+  h+='<p class="text-sm" style="margin-top:12px"><a href="mailto:aliciaalicerce@gmail.com">aliciaalicerce@gmail.com</a></p><p class="text-sm text-muted" style="margin-top:12px">'+esc(p.reviewNote)+'</p></section>';
   h+='</div>';return h;
 }
 function renderPoliticasAceite(){
@@ -10203,6 +10239,7 @@ function renderPoliticasAceite(){
   h+='<div style="text-align:center;padding:12px 4px 18px"><div style="font-size:2rem;color:var(--accent)">'+icon('shield')+'</div><h1 style="font-size:1.5rem;margin:10px 0">'+esc(p.welcomeTitle)+'</h1><p style="line-height:1.6;color:var(--text2)">'+esc(p.welcomeIntro)+'</p></div>';
   h+=alPolRenderSecao(p.termsTitle,p.terms);
   h+=alPolRenderSecao(p.privacyTitle,p.privacy);
+  h+=alMarketingPreferencesHtml();
   h+='<p class="text-sm text-muted" style="margin:16px 2px">'+esc(p.read)+'</p>';
   h+='<label style="display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;margin-top:10px;line-height:1.45;box-sizing:border-box;width:100%;max-width:100%;min-width:0"><input id="al-pol-terms-check" type="checkbox" style="appearance:auto;-webkit-appearance:checkbox;display:inline-block;width:18px;min-width:18px;max-width:18px;height:18px;min-height:18px;flex:0 0 18px;margin:2px 0 0;padding:0;box-sizing:border-box"><span style="display:block;flex:1 1 auto;min-width:0;white-space:normal;overflow-wrap:anywhere;word-break:normal">'+esc(p.termsCheck)+'</span></label>';
   h+='<label style="display:flex;align-items:flex-start;gap:10px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;margin-top:10px;line-height:1.45;box-sizing:border-box;width:100%;max-width:100%;min-width:0"><input id="al-pol-privacy-check" type="checkbox" style="appearance:auto;-webkit-appearance:checkbox;display:inline-block;width:18px;min-width:18px;max-width:18px;height:18px;min-height:18px;flex:0 0 18px;margin:2px 0 0;padding:0;box-sizing:border-box"><span style="display:block;flex:1 1 auto;min-width:0;white-space:normal;overflow-wrap:anywhere;word-break:normal">'+esc(p.privacyCheck)+'</span></label>';
