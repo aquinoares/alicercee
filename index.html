@@ -2850,6 +2850,20 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 #menu-panel .tf-menu-entry .tf-me-title{font-size:13px}
 .al-home-premium button:focus-visible,#menu-panel button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 </style>
+<style id="al-home-sponsored-premium">
+.al-home-premium #home-feed-slot{margin:12px 0 16px}
+.al-home-premium #home-comunicados-track{border-radius:18px}
+.al-home-premium #home-feed-slot .home-comunicado-slide{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:none}
+.al-home-premium #home-feed-slot .tf-home-head{margin-bottom:8px}
+.al-home-premium #home-feed-slot .tf-badge{font-size:10px;text-transform:none;letter-spacing:.02em;color:var(--text2);background:var(--surface2);border-color:var(--line)}
+.al-home-premium #home-feed-slot .tf-card-media{aspect-ratio:16/9;max-height:190px;object-fit:contain;border-radius:12px;background:var(--surface2)}
+.al-home-premium #home-feed-slot .tf-card-body{padding:8px 2px 0}
+.al-home-premium #home-feed-slot .tf-card-title{font-size:14px;line-height:1.3}
+.al-home-premium #home-feed-slot .tf-card-desc{font-size:12px}
+.al-home-premium #home-feed-slot .tf-card-cta{border-radius:12px;border-color:var(--line);color:var(--text);background:var(--surface2);font-size:12px}
+.al-home-premium #home-feed-slot .carousel-dots{margin:9px 0}
+.al-home-premium #home-feed-slot .carousel-dot{width:8px;height:8px;min-width:8px;min-height:8px}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -10954,7 +10968,7 @@ function homeAtualizarComunicadoDots() {
   const trilho = document.getElementById('home-comunicados-track');
   if (!trilho || !trilho.clientWidth) return;
   const indice = Math.round(trilho.scrollLeft / trilho.clientWidth);
-  trilho.querySelectorAll('.home-comunicado-dot').forEach((dot, i) => {
+  document.querySelectorAll('#home-feed-slot .home-comunicado-dot').forEach((dot, i) => {
     const ativo = i === indice;
     dot.classList.toggle('active', ativo);
     dot.setAttribute('aria-current', ativo ? 'true' : 'false');
@@ -10963,14 +10977,20 @@ function homeAtualizarComunicadoDots() {
 
 function homeFeedStartRotation() {
   if (_homeFeedTimer) clearInterval(_homeFeedTimer);
+  _homeFeedTimer = null;
+  const currentTrack=document.getElementById('home-comunicados-track');
+  if(!currentTrack||currentTrack.querySelectorAll('.home-comunicado-slide').length<2)return;
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
   _homeFeedTimer = setInterval(function() {
     const trilho = document.getElementById('home-comunicados-track');
-    if (!trilho || !trilho.clientWidth) return;
+    if (!trilho || !trilho.clientWidth){clearInterval(_homeFeedTimer);_homeFeedTimer=null;return;}
+    const rect=trilho.getBoundingClientRect();
+    if(document.hidden||rect.bottom<=0||rect.top>=window.innerHeight||trilho.contains(document.activeElement))return;
     const cartoes = trilho.querySelectorAll('.home-comunicado-slide');
     if (cartoes.length < 2) return;
     const indice = Math.round(trilho.scrollLeft / trilho.clientWidth);
     homeScrollComunicado((indice + 1) % cartoes.length);
-  }, 5000);
+  }, 8000);
 }
 
 function homeRenderComunicados() {
@@ -10984,8 +11004,8 @@ function homeRenderComunicados() {
   const total = Math.max(comunicados.length, anuncios.length);
 
   for (let i = 0; i < total; i++) {
-    if (i < comunicados.length) itens.push({ tipo: 'comunicado', dados: comunicados[i] });
     if (i < anuncios.length) itens.push({ tipo: 'anuncio', dados: anuncios[i] });
+    if (i < comunicados.length) itens.push({ tipo: 'comunicado', dados: comunicados[i] });
   }
 
   let html = '<section id="home-feed-slot" class="mt-4" aria-label="Novidades, avisos e patrocinados">';
@@ -10996,13 +11016,13 @@ function homeRenderComunicados() {
     return html;
   }
 
-  html += '<div class="section-title">Novidades e avisos</div>';
+  html += '<div class="section-title">'+(anuncios.length?'Anúncios e comunicados':'Novidades e avisos')+'</div>';
   html += '<div id="home-comunicados-track" style="display:flex;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain;" onscroll="homeAtualizarComunicadoDots()">';
 
   itens.forEach(function(item) {
     const c = item.dados;
 
-    html += '<article class="card home-comunicado-slide"' + (item.tipo === 'anuncio' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(c.id || '')) ? ' data-ad-id="' + esc(c.id) + '" data-ad-owner="' + esc(c.owner || '') + '"' : '') + ' style="box-sizing:border-box;flex:0 0 100%;min-width:100%;max-width:100%;scroll-snap-align:start;scroll-snap-stop:always;margin:0;overflow:hidden;padding:12px;">';
+    html += '<article class="card home-comunicado-slide'+(item.tipo==='anuncio'?' al-home-sponsored':'')+'"' + (item.tipo === 'anuncio' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(c.id || '')) ? ' data-ad-id="' + esc(c.id) + '" data-ad-owner="' + esc(c.owner || '') + '"' : '') + ' style="box-sizing:border-box;flex:0 0 100%;min-width:100%;max-width:100%;scroll-snap-align:start;scroll-snap-stop:always;margin:0;overflow:hidden;padding:12px;">';
 
     if (item.tipo === 'comunicado') {
       const titulo = esc(c.title || 'Comunicado');
@@ -11248,6 +11268,7 @@ function renderHome(){
     '<div class="balance-item"><div class="bi-label">'+esc(t('cartoes'))+'</div><div class="bi-value">'+fmtMoney(_miniCardsCurrent)+'</div></div></div>';
   html+=AlicerceIA.renderCard();
   html+='<div class="al-home-actions" aria-label="Acesso rápido"><button type="button" onclick="go(\'add\')">'+icon('plus')+'<span>'+esc(t('add'))+'</span></button><button type="button" onclick="go(\'gastos\')">'+icon('gastos')+'<span>'+esc(t('gastos'))+'</span></button><button type="button" onclick="go(\'calendario\')">'+icon('calendario')+'<span>'+esc(t('calendario'))+'</span></button></div>';
+  html+=homeRenderComunicados();
   if(window.AlicerceBeneficios)html+=window.AlicerceBeneficios.renderHome(Store);
   html+='<div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>'+t('proximosCompromissos')+'</span><button type="button" class="btn btn-secondary btn-sm" onclick="go(\'calendario\')">Ver todos</button></div>';
   html+='<div class="al-home-upcoming">';
@@ -11268,7 +11289,6 @@ function renderHome(){
   html+='</div>';
   if(smartCards.length>1)html+='<div class="dynamic-dots">'+smartCards.map((_,i)=>'<div class="dynamic-dot'+(i===0?' active':'')+'" onclick="scrollToDC('+i+')"></div>').join('')+'</div>';
   html+='</div>';}
-  html+=homeRenderComunicados();
   html+='</div>';
   return html;
 }
@@ -17970,7 +17990,7 @@ function homeObservarAnuncios() {
 
     _tfObservadorAnuncios = new IntersectionObserver(function(entradas) {
       entradas.forEach(function(entrada) {
-        if (!entrada.isIntersecting || entrada.intersectionRatio < 0.6) return;
+        if (document.hidden || !entrada.isIntersecting || entrada.intersectionRatio < 0.6) return;
 
         const slide = entrada.target;
         const id = slide.getAttribute('data-ad-id');
@@ -17978,7 +17998,7 @@ function homeObservarAnuncios() {
         if (id) tfRegistrarEvento(id, 'view', dono);
       });
     }, {
-      root: trilho,
+      root: null,
       threshold: [0.6]
     });
 
