@@ -846,38 +846,109 @@
     return 'Só para confirmar: a casa conseguiu pagar "' + item.description + '" ou ela continua pendente?';
   }
 
-  function financialAnswer(message) {
-    var n = normalize(message);
-    if (!/\b(divida|dividas|conta|contas|boleto|boletos|fatura|faturas|atraso|atrasada|atrasadas|vencida|vencidas|pagas|pagamentos)\b/.test(n)) return null;
-    if (!/\b(quais|minhas|meus|quantas|quanto|como|mostra|mostre|listar|liste|ver|tem|tenho|estao|esta|foram|pagas|pagos|paguei|atrasad|vencid|vencem|historico|situacao)\b/.test(n)) return null;
-    var view = getOverview();
-    var lines = [];
-    if (view.overdue.length) {
-      lines.push('Em atraso: ' + view.overdue.length + ' conta(s), total de ' + formatMoney(view.overdueTotal) + '.');
-      view.overdue.slice(0, 5).forEach(function (x) {
-        lines.push('- ' + x.description + ': ' + formatMoney(x.amount) + ', venceu em ' + formatDate(x.dueDate) + '.');
-      });
-    } else lines.push('Não encontrei dívidas vencidas em aberto nas contas acompanhadas.');
-    if (view.dueToday.length) {
-      lines.push('Vencem hoje: ' + view.dueToday.length + ' conta(s), total de ' + formatMoney(view.dueTodayTotal) + '.');
-    }
-    var upcoming = view.all.filter(function (item) { return item.status === 'pendente' && item.dueDate > today(); });
-    if (upcoming.length) {
-      lines.push('A pagar (vencimentos futuros): ' + upcoming.length + ' conta(s), total de ' + formatMoney(upcoming.reduce(function (sum, item) { return sum + item.amount; }, 0)) + '.');
-      upcoming.slice(0, 5).forEach(function (item) { lines.push('- ' + item.description + ': ' + formatMoney(item.amount) + ', vence em ' + formatDate(item.dueDate) + '.'); });
-    }
-    if (view.paid.length) {
-      lines.push('Quitadas (pagamento confirmado): ' + view.paid.length + ' conta(s), total de ' + formatMoney(view.paidTotal) + '.');
-    } else lines.push('Não encontrei contas quitadas no histórico acompanhado.');
-    if (view.paidLate.length) {
-      lines.push('Pagas após o vencimento: ' + view.paidLate.length + ' conta(s), total de ' + formatMoney(view.paidLateTotal) + '.');
-      view.paidLate.slice(0, 5).forEach(function (x) {
-        lines.push('- ' + x.description + ': vencimento ' + formatDate(x.dueDate) + ', pagamento ' + formatDate(x.paidDate) + '.');
-      });
-    } else lines.push('Ainda não há pagamentos em atraso com as duas datas confirmadas.');
-    return lines.join('\n');
+  // Normalize conversational Portuguese for read-only intent only. Never rewrite amounts,
+  // descriptions, or the original text used by the financial write paths.
+  function normalizeBillQuestion(message) {
+    return normalize(stripWakeWord(message))
+      .replace(/\b(?:oq|o q|oque)\b/g, 'o que')
+      .replace(/\b(?:q|qe)\b/g, 'que')
+      .replace(/\b(?:vc|vcs)\b/g, 'voce')
+      .replace(/\b(?:pra|pro|p)\b/g, 'para')
+      .replace(/\b(?:n|naum)\b/g, 'nao')
+      .replace(/\b(?:t[aã]|tao)\b/g, 'esta')
+      .replace(/\b(?:faltas|faltam|falt[aou]m)\b/g, 'falta')
+      .replace(/\b(?:pagament[o]?s|pgtos|pgto)\b/g, 'pagamentos');
   }
 
+  function billPeriod(n, fallback) {
+    var now=today(), key=now.slice(0,7);
+    var names=['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+    if (/\b(?:proximos? 30 dias|30 dias a frente)\b/.test(n)) return {kind:'range',start:now,end:shiftDate(now,29),label:'próximos 30 dias'};
+    if (/\b(?:todos os meses|proximos meses|contas futuras|vencimentos futuros|todas as contas|todas as dividas|todas as pendencias|todas elas|historico completo|sem filtro|tudo)\b/.test(n) && !/\b(?:esse|este|neste|nesse|do) mes\b/.test(n)) {
+      return {kind:/\b(?:proximos meses|contas futuras|vencimentos futuros)\b/.test(n)?'future':'all',label:/\b(?:proximos meses|contas futuras|vencimentos futuros)\b/.test(n)?'próximos vencimentos':'todos os períodos'};
+    }
+    if (/\b(?:hoje|amanha|ontem)\b/.test(n)) {
+      var day=/\bamanha\b/.test(n)?shiftDate(now,1):/\bontem\b/.test(n)?shiftDate(now,-1):now;
+      return {kind:'range',start:day,end:day,label:day===now?'hoje':formatDate(day)};
+    }
+    if (/\b(?:proximo mes|mes que vem|mes seguinte)\b/.test(n)) key=monthOffset(key,1);
+    else if (/\b(?:mes passado|mes anterior|ultimo mes)\b/.test(n)) key=monthOffset(key,-1);
+    else {
+      var named=n.match(new RegExp('\\b(?:em |de |mes de |mes )?('+names.join('|')+')(?: (?:de )?(\\d{4}))?\\b'));
+      if (named) key=(named[2]||key.slice(0,4))+'-'+String(names.indexOf(named[1])+1).padStart(2,'0');
+      else if (!/\b(?:esse mes|este mes|do mes|neste mes|nesse mes|mes atual|agora)\b/.test(n) && fallback) return fallback;
+    }
+    return {kind:'month',key:key,label:names[Number(key.slice(5,7))-1]+' de '+key.slice(0,4)};
+  }
+
+  function billQuery(assistant, message) {
+    var n=normalizeBillQuestion(message), raw=String(message||'');
+    // Keep write commands, calculations and planning simulations on their own paths.
+    if (/\b(?:anota|anote|cadastra|cadastre|cadastrar|registra|registre|registrar|adiciona|adicione|adicionar|inclua|crie|apaga|apague|exclua|excluir|remova|altere|corrige|corrigir|edite|marque|agendar|se eu|simula|simule|simulacao|todo mes|recorrente|evolucao|melhor mes|quanto tempo)\b/.test(n)) return null;
+    if (/\b(?:quanto|quais|qual|quantas|o que)\b.*\b(?:consigo|posso|poderia|daria)\b.*\b(?:pagar|quitar)\b/.test(n)) return null;
+    if (!/[?]/.test(raw)&&/^(?:tenho (?:uma?|conta|boleto|divida)|paguei|quitei|pagamos|vou pagar|preciso pagar|tenho que pagar|devo pagar)\b/.test(n)&&!/^(?:preciso pagar|tenho que pagar|devo pagar)$/.test(n)) return null;
+    var last=assistant._billQueryContext;
+    if(last&&last.user!==Store.userId)last=null;
+    var follow=last&&/^(?:e\s+)?(?:no\s+|em\s+|de\s+|do\s+|nesse\s+|neste\s+|so\s+|somente\s+)?(?:mes passado|mes anterior|mes que vem|proximo mes|proximos meses|esse mes|este mes|mes atual|janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|hoje|amanha|ontem|todas|todas elas|tudo|pagas|quitadas|vencidas|atrasadas|pendentes)(?: (?:de )?\d{4})?$/.test(n);
+    var subject=/\b(?:contas?|dividas?|boletos?|faturas?|pagamentos|parcelas?|obrigacoes|pendencias)\b/.test(n);
+    var open=/\b(?:falta(?:m)?(?:\s+\w+){0,4}\s+(?:pagar|pagas|pagos|quitadas|quitar)|falta pagar|ainda (?:tenho|tem|preciso|devo) (?:que |de )?pagar|a pagar|para (?:eu )?pagar|em aberto|pendentes?|nao (?:foram |foi )?pag[oa]s?|nao paguei|por pagar|vencem|vai vencer|vao vencer|vencimentos futuros)\b/.test(n);
+    var question=/[?]/.test(raw)||/^(?:quais?|quanto|quantas?|como|quando|mostra|mostre|listar|liste|ver|me (?:diz|fala|mostra|mostre)|o que|tem|tenho|falta)\b/.test(n);
+    var paid=/\b(?:pagas|pagos|quitadas|quitados|ja paguei|ja quitei|paguei|quitei|pagamentos realizados|pagas em atraso)\b/.test(n)&&!open;
+    var overdue=/\b(?:vencidas?|atrasadas?|em atraso)\b/.test(n)&&!paid;
+    var namedRead=subject&&(question||/^(?:todas as contas|todas as dividas|todas as pendencias|todos os boletos|todos os pagamentos|contas futuras|contas do mes)$/.test(n)||open&&(/\b(?:contas?|dividas?|boletos?|faturas?|pendencias)\b.*\b(?:falta|em aberto|pendentes?|para (?:eu )?pagar|a pagar|vencem)\b/.test(n))||/^(?:minhas |meus )?(?:contas|dividas|boletos|faturas|pagamentos|parcelas)(?: (?:do|desse|deste) mes)?$/.test(n)||/^(?:contas|dividas|boletos|faturas|pagamentos) (?:pagas|pagos|vencidas|atrasadas|futuras|pendentes)$/.test(n));
+    var genericRead=question&&/\b(?:falta(?:\s+\w+){0,4}\s+(?:pagar|quitar)|tenho (?:que|de) pagar|preciso pagar|devo pagar|tem (?:algo|alguma coisa) (?:para|a) pagar|o que vence)\b/.test(n);
+    if(!follow&&!namedRead&&!genericRead)return null;
+    // Statements such as "paguei luz" or "tenho uma conta antiga" remain write/draft intents.
+    if(!question&&!follow&&/\b(?:paguei|quitei|pagamos|vou pagar|tenho uma|tenho um|tenho conta|tenho boleto|tenho divida)\b/.test(n))return null;
+    if(!follow&&!question&&/\d/.test(n)&&/\b(?:pagar|paguei|venceu|vencimento|reais|valor)\b/.test(n))return null;
+    var mode=paid?'paid':overdue?'overdue':open?'pending':follow?last.mode:'pending';
+    if(follow&&/\b(?:pagas|quitadas)\b/.test(n))mode='paid';
+    if(follow&&/\b(?:atrasadas|vencidas)\b/.test(n))mode='overdue';
+    if(follow&&/\bpendentes\b/.test(n))mode='pending';
+    var period=billPeriod(n,follow&&!/^(?:e )?(?:todas|todas elas|tudo)$/.test(n)?last.period:null);
+    if(follow&&/^(?:e )?(?:todas|todas elas|tudo)$/.test(n))period={kind:'all',label:'todos os períodos'};
+    return {mode:mode,period:period,user:Store.userId};
+  }
+
+  function financialAnswer(message, assistant) {
+    var query=billQuery(assistant||{},message);
+    if(!query)return null;
+    if(assistant)assistant._billQueryContext=query;
+    var now=today(),period=query.period,all=getObligations().filter(function(r){return cents(r.amount)>0;});
+    function inPeriod(date){
+      if(!validIso(date))return false;
+      if(period.kind==='all')return true;
+      if(period.kind==='future')return date>now;
+      if(period.kind==='range')return date>=period.start&&date<=period.end;
+      return date.slice(0,7)===period.key;
+    }
+    var rows=all.filter(function(r){
+      if(query.mode==='paid')return r.status==='pago'&&(period.kind==='all'||inPeriod(r.paidDate));
+      return r.status==='pendente'&&inPeriod(r.dueDate)&&(query.mode!=='overdue'||r.dueDate<now);
+    });
+    var heading=query.mode==='paid'?'Contas pagas':query.mode==='overdue'?'Contas vencidas em aberto':'Contas que faltam pagar';
+    var lines=[heading+' — '+period.label+'.'];
+    if(!rows.length){
+      if(query.mode==='pending'&&period.kind==='month'&&period.key===now.slice(0,7)){
+        lines.push('Não encontrei obrigações financeiras cadastradas em aberto neste mês. Confira se sua conta está sincronizada.');
+      }else lines.push('Não encontrei '+(query.mode==='paid'?'pagamentos confirmados com data neste período':query.mode==='overdue'?'contas vencidas em aberto neste período':'contas em aberto neste período')+'.');
+    }else{
+      lines.push(rows.length+' conta(s) · Total: '+formatMoney(totalRows(rows))+'.');
+      rows.slice(0,10).forEach(function(r){
+        lines.push('• '+r.description+' — '+formatMoney(r.amount)+' · '+(query.mode==='paid'?(r.paidDate?'paga em '+formatDate(r.paidDate):'data de pagamento não informada'):r.dueDate<now?'venceu em '+formatDate(r.dueDate):r.dueDate===now?'vence hoje':'vence em '+formatDate(r.dueDate))+'.');
+      });
+      if(rows.length>10)lines.push('Mostrando 10 de '+rows.length+' contas. O total inclui todas.');
+    }
+    if(query.mode==='pending'&&period.kind==='month'&&period.key===now.slice(0,7)){
+      var carry=all.filter(function(r){return r.status==='pendente'&&r.dueDate.slice(0,7)<period.key;});
+      if(carry.length)lines.push('Atenção: '+carry.length+' conta(s) de meses anteriores ainda em atraso ('+formatMoney(totalRows(carry))+'), fora do total deste mês.');
+      else if(!rows.length){
+        var next=all.find(function(r){return r.status==='pendente'&&r.dueDate.slice(0,7)>period.key;});
+        if(next)lines.push('Próximo vencimento, fora deste mês: '+next.description+' — '+formatMoney(next.amount)+' em '+formatDate(next.dueDate)+'.');
+      }
+    }
+    return lines.join('\n');
+  }
 
   // Planejamento: mesmo cadastro de contas, sem registrar dinheiro simulado.
   function monthOffset(key, offset) {
@@ -1108,6 +1179,9 @@
       return handleDebt(assistant, raw);
     }
 
+    var queried = financialAnswer(raw, assistant);
+    if (queried !== null) return queried;
+    assistant._billQueryContext = null;
     var planning = planningAnswer(raw);
     if (planning !== null) return planning;
 
@@ -1116,13 +1190,13 @@
     if (appointmentIntent) return handleAppointment(assistant, raw);
 
     // A question about previous or future payments is read-only, never a new debt.
-    if (/^(?:quais?|quanto|quantas?|como|quando|mostra|mostre|listar|liste|ver|me (?:diz|mostra|mostre))\b/.test(n)) return financialAnswer(raw);
+    if (/^(?:quais?|quanto|quantas?|como|quando|mostra|mostre|listar|liste|ver|me (?:diz|mostra|mostre))\b/.test(n)) return null;
     if (DEBT_KEYWORDS.test(n) && paymentIntent(raw) === 'parcial') return 'Entendi que houve um pagamento parcial. Não vou marcar a conta como quitada. Confira o valor restante no cadastro de origem.';
     var debtIntent = DEBT_KEYWORDS.test(n) && (paymentIntent(raw) !== '' ||
       /\b(tenho|tem|anota|anote|registre|registra|cadastre|cadastra|inclua|inclui|adicione|adiciona|guarda|guarde|venceu|vencia|vencida|atrasada|atraso|nao paguei|ficou|pendente|antiga|antigo|de antes|ja paguei|paguei)\b/.test(n));
     if (debtIntent) return handleDebt(assistant, raw);
 
-    return financialAnswer(raw);
+    return null;
   }
 
   function planningBrand() { return typeof root.aliciaOrb === 'function' ? '<span class="alicia-brand-inline" aria-hidden="true">' + root.aliciaOrb() + '</span>' : ''; }
@@ -1248,6 +1322,7 @@
         var result = originalReset.apply(this, arguments);
         if (previous !== String(this._userId || '')) {
           this._billReview = null;
+          this._billQueryContext = null;
           this._pendingPaymentCheck = null;
           this._paymentReview = null;
           paymentFilter = 'pendentes';
