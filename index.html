@@ -2792,6 +2792,78 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 #alicerce-planning-form label{display:grid;gap:5px;font-size:12px}
 #alicerce-planning-form input,#alicerce-planning-form select{min-height:42px;font-size:16px;width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--surface2);color:var(--text)}
 </style>
+
+<style id="alicerce-home-menu-premium">
+.app:has(.al-home-premium),.al-home-premium,#menu-panel{--accent:#8ab2f3;--accent-light:#a4c4fa;--on-accent:#10213a;--tint-accent:rgba(85,127,203,.14);--glow:rgba(85,127,203,.16);--chrome:#274c83}
+[data-theme="claro"] .app:has(.al-home-premium),[data-theme="marinho"] .app:has(.al-home-premium),[data-theme="claro"] .al-home-premium,[data-theme="marinho"] .al-home-premium,[data-theme="claro"] #menu-panel,[data-theme="marinho"] #menu-panel{--accent:#345ca5;--accent-light:#345ca5;--on-accent:#fff;--chrome:#345ca5}
+.al-home-premium{box-sizing:border-box;max-width:720px;margin:0 auto;padding:16px 16px 105px}
+.al-home-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:1px 0 16px}
+.al-home-top small{font-size:11px;letter-spacing:.08em;color:var(--text2);font-weight:650}
+.al-home-top h1{font-size:24px;line-height:1.2;letter-spacing:-.04em;margin:5px 0 0;font-weight:750}
+.al-home-premium .balance-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:0 0 12px}
+.al-home-premium .balance-item{border-radius:14px;padding:12px 8px;min-width:0;box-sizing:border-box;box-shadow:none}
+.al-home-premium .balance-item .bi-label{font-size:10px;line-height:1.4;overflow-wrap:anywhere}
+.al-home-premium .balance-item .bi-value{font-size:clamp(11px,3.3vw,17px);font-weight:750;color:var(--text)!important;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.al-home-premium .balance-item.bi-saldo{grid-column:1/-1;padding:22px 20px;border-radius:24px;background:linear-gradient(135deg,#10243d,#152f49 60%,#193b50);border:1px solid rgba(137,182,236,.23);box-shadow:0 12px 28px rgba(4,13,28,.17);position:relative;overflow:hidden}
+.al-home-premium .bi-saldo::before{display:none}.al-home-premium .bi-saldo::after{content:"";display:block;left:auto;right:-58px;top:-75px;width:170px;height:170px;border:1px solid rgba(164,208,255,.17);border-radius:50%;transform:none;background:transparent;opacity:1;box-shadow:0 0 0 22px rgba(164,208,255,.04),0 0 0 46px rgba(164,208,255,.03)}
+.al-home-premium .bi-saldo .bi-label{color:#b9cde4;font-size:12px}
+.al-home-premium .bi-saldo .bi-value{color:#f3f8ff!important;font-size:clamp(28px,8vw,40px);letter-spacing:-.045em;margin:8px 0 14px}
+.al-home-premium .bi-saldo .bi-value.text-red{color:#ffb5b5!important}
+.al-home-hero-link{display:flex;align-items:center;justify-content:space-between;gap:6px;color:#c5daf4;background:transparent;border:0;border-top:1px solid rgba(187,217,255,.17);min-height:38px;padding:11px 0 0;text-align:left;width:100%;font-size:12px;cursor:pointer}
+.al-home-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:12px 0 16px}
+.al-home-actions button{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;background:var(--surface);border:1px solid var(--line);border-radius:15px;color:var(--text);font:inherit;font-size:11px;min-height:70px;padding:8px 3px;text-align:center;cursor:pointer}
+.al-home-actions .ico{color:var(--accent);width:21px;height:21px}
+.al-home-premium .alicerce-ai-launcher{border-radius:16px;padding:8px 12px;margin:10px 0 16px;box-shadow:none}
+.al-home-premium .alicerce-ai-launcher-cta{color:var(--text2)}
+.al-home-premium .al-benefit-home-card{box-shadow:none;border-radius:16px}
+.al-home-premium .section-title{font-size:14px;font-weight:700;color:var(--text);margin:18px 0 9px}
+.al-home-upcoming{border:1px solid var(--line);border-radius:18px;background:var(--surface);padding:3px 12px}
+.al-home-upcoming .list-item{border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;box-shadow:none;margin:0;padding:12px 0;cursor:default}
+.al-home-upcoming .list-item:last-child{border-bottom:0}
+.al-home-upcoming .li-left{min-width:0;gap:9px}.al-home-upcoming .li-info{min-width:0}.al-home-upcoming .li-name{font-size:12px;overflow-wrap:anywhere}.al-home-upcoming .li-sub{font-size:10px;line-height:1.35}.al-home-upcoming .li-amount{font-size:12px;white-space:nowrap}
+.al-home-upcoming .li-left>.ico{color:var(--accent);flex-shrink:0}
+.al-home-upcoming .card{background:transparent;border:0;box-shadow:none;padding:12px 0;font-size:12px}
+.al-home-premium .dynamic-card-wrap{border-radius:18px;min-height:0;margin-top:8px}
+.al-home-premium .dynamic-card-track{min-height:0}
+.al-home-premium .dynamic-card{box-sizing:border-box;min-height:0;padding:12px 14px}
+.al-home-premium .dynamic-card .dc-title{color:var(--text);font-size:14px}
+.al-home-premium .dynamic-card .dc-text{font-size:12px;line-height:1.45}
+.al-home-premium .alicia-guide-heading{color:var(--text2);font-size:10px;letter-spacing:.04em}
+.al-home-premium .alicia-guide-heading .alicia-orb{width:27px;height:27px}
+.al-home-premium .dynamic-dots{padding:8px 0 10px}
+.al-home-premium .dynamic-dot{width:6px;height:6px}
+.al-home-premium #home-feed-slot:empty{display:none}
+#menu-panel{width:min(328px,88vw);padding:0 10px max(20px,env(safe-area-inset-bottom));box-sizing:border-box;background:var(--bg2);overscroll-behavior:contain}
+#menu-panel .al-menu-head{padding:20px 12px 15px;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--line);margin:0 0 8px}
+#menu-panel .al-menu-head small{display:block;font-size:10px;letter-spacing:.12em;color:var(--text2)}
+#menu-panel .al-menu-head strong{font-size:23px;letter-spacing:-.04em;color:var(--text);display:block;margin-top:4px}
+#menu-panel .al-menu-close{width:38px;height:38px;background:var(--surface);color:var(--text2);border:1px solid var(--line);border-radius:50%;font-size:23px;cursor:pointer}
+#menu-panel .al-menu-group{font-size:10px;letter-spacing:.05em;color:var(--text2);font-weight:700;margin:16px 10px 5px}
+#menu-panel .menu-item{width:100%;box-sizing:border-box;border:0;background:transparent;color:var(--text);border-radius:12px;min-height:46px;padding:10px 12px;text-align:left;gap:11px;font:inherit;font-size:13px;cursor:pointer;box-shadow:none}
+#menu-panel .menu-item:hover,#menu-panel .menu-item.active{background:var(--surface2);color:var(--accent);box-shadow:none}
+#menu-panel .menu-item .ico{width:19px;height:19px;color:var(--accent);flex-shrink:0}
+#menu-panel .al-menu-label{flex:1;min-width:0}
+#menu-panel .al-menu-orb{width:29px;height:29px;flex:0 0 29px}
+#menu-panel .al-menu-chevron{color:var(--text2);font-size:16px}
+#menu-panel .menu-divider{margin:7px 10px}
+#menu-panel .al-install-menu-item{width:100%;margin:0;border-color:var(--line)!important;color:var(--text)!important;font-weight:650}
+#menu-panel .tf-menu-entry .tf-me-title{font-size:13px}
+.al-home-premium button:focus-visible,#menu-panel button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+<style id="al-home-sponsored-premium">
+.al-home-premium #home-feed-slot{margin:12px 0 16px}
+.al-home-premium #home-comunicados-track{border-radius:18px}
+.al-home-premium #home-feed-slot .home-comunicado-slide{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:none}
+.al-home-premium #home-feed-slot .tf-home-head{margin-bottom:8px}
+.al-home-premium #home-feed-slot .tf-badge{font-size:10px;text-transform:none;letter-spacing:.02em;color:var(--text2);background:var(--surface2);border-color:var(--line)}
+.al-home-premium #home-feed-slot .tf-card-media{aspect-ratio:16/9;max-height:190px;object-fit:contain;border-radius:12px;background:var(--surface2)}
+.al-home-premium #home-feed-slot .tf-card-body{padding:8px 2px 0}
+.al-home-premium #home-feed-slot .tf-card-title{font-size:14px;line-height:1.3}
+.al-home-premium #home-feed-slot .tf-card-desc{font-size:12px}
+.al-home-premium #home-feed-slot .tf-card-cta{border-radius:12px;border-color:var(--line);color:var(--text);background:var(--surface2);font-size:12px}
+.al-home-premium #home-feed-slot .carousel-dots{margin:9px 0}
+.al-home-premium #home-feed-slot .carousel-dot{width:8px;height:8px;min-width:8px;min-height:8px}
+</style>
 </head>
 <body data-theme="azul">
 
@@ -9743,32 +9815,26 @@ function renderAtualizacoes(){
 function renderMenu(){
   try{
     const mp=document.getElementById('menu-panel');
-    const items=[
-      {id:'home',label:t('home'),icon:'home'},{id:'gastos',label:t('gastos'),icon:'gastos'},
-      {id:'cartoes',label:t('cartoes'),icon:'cartoes'},{id:'beneficios',label:'Meus benefícios',icon:'cartoes'},{id:'emprestimos',label:t('emprestimos'),icon:'emprestimos'},
-      {id:'calendario',label:t('calendario'),icon:'calendario'},{id:'visao',label:t('visaoFinanceira'),icon:'visao'},
-      {id:'planos',label:Store.lang==='en'?'Plans':Store.lang==='es'?'Planes':'Planos',icon:'trend'},
-      {id:'indicacoes',label:'Indique e ganhe',icon:'whatsapp'},
-      {id:'atualizacoes',label:Store.lang==='en'?'Updates':Store.lang==='es'?'Actualizaciones':'Atualizações',icon:'bell'},
-      {divider:true},{id:'config',label:t('config'),icon:'config'},{id:'conta',label:t('minhaConta'),icon:'conta'},
-      {divider:true},{id:'trafego',label:t('trafegoClientes'),icon:'megafone',trafego:true},
-      {divider:true},{id:'politicas',label:t('alPolMenu'),icon:'shield'},
-      {divider:true},{id:'add',label:t('add'),icon:'add'}
+    if(!mp)return;
+    const lang=Store.lang||'pt';
+    const labels=lang==='en'?['Finances','Services','Account','Menu','Close menu']:lang==='es'?['Finanzas','Servicios','Cuenta','Menú','Cerrar menú']:['Finanças','Serviços','Minha conta','Menu','Fechar menu'];
+    const groups=[
+      {title:labels[0],items:[{id:'home',label:t('home'),icon:'home'},{id:'visao',label:t('visaoFinanceira'),icon:'visao'},{id:'assistente',label:'Alicia',orb:true},{id:'gastos',label:t('gastos'),icon:'gastos'},{id:'cartoes',label:t('cartoes'),icon:'cartoes'},{id:'beneficios',label:'Meus benefícios',icon:'cartoes'},{id:'emprestimos',label:t('emprestimos'),icon:'emprestimos'},{id:'calendario',label:t('calendario'),icon:'calendario'},{id:'add',label:t('add'),icon:'add'}]},
+      {title:labels[1],items:[{id:'planos',label:lang==='en'?'Plans':lang==='es'?'Planes':'Planos',icon:'trend'},{id:'indicacoes',label:'Indique e ganhe',icon:'whatsapp'},{id:'atualizacoes',label:lang==='en'?'Updates':lang==='es'?'Actualizaciones':'Atualizações',icon:'bell'},{id:'trafego',label:t('trafegoClientes'),icon:'megafone',trafego:true}]},
+      {title:labels[2],items:[{id:'config',label:t('config'),icon:'config'},{id:'conta',label:t('minhaConta'),icon:'conta'},{id:'politicas',label:t('alPolMenu'),icon:'shield'}]}
     ];
-    if(alicerceAdminPermitido())items.splice(items.length-2,0,{divider:true},{id:'admin',label:'Painel Administrativo',icon:'config'});
+    if(alicerceAdminPermitido())groups[2].items.push({id:'admin',label:'Painel Administrativo',icon:'config'});
     alicerceAdminSincronizarEmail();
-    mp.innerHTML='<div class="menu-item" style="border-bottom:1px solid var(--line);padding-bottom:16px;cursor:default"><span class="logo-text">'+t('app')+'</span></div>'+items.map(i=>{
-      if(i.divider)return '<div class="menu-divider"></div>';
-      if(i.trafego)return '<div class="menu-item tf-menu-entry'+(Store.screen===i.id?' active':'')+'" onclick="go(\''+i.id+'\');toggleMenu()">'
-        +'<div class="tf-me-main">'+icon(i.icon)+'<div class="tf-me-txt"><div class="tf-me-title">'+i.label+'</div>'
-        +'<div class="tf-me-desc">'+esc(t('tfMenuDesc'))+'</div>'
-        +'<span class="tf-me-badge">'+icon('diamond')+esc(t('tfBeneficioVip'))+'</span></div>'
-        +'<span class="tf-me-chev">'+icon('chevronDown')+'</span></div></div>';
-      return '<div class="menu-item'+(Store.screen===i.id?' active':'')+'" onclick="go(\''+i.id+'\');toggleMenu()">'+icon(i.icon)+'<span>'+i.label+'</span></div>';
-    }).join('');
+    mp.innerHTML='<div class="al-menu-head"><div><small>ALICERCE</small><strong>'+esc(labels[3])+'</strong></div><button type="button" class="al-menu-close" aria-label="'+esc(labels[4])+'" onclick="toggleMenu()">×</button></div>'+groups.map(group=>'<div class="al-menu-group">'+esc(group.title)+'</div>'+group.items.map(i=>{
+      const active=Store.screen===i.id;
+      const action='onclick="go(\''+i.id+'\');if(document.getElementById(\'menu-panel\').classList.contains(\'open\'))toggleMenu()"';
+      if(i.trafego)return '<button type="button" class="menu-item tf-menu-entry'+(active?' active':'')+'" '+action+(active?' aria-current="page"':'')+'><div class="tf-me-main">'+icon(i.icon)+'<div class="tf-me-txt"><div class="tf-me-title">'+esc(i.label)+'</div><div class="tf-me-desc">'+esc(t('tfMenuDesc'))+'</div><span class="tf-me-badge">'+icon('diamond')+esc(t('tfBeneficioVip'))+'</span></div><span class="al-menu-chevron" aria-hidden="true">›</span></div></button>';
+      return '<button type="button" class="menu-item'+(active?' active':'')+'" '+action+(active?' aria-current="page"':'')+'>'+(i.orb?'<span class="al-menu-orb">'+aliciaOrb()+'</span>':icon(i.icon))+'<span class="al-menu-label">'+esc(i.label)+'</span><span class="al-menu-chevron" aria-hidden="true">›</span></button>';
+    }).join('')).join('');
     if(window.AlicercePWA&&typeof window.AlicercePWA.syncMenu==='function')window.AlicercePWA.syncMenu();
   }catch(e){}
 }
+
 function toggleMenu(){
   try{
     document.getElementById('menu-overlay').classList.toggle('open');
@@ -10902,7 +10968,7 @@ function homeAtualizarComunicadoDots() {
   const trilho = document.getElementById('home-comunicados-track');
   if (!trilho || !trilho.clientWidth) return;
   const indice = Math.round(trilho.scrollLeft / trilho.clientWidth);
-  trilho.querySelectorAll('.home-comunicado-dot').forEach((dot, i) => {
+  document.querySelectorAll('#home-feed-slot .home-comunicado-dot').forEach((dot, i) => {
     const ativo = i === indice;
     dot.classList.toggle('active', ativo);
     dot.setAttribute('aria-current', ativo ? 'true' : 'false');
@@ -10911,14 +10977,20 @@ function homeAtualizarComunicadoDots() {
 
 function homeFeedStartRotation() {
   if (_homeFeedTimer) clearInterval(_homeFeedTimer);
+  _homeFeedTimer = null;
+  const currentTrack=document.getElementById('home-comunicados-track');
+  if(!currentTrack||currentTrack.querySelectorAll('.home-comunicado-slide').length<2)return;
+  if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
   _homeFeedTimer = setInterval(function() {
     const trilho = document.getElementById('home-comunicados-track');
-    if (!trilho || !trilho.clientWidth) return;
+    if (!trilho || !trilho.clientWidth){clearInterval(_homeFeedTimer);_homeFeedTimer=null;return;}
+    const rect=trilho.getBoundingClientRect();
+    if(document.hidden||rect.bottom<=0||rect.top>=window.innerHeight||trilho.contains(document.activeElement))return;
     const cartoes = trilho.querySelectorAll('.home-comunicado-slide');
     if (cartoes.length < 2) return;
     const indice = Math.round(trilho.scrollLeft / trilho.clientWidth);
     homeScrollComunicado((indice + 1) % cartoes.length);
-  }, 5000);
+  }, 8000);
 }
 
 function homeRenderComunicados() {
@@ -10932,8 +11004,8 @@ function homeRenderComunicados() {
   const total = Math.max(comunicados.length, anuncios.length);
 
   for (let i = 0; i < total; i++) {
-    if (i < comunicados.length) itens.push({ tipo: 'comunicado', dados: comunicados[i] });
     if (i < anuncios.length) itens.push({ tipo: 'anuncio', dados: anuncios[i] });
+    if (i < comunicados.length) itens.push({ tipo: 'comunicado', dados: comunicados[i] });
   }
 
   let html = '<section id="home-feed-slot" class="mt-4" aria-label="Novidades, avisos e patrocinados">';
@@ -10944,13 +11016,13 @@ function homeRenderComunicados() {
     return html;
   }
 
-  html += '<div class="section-title">Novidades e avisos</div>';
+  html += '<div class="section-title">'+(anuncios.length?'Anúncios e comunicados':'Novidades e avisos')+'</div>';
   html += '<div id="home-comunicados-track" style="display:flex;gap:0;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;overscroll-behavior-x:contain;" onscroll="homeAtualizarComunicadoDots()">';
 
   itens.forEach(function(item) {
     const c = item.dados;
 
-    html += '<article class="card home-comunicado-slide"' + (item.tipo === 'anuncio' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(c.id || '')) ? ' data-ad-id="' + esc(c.id) + '" data-ad-owner="' + esc(c.owner || '') + '"' : '') + ' style="box-sizing:border-box;flex:0 0 100%;min-width:100%;max-width:100%;scroll-snap-align:start;scroll-snap-stop:always;margin:0;overflow:hidden;padding:12px;">';
+    html += '<article class="card home-comunicado-slide'+(item.tipo==='anuncio'?' al-home-sponsored':'')+'"' + (item.tipo === 'anuncio' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(c.id || '')) ? ' data-ad-id="' + esc(c.id) + '" data-ad-owner="' + esc(c.owner || '') + '"' : '') + ' style="box-sizing:border-box;flex:0 0 100%;min-width:100%;max-width:100%;scroll-snap-align:start;scroll-snap-stop:always;margin:0;overflow:hidden;padding:12px;">';
 
     if (item.tipo === 'comunicado') {
       const titulo = esc(c.title || 'Comunicado');
@@ -11105,18 +11177,10 @@ function renderHome(){
   const upcoming=groupedInstallments.slice(0,3);
   const pendingCommitments=dedupLista(Store.commitments.filter(c=>c&&!c.personId&&/^\d{4}-\d{2}-\d{2}$/.test(String(c.data||''))&&c.data>=_hojeCompromissos&&c.status!=='concluido').sort((a,b)=>String(a.data).localeCompare(String(b.data))));
   const commitments=pendingCommitments.slice(0,2);
-  let html='<div class="content">';
-  html+='<div class="mt-4"><p class="text-muted text-sm">'+greeting+'</p></div>';
-  if(smartCards.length>0){html+='<div class="dynamic-card-wrap mt-2"><div class="dynamic-card-track" id="dc-track" tabindex="0" role="region" aria-label="'+esc(Store.lang==='en'?'Smart cards':Store.lang==='es'?'Tarjetas inteligentes':'Cartões inteligentes')+'">';
-  smartCards.forEach(c=>{html+='<div class="dynamic-card'+(c.guide?' alicia-guide-card':'')+'">'+((c.guide||String(c.type||'').indexOf('alicia-')===0)?'<div class="alicia-guide-heading">'+aliciaOrb()+'<span>'+(c.guide?'NOVIDADES · ALICERCE':'ALICIA')+'</span></div>':'')+'<div class="dc-title">'+esc(c.title)+'</div><div class="dc-text">'+esc(c.text)+'</div>'+(c.go&&c.lbl?'<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="'+esc(c.go)+'">'+esc(c.lbl)+'</button>':'')+'</div>'});
-  html+='</div>';
-  if(smartCards.length>1)html+='<div class="dynamic-dots">'+smartCards.map((_,i)=>'<div class="dynamic-dot'+(i===0?' active':'')+'" onclick="scrollToDC('+i+')"></div>').join('')+'</div>';
-  html+='</div>';}
+  let html='<div class="content al-home-premium" id="alicerce-home-premium">';
+  html+='<div class="al-home-top"><div><small>ALICERCE</small><h1>'+esc(greeting)+'</h1></div></div>';
     // ============================================================
   // ============================================================
-  if(window.AlicerceBeneficios)html+=window.AlicerceBeneficios.renderHome(Store);
-  html+=AlicerceIA.renderCard();
-  html+=homeRenderComunicados();
   // 4 MINI CARDS DA HOME
   // FONTE CENTRAL: MOTOR FINANCEIRO
   // ============================================================
@@ -11198,12 +11262,16 @@ function renderHome(){
   // RENDER DOS 4 MINI CARDS
   // ============================================================
   html+='<div class="balance-grid">'+
-    '<div class="balance-item bi-saldo"><div class="bi-label">'+_miniMonthName+'</div><div class="bi-value text-red">'+fmtMoney(_miniCurrentDebts)+'</div></div>'+
-    '<div class="balance-item"><div class="bi-label">'+_miniNextMonthName+'</div><div class="bi-value text-red">'+fmtMoney(_miniNextCommitted)+'</div></div>'+
-    '<div class="balance-item"><div class="bi-label">'+t('disponivel')+'</div><div class="bi-value '+(_miniSaldo<0?'text-red':'text-green')+'">'+fmtMoney(_miniSaldo)+'</div></div>'+
-    '<div class="balance-item"><div class="bi-label">Cartões</div><div class="bi-value text-yellow">'+fmtMoney(_miniCardsCurrent)+'</div></div></div>';
-html+='';
+    '<div class="balance-item bi-saldo"><div class="bi-label">'+t('disponivel')+'</div><div class="bi-value '+(_miniSaldo<0?'text-red':'text-green')+'">'+fmtMoney(_miniSaldo)+'</div><button type="button" class="al-home-hero-link" onclick="go(\'visao\')">'+esc(t('visaoFinanceira'))+icon('arrowRight','ico-xs')+'</button></div>'+
+    '<div class="balance-item"><div class="bi-label">'+_miniMonthName+' · a pagar</div><div class="bi-value">'+fmtMoney(_miniCurrentDebts)+'</div></div>'+
+    '<div class="balance-item"><div class="bi-label">'+_miniNextMonthName+' · previsto</div><div class="bi-value">'+fmtMoney(_miniNextCommitted)+'</div></div>'+
+    '<div class="balance-item"><div class="bi-label">'+esc(t('cartoes'))+'</div><div class="bi-value">'+fmtMoney(_miniCardsCurrent)+'</div></div></div>';
+  html+=AlicerceIA.renderCard();
+  html+='<div class="al-home-actions" aria-label="Acesso rápido"><button type="button" onclick="go(\'add\')">'+icon('plus')+'<span>'+esc(t('add'))+'</span></button><button type="button" onclick="go(\'gastos\')">'+icon('gastos')+'<span>'+esc(t('gastos'))+'</span></button><button type="button" onclick="go(\'calendario\')">'+icon('calendario')+'<span>'+esc(t('calendario'))+'</span></button></div>';
+  html+=homeRenderComunicados();
+  if(window.AlicerceBeneficios)html+=window.AlicerceBeneficios.renderHome(Store);
   html+='<div class="section-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span>'+t('proximosCompromissos')+'</span><button type="button" class="btn btn-secondary btn-sm" onclick="go(\'calendario\')">Ver todos</button></div>';
+  html+='<div class="al-home-upcoming">';
   if(upcoming.length===0&&commitments.length===0){
     html+='<div class="card"><p class="text-muted">'+t('nenhumCompromisso')+'</p></div>';
   }else{
@@ -11214,6 +11282,13 @@ html+='';
     });
     commitments.forEach(c=>{html+='<div class="list-item"><div class="li-left">'+icon('calendario','ico-sm')+'<div class="li-info"><div class="li-name">'+esc(c.descricao)+'</div><div class="li-sub">'+fmtDate(c.data)+'</div></div></div></div>'});
   }
+  html+='</div>';
+  if(smartCards.length)html+='<div class="section-title">Novidades do Alicerce</div>';
+  if(smartCards.length>0){html+='<div class="dynamic-card-wrap mt-2"><div class="dynamic-card-track" id="dc-track" tabindex="0" role="region" aria-label="'+esc(Store.lang==='en'?'Smart cards':Store.lang==='es'?'Tarjetas inteligentes':'Cartões inteligentes')+'">';
+  smartCards.forEach(c=>{html+='<div class="dynamic-card'+(c.guide?' alicia-guide-card':'')+'">'+((c.guide||String(c.type||'').indexOf('alicia-')===0)?'<div class="alicia-guide-heading">'+aliciaOrb()+'<span>'+(c.guide?'NOVIDADES · ALICERCE':'ALICIA')+'</span></div>':'')+'<div class="dc-title">'+esc(c.title)+'</div><div class="dc-text">'+esc(c.text)+'</div>'+(c.go&&c.lbl?'<button type="button" class="btn btn-secondary btn-sm mt-2" onclick="'+esc(c.go)+'">'+esc(c.lbl)+'</button>':'')+'</div>'});
+  html+='</div>';
+  if(smartCards.length>1)html+='<div class="dynamic-dots">'+smartCards.map((_,i)=>'<div class="dynamic-dot'+(i===0?' active':'')+'" onclick="scrollToDC('+i+')"></div>').join('')+'</div>';
+  html+='</div>';}
   html+='</div>';
   return html;
 }
@@ -17915,7 +17990,7 @@ function homeObservarAnuncios() {
 
     _tfObservadorAnuncios = new IntersectionObserver(function(entradas) {
       entradas.forEach(function(entrada) {
-        if (!entrada.isIntersecting || entrada.intersectionRatio < 0.6) return;
+        if (document.hidden || !entrada.isIntersecting || entrada.intersectionRatio < 0.6) return;
 
         const slide = entrada.target;
         const id = slide.getAttribute('data-ad-id');
@@ -17923,7 +17998,7 @@ function homeObservarAnuncios() {
         if (id) tfRegistrarEvento(id, 'view', dono);
       });
     }, {
-      root: trilho,
+      root: null,
       threshold: [0.6]
     });
 
