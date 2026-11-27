@@ -9997,6 +9997,7 @@ if(Store.screen==='trafegoForm'&&!alPolAceiteTrafegoValido()){
 }
 applyPremiumSkin();
 app.innerHTML=safeRender(()=>renderHeader()+renderScreen())+renderBottomNav();
+try{alicerceTrackVisibleScreen(Store.screen)}catch(ignoreAnalytics){}
 if(Store.screen==='home'){
   try{}catch(e){console.error('Erro ao renderizar Visao Financeira:',e)}
 }
@@ -11172,7 +11173,8 @@ async function alicerceSalvarNovaSenha(){
     if(resposta&&resposta.error)throw resposta.error;
     window.__alicerceRecoveryActive=false;
     try{await cliente.auth.signOut({scope:'local'})}catch(ignorar){}
-    Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
+    window.__alicerceLastScreenEvent='';
+  Store.userId=null;Store.userEmail='';Store.screen='login';Store.screenData=null;
     window.__alicerceSplashSeen=true;
     render();
     alicerceAuthFeedback('Senha alterada com sucesso. Entre com seu e-mail e a nova senha.',false);
@@ -15393,6 +15395,7 @@ function renderConfig(){
   var analyticsTitle=Store.lang==='en'?'Share usage events to improve Alicerce':Store.lang==='es'?'Compartir eventos de uso para mejorar Alicerce':'Compartilhar eventos de uso para melhorar o Alicerce';
   var analyticsDescription=Store.lang==='en'?'Records general events such as app opening and movement creation, linked to your account for aggregate metrics. It never sends amounts, categories, descriptions, merchants, cards or financial details. Turning it off deletes your previously stored events. Optional; off by default.':Store.lang==='es'?'Registra eventos generales, como abrir la aplicación y crear movimientos, vinculados a tu cuenta para métricas agregadas. Nunca envía importes, categorías, descripciones, comercios, tarjetas ni detalles financieros. Al desactivarlo, se eliminan los eventos anteriores vinculados a tu cuenta. Es opcional y está desactivado por defecto.':'Registra eventos gerais, como abertura do aplicativo e criação de movimentações, vinculados à sua conta para gerar métricas agregadas. Não envia valores, categorias, descrições, estabelecimentos, cartões ou detalhes financeiros. Ao desativar, os eventos anteriores vinculados à sua conta serão apagados. É opcional e vem desativado.';
   html+='<div class="form-group" style="padding:14px;border:1px solid var(--line);border-radius:12px;margin-top:14px"><label class="form-label" for="alicerce-analytics-consent" style="display:flex;align-items:flex-start;gap:10px"><input id="alicerce-analytics-consent" type="checkbox" '+(Store.settings.analyticsConsent===true?'checked':'')+' onchange="alicerceSetAnalyticsConsent(this.checked)" style="margin-top:3px"> <span>'+analyticsTitle+'</span></label><p class="text-muted text-sm" style="margin:7px 0 0 27px;line-height:1.5">'+analyticsDescription+'</p></div>';
+  html+='<div class="form-group" style="padding:14px;border:1px solid var(--line);border-radius:12px"><label class="form-label" for="alicerce-screen-consent"><input id="alicerce-screen-consent" type="checkbox" '+(Store.settings.analyticsConsent===true&&Store.settings.analyticsScreenConsent===true?'checked':'')+' onchange="alicerceSetScreenConsent(this.checked)" '+(Store.settings.analyticsConsent===true?'':'disabled')+'> '+(Store.lang==='en'?'Share screen visit counts':Store.lang==='es'?'Compartir visitas a pantallas':'Compartilhar visitas às telas')+'</label><p class="text-muted text-sm">'+(Store.lang==='en'?'Optional. Counts visits to general app screens only. No screen contents or financial details. Turn off to remove previous screen events. Enable general usage sharing first.':Store.lang==='es'?'Opcional. Cuenta visitas a pantallas generales, sin contenido ni datos financieros. Desactiva para borrar eventos anteriores. Activa primero el uso general.':'Opcional. Conta visitas às telas gerais, sem conteúdo, valores ou detalhes financeiros. Desative para apagar eventos anteriores. Ative primeiro o compartilhamento geral.')+'</p></div>';
   html+='<div class="section-divider"></div>';
   html+='<div class="list-item"><div class="li-left">'+icon('whatsapp','ico-sm')+'<div class="li-info"><div class="li-name">'+t('whats')+'</div></div></div>'+icon('arrowRight','ico-sm')+'</div>';
   html+='<div class="list-item" onclick="generateMonthlyPDF()" style="cursor:pointer"><div class="li-left">'+icon('file','ico-sm')+'<div class="li-info"><div class="li-name">'+t('pdf')+'</div><div class="li-sub">'+t('pdfDesc')+'</div></div></div>'+icon('arrowRight','ico-sm')+'</div>';
@@ -15411,13 +15414,23 @@ function changeTheme(theme){
 function changeLang(lang){Store.lang=lang;Store.settings.lang=lang;Store.save();render()}
 
 
+const ALICERCE_SCREEN_EVENTS=Object.freeze({"home":"screen_view_home","assistente":"screen_view_assistente","visao":"screen_view_visao","gastos":"screen_view_gastos","cartoes":"screen_view_cartoes","emprestimos":"screen_view_emprestimos","calendario":"screen_view_calendario","beneficios":"screen_view_beneficios","insurance":"screen_view_insurance","rendaExtra":"screen_view_renda_extra","financiamento":"screen_view_financiamento","consorcio":"screen_view_consorcio","planos":"screen_view_planos","indicacoes":"screen_view_indicacoes","trafego":"screen_view_trafego","add":"screen_view_add","cashBalance":"screen_view_cash_balance"});
 function alicerceAnalyticsAllowedEvent(eventName){
-  return ['app_opened','movement_created','first_movement_created'].indexOf(String(eventName||''))>=0;
+  return ['app_opened','movement_created','first_movement_created'].concat(Object.values(ALICERCE_SCREEN_EVENTS)).indexOf(String(eventName||''))>=0;
+}
+function alicerceTrackVisibleScreen(screen){
+  if(!Store.userId||!Store.settings||Store.settings.analyticsConsent!==true||Store.settings.analyticsScreenConsent!==true||document.hidden)return;
+  const eventName=Object.prototype.hasOwnProperty.call(ALICERCE_SCREEN_EVENTS,screen)?ALICERCE_SCREEN_EVENTS[screen]:'';
+  const key=String(Store.userId)+':'+String(screen);
+  if(window.__alicerceLastScreenEvent===key)return;
+  window.__alicerceLastScreenEvent=key;
+  if(eventName)alicerceTrackEvent(eventName).then(ok=>{if(!ok&&window.__alicerceLastScreenEvent===key)window.__alicerceLastScreenEvent='';});
 }
 
 async function alicerceTrackEvent(eventName){
   if(!Store || !Store.userId || !Store.settings || Store.settings.analyticsConsent!==true) return false;
   if(!alicerceAnalyticsAllowedEvent(eventName)) return false;
+  if(String(eventName).startsWith('screen_view_')&&Store.settings.analyticsScreenConsent!==true)return false;
   var client=window.alicerceSupabase;
   if(!client || !client.auth || !client.functions || typeof client.functions.invoke!=='function') return false;
   try{
@@ -15450,6 +15463,22 @@ function alicerceTrackAppOpen(){
   });
 }
 
+async function alicerceSetScreenConsent(enabled){
+  if(!Store.userId||!window.alicerceSupabase||Store.settings.analyticsConsent!==true){render();return;}
+  const previous=Store.settings.analyticsScreenConsent===true;
+  Store.settings.analyticsScreenConsent=enabled===true;
+  try{
+    const saved=await Repository.cloudSet(Store.userId,'settings',Store.settings);
+    if(!saved||saved.ok!==true||saved.semNuvem===true)throw new Error('Não foi possível salvar a preferência.');
+    try{localStorage.setItem(Repository._key(Store.userId,'settings'),JSON.stringify(Store.settings))}catch(ignore){}
+  }catch(error){Store.settings.analyticsScreenConsent=previous;showToast(error.message);render();return;}
+  window.__alicerceLastScreenEvent='';
+  if(!enabled){
+    try{const result=await window.alicerceSupabase.functions.invoke('alicerce-analytics-events',{body:{action:'revoke_screens'}});if(result.error)throw result.error;showToast('Visitas anteriores apagadas.');}
+    catch(error){showToast('Coleta desligada. A exclusão das visitas anteriores não foi confirmada.');}
+  }else showToast('Compartilhamento de visitas ativado.');
+  render();
+}
 async function alicerceSetAnalyticsConsent(enabled){
   if(!Store.userId || !window.alicerceSupabase){
     showToast(Store.lang==='en'?'Sign in to save this preference.':Store.lang==='es'?'Inicia sesión para guardar esta preferencia.':'Entre na sua conta para salvar essa preferência.');
@@ -15457,12 +15486,14 @@ async function alicerceSetAnalyticsConsent(enabled){
     return;
   }
   var previous=Store.settings.analyticsConsent===true;
+  var previousScreen=Store.settings.analyticsScreenConsent===true;
   var next=enabled===true;
+  if(!next){Store.settings.analyticsScreenConsent=false;window.__alicerceLastScreenEvent='';}
   Store.settings.analyticsConsent=next;
   try{
     var saved=await Repository.cloudSet(Store.userId,'settings',Store.settings);
     if(!saved || saved.ok!==true || saved.semNuvem===true){
-      Store.settings.analyticsConsent=previous;
+      Store.settings.analyticsConsent=previous;Store.settings.analyticsScreenConsent=previousScreen;
       try{localStorage.setItem(Repository._key(Store.userId,'settings'),JSON.stringify(Store.settings))}catch(ignoreStorage){}
       throw new Error('Não foi possível salvar a preferência com segurança.');
     }
@@ -15486,7 +15517,7 @@ async function alicerceSetAnalyticsConsent(enabled){
       window.__alicerceAnalyticsOpenedUser='';
     }
   }catch(error){
-    Store.settings.analyticsConsent=previous;
+    Store.settings.analyticsConsent=previous;Store.settings.analyticsScreenConsent=previousScreen;
     try{localStorage.setItem(Repository._key(Store.userId,'settings'),JSON.stringify(Store.settings))}catch(ignoreStorage3){}
     showToast(error&&error.message?error.message:'Não foi possível atualizar a preferência.');
   }
