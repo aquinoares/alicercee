@@ -236,6 +236,43 @@ test('renderiza Home, Gastos, Cartões e Configurações com estado isolado', as
   await expect(page.locator('#alicerce-config-lang option')).toHaveCount(3);
 });
 
+test('Empréstimos e calendário premium preservam saldos e largura mobile', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'emprestimos');
+  await page.evaluate(function(){
+    const date=Clock.today();
+    Store.loans=[{id:'af-loan',tipo:'emprestei',pessoa:'Pessoa de teste',valorTotal:200,parcelas:2,fromCard:false},{id:'af-borrow',tipo:'peguei',pessoa:'Outro empréstimo',valorTotal:80,parcelas:1,fromCard:false}];
+    Store.installments=[{id:'af-i1',loanId:'af-loan',tipo:'receber',valor:100,data:date,status:'pendente',parcelaAtual:1},{id:'af-i2',loanId:'af-loan',tipo:'receber',valor:100,data:date,status:'recebido',parcelaAtual:2},{id:'af-i3',loanId:'af-borrow',tipo:'pagar',valor:80,data:date,status:'pendente',parcelaAtual:1}];
+    Store.movements=[{id:'af-m1',tipo:'receita',valor:300,data:date,status:'recebido',descricao:'Entrada confirmada'},{id:'af-m2',tipo:'despesa',valor:70,data:date,status:'pago',descricao:'Compra confirmada'}];
+    document.getElementById('app').innerHTML=renderHeader()+renderEmprestimos()+renderBottomNav();
+  });
+  await expect(page.locator('#al-loans-premium .af-hero')).toContainText('100,00');
+  await expect(page.locator('#al-loans-premium .af-hero')).toContainText('80,00');
+  await page.locator('[data-loan-id="af-loan"]').click();
+  await expect(page.locator('.af-hero [role="progressbar"]')).toHaveAttribute('aria-valuenow','50');
+  await expect(page.locator('.af-check')).toHaveCount(2);
+  await page.evaluate(function(){go('calendario');});
+  await expect(page.locator('#al-calendar-premium .cal-day[aria-pressed=true]')).toHaveCount(1);
+  await expect(page.locator('#al-calendar-premium .af-day-result')).toContainText('230,00');
+  await expect(page.locator('#al-calendar-premium')).toContainText('Entrada confirmada');
+  for(const width of [320,375,390,430]){
+    await page.setViewportSize({width,height:844});
+    for(const screen of ['emprestimos','calendario']){
+      await page.evaluate(function(screen){go(screen);},screen);
+      const layout=await page.evaluate(function(){
+        const root=document.querySelector('.al-fin-premium'),b=root.getBoundingClientRect();
+        return {width:b.width,doc:document.documentElement.scrollWidth,viewport:innerWidth,overflow:Array.from(root.querySelectorAll('.af-hero,.af-card,.cal-grid,.af-head,.af-primary')).filter(function(el){const r=el.getBoundingClientRect();return r.right>b.right+1||r.left<b.left-1;}).length};
+      });
+      expect(layout.width).toBeLessThanOrEqual(width+1);
+      expect(layout.doc).toBeLessThanOrEqual(layout.viewport+1);
+      expect(layout.overflow).toBe(0);
+    }
+  }
+  await page.getByRole('button',{name:'Próximo mês'}).click();
+  await expect(page.locator('.cal-day[aria-pressed=true]')).toHaveCount(1);
+  await page.getByRole('button',{name:'Mês anterior'}).click();
+  await expect(page.locator('.af-day-result')).toContainText('230,00');
+});
+
 test('Cartões premium preserva fatura, parcelas, privacidade e largura mobile', async function ({ page }) {
   await prepararTelaSemNuvem(page, 'cartoes');
   await page.evaluate(function () {
