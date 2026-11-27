@@ -886,15 +886,16 @@
     // Keep write commands, calculations and planning simulations on their own paths.
     if (/\b(?:anota|anote|cadastra|cadastre|cadastrar|registra|registre|registrar|adiciona|adicione|adicionar|inclua|crie|apaga|apague|exclua|excluir|remova|altere|corrige|corrigir|edite|marque|agendar|se eu|simula|simule|simulacao|todo mes|recorrente|evolucao|melhor mes|quanto tempo)\b/.test(n)) return null;
     if (/\b(?:quanto|quais|qual|quantas|o que)\b.*\b(?:consigo|posso|poderia|daria)\b.*\b(?:pagar|quitar)\b/.test(n)) return null;
+    if (!/[?]/.test(raw)&&/^(?:tenho (?:uma?|conta|boleto|divida)|paguei|quitei|pagamos|vou pagar|preciso pagar|tenho que pagar|devo pagar)\b/.test(n)&&!/^(?:preciso pagar|tenho que pagar|devo pagar)$/.test(n)) return null;
     var last=assistant._billQueryContext;
     if(last&&last.user!==Store.userId)last=null;
     var follow=last&&/^(?:e\s+)?(?:no\s+|em\s+|de\s+|do\s+|nesse\s+|neste\s+|so\s+|somente\s+)?(?:mes passado|mes anterior|mes que vem|proximo mes|proximos meses|esse mes|este mes|mes atual|janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|hoje|amanha|ontem|todas|todas elas|tudo|pagas|quitadas|vencidas|atrasadas|pendentes)(?: (?:de )?\d{4})?$/.test(n);
     var subject=/\b(?:contas?|dividas?|boletos?|faturas?|pagamentos|parcelas?|obrigacoes|pendencias)\b/.test(n);
-    var open=/\b(?:falta(?:m)?(?:\s+\w+){0,4}\s+(?:pagar|pagas|pagos|quitadas|quitar)|falta pagar|ainda (?:tenho|tem|preciso|devo) (?:que |de )?pagar|a pagar|para pagar|em aberto|pendentes?|nao (?:foram |foi )?pag[oa]s?|nao paguei|por pagar|vencem|vai vencer|vao vencer|vencimentos futuros)\b/.test(n);
+    var open=/\b(?:falta(?:m)?(?:\s+\w+){0,4}\s+(?:pagar|pagas|pagos|quitadas|quitar)|falta pagar|ainda (?:tenho|tem|preciso|devo) (?:que |de )?pagar|a pagar|para (?:eu )?pagar|em aberto|pendentes?|nao (?:foram |foi )?pag[oa]s?|nao paguei|por pagar|vencem|vai vencer|vao vencer|vencimentos futuros)\b/.test(n);
     var question=/[?]/.test(raw)||/^(?:quais?|quanto|quantas?|como|quando|mostra|mostre|listar|liste|ver|me (?:diz|fala|mostra|mostre)|o que|tem|tenho|falta)\b/.test(n);
     var paid=/\b(?:pagas|pagos|quitadas|quitados|ja paguei|ja quitei|paguei|quitei|pagamentos realizados|pagas em atraso)\b/.test(n)&&!open;
     var overdue=/\b(?:vencidas?|atrasadas?|em atraso)\b/.test(n)&&!paid;
-    var namedRead=subject&&(question||open&&(/\b(?:contas?|dividas?|boletos?|faturas?|pendencias)\b.*\b(?:falta|em aberto|pendentes?|para pagar|a pagar|vencem)\b/.test(n))||/^(?:minhas |meus )?(?:contas|dividas|boletos|faturas|pagamentos|parcelas)(?: (?:do|desse|deste) mes)?$/.test(n)||/^(?:contas|dividas|boletos|faturas|pagamentos) (?:pagas|pagos|vencidas|atrasadas|futuras|pendentes)$/.test(n));
+    var namedRead=subject&&(question||/^(?:todas as contas|todas as dividas|todas as pendencias|todos os boletos|todos os pagamentos|contas futuras|contas do mes)$/.test(n)||open&&(/\b(?:contas?|dividas?|boletos?|faturas?|pendencias)\b.*\b(?:falta|em aberto|pendentes?|para (?:eu )?pagar|a pagar|vencem)\b/.test(n))||/^(?:minhas |meus )?(?:contas|dividas|boletos|faturas|pagamentos|parcelas)(?: (?:do|desse|deste) mes)?$/.test(n)||/^(?:contas|dividas|boletos|faturas|pagamentos) (?:pagas|pagos|vencidas|atrasadas|futuras|pendentes)$/.test(n));
     var genericRead=question&&/\b(?:falta(?:\s+\w+){0,4}\s+(?:pagar|quitar)|tenho (?:que|de) pagar|preciso pagar|devo pagar|tem (?:algo|alguma coisa) (?:para|a) pagar|o que vence)\b/.test(n);
     if(!follow&&!namedRead&&!genericRead)return null;
     // Statements such as "paguei luz" or "tenho uma conta antiga" remain write/draft intents.
