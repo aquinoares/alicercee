@@ -1757,6 +1757,16 @@ test('Visão Financeira apresenta pontos principais e permite abrir análises co
     return { monthInsight: AlicerceIA.insight(), total: AlicerceIA._sum(AlicerceIA._periodRows(0)) };
   });
 
+  await expect(page.locator('#vf-flow')).toBeVisible();
+  await expect(page.locator('#vf-flow .vf-flow-totals')).toContainText('150,00');
+  await expect(page.locator('#vf-flow .vf-month')).toHaveCount(6);
+  await page.locator('#vf-flow button').filter({hasText:'12M'}).click();
+  await expect(page.locator('#vf-flow .vf-month')).toHaveCount(12);
+  await page.locator('#vf-flow .vf-month button').nth(10).click();
+  await expect(page.locator('#vf-chart-detail')).toContainText('100,00');
+  await expect(page.locator('#vf-obligations')).toBeVisible();
+  await expect(page.locator('#vf-year .vf-year-cell')).toHaveCount(12);
+  await expect(page.locator('#vf-categories')).toContainText('Comida');
   await expect(page.locator('#visao-alicia-open .alicia-orb')).toBeVisible();
   await expect(page.locator('#visao-planejamento')).toBeVisible();
   await expect(page.locator('#visao-planejamento')).not.toHaveAttribute('open', '');
