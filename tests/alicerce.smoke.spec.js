@@ -3422,7 +3422,7 @@ test('o saldo da Home usa o caixa líquido, não a soma histórica de entradas',
     var items = Array.prototype.slice.call(document.querySelectorAll('.balance-grid .balance-item'));
     var availableItem = items.find(function (item) {
       var label = item.querySelector('.bi-label');
-      return label && /disponivel agora/i.test(label.textContent);
+      return label && /saldo disponível estimado/i.test(label.textContent);
     });
     return {
       available: available,
@@ -3433,8 +3433,8 @@ test('o saldo da Home usa o caixa líquido, não a soma histórica de entradas',
   });
 
   expect(result.available).toBe(-400);
-  expect(result.label).toMatch(/disponivel agora/i);
-  expect(result.value).toBe(result.expected);
+  expect(result.label).toMatch(/saldo disponível estimado/i);
+  expect(result.value).toBe('Saldo não informado');
 });
 
 test('parcelas antigas de cartão entram na competência de novembro pela data de vencimento', async function ({ page }) {
@@ -4147,4 +4147,26 @@ test('Alícia acompanha várias perguntas curtas, compara períodos e esquece o 
   await page.locator('#alicerce-assistant-clear').click();
   await perguntar('E no mês passado?');
   await expect(last).toContainText('Qual gasto você quer consultar?');
+});
+
+test('saldo informado não cria receita e não desconta novamente gastos antigos', async function ({ page }) {
+  await prepararTelaSemNuvem(page, 'home');
+  const result=await page.evaluate(function(){
+    Store.settings=Store.settings||{};
+    delete Store.settings.cashBalanceReferenceV1;
+    Store.movements=[{id:'cash-old',tipo:'despesa',status:'pago',valor:135.55,data:Clock.today()}];
+    const initial=Store.getMotorFinanceiro();
+    const originalUser=Store.userId, originalSave=Store.save;
+    Store.userId='cash-test';Store.save=function(){};
+    try {
+      const saved=Store.setCashBalanceReference('135,55');
+      const after=Store.getMotorFinanceiro();
+      Store.movements.push({id:'cash-new',tipo:'despesa',status:'pago',valor:20,data:Clock.today()});
+      const next=Store.getMotorFinanceiro();
+      const count=Store.movements.length;
+      Store.setCashBalanceReference('100,00');
+      return {unknown:initial.saldoInformado,saved:saved,after:after.disponivel,next:next.disponivel,count:count,reset:Store.getMotorFinanceiro().disponivel,receitas:Store.movements.filter(m=>m.tipo==='receita').length};
+    } finally {Store.userId=originalUser;Store.save=originalSave;}
+  });
+  expect(result).toEqual({unknown:false,saved:true,after:135.55,next:115.55,count:2,reset:100,receitas:0});
 });

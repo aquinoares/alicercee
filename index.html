@@ -3247,7 +3247,12 @@ body[data-theme="claro"]:has(.visao-financeira),body[data-theme="marinho"]:has(.
 @media(max-width:390px){#app .al-add-fields .form-row:has(input[type=date]),#app .al-add-fields .form-row:has(input[type=time]){grid-template-columns:1fr}}
 @media(max-width:360px){#app .al-add-premium{padding-inline:11px!important}#app .al-add-fields{padding:12px}#app .al-add-head{gap:8px}#app .al-add-list{padding-inline:10px}#app .al-add-list .al-add-option{grid-template-columns:36px minmax(0,1fr) 18px;gap:8px}#app .al-add-icon{width:36px;height:36px}}
 </style>
-</head>
+<style id="al-cash-reference-v1">
+.al-home-premium .bi-saldo .al-cash-unknown,.visao-financeira .visao-saldo.al-cash-unknown{font-size:clamp(20px,6vw,27px)!important;line-height:1.2;letter-spacing:-.025em;color:#f3f8ff!important}
+.al-cash-note{font-size:12px;line-height:1.4;color:#c5daf4;margin:0 0 9px;overflow-wrap:anywhere}
+.al-cash-action{display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:8px 12px;border:1px solid rgba(187,217,255,.35);border-radius:11px;background:rgba(133,202,255,.12);color:#e2f4ff;font-size:12px;font-weight:650;margin-bottom:11px}
+.al-cash-action:focus-visible{outline:2px solid #85caff;outline-offset:2px}
+</style></head>
 <body data-theme="azul">
 
 <div id="loading" class="loading-screen"><div class="logo-text">Alicerce</div><p class="text-muted mt-2">...</p></div>
@@ -4769,6 +4774,31 @@ getCardAvailableLimit(cardId){
     limite-usado
   );
 },
+getCashBalanceReference(){
+  const ref=this.settings&&this.settings.cashBalanceReferenceV1;
+  return ref&&typeof ref.amountCents==='number'&&Number.isSafeInteger(ref.amountCents)&&Number.isSafeInteger(ref.baselineCents)&&/^\d{4}-\d{2}-\d{2}$/.test(String(ref.date||''))?ref:null;
+},
+getCashNetCents(){
+  const today=Clock.today();
+  return (this.movements||[]).reduce(function(sum,m){
+    if(!m||(m.status!=='pago'&&m.status!=='recebido')||(m.data&&String(m.data).slice(0,10)>today))return sum;
+    const amount=Math.round(Number(m.valor)*100);
+    if(!Number.isSafeInteger(amount))return sum;
+    if(m.tipo==='receita'||m.tipo==='transferencia'&&m.direction==='entrada')return sum+amount;
+    if(m.tipo==='despesa'||m.tipo==='transferencia'&&m.direction==='saida')return sum-amount;
+    return sum;
+  },0);
+},
+setCashBalanceReference(value){
+  if(!this.userId)return false;
+  const raw=String(value==null?'':value).trim();
+  if(!/^-?\d{1,9}(?:[.,]\d{1,2})?$/.test(raw))return false;
+  const cents=Math.round(Number(raw.replace(',','.'))*100);
+  if(!Number.isSafeInteger(cents))return false;
+  if(!this.settings)this.settings={};
+  this.settings.cashBalanceReferenceV1={amountCents:cents,baselineCents:this.getCashNetCents(),date:Clock.today(),updatedAt:new Date().toISOString()};
+  this.save();return true;
+},
 getMotorFinanceiro(){
   const money=v=>Number(v)||0;
   const realizado=s=>s==='pago'||s==='recebido';
@@ -4795,6 +4825,11 @@ getMotorFinanceiro(){
       else if(m.direction==='saida')disponivel-=valor;
     }
   });
+
+  const resultadoMovimentacoes=disponivel;
+  const referenciaSaldo=this.getCashBalanceReference();
+  const saldoInformado=!!referenciaSaldo;
+  if(saldoInformado)disponivel=(referenciaSaldo.amountCents+this.getCashNetCents()-referenciaSaldo.baselineCents)/100;
 
   /*
    * 2. RECEITAS PENDENTES
@@ -5144,6 +5179,9 @@ const detalhes={
 
   return {
     disponivel,
+    saldoInformado,
+    resultadoMovimentacoes,
+    referenciaSaldo,
     aReceber,
     aPagar,
 
@@ -5171,6 +5209,8 @@ const detalhes={
 
     return {
       disponivel:motor.disponivel,
+      saldoInformado:motor.saldoInformado,
+      resultadoMovimentacoes:motor.resultadoMovimentacoes,
       comprometido:motor.totalComprometido,
       aReceber:motor.aReceber,
       aPagar:motor.aPagar,
@@ -5662,7 +5702,7 @@ const detalhes={
     blk(()=>{const i=sorted.find(x=>x.tipo==='cartao'&&x.data===todayStr&&!(x.loanId&&x.recebido!==true));if(!i)return;const cn=((this.cards||[]).find(c=>c.id===i.cardId)||{}).nome||'';add(2,'cartao',t('cartoes'),t('cardParcelaHoje',{valor:fmtMoney(i.valor),cartao:cn}),goCard(i.cardId),t('verCartao'))});
     blk(()=>{const c=(this.commitments||[]).find(x=>x&&!x.personId&&x.tipo==='compromisso'&&x.data===todayStr&&x.status!=='concluido');if(!c)return;add(2,'compromisso',t('cardCompHoje',{desc:c.descricao||''}),c.valor!=null?fmtMoney(c.valor):t('hoje'),"go('calendario');selectDay('"+todayStr+"')",t('verCalendario'))});
     blk(()=>{const c=(this.commitments||[]).find(x=>x&&!x.personId&&x.tipo==='lembrete'&&occursOn(x,todayStr)&&!reminderDone(x,todayStr));if(!c)return;add(2,'lembrete',t('cardLembHoje',{desc:c.descricao||''}),t('hoje'),"go('calendario');selectDay('"+todayStr+"')",t('verCalendario'))});
-    blk(()=>{if(this.getBalances().disponivelApos<0)add(3,'alerta',t('atencao'),t('saldoNegativo',{dias:'5'}),"go('visao')",t('visaoFinanceira'))});
+    blk(()=>{if(this.getBalances().saldoInformado&&this.getBalances().disponivelApos<0)add(3,'alerta',t('atencao'),t('saldoNegativo',{dias:'5'}),"go('visao')",t('visaoFinanceira'))});
     blk(()=>{const mv=(this.movements||[]).filter(m=>m);const tem=mv.length>0;const temEntrada=mv.some(m=>(m.status==='pago'||m.status==='recebido')&&((m.tipo==='receita')||(m.tipo==='transferencia'&&m.direction==='entrada')));if(tem&&!temEntrada)add(8,'semEntradas',t('semEntradas'),t('semEntradasText'),"go('addEntrada')",t('registrarEntrada'))});
     cards.sort((a,b)=>a.pr-b.pr);
     return cards.slice(0,5);
@@ -9066,22 +9106,17 @@ AlicerceIA.responder=function(question){
   var asksBalance=/(?:saldo|disponivel|caixa|dinheiro na conta)/.test(q) &&
     /(?:quanto|qual|tem|tenho|apareceu|positivo|negativo|atual|agora|meu|minha|porque|sobrou|restou)/.test(q);
   if(asksBalance){
-    var balanceMotor=Store.getMotorFinanceiro();
-    if(Store.lang==='pt'&&!/\b(porque|por que|apareceu|antes|positivo|negativo|sem entrada)\b/.test(q)){
-      return 'Caixa registrado: '+fmtMoney(balanceMotor.disponivel)+'. Depois dos compromissos considerados no cálculo: '+fmtMoney(balanceMotor.disponivelApos)+'.';
+    var balanceMotor=Store.getMotorFinanceiro(),copy=cashBalanceCopy();
+    var received=fmtMoney(Store.getEntradasRealizadas()),net=fmtMoney(balanceMotor.resultadoMovimentacoes);
+    if(!balanceMotor.saldoInformado){
+      if(Store.lang==='en')return 'Actual balance not provided. Recorded inflows: '+received+'. Net movements: '+net+'. This is not your bank balance. Enter your actual balance on Home; I will not invent income.';
+      if(Store.lang==='es')return 'Saldo real no informado. Entradas registradas: '+received+'. Resultado de movimientos: '+net+'. No es tu saldo bancario. Informa tu saldo real en Inicio.';
+      return 'Seu saldo real ainda não foi informado. Entradas registradas: '+received+'. Resultado dos lançamentos: '+net+'. Esse resultado não representa necessariamente seu saldo bancário. Toque em Informar saldo real na tela principal. Não vou criar um saldo inicial nem uma receita sem sua confirmação.';
     }
-    var receivedTotal=Store.getEntradasRealizadas();
-    var available=fmtMoney(balanceMotor.disponivel);
-    var received=fmtMoney(receivedTotal);
-    var commitments=fmtMoney(balanceMotor.totalComprometido);
-    var afterCommitments=fmtMoney(balanceMotor.disponivelApos);
-    if(Store.lang==='en'){
-      return 'The positive amount previously labeled as balance was the accumulated total of received income and incoming transfers ('+received+'), not money currently available. Your actual available cash is '+available+', calculated from confirmed inflows minus confirmed expenses and outgoing transfers. Future commitments total '+commitments+'; after them, the projected amount is '+afterCommitments+'. I will not create an opening balance or income that you have not recorded.';
-    }
-    if(Store.lang==='es'){
-      return 'El importe positivo que antes aparecía como saldo era la suma acumulada de ingresos y transferencias recibidas ('+received+'), no dinero disponible ahora. El efectivo realmente disponible es '+available+', calculado con entradas confirmadas menos gastos y transferencias de salida confirmadas. Los compromisos futuros suman '+commitments+'; después de ellos, el importe proyectado es '+afterCommitments+'. No crearé un saldo inicial ni un ingreso que no hayas registrado.';
-    }
-    return 'O valor positivo que aparecia como "Saldo" era a soma acumulada das entradas recebidas ('+received+'), não dinheiro disponível agora. O caixa realmente disponível é '+available+', calculado pelas entradas confirmadas menos despesas e transferências de saída confirmadas. Os compromissos futuros somam '+commitments+'; depois deles, o disponível projetado é '+afterCommitments+'. Não vou criar um saldo inicial nem uma entrada que você não registrou.';
+    var available=fmtMoney(balanceMotor.disponivel),after=fmtMoney(balanceMotor.disponivelApos);
+    if(Store.lang==='en')return 'Estimated available balance: '+available+'. After calculated commitments: '+after+'. Based on your confirmed reference and subsequent changes to recorded movements; not bank-synced.';
+    if(Store.lang==='es')return 'Saldo disponible estimado: '+available+'. Tras los compromisos calculados: '+after+'. Basado en tu referencia y los movimientos registrados; sin sincronización bancaria.';
+    return 'Seu saldo disponível estimado é '+available+'. Depois dos compromissos considerados no cálculo: '+after+'. Uso o saldo que você informou e as alterações nos lançamentos confirmados. Esse ajuste não é salário nem renda extra. Não tenho sincronização bancária.';
   }
   if(/pdf|relatorio|imprimir|exportar/.test(q)){
     if(Store.lang==='en')return 'Of course. To view your report and print or export a PDF, open Financial view using the button above. Alicia’s financial analysis is there too.';
@@ -10774,6 +10809,7 @@ function renderScreen(){
     switch(Store.screen){
       case 'login':return renderLogin();
       case 'home':return renderHome();
+      case 'cashBalance':return renderCashBalance();
       case 'assistente':return renderAssistente();
       case 'beneficios':return window.AlicerceBeneficios?window.AlicerceBeneficios.renderPage(Store,Clock.today()):'<div class="content">Benefícios indisponíveis</div>';
       case 'gastos':return renderGastos();
@@ -11536,6 +11572,27 @@ function alicerceBeneficioExcluirCartao(walletId){
  go('beneficios');
 }
 
+function cashBalanceCopy(){
+  return ({
+    pt:{unknown:'Saldo não informado',known:'Saldo disponível estimado',inform:'Informar saldo real',edit:'Conferir saldo',title:'Seu saldo real',help:'Informe o dinheiro que você possui agora (contas bancárias e dinheiro em espécie). Não inclua limite de cartão nem vale-alimentação.',note:'O saldo informado é uma referência, não uma receita. Novas movimentações confirmadas e correções alteram a estimativa. Não existe sincronização bancária.',net:'Resultado dos lançamentos',field:'Saldo real (R$)',save:'Salvar saldo',invalid:'Informe um valor válido, como 135,55 ou -20,00.',saved:'Saldo de referência salvo.',date:'Conferido em'},
+    en:{unknown:'Balance not provided',known:'Estimated available balance',inform:'Enter actual balance',edit:'Reconcile balance',title:'Your actual balance',help:'Enter the money you currently have in bank accounts and cash. Exclude credit limits and food benefits.',note:'This is a reference, not income. Confirmed movements and corrections update the estimate. No bank sync.',net:'Recorded net movements',field:'Actual balance (BRL)',save:'Save balance',invalid:'Enter a valid amount, such as 135.55 or -20.00.',saved:'Balance reference saved.',date:'Reconciled on'},
+    es:{unknown:'Saldo no informado',known:'Saldo disponible estimado',inform:'Informar saldo real',edit:'Conciliar saldo',title:'Tu saldo real',help:'Indica el dinero que tienes ahora en cuentas y efectivo. No incluyas límites de crédito ni vales de alimentación.',note:'Es una referencia, no un ingreso. Los movimientos confirmados y las correcciones actualizan la estimación. No hay sincronización bancaria.',net:'Resultado de movimientos',field:'Saldo real (R$)',save:'Guardar saldo',invalid:'Introduce un importe válido, como 135,55 o -20,00.',saved:'Saldo de referencia guardado.',date:'Conciliado el'}
+  })[Store.lang]||{unknown:'Saldo não informado',known:'Saldo disponível estimado',inform:'Informar saldo real',edit:'Conferir saldo',title:'Seu saldo real',help:'Informe o dinheiro que possui agora, sem incluir limite de cartão ou benefícios.',note:'Referência, não receita. Não há sincronização bancária.',net:'Resultado dos lançamentos',field:'Saldo real (R$)',save:'Salvar saldo',invalid:'Informe um valor válido.',saved:'Saldo salvo.',date:'Conferido em'};
+}
+function cashBalanceSummary(motor){
+  const c=cashBalanceCopy();
+  return '<div class="al-cash-note">'+esc(motor.saldoInformado?c.date+' '+fmtDate(motor.referenciaSaldo.date):c.net+': '+fmtMoney(motor.resultadoMovimentacoes))+'</div><button type="button" class="al-cash-action" onclick="go(\'cashBalance\',{back:Store.screen===\'visao\'?\'visao\':\'home\'})">'+icon('wallet','ico-sm')+' '+esc(motor.saldoInformado?c.edit:c.inform)+'</button>';
+}
+function renderCashBalance(){
+  const c=cashBalanceCopy(),m=Store.getMotorFinanceiro(),back=Store.screenData&&Store.screenData.back==='visao'?'visao':'home';
+  return '<div class="content al-add-premium al-add-form">'+alAddPremiumHead(c.title,'wallet',back,'')+'<section class="al-add-fields"><p class="text-sm text-muted">'+esc(c.help)+'</p><div class="form-group mt-4"><label for="al-cash-balance" class="form-label">'+esc(c.field)+'</label><input id="al-cash-balance" type="text" inputmode="decimal" placeholder="0,00" value="'+(m.saldoInformado?esc(String(m.disponivel.toFixed(2)).replace('.',',')):'')+'"></div><p class="text-sm text-muted">'+esc(c.note)+'</p><button type="button" class="btn btn-primary btn-block" onclick="saveCashBalance()">'+esc(c.save)+'</button></section></div>';
+}
+function saveCashBalance(){
+  const c=cashBalanceCopy(),el=document.getElementById('al-cash-balance'),back=Store.screenData&&Store.screenData.back==='visao'?'visao':'home';
+  if(!el||!Store.setCashBalanceReference(el.value)){showToast(c.invalid);return;}
+  go(back);showToast(c.saved);
+}
+
 function renderHome(){
   const bal=Store.getBalances();
   let smartCards=[];try{smartCards=Store.getSmartCards()||[]}catch(e){}
@@ -11649,7 +11706,7 @@ function renderHome(){
   // RENDER DOS 4 MINI CARDS
   // ============================================================
   html+='<div class="balance-grid">'+
-    '<div class="balance-item bi-saldo"><div class="bi-label">'+t('disponivel')+'</div><div class="bi-value '+(_miniSaldo<0?'text-red':'text-green')+'">'+fmtMoney(_miniSaldo)+'</div><button type="button" class="al-home-hero-link" onclick="go(\'visao\')">'+esc(t('visaoFinanceira'))+icon('arrowRight','ico-xs')+'</button></div>'+
+    '<div class="balance-item bi-saldo"><div class="bi-label">'+esc(cashBalanceCopy().known)+'</div><div class="bi-value '+(_miniMotor.saldoInformado?(_miniSaldo<0?'text-red':'text-green'):'al-cash-unknown')+'">'+(_miniMotor.saldoInformado?fmtMoney(_miniSaldo):esc(cashBalanceCopy().unknown))+'</div>'+cashBalanceSummary(_miniMotor)+'<button type="button" class="al-home-hero-link" onclick="go(\'visao\')">'+esc(t('visaoFinanceira'))+icon('arrowRight','ico-xs')+'</button></div>'+
     '<div class="balance-item"><div class="bi-label">'+_miniMonthName+' · a pagar</div><div class="bi-value">'+fmtMoney(_miniCurrentDebts)+'</div></div>'+
     '<div class="balance-item"><div class="bi-label">'+_miniNextMonthName+' · previsto</div><div class="bi-value">'+fmtMoney(_miniNextCommitted)+'</div></div>'+
     '<div class="balance-item"><div class="bi-label">'+esc(t('cartoes'))+'</div><div class="bi-value">'+fmtMoney(_miniCardsCurrent)+'</div></div></div>';
@@ -14683,6 +14740,9 @@ function getVisaoFinanceira(){
   return {
 
     disponivel:money(motor.disponivel),
+    saldoInformado:motor.saldoInformado,
+    resultadoMovimentacoes:motor.resultadoMovimentacoes,
+    referenciaSaldo:motor.referenciaSaldo,
 
     mesAtual:money(projecao.total),
 
@@ -15029,7 +15089,7 @@ function renderVisao(){
   ];
   let html='<div class="content visao-financeira">';
   html+='<div class="visao-topo"><div><div class="visao-logo">Alicerce</div><h1 class="visao-subtitulo">'+esc(labels.title)+'</h1></div><button type="button" id="visao-alicia-open" class="visao-alicia-open" aria-label="'+esc(labels.ask)+'" title="'+esc(labels.ask)+'" onclick="go(\'assistente\')">'+aliciaOrb()+'</button></div>';
-  html+='<section class="visao-hero"><div class="visao-pill">'+esc(labels.available)+'</div><div class="visao-saldo">'+fmtMoney(v.disponivel)+'</div><div class="visao-atualizado">'+esc(labels.updated)+hora+'</div></section>';
+  html+='<section class="visao-hero"><div class="visao-pill">'+esc(cashBalanceCopy().known)+'</div><div class="visao-saldo'+(v.saldoInformado?'':' al-cash-unknown')+'">'+(v.saldoInformado?fmtMoney(v.disponivel):esc(cashBalanceCopy().unknown))+'</div>'+cashBalanceSummary(v)+'</section>';
   if(Store.userId&&lang==='pt'&&window.AlicerceCashflow)html+=window.AlicerceCashflow.renderCards(Store,Clock.today());
   if(lang==='pt'&&Store.userId){
     html+=visaoFlowCard(visaoCashSeries(Store,agora,12),6);
@@ -16972,7 +17032,7 @@ function deleteReminder(id){if(!confirm(t('confirmarExcluirLembrete')))return;St
 function getAlerts(){
   const todayStr=today(),tomorrowStr=dateShift(todayStr,1),alerts=[];
   Store.installments.forEach(i=>{if(i.status!=='pago'&&i.status!=='recebido'){if(i.data===todayStr)alerts.push({text:(i.descricao||'')+' - '+fmtMoney(i.valor),label:t('hoje')});else if(i.data===tomorrowStr)alerts.push({text:(i.descricao||'')+' - '+fmtMoney(i.valor),label:t('amanha')})}});
-  const bal=Store.getBalances();if(bal.disponivelApos<0)alerts.push({text:t('saldoNegativo',{dias:'5'}),label:t('atencao')});
+  const bal=Store.getBalances();if(bal.saldoInformado&&bal.disponivelApos<0)alerts.push({text:t('saldoNegativo',{dias:'5'}),label:t('atencao')});
 
   Store.commitments.filter(c=>c&&!c.personId&&(c.tipo==='lembrete'||(c.tipo==='compromisso'&&Array.isArray(c.avisos)&&c.avisos.length>0))).forEach(c=>{
     const mins=c.avisos||[],eventTime=c.hora||c.horario||'',h=eventTime?Number(eventTime.slice(0,2)):8,m=eventTime?Number(eventTime.slice(3,5)):0;
@@ -17338,7 +17398,7 @@ function diagComposicaoDisponivel(){
       const f=String(m.forma||''),tp=String(m.cardType||'');
       if(f==='pix')d.pix+=v;else if(f==='dinheiro')d.dinheiro+=v;else if(f==='cartao'&&tp==='credito')d.credito+=v;else if(f==='cartao'&&tp==='debito')d.debito+=v;else if(f==='cartao')d.cartao+=v;else if(f==='credito')d.credito+=v;else if(f==='debito')d.debito+=v;else d.semForma+=v;
     });
-    d.disponivel=Store.getBalances().disponivel;
+    const bal=Store.getBalances();d.disponivel=bal.saldoInformado?bal.disponivel:cashBalanceCopy().unknown;
   }catch(e){}
   return d;
 }
@@ -17497,7 +17557,7 @@ function generateMonthlyPDF(){
     if(!movementsHtml)movementsHtml='<tr><td class="empty-note" colspan="4">Sem lançamentos registrados neste período.</td></tr>';
     const entradasPDF=mvs.reduce((s,m)=>s+((m.tipo==='receita'||(m.tipo==='transferencia'&&m.direction==='entrada'))?(Number(m.valor)||0):0),0);
     const gastosPDF=mvs.reduce((s,m)=>s+((m.tipo==='despesa'||(m.tipo==='transferencia'&&m.direction==='saida'))?(Number(m.valor)||0):0),0);
-    const saldoPDF=(typeof Store.getBalances==='function'?(Number(Store.getBalances().available)||0):(entradasPDF-gastosPDF));
+    const saldoPDF=entradasPDF-gastosPDF;
     const nomeMesPDF=selectedStart.toLocaleDateString(locale,{month:'long',year:'numeric'});
     const categoriasPDF=Object.keys(cats).sort((a,b)=>cats[b].total-cats[a].total);
     const maxCategoriaPDF=categoriasPDF.length?Math.max.apply(null,categoriasPDF.map(c=>cats[c].total)):1;
@@ -17512,7 +17572,7 @@ function generateMonthlyPDF(){
       '@page{size:A4 portrait;margin:12mm}*{box-sizing:border-box}html,body{margin:0;padding:0}body{width:100%;max-width:186mm;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#202124;font-size:10pt;line-height:1.5;background:#fff}.capa{background:#101114;color:#fff;padding:25px 24px 22px;border-bottom:5px solid #FF6500;margin-bottom:22px}.marca{font-size:17pt;font-weight:800;letter-spacing:5px;color:#FF6500}.submarca{font-size:8pt;letter-spacing:3px;margin-top:4px;color:#ddd}.confidencial{float:right;font-size:8pt;letter-spacing:1.5px;border:1px solid #FF6500;color:#FF6500;padding:5px 8px}.rotulo{font-size:8pt;letter-spacing:2px;color:#777;margin-top:27px}.capa h1{font-size:22pt;line-height:1.2;margin:5px 0 14px;max-width:440px}.mes{font-size:17pt;font-weight:700;color:#FF6500;text-transform:capitalize}.periodo{font-size:9pt;color:#ddd;margin-top:5px}.secao-titulo{font-size:9pt;font-weight:700;letter-spacing:1.5px;margin:21px 0 10px;padding-bottom:7px;border-bottom:1px solid #ddd}.saldo{border:1px solid #e1e1e1;border-left:4px solid #FF6500;padding:13px 16px;margin-bottom:12px}.rotulo-menor{font-size:8pt;letter-spacing:1.3px;color:#666}.valor-saldo{font-size:25pt;font-weight:800;margin-top:3px}.indicadores{display:grid;grid-template-columns:1fr 1fr;gap:12px}.indicador{border:1px solid #e1e1e1;padding:12px 14px}.indicador strong{display:block;font-size:17pt;margin-top:4px}.entrada{color:#276749}.gasto{color:#9B3B32}.categoria{margin:13px 0}.categoria-topo{display:flex;justify-content:space-between;gap:14px;margin-bottom:5px}.categoria-topo span{font-weight:600}.barra{height:7px;background:#eee;border-radius:5px;overflow:hidden}.barra i{display:block;height:100%;background:#FF6500;border-radius:5px}.texto-analise{border-left:3px solid #FF6500;padding:10px 14px;background:#f7f6f2}.proximos{padding-left:18px}.proximos li{padding:3px 0}.vazio{color:#666;font-style:italic}.rodape{margin-top:28px;padding-top:12px;border-top:1px solid #ddd;font-size:8pt;color:#555;display:flex;justify-content:space-between;gap:15px}.rodape strong{color:#222}.nota{font-size:8pt;color:#666;margin-top:10px}@media screen and (max-width:600px){body{max-width:100%;padding:12px;font-size:14px;line-height:1.45}.capa{padding:18px 16px;margin-bottom:16px}.capa h1{font-size:20px}.mes{font-size:18px}.secao-titulo{font-size:11px;margin:18px 0 9px}.saldo{padding:13px}.valor-saldo{font-size:26px}.indicadores{grid-template-columns:1fr;gap:8px}.indicador{padding:12px}.indicador strong{font-size:21px}.categoria{padding:9px 0;margin:10px 0}.categoria-topo{font-size:14px;gap:10px}.categoria-topo strong{font-size:14px}.barra{height:8px}.texto-analise{font-size:13px;padding:12px}.proximos li{font-size:13px;padding:5px 0}.rodape{font-size:10px;flex-wrap:wrap}}@media print{html,body{width:186mm;max-width:none;margin:0 auto}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.capa,.saldo,.indicador,.categoria,.texto-analise{break-inside:avoid;page-break-inside:avoid}}'+
       '</style></head><body>'+
       '<header class="capa"><span class="confidencial">CONFIDENCIAL</span><div class="marca">ALICERCE</div><div class="submarca">INTELIGÊNCIA FINANCEIRA</div><div class="rotulo">RELATÓRIO DE ANÁLISE FINANCEIRA</div><h1>Relatório de análise financeira</h1><div class="mes">'+esc(nomeMesPDF)+'</div><div class="periodo">01 a '+String(selectedEnd.getDate()).padStart(2,'0')+' de '+esc(nomeMesPDF)+' · Documento AL-'+year+'-'+String(month).padStart(2,'0')+'</div></header>'+
-      '<section><div class="secao-titulo">VISÃO GERAL DO PERÍODO</div><div class="saldo"><div class="rotulo-menor">SALDO DISPONÍVEL</div><div class="valor-saldo">'+fmtMoney(saldoPDF)+'</div></div><div class="indicadores"><div class="indicador"><div class="rotulo-menor">ENTRADAS</div><strong class="entrada">'+fmtMoney(entradasPDF)+'</strong></div><div class="indicador"><div class="rotulo-menor">GASTOS</div><strong class="gasto">'+fmtMoney(gastosPDF)+'</strong></div></div></section>'+
+      '<section><div class="secao-titulo">VISÃO GERAL DO PERÍODO</div><div class="saldo"><div class="rotulo-menor">RESULTADO DOS LANÇAMENTOS DO PERÍODO</div><div class="valor-saldo">'+fmtMoney(saldoPDF)+'</div></div><div class="indicadores"><div class="indicador"><div class="rotulo-menor">ENTRADAS</div><strong class="entrada">'+fmtMoney(entradasPDF)+'</strong></div><div class="indicador"><div class="rotulo-menor">GASTOS</div><strong class="gasto">'+fmtMoney(gastosPDF)+'</strong></div></div></section>'+
       '<section><div class="secao-titulo">01 · DISTRIBUIÇÃO DOS GASTOS</div>'+categoriasHtmlPDF+'</section>'+
       '<section><div class="secao-titulo">02 · ANÁLISE DO PERÍODO</div><div class="texto-analise">Uma leitura objetiva da movimentação financeira, das categorias que mais pesaram e dos compromissos futuros.</div><p class="nota">Os valores refletem os lançamentos registrados para o período selecionado.</p></section>'+
       '<section><div class="secao-titulo">03 · PRÓXIMOS PASSOS</div><ul class="proximos"><li>Identificar oportunidades de economia.</li><li>Acompanhar parcelas futuras e compromissos financeiros.</li><li>Avaliar o progresso das metas financeiras.</li></ul></section>'+
